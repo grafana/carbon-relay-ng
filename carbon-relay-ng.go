@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/rcrowley/goagain"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -61,8 +62,10 @@ func handle(c *net.TCPConn, routes []route) {
 	r := bufio.NewReaderSize(c, 4096)
 	for {
 		buf, isPrefix, err := r.ReadLine()
-		if nil != err { // TODO Don't print EOF.
-			log.Println(err)
+		if nil != err {
+			if io.EOF != err {
+				log.Println(err)
+			}
 			break
 		}
 		if isPrefix { // TODO Recover from partial reads.
