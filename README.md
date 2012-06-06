@@ -13,7 +13,7 @@ The Debian way (Ubuntu 12.04 only):
 
 The Go way:
 
-    go install github.com/rcrowley/carbon-relay-ng
+    go get github.com/rcrowley/carbon-relay-ng
 
 Usage
 -----
