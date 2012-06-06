@@ -170,7 +170,7 @@ func relay(ch chan []byte, raddr *net.TCPAddr) {
 func usage() {
 	fmt.Fprintln(
 		os.Stderr,
-		"Usage: carbon-relay-ng [-l [<ip>]:<port>] [<pattern>]=[<ip>]:<port>[...]",
+		"Usage: carbon-relay-ng [-f] [-l[<ip>]:<port>] [<pattern>]=[<ip>]:<port>[...]",
 	)
 	flag.PrintDefaults()
 }
