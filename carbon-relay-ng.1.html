@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv='content-type' value='text/html;charset=utf8'>
+  <meta name='generator' value='Ronn/v0.7.3 (http://github.com/rtomayko/ronn/tree/0.7.3)'>
+  <title>carbon-relay-ng(1) - route traffic to Graphite's carbon-cache.py</title>
+  <style type='text/css' media='all'>
+  /* style: man */
+  body#manpage {margin:0}
+  .mp {max-width:100ex;padding:0 9ex 1ex 4ex}
+  .mp p,.mp pre,.mp ul,.mp ol,.mp dl {margin:0 0 20px 0}
+  .mp h2 {margin:10px 0 0 0}
+  .mp > p,.mp > pre,.mp > ul,.mp > ol,.mp > dl {margin-left:8ex}
+  .mp h3 {margin:0 0 0 4ex}
+  .mp dt {margin:0;clear:left}
+  .mp dt.flush {float:left;width:8ex}
+  .mp dd {margin:0 0 0 9ex}
+  .mp h1,.mp h2,.mp h3,.mp h4 {clear:left}
+  .mp pre {margin-bottom:20px}
+  .mp pre+h2,.mp pre+h3 {margin-top:22px}
+  .mp h2+pre,.mp h3+pre {margin-top:5px}
+  .mp img {display:block;margin:auto}
+  .mp h1.man-title {display:none}
+  .mp,.mp code,.mp pre,.mp tt,.mp kbd,.mp samp,.mp h3,.mp h4 {font-family:monospace;font-size:14px;line-height:1.42857142857143}
+  .mp h2 {font-size:16px;line-height:1.25}
+  .mp h1 {font-size:20px;line-height:2}
+  .mp {text-align:justify;background:#fff}
+  .mp,.mp code,.mp pre,.mp pre code,.mp tt,.mp kbd,.mp samp {color:#131211}
+  .mp h1,.mp h2,.mp h3,.mp h4 {color:#030201}
+  .mp u {text-decoration:underline}
+  .mp code,.mp strong,.mp b {font-weight:bold;color:#131211}
+  .mp em,.mp var {font-style:italic;color:#232221;text-decoration:none}
+  .mp a,.mp a:link,.mp a:hover,.mp a code,.mp a pre,.mp a tt,.mp a kbd,.mp a samp {color:#0000ff}
+  .mp b.man-ref {font-weight:normal;color:#434241}
+  .mp pre {padding:0 4ex}
+  .mp pre code {font-weight:normal;color:#434241}
+  .mp h2+pre,h3+pre {padding-left:0}
+  ol.man-decor,ol.man-decor li {margin:3px 0 10px 0;padding:0;float:left;width:33%;list-style-type:none;text-transform:uppercase;color:#999;letter-spacing:1px}
+  ol.man-decor {width:100%}
+  ol.man-decor li.tl {text-align:left}
+  ol.man-decor li.tc {text-align:center;letter-spacing:4px}
+  ol.man-decor li.tr {text-align:right;float:right}
+  </style>
+  <style type='text/css' media='all'>
+  /* style: toc */
+  .man-navigation {display:block !important;position:fixed;top:0;left:113ex;height:100%;width:100%;padding:48px 0 0 0;border-left:1px solid #dbdbdb;background:#eee}
+  .man-navigation a,.man-navigation a:hover,.man-navigation a:link,.man-navigation a:visited {display:block;margin:0;padding:5px 2px 5px 30px;color:#999;text-decoration:none}
+  .man-navigation a:hover {color:#111;text-decoration:underline}
+  </style>
+</head>
+<!--
+  The following styles are deprecated and will be removed at some point:
+  div#man, div#man ol.man, div#man ol.head, div#man ol.man.
+
+  The .man-page, .man-decor, .man-head, .man-foot, .man-title, and
+  .man-navigation should be used instead.
+-->
+<body id='manpage'>
+  <div class='mp' id='man'>
+
+  <div class='man-navigation' style='display:none'>
+    <a href="#NAME">NAME</a>
+    <a href="#SYNOPSIS">SYNOPSIS</a>
+    <a href="#DESCRIPTION">DESCRIPTION</a>
+    <a href="#OPTIONS">OPTIONS</a>
+    <a href="#EXAMPLES">EXAMPLES</a>
+    <a href="#THEME-SONG">THEME SONG</a>
+    <a href="#AUTHOR">AUTHOR</a>
+    <a href="#SEE-ALSO">SEE ALSO</a>
+  </div>
+
+  <ol class='man-decor man-head man head'>
+    <li class='tl'>carbon-relay-ng(1)</li>
+    <li class='tc'>carbon-relay-ng</li>
+    <li class='tr'>carbon-relay-ng(1)</li>
+  </ol>
+
+  <h2 id="NAME">NAME</h2>
+<p class="man-name">
+  <code>carbon-relay-ng</code> - <span class="man-whatis">route traffic to Graphite's carbon-cache.py</span>
+</p>
+
+<h2 id="SYNOPSIS">SYNOPSIS</h2>
+
+<p><code>carbon-relay-ng</code> [<code>-f</code>] [<code>-l</code> [<em>ip</em>]:<em>port</em>] [<em>pattern</em>]=[<em>ip</em>]:<em>port</em>[...]</p>
+
+<h2 id="DESCRIPTION">DESCRIPTION</h2>
+
+<p><code>carbon-relay-ng</code> exists because Graphite's built-in <code>carbon-relay.py</code> insists on forwarding every metric it receives to the default relay, even if the metric matches one of the other patterns.</p>
+
+<p>Each of the non-option arguments must be of the form [<em>pattern</em>]=[<em>ip</em>]:<em>port</em>, which instructs <code>carbon-relay-ng</code> to forward metrics matching the regular expression <em>pattern</em> (which, when empty, trivially matches everything) to a particular Graphite native protocol service, usually a <code>carbon-cache.py</code>.</p>
+
+<p>With <code>-f</code>, the search for relays ends at the first match, which removes the burden of designing mutually-exclusive regular expressions from the user.</p>
+
+<h2 id="OPTIONS">OPTIONS</h2>
+
+<dl>
+<dt class="flush"><code>-f</code></dt><dd>Relay only to the first matching route.</dd>
+<dt><code>-l</code> [<em>ip</em>]:<em>port</em></dt><dd>Listen address (default: <code>0.0.0.0:2003</code>).</dd>
+</dl>
+
+
+<h2 id="EXAMPLES">EXAMPLES</h2>
+
+<p>Send production and staging data to different <code>carbon-cache.py</code> instances:</p>
+
+<pre><code>carbon-relay-ng -f \\.staging\\.=1.2.3.4:2003 \\.production\\.=5.6.7.8:2003
+</code></pre>
+
+<p>Note the use of <code>-f</code> to relay data only to the first matching route.</p>
+
+<p>Fanout to multiple processors:</p>
+
+<pre><code>carbon-relay-ng =:2003 =5.6.7.8:2003
+</code></pre>
+
+<p>Repeatedly reading the most recent data points in a Whisper file is silly.  This pattern allows alerting and event processing systems to act on the data as it is received.</p>
+
+<h2 id="THEME-SONG">THEME SONG</h2>
+
+<p>Wilco - "Box Full of Letters"</p>
+
+<h2 id="AUTHOR">AUTHOR</h2>
+
+<p>Richard Crowley <a data-bare-link="true" href="&#x6d;&#x61;&#x69;&#108;&#x74;&#111;&#x3a;&#x72;&#64;&#114;&#x63;&#x72;&#x6f;&#119;&#x6c;&#x65;&#121;&#46;&#x6f;&#114;&#103;">&#x72;&#x40;&#x72;&#99;&#x72;&#x6f;&#x77;&#108;&#101;&#x79;&#x2e;&#x6f;&#x72;&#103;</a></p>
+
+<h2 id="SEE-ALSO">SEE ALSO</h2>
+
+<ul>
+<li>Graphite: <a data-bare-link="true" href="http://graphite.readthedocs.org/en/latest/">http://graphite.readthedocs.org/en/latest/</a></li>
+<li>Graphite's built-in <code>carbon-relay.py</code>: <a data-bare-link="true" href="http://graphite.readthedocs.org/en/latest/carbon-daemons.html#carbon-relay-py">http://graphite.readthedocs.org/en/latest/carbon-daemons.html#carbon-relay-py</a></li>
+</ul>
+
+
+
+  <ol class='man-decor man-foot man foot'>
+    <li class='tl'></li>
+    <li class='tc'>June 2012</li>
+    <li class='tr'>carbon-relay-ng(1)</li>
+  </ol>
+
+  </div>
+</body>
+</html>
