@@ -4,9 +4,16 @@ carbon-relay-ng
 Installation
 ------------
 
-    go install github.com/rcrowley/carbon-relay-ng
+The Debian way (Ubuntu 12.04 only):
 
-I'll get around to building Debian packages soon enough.
+    echo "deb http://packages.rcrowley.org precise main" | sudo tee /etc/apt/sources.list.d/rcrowley.list
+    sudo wget -O /etc/apt/trusted.gpg.d/rcrowley.gpg http://packages.rcrowley.org/keyring.gpg
+    sudo apt-get update
+    sudo apt-get -y install carbon-relay-ng
+
+The Go way:
+
+    go install github.com/rcrowley/carbon-relay-ng
 
 Usage
 -----
@@ -19,7 +26,7 @@ Usage
 Examples
 --------
 
-Send production and staging data to different `carbon-cache` instances:
+Send production and staging data to different `carbon-cache.py` instances:
 
     carbon-relay-ng -f \\.staging\\.=1.2.3.4:2003 \\.production\\.=5.6.7.8:2003
 

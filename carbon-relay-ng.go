@@ -1,4 +1,4 @@
-// carbon-relay-ng - route traffic to Graphite's carbon-cache
+// carbon-relay-ng - route traffic to Graphite's carbon-cache.py
 package main
 
 import (
@@ -170,7 +170,7 @@ func relay(ch chan []byte, raddr *net.TCPAddr) {
 func usage() {
 	fmt.Fprintln(
 		os.Stderr,
-		"Usage: carbon-relay-ng [-f] [-l[<ip>]:<port>] [<pattern>]=[<ip>]:<port>[...]",
+		"Usage: carbon-relay-ng [-f] [-l [<ip>]:<port>] [<pattern>]=[<ip>]:<port>[...]",
 	)
 	flag.PrintDefaults()
 }

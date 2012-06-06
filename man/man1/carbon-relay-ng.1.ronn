@@ -1,0 +1,55 @@
+carbon-relay-ng(1) -- route traffic to Graphite's carbon-cache.py
+=================================================================
+
+SYNOPSIS
+--------
+
+`carbon-relay-ng` [`-f`] [`-l` [_ip_]:_port_] [_pattern_]=[_ip_]:_port_[...]
+
+DESCRIPTION
+-----------
+
+`carbon-relay-ng` exists because Graphite's built-in `carbon-relay.py` insists on forwarding every metric it receives to the default relay, even if the metric matches one of the other patterns.
+
+Each of the non-option arguments must be of the form [_pattern_]=[_ip_]:_port_, which instructs `carbon-relay-ng` to forward metrics matching the regular expression _pattern_ (which, when empty, trivially matches everything) to a particular Graphite native protocol service, usually a `carbon-cache.py`.
+
+With `-f`, the search for relays ends at the first match, which removes the burden of designing mutually-exclusive regular expressions from the user.
+
+OPTIONS
+-------
+
+* `-f`:
+  Relay only to the first matching route.
+* `-l` [_ip_]:_port_:
+  Listen address (default: `0.0.0.0:2003`).
+
+EXAMPLES
+--------
+
+Send production and staging data to different `carbon-cache.py` instances:
+
+    carbon-relay-ng -f \\.staging\\.=1.2.3.4:2003 \\.production\\.=5.6.7.8:2003
+
+Note the use of `-f` to relay data only to the first matching route.
+
+Fanout to multiple processors:
+
+    carbon-relay-ng =:2003 =5.6.7.8:2003
+
+Repeatedly reading the most recent data points in a Whisper file is silly.  This pattern allows alerting and event processing systems to act on the data as it is received.
+
+THEME SONG
+----------
+
+Wilco - "Box Full of Letters"
+
+AUTHOR
+------
+
+Richard Crowley <r@rcrowley.org>
+
+SEE ALSO
+--------
+
+* Graphite: <http://graphite.readthedocs.org/en/latest/>
+* Graphite's built-in `carbon-relay.py`: <http://graphite.readthedocs.org/en/latest/carbon-daemons.html#carbon-relay-py>
