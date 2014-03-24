@@ -73,7 +73,9 @@ func handle(c *net.TCPConn, routes []route) {
 			break
 		}
 		buf = append(buf, '\n')
-		dispatch(buf, routes)
+		line := make([]byte, len(buf), len(buf))
+		copy(line, buf)
+		dispatch(line, routes)
 	}
 }
 
