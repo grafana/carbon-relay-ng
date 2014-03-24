@@ -131,10 +131,10 @@ func main() {
 			log.Println(err)
 			os.Exit(1)
 		}
-		go accept(l, routes)
+		go accept(l.(*net.TCPListener), routes)
 	} else {
 		log.Printf("resuming listening on %v", l.Addr())
-		go accept(l, routes)
+		go accept(l.(*net.TCPListener), routes)
 		if err := goagain.KillParent(ppid); nil != err {
 			log.Println(err)
 			os.Exit(1)
