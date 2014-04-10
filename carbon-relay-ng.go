@@ -40,22 +40,6 @@ func accept(l *net.TCPListener, routes []route) {
 	}
 }
 
-func dispatch(buf []byte, routes []route) {
-	i := 0
-	for _, r := range routes {
-		if r.re.Match(buf) {
-			i++
-			r.ch <- buf
-			if *firstMatchOnly {
-				return
-			}
-		}
-	}
-	if 0 == i {
-		log.Printf("unrouteable: %s\n", buf)
-	}
-}
-
 func handle(c *net.TCPConn, routes []route) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
@@ -79,8 +63,69 @@ func handle(c *net.TCPConn, routes []route) {
 	}
 }
 
+func dispatch(buf []byte, routes []route) {
+	i := 0
+	for _, r := range routes {
+		if r.re.Match(buf) {
+			i++
+			r.ch <- buf
+			if *firstMatchOnly {
+				return
+			}
+		}
+	}
+	if 0 == i {
+		log.Printf("unrouteable: %s\n", buf)
+	}
+}
+
+func relay(ch chan []byte, raddr *net.TCPAddr) {
+	var buf []byte
+	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0")
+	for {
+		c, err := net.DialTCP("tcp", laddr, raddr)
+		if nil != err {
+			log.Println(err)
+			time.Sleep(10e9)
+		}
+		// TODO c.SetTimeout(60e9)
+		if nil != buf && !write(buf, c) {
+			continue // TODO Decide when to drop this buffer and move on.
+		}
+		for {
+			buf := <-ch
+			if !write(buf, c) {
+				break
+			}
+		}
+	}
+}
+
+func write(buf []byte, c *net.TCPConn) bool {
+	n, err := c.Write(buf)
+	if nil != err {
+		log.Println(err)
+		c.Close()
+		return false
+	}
+	if len(buf) != n {
+		log.Printf("truncated: %s\n", buf)
+		c.Close()
+		return false
+	}
+	return true
+}
+
 func init() {
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Lshortfile)
+}
+
+func usage() {
+	fmt.Fprintln(
+		os.Stderr,
+		"Usage: carbon-relay-ng [-f] [-l [<ip>]:<port>] [<pattern>]=[<ip>]:<port>[...]",
+	)
+	flag.PrintDefaults()
 }
 
 func main() {
@@ -93,6 +138,7 @@ func main() {
 	if 0 == flag.NArg() {
 		log.Println("no routing patterns found")
 	}
+	// set up list route{re, ch} pairs, and launch the relays that will pump ch to their dest
 	routes := make([]route, flag.NArg())
 	for i, arg := range flag.Args() {
 		ss := strings.Split(arg, "=")
@@ -144,50 +190,4 @@ func main() {
 		log.Println(err)
 		os.Exit(1)
 	}
-
-}
-
-func relay(ch chan []byte, raddr *net.TCPAddr) {
-	var buf []byte
-	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0")
-	for {
-		c, err := net.DialTCP("tcp", laddr, raddr)
-		if nil != err {
-			log.Println(err)
-			time.Sleep(10e9)
-		}
-		// TODO c.SetTimeout(60e9)
-		if nil != buf && !write(buf, c) {
-			continue // TODO Decide when to drop this buffer and move on.
-		}
-		for {
-			buf := <-ch
-			if !write(buf, c) {
-				break
-			}
-		}
-	}
-}
-
-func usage() {
-	fmt.Fprintln(
-		os.Stderr,
-		"Usage: carbon-relay-ng [-f] [-l [<ip>]:<port>] [<pattern>]=[<ip>]:<port>[...]",
-	)
-	flag.PrintDefaults()
-}
-
-func write(buf []byte, c *net.TCPConn) bool {
-	n, err := c.Write(buf)
-	if nil != err {
-		log.Println(err)
-		c.Close()
-		return false
-	}
-	if len(buf) != n {
-		log.Printf("truncated: %s\n", buf)
-		c.Close()
-		return false
-	}
-	return true
 }
