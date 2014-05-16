@@ -1,4 +1,6 @@
-// carbon-relay-ng - route traffic to Graphite's carbon-cache.py
+// carbon-relay-ng
+// route traffic to anything that speaks the Graphite Carbon protocol,
+// such as Graphite's carbon-cache.py, influxdb, ...
 package main
 
 import (
