@@ -5,44 +5,52 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
+	"github.com/BurntSushi/toml"
 	"github.com/rcrowley/goagain"
 	"io"
 	"log"
 	"net"
 	"os"
 	"regexp"
+	"routes"
 	"strings"
 	"time"
 )
 
-type route struct {
-	re *regexp.Regexp
-	ch chan []byte
+type routeReq struct {
+	Command []string
+	Conn    *net.Conn // user api connection
+}
+
+type Config struct {
+	Listen_addr string
+	Admin_addr  string
+	First_only  bool
+	Routes      map[string]*Route
 }
 
 var (
-	firstMatchOnly = flag.Bool(
-		"f",
-		false,
-		"relay only to the first matching route",
-	)
-	listenAddr = flag.String("l", "0.0.0.0:2003", "listen address")
+	config_file   string
+	config        Config
+	routeRequests = make(chan routeReq)
+	to_dispatch   = make(chan []byte)
 )
 
-func accept(l *net.TCPListener, routes []route) {
+func accept(l *net.TCPListener, config Config) {
 	for {
 		c, err := l.AcceptTCP()
 		if nil != err {
 			log.Println(err)
 			break
 		}
-		go handle(c, routes)
+		go handle(c, config)
 	}
 }
 
-func handle(c *net.TCPConn, routes []route) {
+func handle(c *net.TCPConn, config Config) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
@@ -59,73 +67,151 @@ func handle(c *net.TCPConn, routes []route) {
 			break
 		}
 		buf = append(buf, '\n')
-		line := make([]byte, len(buf), len(buf))
-		copy(line, buf)
-		dispatch(line, routes)
+		buf_copy := make([]byte, len(buf), len(buf))
+		copy(buf_copy, buf)
+		to_dispatch <- buf_copy
 	}
 }
 
-func dispatch(buf []byte, routes []route) {
-	i := 0
-	for _, r := range routes {
-		if r.re.Match(buf) {
-			i++
-			r.ch <- buf
-			if *firstMatchOnly {
-				return
-			}
-		}
-	}
-	if 0 == i {
-		log.Printf("unrouteable: %s\n", buf)
-	}
-}
-
-func relay(ch chan []byte, raddr *net.TCPAddr) {
-	var buf []byte
-	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0")
+func RoutingManager() {
 	for {
-		c, err := net.DialTCP("tcp", laddr, raddr)
-		if nil != err {
-			log.Println(err)
-			time.Sleep(10e9)
-		}
-		// TODO c.SetTimeout(60e9)
-		if nil != buf && !write(buf, c) {
-			continue // TODO Decide when to drop this buffer and move on.
-		}
-		for {
-			buf := <-ch
-			if !write(buf, c) {
-				break
+		select {
+		case buf := <-to_dispatch:
+			// route according to current rules
+			routed := false
+			for _, r := range config.Routes {
+				if r.Reg.Match(buf) {
+					routed = true
+					r.ch <- buf
+					if config.First_only {
+						break
+					}
+				}
+			}
+			if !routed {
+				log.Printf("unrouteable: %s\n", buf)
+			}
+		case req := <-routeRequests:
+			args_needed := map[string]uint{"add": 3, "del": 1, "patt", 2}
+			cmd := req.Command[0]
+			num_args_needed, found := args_needed[cmd]
+			if !found {
+				WriteHelp([]byte("unrecognized command\n"))
+			}
+			if len(req.Command) != num_args_needed+2 {
+				WriteHelp([]byte("invalid request\n"))
+				go handleApiRequest(*req.Conn)
+			}
+			switch cmd {
+			case "add":
+				key := req.Command[1]
+				patt := req.Command[2]
+				addr := req.Command[3]
+				route := NewRoute(patt, addr)
+				routes.Map[key] = route
+			case "del":
+				key := req.Command[1]
+				_, found := routes.Map[key]
+				if !found {
+					go handleApiRequest(*req.Conn, []byte("unknown route"))
+				}
+				delete(routes.Map, key)
+			case "patt":
+				key := req.Command[1]
+				patt := req.Command[2]
+				route, found := routes.Map[key]
+				if !found {
+					go handleApiRequest(*req.Conn, []byte("unknown route"))
+				}
+				old_patt = route.Patt
+				route.Patt = patt
+				err := route.Compile()
+				if err {
+					route.Patt = old_patt
+					route.Compile()
+					go handleApiRequest(*req.Conn, []byte(err))
+				}
 			}
 		}
 	}
-}
-
-func write(buf []byte, c *net.TCPConn) bool {
-	n, err := c.Write(buf)
-	if nil != err {
-		log.Println(err)
-		c.Close()
-		return false
-	}
-	if len(buf) != n {
-		log.Printf("truncated: %s\n", buf)
-		c.Close()
-		return false
-	}
-	return true
 }
 
 func init() {
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Lshortfile)
 }
 
+func writeHelp(conn net.Conn, write_first bytes.Buffer) {
+	write_first.WriteTo(conn)
+	help := `
+commands:
+    help                             show this menu
+    route add <key> <pattern> <addr> add the route
+    route del <key>                  delete the matching route
+    route patt <key> <pattern>       update pattern for given route key
+
+`
+	conn.Write([]byte(help))
+}
+
+// handleApiRequest handles one or more api requests over the admin interface, to the extent it can.
+// some operations need to be performed by the RoutingManager, so we write the request into a channel along with
+// the connection.  the monitor will handle the request when it gets to it, and invoke this function again
+// so we can resume handling a request.
+func handleApiRequest(conn net.Conn, write_first bytes.Buffer) {
+	write_first.WriteTo(conn)
+	// Make a buffer to hold incoming data.
+	buf := make([]byte, 1024)
+	// Read the incoming connection into the buffer.
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("read eof. closing")
+			} else {
+				fmt.Println("Error reading:", err.Error())
+			}
+			conn.Close()
+			break
+		}
+		clean_cmd := strings.TrimSpace(string(buf[:n]))
+		command := strings.Split(clean_cmd, " ")
+		log.Println("received command: '" + clean_cmd + "'")
+		switch command[0] {
+		case "route":
+			routeRequests <- routeReq{command[1:], &conn}
+			return
+		case "help":
+			writeHelp(conn)
+			continue
+		default:
+			writeHelp(conn, []byte("unknown command\n"))
+		}
+	}
+}
+
+func adminListener() {
+	l, err := net.Listen("tcp", config.Admin_addr)
+	if err != nil {
+		fmt.Println("Error listening:", err.Error())
+		os.Exit(1)
+	}
+	defer l.Close()
+	fmt.Println("Listening on " + config.Admin_addr)
+	for {
+		// Listen for an incoming connection.
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println("Error accepting: ", err.Error())
+			os.Exit(1)
+		}
+		go handleApiRequest(conn, bytes.Buffer{})
+	}
+}
+
 func usage() {
 	fmt.Fprintln(
 		os.Stderr,
-		"Usage: carbon-relay-ng [-f] [-l [<ip>]:<port>] [<pattern>]=[<ip>]:<port>[...]",
+		"Usage: carbon-relay-ng <path-to-config>",
 	)
 	flag.PrintDefaults()
 }
@@ -135,40 +221,26 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 
-	// Parse the remaining arguments as routing patterns pointing to relay
-	// addresses.  The empty pattern matches everything.
-	if 0 == flag.NArg() {
-		log.Println("no routing patterns found")
-	}
-	// set up list route{re, ch} pairs, and launch the relays that will pump ch to their dest
-	routes := make([]route, flag.NArg())
-	for i, arg := range flag.Args() {
-		ss := strings.Split(arg, "=")
-		if 2 != len(ss) {
-			log.Printf("invalid argument %s\n", arg)
-			os.Exit(1)
-		}
-		re, err := regexp.Compile(ss[0])
-		if nil != err {
-			log.Println(err)
-			os.Exit(1)
-		}
-		ch := make(chan []byte)
-		routes[i] = route{re, ch}
-		raddr, err := net.ResolveTCPAddr("tcp", ss[1])
-		if nil != err {
-			log.Println(err)
-			os.Exit(1)
-		}
-		go relay(ch, raddr)
+	config_file = "/etc/carbon-relay-ng.ini"
+	if 1 == flag.NArg() {
+		config_file = flag.Arg(0)
 	}
 
-	// TODO HTTP management API.
+	if _, err := toml.DecodeFile(config_file, &config); err != nil {
+		fmt.Printf("Cannot use config file '%s':\n", config_file)
+		fmt.Println(err)
+		return
+	}
+	err = routes.Init(config.Routes)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
 
 	// Follow the goagain protocol, <https://github.com/rcrowley/goagain>.
 	l, ppid, err := goagain.GetEnvs()
 	if nil != err {
-		laddr, err := net.ResolveTCPAddr("tcp", *listenAddr)
+		laddr, err := net.ResolveTCPAddr("tcp", config.Listen_addr)
 		if nil != err {
 			log.Println(err)
 			os.Exit(1)
@@ -179,10 +251,10 @@ func main() {
 			log.Println(err)
 			os.Exit(1)
 		}
-		go accept(l.(*net.TCPListener), routes)
+		go accept(l.(*net.TCPListener), config)
 	} else {
 		log.Printf("resuming listening on %v", l.Addr())
-		go accept(l.(*net.TCPListener), routes)
+		go accept(l.(*net.TCPListener), config)
 		if err := goagain.KillParent(ppid); nil != err {
 			log.Println(err)
 			os.Exit(1)
@@ -192,4 +264,8 @@ func main() {
 		log.Println(err)
 		os.Exit(1)
 	}
+
+	go adminListener()
+	go RoutingManager()
+
 }
