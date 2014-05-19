@@ -5,7 +5,8 @@ package main
 
 import (
 	"bufio"
-	"bytes"
+	"./routing"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
@@ -14,10 +15,7 @@ import (
 	"log"
 	"net"
 	"os"
-	"regexp"
-	"routes"
 	"strings"
-	"time"
 )
 
 type routeReq struct {
@@ -29,7 +27,7 @@ type Config struct {
 	Listen_addr string
 	Admin_addr  string
 	First_only  bool
-	Routes      map[string]*Route
+	Routes      map[string]*routing.Route
 }
 
 var (
@@ -37,6 +35,7 @@ var (
 	config        Config
 	routeRequests = make(chan routeReq)
 	to_dispatch   = make(chan []byte)
+	routes        routing.Routes
 )
 
 func accept(l *net.TCPListener, config Config) {
@@ -73,64 +72,153 @@ func handle(c *net.TCPConn, config Config) {
 	}
 }
 
+type handleFunc struct {
+	Match string
+	Func  func(req routeReq) (err error)
+}
+
+var routeHandlers = make([]handleFunc, 0, 0)
+
+func init() {
+	routeHandlers = append(routeHandlers, handleFunc{
+		"list",
+		func(req routeReq) (err error) {
+			if len(req.Command) != 1 {
+				return errors.New("extraneous arguments")
+			}
+			longest_key := 9
+			longest_patt := 9
+			longest_addr := 9
+			for key, route := range routes.Map {
+				if len(key) > longest_key {
+					longest_key = len(key)
+				}
+				if len(route.Patt) > longest_patt {
+					longest_patt = len(route.Patt)
+				}
+				if len(route.Addr) > longest_addr {
+					longest_addr = len(route.Addr)
+				}
+			}
+			fmt_str := fmt.Sprintf("%%%ds %%%ds %%%ds\n", longest_key+1, longest_patt+1, longest_addr+1)
+			(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, "key", "pattern", "addr")))
+			for key, route := range routes.Map {
+				(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, key, route.Patt, route.Addr)))
+			}
+			go handleApiRequest(*req.Conn, []byte("--\n"))
+			return
+		}})
+	routeHandlers = append(routeHandlers, handleFunc{
+		"add",
+		func(req routeReq) (err error) {
+			key := req.Command[1]
+			var patt, addr string
+			if len(req.Command) == 3 {
+				patt = ""
+				addr = req.Command[2]
+			} else if len(req.Command) == 4 {
+				patt = req.Command[2]
+				addr = req.Command[3]
+			} else {
+				return errors.New("bad number of arguments")
+			}
+
+			_, found := routes.Map[key]
+			if found {
+				return errors.New("route with given key already exists")
+			}
+			route := routing.NewRoute(patt, addr)
+			err = route.Compile()
+			if err != nil {
+				return err
+			}
+			err = route.Run(key)
+			if err != nil {
+				return err
+			}
+			routes.Map[key] = route
+			go handleApiRequest(*req.Conn, []byte("added\n"))
+			return
+		}})
+	routeHandlers = append(routeHandlers, handleFunc{
+		"del",
+		func(req routeReq) (err error) {
+			if len(req.Command) != 2 {
+				return errors.New("bad number of arguments")
+			}
+			key := req.Command[1]
+			route, found := routes.Map[key]
+			if !found {
+				return errors.New("unknown route '" + key + "'")
+			}
+			delete(routes.Map, key)
+			err = route.Shutdown()
+			if err != nil {
+				// route removed from routing table but still trying to connect
+				// it won't get new stuff on its input though
+				return
+			}
+			go handleApiRequest(*req.Conn, []byte("deleted\n"))
+			return
+		}})
+	routeHandlers = append(routeHandlers, handleFunc{
+		"patt",
+		func(req routeReq) (err error) {
+			if len(req.Command) != 3 {
+				return errors.New("bad number of arguments")
+			}
+			key := req.Command[1]
+			patt := req.Command[2]
+			route, found := routes.Map[key]
+			if !found {
+				return errors.New("unknown route '" + key + "'")
+			}
+			old_patt := route.Patt
+			route.Patt = patt
+			err = route.Compile()
+			if err != nil {
+				route.Patt = old_patt
+				route.Compile()
+				return err
+			}
+			go handleApiRequest(*req.Conn, []byte("updated\n"))
+			return
+		}})
+}
+
+func getHandler(req routeReq) (fn *handleFunc) {
+	cmd_str := strings.Join(req.Command, " ")
+	for _, handler := range routeHandlers {
+		if strings.HasPrefix(cmd_str, handler.Match) {
+			return &handler
+		}
+	}
+	return
+}
+
 func RoutingManager() {
 	for {
 		select {
 		case buf := <-to_dispatch:
-			// route according to current rules
-			routed := false
-			for _, r := range config.Routes {
-				if r.Reg.Match(buf) {
-					routed = true
-					r.ch <- buf
-					if config.First_only {
-						break
-					}
-				}
-			}
+			routed := routes.Dispatch(buf, config.First_only)
 			if !routed {
 				log.Printf("unrouteable: %s\n", buf)
 			}
 		case req := <-routeRequests:
-			args_needed := map[string]uint{"add": 3, "del": 1, "patt", 2}
-			cmd := req.Command[0]
-			num_args_needed, found := args_needed[cmd]
-			if !found {
-				WriteHelp([]byte("unrecognized command\n"))
+			if len(req.Command) == 0 {
+				writeHelp(*req.Conn, []byte("invalid request\n"))
+				go handleApiRequest(*req.Conn, []byte(""))
+				break
 			}
-			if len(req.Command) != num_args_needed+2 {
-				WriteHelp([]byte("invalid request\n"))
-				go handleApiRequest(*req.Conn)
-			}
-			switch cmd {
-			case "add":
-				key := req.Command[1]
-				patt := req.Command[2]
-				addr := req.Command[3]
-				route := NewRoute(patt, addr)
-				routes.Map[key] = route
-			case "del":
-				key := req.Command[1]
-				_, found := routes.Map[key]
-				if !found {
-					go handleApiRequest(*req.Conn, []byte("unknown route"))
-				}
-				delete(routes.Map, key)
-			case "patt":
-				key := req.Command[1]
-				patt := req.Command[2]
-				route, found := routes.Map[key]
-				if !found {
-					go handleApiRequest(*req.Conn, []byte("unknown route"))
-				}
-				old_patt = route.Patt
-				route.Patt = patt
-				err := route.Compile()
-				if err {
-					route.Patt = old_patt
-					route.Compile()
-					go handleApiRequest(*req.Conn, []byte(err))
-				}
+			fn := getHandler(req)
+			if fn != nil {
+				err := fn.Func(req)
+				if err != nil {
+					go handleApiRequest(*req.Conn, []byte(err.Error()))
+				} // if no error, func should have called handleApiRequest itself
+			} else {
+				writeHelp(*req.Conn, []byte("unrecognized command\n"))
+				go handleApiRequest(*req.Conn, []byte(""))
 			}
 		}
 	}
@@ -140,12 +228,14 @@ func init() {
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Lshortfile)
 }
 
-func writeHelp(conn net.Conn, write_first bytes.Buffer) {
-	write_first.WriteTo(conn)
+func writeHelp(conn net.Conn, write_first []byte) { // bytes.Buffer
+	//write_first.WriteTo(conn)
+	conn.Write(write_first)
 	help := `
 commands:
     help                             show this menu
-    route add <key> <pattern> <addr> add the route
+    route list                       list routes
+    route add <key> [pattern] <addr> add the route. (empty pattern allows all)
     route del <key>                  delete the matching route
     route patt <key> <pattern>       update pattern for given route key
 
@@ -157,8 +247,9 @@ commands:
 // some operations need to be performed by the RoutingManager, so we write the request into a channel along with
 // the connection.  the monitor will handle the request when it gets to it, and invoke this function again
 // so we can resume handling a request.
-func handleApiRequest(conn net.Conn, write_first bytes.Buffer) {
-	write_first.WriteTo(conn)
+func handleApiRequest(conn net.Conn, write_first []byte) { // bytes.Buffer
+	// write_first.WriteTo(conn)
+	conn.Write(write_first)
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
 	// Read the incoming connection into the buffer.
@@ -181,7 +272,7 @@ func handleApiRequest(conn net.Conn, write_first bytes.Buffer) {
 			routeRequests <- routeReq{command[1:], &conn}
 			return
 		case "help":
-			writeHelp(conn)
+			writeHelp(conn, []byte(""))
 			continue
 		default:
 			writeHelp(conn, []byte("unknown command\n"))
@@ -196,7 +287,7 @@ func adminListener() {
 		os.Exit(1)
 	}
 	defer l.Close()
-	fmt.Println("Listening on " + config.Admin_addr)
+	log.Printf("listening on %v", config.Admin_addr)
 	for {
 		// Listen for an incoming connection.
 		conn, err := l.Accept()
@@ -204,7 +295,7 @@ func adminListener() {
 			fmt.Println("Error accepting: ", err.Error())
 			os.Exit(1)
 		}
-		go handleApiRequest(conn, bytes.Buffer{})
+		go handleApiRequest(conn, []byte("")) //bytes.Buffer{})
 	}
 }
 
@@ -231,7 +322,9 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	err = routes.Init(config.Routes)
+	log.Println("initializing routes...")
+	routes = routing.Routes{config.Routes}
+	err := routes.Init()
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
@@ -245,12 +338,12 @@ func main() {
 			log.Println(err)
 			os.Exit(1)
 		}
-		log.Printf("listening on %v", laddr)
 		l, err = net.ListenTCP("tcp", laddr)
 		if nil != err {
 			log.Println(err)
 			os.Exit(1)
 		}
+		log.Printf("listening on %v", laddr)
 		go accept(l.(*net.TCPListener), config)
 	} else {
 		log.Printf("resuming listening on %v", l.Addr())
@@ -260,12 +353,12 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	if err := goagain.AwaitSignals(l); nil != err {
-		log.Println(err)
-		os.Exit(1)
-	}
 
 	go adminListener()
 	go RoutingManager()
 
+	if err := goagain.AwaitSignals(l); nil != err {
+		log.Println(err)
+		os.Exit(1)
+	}
 }
