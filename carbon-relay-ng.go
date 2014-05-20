@@ -16,6 +16,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime/pprof"
 	"strings"
 )
 
@@ -46,6 +47,7 @@ var (
 	to_dispatch   = make(chan []byte)
 	routes        routing.Routes
 	statsdClient  statsd.Client
+	cpuprofile    = flag.String("cpuprofile", "", "write cpu profile to file")
 )
 
 func accept(l *net.TCPListener, config Config) {
@@ -333,6 +335,15 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	log.Println("initializing routes...")
 	routes = routing.NewRoutes(config.Routes, &statsdClient)
 	err := routes.Init()
