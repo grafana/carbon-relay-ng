@@ -227,7 +227,7 @@ func RoutingManager() {
 			if fn != nil {
 				err := fn.Func(req)
 				if err != nil {
-					go handleApiRequest(*req.Conn, []byte(err.Error()))
+					go handleApiRequest(*req.Conn, []byte(err.Error()+"\n"))
 				} // if no error, func should have called handleApiRequest itself
 			} else {
 				writeHelp(*req.Conn, []byte("unrecognized command\n"))
