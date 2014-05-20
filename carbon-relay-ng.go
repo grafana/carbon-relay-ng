@@ -4,8 +4,9 @@
 package main
 
 import (
-	"bufio"
 	"./routing"
+	"github.com/Dieterbe/statsd-go"
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,11 +24,19 @@ type routeReq struct {
 	Conn    *net.Conn // user api connection
 }
 
+type StatsdConfig struct {
+	Enabled  bool
+	Instance string
+	Host     string
+	Port     int
+}
+
 type Config struct {
 	Listen_addr string
 	Admin_addr  string
 	First_only  bool
 	Routes      map[string]*routing.Route
+	Statsd      StatsdConfig
 }
 
 var (
@@ -36,6 +45,7 @@ var (
 	routeRequests = make(chan routeReq)
 	to_dispatch   = make(chan []byte)
 	routes        routing.Routes
+	statsdClient  statsd.Client
 )
 
 func accept(l *net.TCPListener, config Config) {
@@ -68,6 +78,7 @@ func handle(c *net.TCPConn, config Config) {
 		buf = append(buf, '\n')
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
+		statsdClient.Increment("target_type=count.unit=Metric.direction=in")
 		to_dispatch <- buf_copy
 	}
 }
@@ -127,12 +138,12 @@ func init() {
 			if found {
 				return errors.New("route with given key already exists")
 			}
-			route := routing.NewRoute(patt, addr)
+			route := routing.NewRoute(key, patt, addr, &statsdClient)
 			err = route.Compile()
 			if err != nil {
 				return err
 			}
-			err = route.Run(key)
+			err = route.Run()
 			if err != nil {
 				return err
 			}
@@ -323,12 +334,15 @@ func main() {
 		return
 	}
 	log.Println("initializing routes...")
-	routes = routing.Routes{config.Routes}
+	routes = routing.NewRoutes(config.Routes, &statsdClient)
 	err := routes.Init()
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
+
+	statsdPrefix := fmt.Sprintf("service=carbon-relay-ng.instance=%s.", config.Statsd.Instance)
+	statsdClient = *statsd.NewClient(config.Statsd.Enabled, config.Statsd.Host, config.Statsd.Port, statsdPrefix)
 
 	// Follow the goagain protocol, <https://github.com/rcrowley/goagain>.
 	l, ppid, err := goagain.GetEnvs()
