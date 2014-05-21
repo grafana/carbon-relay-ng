@@ -254,7 +254,7 @@ commands:
     route list                       list routes
     route add <key> [pattern] <addr> add the route. (empty pattern allows all)
     route del <key>                  delete the matching route
-    route patt <key> <pattern>       update pattern for given route key
+    route patt <key> [pattern]       update pattern for given route key.  (empty pattern allows all)
 
 `
 	conn.Write([]byte(help))
