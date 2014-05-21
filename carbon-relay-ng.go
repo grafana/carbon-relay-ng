@@ -5,12 +5,12 @@ package main
 
 import (
 	"./routing"
-	"github.com/Dieterbe/statsd-go"
 	"bufio"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
+	"github.com/Dieterbe/statsd-go"
 	"github.com/rcrowley/goagain"
 	"io"
 	"log"
@@ -177,11 +177,15 @@ func init() {
 	routeHandlers = append(routeHandlers, handleFunc{
 		"patt",
 		func(req routeReq) (err error) {
-			if len(req.Command) != 3 {
+			key := req.Command[1]
+			var patt string
+			if len(req.Command) == 3 {
+				patt = req.Command[2]
+			} else if len(req.Command) == 2 {
+				patt = ""
+			} else {
 				return errors.New("bad number of arguments")
 			}
-			key := req.Command[1]
-			patt := req.Command[2]
 			route, found := routes.Map[key]
 			if !found {
 				return errors.New("unknown route '" + key + "'")
