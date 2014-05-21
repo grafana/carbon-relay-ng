@@ -6,7 +6,7 @@ What?
 
 A relay for carbon streams, in go.
 Like carbon-relay from the graphite project, except it performs (much) better.
-Consistent hashing is not supported ([http://dieter.plaetinck.be/on-graphite-whisper-and-influxdb.html](because you should use proper storage))
+Consistent hashing is not supported, [http://dieter.plaetinck.be/on-graphite-whisper-and-influxdb.html](because you should use proper storage).
 But you get a telnet admin interface over which you can adjust the routing table.
 I.e.: you can modify routes at runtime, this makes it easy to fanout to other tools that feed in on the metrics, at runtime.
 Or balance load, or redundancy (see "first_only" config paramater), or partition the data, etc.
