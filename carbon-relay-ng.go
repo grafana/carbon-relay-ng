@@ -4,7 +4,7 @@
 package main
 
 import (
-	"./routing"
+	"github.com/graphite-ng/carbon-relay-ng/routing"
 	"bufio"
 	"errors"
 	"flag"
