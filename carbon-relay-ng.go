@@ -4,13 +4,14 @@
 package main
 
 import (
-	"github.com/graphite-ng/carbon-relay-ng/routing"
 	"bufio"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/statsd-go"
+	"github.com/graphite-ng/carbon-relay-ng/admin"
+	"github.com/graphite-ng/carbon-relay-ng/routing"
 	"github.com/rcrowley/goagain"
 	"html/template"
 	"io"
@@ -20,13 +21,7 @@ import (
 	"os"
 	"regexp"
 	"runtime/pprof"
-	"strings"
 )
-
-type routeReq struct {
-	Command []string
-	Conn    *net.Conn // user api connection
-}
 
 type StatsdConfig struct {
 	Enabled  bool
@@ -52,6 +47,10 @@ var (
 	statsdClient statsd.Client
 	cpuprofile   = flag.String("cpuprofile", "", "write cpu profile to file")
 )
+
+func init() {
+	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Lshortfile)
+}
 
 func accept(l *net.TCPListener, config Config) {
 	for {
@@ -88,110 +87,6 @@ func handle(c *net.TCPConn, config Config) {
 	}
 }
 
-type handleFunc struct {
-	Match string
-	Func  func(req routeReq) (err error)
-}
-
-var routeHandlers = make([]handleFunc, 0, 0)
-
-func init() {
-	routeHandlers = append(routeHandlers, handleFunc{
-		"list",
-		func(req routeReq) (err error) {
-			if len(req.Command) != 1 {
-				return errors.New("extraneous arguments")
-			}
-			longest_key := 9
-			longest_patt := 9
-			longest_addr := 9
-			list := routes.List()
-			for key, route := range list {
-				if len(key) > longest_key {
-					longest_key = len(key)
-				}
-				if len(route.Patt) > longest_patt {
-					longest_patt = len(route.Patt)
-				}
-				if len(route.Addr) > longest_addr {
-					longest_addr = len(route.Addr)
-				}
-			}
-			fmt_str := fmt.Sprintf("%%%ds %%%ds %%%ds\n", longest_key+1, longest_patt+1, longest_addr+1)
-			(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, "key", "pattern", "addr")))
-			for key, route := range list {
-				(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, key, route.Patt, route.Addr)))
-			}
-			go handleApiRequest(*req.Conn, []byte("--\n"))
-			return
-		}})
-	routeHandlers = append(routeHandlers, handleFunc{
-		"add",
-		func(req routeReq) (err error) {
-			key := req.Command[1]
-			var patt, addr string
-			if len(req.Command) == 3 {
-				patt = ""
-				addr = req.Command[2]
-			} else if len(req.Command) == 4 {
-				patt = req.Command[2]
-				addr = req.Command[3]
-			} else {
-				return errors.New("bad number of arguments")
-			}
-
-			err = routes.Add(key, patt, addr, &statsdClient)
-			if err != nil {
-				return err
-			}
-			go handleApiRequest(*req.Conn, []byte("added\n"))
-			return
-		}})
-	routeHandlers = append(routeHandlers, handleFunc{
-		"del",
-		func(req routeReq) (err error) {
-			if len(req.Command) != 2 {
-				return errors.New("bad number of arguments")
-			}
-			key := req.Command[1]
-			err = routes.Del(key)
-			if err != nil {
-				return err
-			}
-			go handleApiRequest(*req.Conn, []byte("deleted\n"))
-			return
-		}})
-	routeHandlers = append(routeHandlers, handleFunc{
-		"patt",
-		func(req routeReq) (err error) {
-			key := req.Command[1]
-			var patt string
-			if len(req.Command) == 3 {
-				patt = req.Command[2]
-			} else if len(req.Command) == 2 {
-				patt = ""
-			} else {
-				return errors.New("bad number of arguments")
-			}
-			err = routes.Update(key, nil, &patt)
-			if err != nil {
-				return err
-			}
-			go handleApiRequest(*req.Conn, []byte("updated\n"))
-			return
-		}})
-}
-
-func getHandler(req routeReq) (fn *handleFunc) {
-	cmd_str := strings.Join(req.Command, " ")
-	for _, handler := range routeHandlers {
-		if strings.HasPrefix(cmd_str, handler.Match) {
-			return &handler
-		}
-	}
-	return
-}
-
 func RoutingManager() {
 	for buf := range to_dispatch {
 		routed := routes.Dispatch(buf, config.First_only)
@@ -201,8 +96,92 @@ func RoutingManager() {
 	}
 }
 
-func init() {
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Lshortfile)
+func tcpListHandler(req admin.Req) (err error) {
+	if len(req.Command) != 2 {
+		return errors.New("extraneous arguments")
+	}
+	longest_key := 9
+	longest_patt := 9
+	longest_addr := 9
+	list := routes.List()
+	for key, route := range list {
+		if len(key) > longest_key {
+			longest_key = len(key)
+		}
+		if len(route.Patt) > longest_patt {
+			longest_patt = len(route.Patt)
+		}
+		if len(route.Addr) > longest_addr {
+			longest_addr = len(route.Addr)
+		}
+	}
+	fmt_str := fmt.Sprintf("%%%ds %%%ds %%%ds\n", longest_key+1, longest_patt+1, longest_addr+1)
+	(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, "key", "pattern", "addr")))
+	for key, route := range list {
+		(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, key, route.Patt, route.Addr)))
+	}
+	(*req.Conn).Write([]byte("--\n"))
+	return
+}
+func tcpAddHandler(req admin.Req) (err error) {
+	key := req.Command[2]
+	var patt, addr string
+	if len(req.Command) == 4 {
+		patt = ""
+		addr = req.Command[3]
+	} else if len(req.Command) == 5 {
+		patt = req.Command[3]
+		addr = req.Command[4]
+	} else {
+		return errors.New("bad number of arguments")
+	}
+
+	err = routes.Add(key, patt, addr, &statsdClient)
+	if err != nil {
+		return err
+	}
+	(*req.Conn).Write([]byte("added\n"))
+	return
+}
+
+func tcpDelHandler(req admin.Req) (err error) {
+	if len(req.Command) != 3 {
+		return errors.New("bad number of arguments")
+	}
+	key := req.Command[2]
+	err = routes.Del(key)
+	if err != nil {
+		return err
+	}
+	(*req.Conn).Write([]byte("deleted\n"))
+	return
+}
+
+func tcpPattHandler(req admin.Req) (err error) {
+	key := req.Command[2]
+	var patt string
+	if len(req.Command) == 4 {
+		patt = req.Command[3]
+	} else if len(req.Command) == 3 {
+		patt = ""
+	} else {
+		return errors.New("bad number of arguments")
+	}
+	err = routes.Update(key, nil, &patt)
+	if err != nil {
+		return err
+	}
+	(*req.Conn).Write([]byte("updated\n"))
+	return
+}
+
+func tcpHelpHandler(req admin.Req) (err error) {
+	writeHelp(*req.Conn, []byte(""))
+	return
+}
+func tcpDefaultHandler(req admin.Req) (err error) {
+	writeHelp(*req.Conn, []byte("unknown command\n"))
+	return
 }
 
 func writeHelp(conn net.Conn, write_first []byte) { // bytes.Buffer
@@ -220,70 +199,19 @@ commands:
 	conn.Write([]byte(help))
 }
 
-func handleApiRequest(conn net.Conn, write_first []byte) { // bytes.Buffer
-	// write_first.WriteTo(conn)
-	conn.Write(write_first)
-	// Make a buffer to hold incoming data.
-	buf := make([]byte, 1024)
-	// Read the incoming connection into the buffer.
-	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-			if err == io.EOF {
-				fmt.Println("read eof. closing")
-			} else {
-				fmt.Println("Error reading:", err.Error())
-			}
-			conn.Close()
-			break
-		}
-		clean_cmd := strings.TrimSpace(string(buf[:n]))
-		command := strings.Split(clean_cmd, " ")
-		log.Println("received command: '" + clean_cmd + "'")
-		req := routeReq{command, &conn}
-		switch command[0] {
-		case "route":
-			if len(req.Command) == 0 {
-				writeHelp(*req.Conn, []byte("invalid request\n"))
-				go handleApiRequest(*req.Conn, []byte(""))
-				break
-			}
-			fn := getHandler(req)
-			if fn != nil {
-				err := fn.Func(req)
-				if err != nil {
-					go handleApiRequest(*req.Conn, []byte(err.Error()+"\n"))
-				} // if no error, func should have called handleApiRequest itself
-			} else {
-				writeHelp(*req.Conn, []byte("unrecognized command\n"))
-				go handleApiRequest(*req.Conn, []byte(""))
-			}
-		case "help":
-			writeHelp(conn, []byte(""))
-			continue
-		default:
-			writeHelp(conn, []byte("unknown command\n"))
-		}
-	}
-}
-
 func adminListener() {
-	l, err := net.Listen("tcp", config.Admin_addr)
+	admin.HandleFunc("route list", tcpListHandler)
+	admin.HandleFunc("route add", tcpAddHandler)
+	admin.HandleFunc("route del", tcpDelHandler)
+	admin.HandleFunc("route patt", tcpPattHandler)
+	admin.HandleFunc("help", tcpHelpHandler)
+	admin.HandleFunc("", tcpDefaultHandler)
+	err := admin.ListenAndServe(config.Admin_addr)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)
 	}
-	defer l.Close()
 	log.Printf("listening on %v", config.Admin_addr)
-	for {
-		// Listen for an incoming connection.
-		conn, err := l.Accept()
-		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
-			os.Exit(1)
-		}
-		go handleApiRequest(conn, []byte("")) //bytes.Buffer{})
-	}
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request, title string) {
