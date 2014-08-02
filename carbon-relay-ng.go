@@ -87,7 +87,7 @@ func handle(c *net.TCPConn, config Config) {
 	}
 }
 
-func RoutingManager() {
+func Router() {
 	for buf := range to_dispatch {
 		routed := routes.Dispatch(buf, config.First_only)
 		if !routed {
@@ -377,7 +377,7 @@ func main() {
 		go httpListener()
 	}
 
-	go RoutingManager()
+	go Router()
 
 	if err := goagain.AwaitSignals(l); nil != err {
 		log.Println(err)
