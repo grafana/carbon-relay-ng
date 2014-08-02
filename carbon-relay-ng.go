@@ -45,12 +45,12 @@ type Config struct {
 }
 
 var (
-	config_file   string
-	config        Config
-	to_dispatch   = make(chan []byte)
-	routes        routing.Routes
-	statsdClient  statsd.Client
-	cpuprofile    = flag.String("cpuprofile", "", "write cpu profile to file")
+	config_file  string
+	config       Config
+	to_dispatch  = make(chan []byte)
+	routes       routing.Routes
+	statsdClient statsd.Client
+	cpuprofile   = flag.String("cpuprofile", "", "write cpu profile to file")
 )
 
 func accept(l *net.TCPListener, config Config) {

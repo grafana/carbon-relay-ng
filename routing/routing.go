@@ -1,9 +1,9 @@
 package routing
 
 import (
-	"github.com/Dieterbe/statsd-go"
 	"errors"
 	"fmt"
+	"github.com/Dieterbe/statsd-go"
 	"log"
 	"net"
 	"regexp"
