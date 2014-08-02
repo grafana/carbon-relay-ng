@@ -1,22 +1,29 @@
 carbon-relay-ng
 ===============
 
-What?
------
-
 A relay for carbon streams, in go.
-Like carbon-relay from the graphite project, except it performs (much) better.
-It has a telnet admin interface over which you can adjust the routing table.
-I.e.: you can modify routes at runtime, in real time.  This makes it easy to fanout to other tools that feed in on the metrics, at runtime.
-Or balance load, or redundancy (see "first_only" config paramater), or partition the data, etc.
-Repeatedly reading the most recent data points in a Whisper file is silly.  This pattern allows alerting and event processing systems to act on the data as it is received.
-Note: consistent hashing is not supported, [because you should use proper storage](http://dieter.plaetinck.be/on-graphite-whisper-and-influxdb.html).
+Like carbon-relay from the graphite project, except it:
 
 
-Future ideas
-------------
-* make flexible routing available as pub-sub
+ * performs (much) better.
+ * you can adjust the routing table at runtime, in real time using the web or telnet interface.
+ 
+
+This makes it easy to fanout to other tools that feed in on the metrics, at runtime.
+Or balance load, or provide redundancy (see "first_only" config paramater), or partition the data, etc.
+This pattern allows alerting and event processing systems to act on the data as it is received (which is much better than repeated reading from your storage)
+
+
+![screen shot 2014-07-24 at 7 01 13 pm](https://cloud.githubusercontent.com/assets/465717/3697144/b1efce7e-139f-11e4-83d1-c6e659fa093a.png)
+
+
+Future work aka what's missing
+------------------------------
+
 * queueing/disk spooling policy to bridge remote outage (now we just drop packets to remote if it goes down)
+* support for pickle protocol, if anyone cares enough to implement it (libraries for pickle in Go [already exist](https://github.com/kisielk/og-rek))
+* pub-sub interface, maybe
+* consistent hashing across different endpoints, if it can be implemented in an elegant way.  (note that this would still be a hack and mostly aimed for legacy setups, [decent storage has redundancy and distribution built in properly ](http://dieter.plaetinck.be/on-graphite-whisper-and-influxdb.html).
 
 
 Installation
@@ -33,6 +40,13 @@ Usage
 -----
 
 <pre><code>carbon-relay-ng [-cpuprofile <em>cpuprofile-file</em>] <em>config-file</em></code></pre>
+
+
+Web interface
+-------------
+
+Should be self explanatory.
+
 
 Admin interface
 ---------------
