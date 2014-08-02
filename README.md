@@ -7,9 +7,10 @@ Like carbon-relay from the graphite project, except it:
 
  * performs (much) better.
  * you can adjust the routing table at runtime, in real time using the web or telnet interface.
+ * can be restarted without dropping packets
  
 
-This makes it easy to fanout to other tools that feed in on the metrics, at runtime.
+This makes it easy to fanout to other tools that feed in on the metrics.
 Or balance load, or provide redundancy (see "first_only" config paramater), or partition the data, etc.
 This pattern allows alerting and event processing systems to act on the data as it is received (which is much better than repeated reading from your storage)
 
