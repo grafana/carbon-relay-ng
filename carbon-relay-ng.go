@@ -47,7 +47,6 @@ type Config struct {
 var (
 	config_file   string
 	config        Config
-	routeRequests = make(chan routeReq)
 	to_dispatch   = make(chan []byte)
 	routes        routing.Routes
 	statsdClient  statsd.Client
@@ -106,7 +105,8 @@ func init() {
 			longest_key := 9
 			longest_patt := 9
 			longest_addr := 9
-			for key, route := range routes.Map {
+			list := routes.List()
+			for key, route := range list {
 				if len(key) > longest_key {
 					longest_key = len(key)
 				}
@@ -119,7 +119,7 @@ func init() {
 			}
 			fmt_str := fmt.Sprintf("%%%ds %%%ds %%%ds\n", longest_key+1, longest_patt+1, longest_addr+1)
 			(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, "key", "pattern", "addr")))
-			for key, route := range routes.Map {
+			for key, route := range list {
 				(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, key, route.Patt, route.Addr)))
 			}
 			go handleApiRequest(*req.Conn, []byte("--\n"))
@@ -140,20 +140,10 @@ func init() {
 				return errors.New("bad number of arguments")
 			}
 
-			_, found := routes.Map[key]
-			if found {
-				return errors.New("route with given key already exists")
-			}
-			route := routing.NewRoute(key, patt, addr, &statsdClient)
-			err = route.Compile()
+			err = routes.Add(key, patt, addr, &statsdClient)
 			if err != nil {
 				return err
 			}
-			err = route.Run()
-			if err != nil {
-				return err
-			}
-			routes.Map[key] = route
 			go handleApiRequest(*req.Conn, []byte("added\n"))
 			return
 		}})
@@ -164,16 +154,9 @@ func init() {
 				return errors.New("bad number of arguments")
 			}
 			key := req.Command[1]
-			route, found := routes.Map[key]
-			if !found {
-				return errors.New("unknown route '" + key + "'")
-			}
-			delete(routes.Map, key)
-			err = route.Shutdown()
+			err = routes.Del(key)
 			if err != nil {
-				// route removed from routing table but still trying to connect
-				// it won't get new stuff on its input though
-				return
+				return err
 			}
 			go handleApiRequest(*req.Conn, []byte("deleted\n"))
 			return
@@ -190,16 +173,8 @@ func init() {
 			} else {
 				return errors.New("bad number of arguments")
 			}
-			route, found := routes.Map[key]
-			if !found {
-				return errors.New("unknown route '" + key + "'")
-			}
-			old_patt := route.Patt
-			route.Patt = patt
-			err = route.Compile()
+			err = routes.Update(key, nil, &patt)
 			if err != nil {
-				route.Patt = old_patt
-				route.Compile()
 				return err
 			}
 			go handleApiRequest(*req.Conn, []byte("updated\n"))
@@ -218,29 +193,10 @@ func getHandler(req routeReq) (fn *handleFunc) {
 }
 
 func RoutingManager() {
-	for {
-		select {
-		case buf := <-to_dispatch:
-			routed := routes.Dispatch(buf, config.First_only)
-			if !routed {
-				log.Printf("unrouteable: %s\n", buf)
-			}
-		case req := <-routeRequests:
-			if len(req.Command) == 0 {
-				writeHelp(*req.Conn, []byte("invalid request\n"))
-				go handleApiRequest(*req.Conn, []byte(""))
-				break
-			}
-			fn := getHandler(req)
-			if fn != nil {
-				err := fn.Func(req)
-				if err != nil {
-					go handleApiRequest(*req.Conn, []byte(err.Error()+"\n"))
-				} // if no error, func should have called handleApiRequest itself
-			} else {
-				writeHelp(*req.Conn, []byte("unrecognized command\n"))
-				go handleApiRequest(*req.Conn, []byte(""))
-			}
+	for buf := range to_dispatch {
+		routed := routes.Dispatch(buf, config.First_only)
+		if !routed {
+			log.Printf("unrouteable: %s\n", buf)
 		}
 	}
 }
@@ -264,10 +220,6 @@ commands:
 	conn.Write([]byte(help))
 }
 
-// handleApiRequest handles one or more api requests over the admin interface, to the extent it can.
-// some operations need to be performed by the RoutingManager, so we write the request into a channel along with
-// the connection.  the monitor will handle the request when it gets to it, and invoke this function again
-// so we can resume handling a request.
 func handleApiRequest(conn net.Conn, write_first []byte) { // bytes.Buffer
 	// write_first.WriteTo(conn)
 	conn.Write(write_first)
@@ -288,10 +240,24 @@ func handleApiRequest(conn net.Conn, write_first []byte) { // bytes.Buffer
 		clean_cmd := strings.TrimSpace(string(buf[:n]))
 		command := strings.Split(clean_cmd, " ")
 		log.Println("received command: '" + clean_cmd + "'")
+		req := routeReq{command, &conn}
 		switch command[0] {
 		case "route":
-			routeRequests <- routeReq{command[1:], &conn}
-			return
+			if len(req.Command) == 0 {
+				writeHelp(*req.Conn, []byte("invalid request\n"))
+				go handleApiRequest(*req.Conn, []byte(""))
+				break
+			}
+			fn := getHandler(req)
+			if fn != nil {
+				err := fn.Func(req)
+				if err != nil {
+					go handleApiRequest(*req.Conn, []byte(err.Error()+"\n"))
+				} // if no error, func should have called handleApiRequest itself
+			} else {
+				writeHelp(*req.Conn, []byte("unrecognized command\n"))
+				go handleApiRequest(*req.Conn, []byte(""))
+			}
 		case "help":
 			writeHelp(conn, []byte(""))
 			continue
@@ -354,51 +320,30 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	patt := r.FormValue("patt")
 	addr := r.FormValue("addr")
 
-	_, found := routes.Map[key]
-	if found {
-		route := routes.Map[key]
-		old_patt := route.Patt
-		old_addr := route.Addr
-		route.Patt = patt
-		route.Addr = addr
-
-		fmt.Printf("route patt %s %s %s \n", route.Key, route.Patt, route.Addr)
-
-		err := route.Compile()
-		if err != nil {
-			route.Patt = old_patt
-			route.Addr = old_addr
-			route.Compile()
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		route := routing.NewRoute(key, patt, addr, &statsdClient)
-		fmt.Printf("route add %s %s %s \n", key, patt, addr)
-		err := route.Compile()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		err = route.Run()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		routes.Map[key] = route
+	err := routes.Add(key, patt, addr, &statsdClient)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	http.Redirect(w, r, "/", http.StatusFound)
+}
 
+func updateHandler(w http.ResponseWriter, r *http.Request, title string) {
+	key := r.FormValue("key")
+	patt := r.FormValue("patt")
+	addr := r.FormValue("addr")
+
+	err := routes.Update(key, &addr, &patt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func deleteHandler(w http.ResponseWriter, r *http.Request, title string) {
 	key := r.URL.Path[len("/delete/"):]
-	route, found := routes.Map[key]
-	if !found {
-		return
-	}
-	delete(routes.Map, key)
-	err := route.Shutdown()
+	err := routes.Del(key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -408,7 +353,7 @@ func deleteHandler(w http.ResponseWriter, r *http.Request, title string) {
 
 func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		validPath := regexp.MustCompile("^/(edit|save|delete)?(.*)$")
+		validPath := regexp.MustCompile("^/(edit|save|delete|update)?(.*)$")
 		m := validPath.FindStringSubmatch(r.URL.Path)
 		if m == nil {
 			http.NotFound(w, r)
@@ -419,8 +364,10 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 }
 
 func httpListener() {
+	// TODO treat errors like 'not found' etc differently, don't just return http.StatusInternalServerError in all cases
 	http.HandleFunc("/edit/", makeHandler(editHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
+	http.HandleFunc("/update/", makeHandler(updateHandler))
 	http.HandleFunc("/delete/", makeHandler(deleteHandler))
 	http.HandleFunc("/", makeHandler(homeHandler))
 	http.ListenAndServe(config.Http_addr, nil)

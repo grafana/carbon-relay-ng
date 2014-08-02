@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"regexp"
+	"sync"
 	"time"
 )
 
@@ -130,9 +131,9 @@ func (route *Route) relay(raddr *net.TCPAddr) {
 
 }
 
-// not safe for concurrency, do your own checks
 type Routes struct {
-	Map map[string]*Route
+	Map  map[string]*Route
+	lock sync.Mutex
 }
 
 func NewRoutes(routesMap map[string]*Route, instrument *statsd.Client) (routes Routes) {
@@ -140,10 +141,11 @@ func NewRoutes(routesMap map[string]*Route, instrument *statsd.Client) (routes R
 		routesMap[k].instrument = instrument
 		routesMap[k].Key = k
 	}
-	routes = Routes{routesMap}
+	routes = Routes{Map: routesMap}
 	return
 }
 
+// not thread safe, run this once only
 func (routes *Routes) Init() error {
 	for _, route := range routes.Map {
 		err := route.Compile()
@@ -159,6 +161,8 @@ func (routes *Routes) Init() error {
 }
 func (routes *Routes) Dispatch(buf []byte, first_only bool) (routed bool) {
 	fmt.Println("entering dispatch")
+	routes.lock.Lock()
+	defer routes.lock.Unlock()
 	for k, route := range routes.Map {
 		if route.Reg.Match(buf) {
 			routed = true
@@ -171,4 +175,75 @@ func (routes *Routes) Dispatch(buf []byte, first_only bool) (routed bool) {
 	}
 	fmt.Println("Dispatched")
 	return routed
+}
+
+func (routes *Routes) List() map[string]Route {
+	ret := make(map[string]Route)
+	routes.lock.Lock()
+	defer routes.lock.Unlock()
+	for k, v := range routes.Map {
+		ret[k] = Route{Key: v.Key, Patt: v.Patt, Addr: v.Addr}
+		// notice: not set: Reg, ch, shutdown, instrument
+	}
+	return ret
+}
+
+func (routes *Routes) Add(key, patt, addr string, instrument *statsd.Client) error {
+	routes.lock.Lock()
+	defer routes.lock.Unlock()
+	_, found := routes.Map[key]
+	if found {
+		return errors.New("route with given key already exists")
+	}
+	route := NewRoute(key, patt, addr, instrument)
+	err := route.Compile() // later move this out of lock section
+	if err != nil {
+		return err
+	}
+	err = route.Run()
+	if err != nil {
+		return err
+	}
+	routes.Map[key] = route
+	return nil
+}
+
+func (routes *Routes) Update(key string, addr, patt *string) error {
+	routes.lock.Lock()
+	defer routes.lock.Unlock()
+	route, found := routes.Map[key]
+	if !found {
+		return errors.New("unknown route '" + key + "'")
+	}
+	if addr != nil {
+		// TODO: clean way to switch remote endpoint, relay
+	}
+	if patt != nil {
+		old_patt := route.Patt
+		route.Patt = *patt
+		err := route.Compile()
+		if err != nil {
+			route.Patt = old_patt
+			route.Compile()
+			return err
+		}
+	}
+	return nil
+}
+
+func (routes *Routes) Del(key string) error {
+	routes.lock.Lock()
+	defer routes.lock.Unlock()
+	route, found := routes.Map[key]
+	if !found {
+		return errors.New("unknown route '" + key + "'")
+	}
+	delete(routes.Map, key)
+	err := route.Shutdown()
+	if err != nil {
+		// route removed from routing table but still trying to connect
+		// it won't get new stuff on its input though
+		return err
+	}
+	return nil
 }
