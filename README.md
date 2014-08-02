@@ -22,7 +22,12 @@ Future ideas
 Installation
 ------------
 
+    export GOPATH=/some/path/
     go get github.com/graphite-ng/carbon-relay-ng
+    cd "$GOPATH/github.com/graphite-ng/carbon-relay-ng"
+    go build carbon-relay-ng.go
+    mv carbon-relay-ng /usr/local/bin/
+    cp carbon-relay-ng.ini /etc/
 
 Usage
 -----
