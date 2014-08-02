@@ -77,38 +77,38 @@ func (route *Route) relay(raddr *net.TCPAddr) {
 	reconnecting := true
 	go new_conn()
 	for {
-		fmt.Println(route.Key + " route relay blocked looking for channel activity")
+		//fmt.Println(route.Key + " route relay blocked looking for channel activity")
 		select {
 		case new_conn := <-conn_updates:
 			conn = new_conn // can be nil and that's ok (it means we had to [re]connect but couldn't)
 			if new_conn == nil {
-				fmt.Println(route.Key + " route relay -> got nil new conn")
+				//fmt.Println(route.Key + " route relay -> got nil new conn")
 			} else {
-				fmt.Println(route.Key + " route relay -> got a new conn!")
+				//fmt.Println(route.Key + " route relay -> got a new conn!")
 			}
 			reconnecting = false
 		case <-ticker.C:
-			fmt.Println(route.Key + " route relay -> assure conn")
+			//fmt.Println(route.Key + " route relay -> assure conn")
 			if conn != nil {
-				fmt.Println(route.Key + " connection already up and running")
+				//fmt.Println(route.Key + " connection already up and running")
 				continue
 			}
 			if !reconnecting {
-				fmt.Println(route.Key + " route relay requesting new conn")
+				//fmt.Println(route.Key + " route relay requesting new conn")
 				reconnecting = true
 				go new_conn()
 			}
 		case <-route.shutdown:
-			fmt.Println(route.Key + " route relay -> requested shutdown. quitting")
+			//fmt.Println(route.Key + " route relay -> requested shutdown. quitting")
 			return
 		case buf := <-route.ch:
-			fmt.Println(route.Key + " route relay -> read buf")
+			//fmt.Println(route.Key + " route relay -> read buf")
 			if conn == nil {
 				route.instrument.Increment("route=" + route.Key + ".target_type=count.unit=Metric.direction=drop")
 				fmt.Println(route.Key + " no conn, discarding")
 				continue
 			}
-			fmt.Println(route.Key + " writing to conn")
+			//fmt.Println(route.Key + " writing to conn")
 			route.instrument.Increment("route=" + route.Key + ".target_type=count.unit=Metric.direction=out")
 			n, err := conn.Write(buf)
 			if nil != err {
@@ -118,14 +118,14 @@ func (route *Route) relay(raddr *net.TCPAddr) {
 				conn = nil
 				continue
 			}
-			fmt.Println(route.Key + " check 1")
+			//fmt.Println(route.Key + " check 1")
 			if len(buf) != n {
 				route.instrument.Increment("route=" + route.Key + ".target_type=count.unit=Err")
 				log.Printf(route.Key+" truncated: %s\n", buf)
 				conn.Close()
 				conn = nil
 			}
-			fmt.Println(route.Key + " check 2")
+			////fmt.Println(route.Key + " check 2")
 		}
 	}
 
@@ -160,20 +160,20 @@ func (routes *Routes) Init() error {
 	return nil
 }
 func (routes *Routes) Dispatch(buf []byte, first_only bool) (routed bool) {
-	fmt.Println("entering dispatch")
+	//fmt.Println("entering dispatch")
 	routes.lock.Lock()
 	defer routes.lock.Unlock()
-	for k, route := range routes.Map {
+	for _, route := range routes.Map {
 		if route.Reg.Match(buf) {
 			routed = true
-			fmt.Println("routing to " + k)
+			//fmt.Println("routing to " + k)
 			route.ch <- buf
 			if first_only {
 				break
 			}
 		}
 	}
-	fmt.Println("Dispatched")
+	//fmt.Println("Dispatched")
 	return routed
 }
 
