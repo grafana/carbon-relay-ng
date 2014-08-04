@@ -32,8 +32,11 @@ func NewRoute(key, patt, addr, spoolDir string, spool bool, instrument *statsd.C
 
 func (route *Route) Compile() error {
 	regex, err := regexp.Compile(route.Patt)
+	if err != nil {
+		return err
+	}
 	route.Reg = regex
-	return err
+	return nil
 }
 
 func (route *Route) Run() error {
@@ -245,7 +248,6 @@ func (routes *Routes) Update(key string, addr, patt *string) error {
 		err := route.Compile()
 		if err != nil {
 			route.Patt = old_patt
-			route.Compile()
 			return err
 		}
 	}
