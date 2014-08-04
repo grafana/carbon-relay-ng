@@ -13,21 +13,24 @@ import (
 )
 
 type Route struct {
-	Key        string          // must be set on create. to identify in stats/logs
-	Patt       string          // regex string. must be set on create
-	Addr       string          // tcp dest. must be set on create
-	Reg        *regexp.Regexp  // compiled version of patt.  will be set on init
-	Spool      bool            // spool metrics to disk while endpoint down?
-	ch         chan []byte     // to pump data to dest. will be ready on init
-	shutdown   chan bool       // signals shutdown internally. will be set on init
-	instrument *statsd.Client  // to submit stats to.
-	queue      *nsqd.DiskQueue // queue used if spooling enabled
-	spoolDir   string          // where to store spool files (if enabled)
+	Key         string            // must be set on create. to identify in stats/logs
+	Patt        string            // regex string. must be set on create
+	Addr        string            // tcp dest. must be set on create
+	Reg         *regexp.Regexp    // compiled version of patt.  will be set on init
+	Spool       bool              // spool metrics to disk while endpoint down?
+	ch          chan []byte       // to pump data to dest. will be ready on init
+	shutdown    chan bool         // signals shutdown internally. will be set on init
+	instrument  *statsd.Client    // to submit stats to.
+	queue       *nsqd.DiskQueue   // queue used if spooling enabled
+	spoolDir    string            // where to store spool files (if enabled)
+	raddr       *net.TCPAddr      // resolved remote addr
+	connUpdates chan *net.TCPConn // when the route connects to a new endpoint (possibly nil)
 }
 
 // after creating, run Compile and Run!
 func NewRoute(key, patt, addr, spoolDir string, spool bool, instrument *statsd.Client) *Route {
-	return &Route{key, patt, addr, nil, spool, make(chan []byte), nil, instrument, nil, spoolDir}
+	connUpdates := make(chan *net.TCPConn)
+	return &Route{key, patt, addr, nil, spool, make(chan []byte), nil, instrument, nil, spoolDir, nil, connUpdates}
 }
 
 func (route *Route) Compile() error {
@@ -39,18 +42,14 @@ func (route *Route) Compile() error {
 	return nil
 }
 
-func (route *Route) Run() error {
+func (route *Route) Run() (err error) {
 	route.ch = make(chan []byte)
 	route.shutdown = make(chan bool)
-	raddr, err := net.ResolveTCPAddr("tcp", route.Addr)
-	if nil != err {
-		return err
-	}
 	if route.Spool {
 		dqName := "spool_" + route.Key
 		route.queue = nsqd.NewDiskQueue(dqName, route.spoolDir, 1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
 	}
-	go route.relay(raddr)
+	go route.relay()
 	return err
 }
 
@@ -62,29 +61,34 @@ func (route *Route) Shutdown() error {
 	return nil
 }
 
+func (route *Route) updateConn() error {
+	log.Printf("%v (re)connecting to %v\n", route.Key, route.Addr)
+	raddr, err := net.ResolveTCPAddr("tcp", route.Addr)
+	if nil != err {
+		log.Printf("%v resolve failed: %s\n", route.Key, err.Error())
+		return err
+	}
+	route.raddr = raddr
+	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0")
+	new_conn, err := net.DialTCP("tcp", laddr, route.raddr)
+	if nil != err {
+		log.Printf("%v connect failed: %s\n", route.Key, err.Error())
+		return err
+	}
+	log.Printf("%v connected\n", route.Key)
+	route.connUpdates <- new_conn
+	return nil
+}
+
 // TODO func (l *TCPListener) SetDeadline(t time.Time)
 // TODO Decide when to drop this buffer and move on.
 // currently, we drop packets while we set up connection
 // later we might want to queue up
-func (route *Route) relay(raddr *net.TCPAddr) {
-	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0")
+func (route *Route) relay() {
 	period_assure_conn := time.Duration(60) * time.Second
 	ticker := time.NewTicker(period_assure_conn)
-	conn_updates := make(chan *net.TCPConn)
 	var to_unspool chan []byte
 	var conn *net.TCPConn
-
-	new_conn := func() {
-		log.Printf("%v (re)connecting to %v\n", route.Key, raddr)
-		new_conn, err := net.DialTCP("tcp", laddr, raddr)
-		if nil != err {
-			log.Printf("%v connect failed: %s\n", route.Key, err.Error())
-			conn_updates <- nil
-			return
-		}
-		log.Printf("%v connected\n", route.Key)
-		conn_updates <- new_conn
-	}
 
 	process_packet := func(buf []byte) {
 		if conn == nil {
@@ -122,7 +126,7 @@ func (route *Route) relay(raddr *net.TCPAddr) {
 	}
 
 	reconnecting := true
-	go new_conn()
+	go route.updateConn()
 
 	for {
 		// only process spool queue if we have an outbound connection
@@ -133,13 +137,13 @@ func (route *Route) relay(raddr *net.TCPAddr) {
 		}
 
 		select {
-		case new_conn := <-conn_updates:
+		case new_conn := <-route.connUpdates:
 			conn = new_conn // can be nil and that's ok (it means we had to [re]connect but couldn't)
 			reconnecting = false
 		case <-ticker.C: // periodically try to bring connection (back) up, if we have to
 			if conn == nil && !reconnecting {
 				reconnecting = true
-				go new_conn()
+				go route.updateConn()
 			}
 		case <-route.shutdown:
 			//fmt.Println(route.Key + " route relay -> requested shutdown. quitting")
@@ -207,7 +211,7 @@ func (routes *Routes) List() map[string]Route {
 	defer routes.lock.Unlock()
 	for k, v := range routes.Map {
 		ret[k] = Route{Key: v.Key, Patt: v.Patt, Addr: v.Addr, Spool: v.Spool}
-		// notice: not set: Reg, ch, shutdown, instrument, queue, spoolDir
+		// notice: not set: Reg, ch, shutdown, instrument, queue, spoolDir, raddr, connUpdates
 	}
 	return ret
 }
@@ -240,7 +244,7 @@ func (routes *Routes) Update(key string, addr, patt *string) error {
 		return errors.New("unknown route '" + key + "'")
 	}
 	if addr != nil {
-		// TODO: clean way to switch remote endpoint, relay
+		return route.updateConn()
 	}
 	if patt != nil {
 		old_patt := route.Patt
