@@ -73,7 +73,6 @@ func (route *Route) relay(raddr *net.TCPAddr) {
 
 	new_conn := func() {
 		log.Printf("%v (re)connecting to %v\n", route.Key, raddr)
-		var err error
 		new_conn, err := net.DialTCP("tcp", laddr, raddr)
 		if nil != err {
 			log.Printf("%v connect failed: %s\n", route.Key, err.Error())
