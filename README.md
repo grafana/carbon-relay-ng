@@ -47,11 +47,18 @@ Usage
 Web interface
 -------------
 
-Should be self explanatory.
+Allows you to inspect and change routing table.
+(except for spooling settings).
+Also you can't adjust global configuration this way.
 
 
-Admin interface
----------------
+TCP interface
+-------------
+
+Allows you to inspect and change routing table.
+(except for spooling settings and remote addr).
+Also you can't adjust global configuration this way.
+
 
     telnet <host> <port>
     
