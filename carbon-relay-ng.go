@@ -34,6 +34,7 @@ type Config struct {
 	Listen_addr string
 	Admin_addr  string
 	Http_addr   string
+	Spool_dir   string
 	First_only  bool
 	Routes      map[string]*routing.Route
 	Statsd      StatsdConfig
@@ -115,28 +116,35 @@ func tcpListHandler(req admin.Req) (err error) {
 			longest_addr = len(route.Addr)
 		}
 	}
-	fmt_str := fmt.Sprintf("%%%ds %%%ds %%%ds\n", longest_key+1, longest_patt+1, longest_addr+1)
-	(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, "key", "pattern", "addr")))
+	fmt_str := fmt.Sprintf("%%%ds %%%ds %%%ds %%8v\n", longest_key+1, longest_patt+1, longest_addr+1)
+	(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, "key", "pattern", "addr", "spool")))
 	for key, route := range list {
-		(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, key, route.Patt, route.Addr)))
+		(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, key, route.Patt, route.Addr, route.Spool)))
 	}
 	(*req.Conn).Write([]byte("--\n"))
 	return
 }
 func tcpAddHandler(req admin.Req) (err error) {
 	key := req.Command[2]
-	var patt, addr string
-	if len(req.Command) == 4 {
+	var patt, addr, spool_str string
+	if len(req.Command) == 5 {
 		patt = ""
 		addr = req.Command[3]
-	} else if len(req.Command) == 5 {
+		spool_str = req.Command[4]
+	} else if len(req.Command) == 6 {
 		patt = req.Command[3]
 		addr = req.Command[4]
+		spool_str = req.Command[5]
 	} else {
 		return errors.New("bad number of arguments")
 	}
 
-	err = routes.Add(key, patt, addr, &statsdClient)
+	spool := false
+	if spool_str == "1" {
+		spool = true
+	}
+
+	err = routes.Add(key, patt, addr, spool, &statsdClient)
 	if err != nil {
 		return err
 	}
@@ -189,11 +197,11 @@ func writeHelp(conn net.Conn, write_first []byte) { // bytes.Buffer
 	conn.Write(write_first)
 	help := `
 commands:
-    help                             show this menu
-    route list                       list routes
-    route add <key> [pattern] <addr> add the route. (empty pattern allows all)
-    route del <key>                  delete the matching route
-    route patt <key> [pattern]       update pattern for given route key.  (empty pattern allows all)
+    help                                     show this menu
+    route list                               list routes
+    route add <key> [pattern] <addr> <spool> add the route. (empty pattern allows all). (spool has to be 1 or 0)
+    route del <key>                          delete the matching route
+    route patt <key> [pattern]               update pattern for given route key.  (empty pattern allows all)
 
 `
 	conn.Write([]byte(help))
@@ -248,7 +256,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	patt := r.FormValue("patt")
 	addr := r.FormValue("addr")
 
-	err := routes.Add(key, patt, addr, &statsdClient)
+	err := routes.Add(key, patt, addr, false, &statsdClient)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -335,7 +343,7 @@ func main() {
 	}
 
 	log.Println("initializing routes...")
-	routes = routing.NewRoutes(config.Routes, &statsdClient)
+	routes = routing.NewRoutes(config.Routes, config.Spool_dir, &statsdClient)
 	err := routes.Init()
 	if err != nil {
 		log.Println(err)

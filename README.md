@@ -8,6 +8,8 @@ Like carbon-relay from the graphite project, except it:
  * performs (much) better.
  * you can adjust the routing table at runtime, in real time using the web or telnet interface.
  * can be restarted without dropping packets
+ * supports a per-route spooling policy.
+   (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
  
 
 This makes it easy to fanout to other tools that feed in on the metrics.
@@ -21,7 +23,6 @@ This pattern allows alerting and event processing systems to act on the data as 
 Future work aka what's missing
 ------------------------------
 
-* queueing/disk spooling policy to bridge remote outage (now we just drop packets to remote if it goes down)
 * support for pickle protocol, if anyone cares enough to implement it (libraries for pickle in Go [already exist](https://github.com/kisielk/og-rek))
 * pub-sub interface, maybe
 * consistent hashing across different endpoints, if it can be implemented in an elegant way.  (note that this would still be a hack and mostly aimed for legacy setups, [decent storage has redundancy and distribution built in properly ](http://dieter.plaetinck.be/on-graphite-whisper-and-influxdb.html).
