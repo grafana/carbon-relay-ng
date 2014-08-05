@@ -92,8 +92,6 @@ func (route *Route) updateConn() error {
 
 // TODO func (l *TCPListener) SetDeadline(t time.Time)
 // TODO Decide when to drop this buffer and move on.
-// currently, we drop packets while we set up connection
-// later we might want to queue up
 func (route *Route) relay() {
 	period_assure_conn := time.Duration(60) * time.Second
 	ticker := time.NewTicker(period_assure_conn)
@@ -106,6 +104,7 @@ func (route *Route) relay() {
 				route.instrument.Increment("route=" + route.Key + ".target_type=count.unit=Metric.direction=spool")
 				route.queue.Put(buf)
 			} else {
+				// note, we drop packets while we set up connection
 				route.instrument.Increment("route=" + route.Key + ".target_type=count.unit=Metric.direction=drop")
 			}
 			return
