@@ -13,23 +13,24 @@ import (
 )
 
 type Route struct {
-	Key         string            // must be set on create. to identify in stats/logs
-	Patt        string            // regex string. must be set on create
-	Addr        string            // tcp dest. must be set on create
-	Reg         *regexp.Regexp    // compiled version of patt.  will be set on init
-	Spool       bool              // spool metrics to disk while endpoint down?
-	ch          chan []byte       // to pump data to dest. will be ready on init
-	shutdown    chan bool         // signals shutdown internally. will be set on init
-	instrument  *statsd.Client    // to submit stats to.
-	queue       *nsqd.DiskQueue   // queue used if spooling enabled
-	spoolDir    string            // where to store spool files (if enabled)
-	raddr       *net.TCPAddr      // resolved remote addr
-	connUpdates chan *net.TCPConn // when the route connects to a new endpoint (possibly nil)
+	Key          string            // must be set on create. to identify in stats/logs
+	Patt         string            // regex string. must be set on create
+	Addr         string            // tcp dest. must be set on create
+	Reg          *regexp.Regexp    // compiled version of patt.  will be set on init
+	Spool        bool              // spool metrics to disk while endpoint down?
+	ch           chan []byte       // to pump data to dest. will be ready on init
+	shutdown     chan bool         // signals shutdown internally. will be set on init
+	instrument   *statsd.Client    // to submit stats to.
+	queue        *nsqd.DiskQueue   // queue used if spooling enabled
+	spoolDir     string            // where to store spool files (if enabled)
+	raddr        *net.TCPAddr      // resolved remote addr
+	connUpdates  chan *net.TCPConn // when the route connects to a new endpoint (possibly nil)
+	inConnUpdate chan bool         // used to signal when we start a new conn and when we finish
 }
 
 // after creating, run Run()!
 func NewRoute(key, patt, addr, spoolDir string, spool bool, instrument *statsd.Client) (*Route, error) {
-	route := &Route{key, "", addr, nil, spool, make(chan []byte), nil, instrument, nil, spoolDir, nil, nil}
+	route := &Route{key, "", addr, nil, spool, make(chan []byte), nil, instrument, nil, spoolDir, nil, nil, nil}
 	err := route.updatePattern(patt)
 	if err != nil {
 		return nil, err
@@ -51,6 +52,7 @@ func (route *Route) Run() (err error) {
 	route.ch = make(chan []byte)
 	route.shutdown = make(chan bool)
 	route.connUpdates = make(chan *net.TCPConn)
+	route.inConnUpdate = make(chan bool)
 	if route.Spool {
 		dqName := "spool_" + route.Key
 		route.queue = nsqd.NewDiskQueue(dqName, route.spoolDir, 1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
@@ -69,6 +71,8 @@ func (route *Route) Shutdown() error {
 
 func (route *Route) updateConn() error {
 	log.Printf("%v (re)connecting to %v\n", route.Key, route.Addr)
+	route.inConnUpdate <- true
+	defer func() { route.inConnUpdate <- false }()
 	raddr, err := net.ResolveTCPAddr("tcp", route.Addr)
 	if nil != err {
 		log.Printf("%v resolve failed: %s\n", route.Key, err.Error())
@@ -131,7 +135,7 @@ func (route *Route) relay() {
 		}
 	}
 
-	reconnecting := true
+	conn_updates := 0
 	go route.updateConn()
 
 	for {
@@ -143,12 +147,16 @@ func (route *Route) relay() {
 		}
 
 		select {
+		case inConnUpdate := <-route.inConnUpdate:
+			if inConnUpdate {
+				conn_updates += 1
+			} else {
+				conn_updates -= 1
+			}
 		case new_conn := <-route.connUpdates:
 			conn = new_conn // can be nil and that's ok (it means we had to [re]connect but couldn't)
-			reconnecting = false
-		case <-ticker.C: // periodically try to bring connection (back) up, if we have to
-			if conn == nil && !reconnecting {
-				reconnecting = true
+		case <-ticker.C: // periodically try to bring connection (back) up, if we have to, and no other connect is happening
+			if conn == nil && conn_updates == 0 {
 				go route.updateConn()
 			}
 		case <-route.shutdown:
