@@ -80,7 +80,7 @@ func (route *Route) Run() (err error) {
 	route.inConnUpdate = make(chan bool)
 	if route.Spool {
 		dqName := "spool_" + route.Key
-		route.queue = nsqd.NewDiskQueue(dqName, route.spoolDir, 1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
+		route.queue = nsqd.NewDiskQueue(dqName, route.spoolDir, 200*1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
 	}
 	go route.relay()
 	return err
