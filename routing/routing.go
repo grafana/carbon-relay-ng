@@ -164,7 +164,7 @@ func (route *Route) relay() {
 
 	for {
 		// only process spool queue if we have an outbound connection
-		if conn != nil {
+		if conn != nil && route.Spool {
 			to_unspool = route.queue.ReadChan()
 		} else {
 			to_unspool = nil
