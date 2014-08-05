@@ -27,17 +27,22 @@ type Route struct {
 	connUpdates chan *net.TCPConn // when the route connects to a new endpoint (possibly nil)
 }
 
-// after creating, run Compile and Run!
-func NewRoute(key, patt, addr, spoolDir string, spool bool, instrument *statsd.Client) *Route {
-	connUpdates := make(chan *net.TCPConn)
-	return &Route{key, patt, addr, nil, spool, make(chan []byte), nil, instrument, nil, spoolDir, nil, connUpdates}
+// after creating, run Run()!
+func NewRoute(key, patt, addr, spoolDir string, spool bool, instrument *statsd.Client) (*Route, error) {
+	route := &Route{key, "", addr, nil, spool, make(chan []byte), nil, instrument, nil, spoolDir, nil, nil}
+	err := route.updatePattern(patt)
+	if err != nil {
+		return nil, err
+	}
+	return route, nil
 }
 
-func (route *Route) Compile() error {
+func (route *Route) updatePattern(pattern string) error {
 	regex, err := regexp.Compile(route.Patt)
 	if err != nil {
 		return err
 	}
+	route.Patt = pattern
 	route.Reg = regex
 	return nil
 }
@@ -45,6 +50,7 @@ func (route *Route) Compile() error {
 func (route *Route) Run() (err error) {
 	route.ch = make(chan []byte)
 	route.shutdown = make(chan bool)
+	route.connUpdates = make(chan *net.TCPConn)
 	if route.Spool {
 		dqName := "spool_" + route.Key
 		route.queue = nsqd.NewDiskQueue(dqName, route.spoolDir, 1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
@@ -163,24 +169,23 @@ type Routes struct {
 	SpoolDir string
 }
 
-func NewRoutes(routesMap map[string]*Route, spoolDir string, instrument *statsd.Client) (routes Routes) {
-	for k, _ := range routesMap {
-		routesMap[k].instrument = instrument
-		routesMap[k].Key = k
-		routesMap[k].spoolDir = spoolDir
+func NewRoutes(routeDefsMap map[string]*Route, spoolDir string, instrument *statsd.Client) (routes *Routes, err error) {
+	routesMap := make(map[string]*Route)
+	for k, routeDef := range routeDefsMap {
+		route, err := NewRoute(k, routeDef.Patt, routeDef.Addr, spoolDir, routeDef.Spool, instrument)
+		if err != nil {
+			return nil, err
+		}
+		routesMap[k] = route
 	}
-	routes = Routes{Map: routesMap, SpoolDir: spoolDir}
-	return
+	routes = &Routes{Map: routesMap, SpoolDir: spoolDir}
+	return routes, nil
 }
 
 // not thread safe, run this once only
-func (routes *Routes) Init() error {
+func (routes *Routes) Run() error {
 	for _, route := range routes.Map {
-		err := route.Compile()
-		if nil != err {
-			return err
-		}
-		err = route.Run()
+		err := route.Run()
 		if nil != err {
 			return err
 		}
@@ -223,8 +228,7 @@ func (routes *Routes) Add(key, patt, addr string, spool bool, instrument *statsd
 	if found {
 		return errors.New("route with given key already exists")
 	}
-	route := NewRoute(key, patt, addr, routes.SpoolDir, spool, instrument)
-	err := route.Compile() // later move this out of lock section
+	route, err := NewRoute(key, patt, addr, routes.SpoolDir, spool, instrument)
 	if err != nil {
 		return err
 	}
@@ -247,11 +251,8 @@ func (routes *Routes) Update(key string, addr, patt *string) error {
 		return route.updateConn()
 	}
 	if patt != nil {
-		old_patt := route.Patt
-		route.Patt = *patt
-		err := route.Compile()
+		err := route.updatePattern(*patt)
 		if err != nil {
-			route.Patt = old_patt
 			return err
 		}
 	}

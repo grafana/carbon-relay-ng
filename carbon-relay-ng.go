@@ -44,7 +44,7 @@ var (
 	config_file  string
 	config       Config
 	to_dispatch  = make(chan []byte)
-	routes       routing.Routes
+	routes       *routing.Routes
 	statsdClient statsd.Client
 	cpuprofile   = flag.String("cpuprofile", "", "write cpu profile to file")
 )
@@ -343,8 +343,13 @@ func main() {
 	}
 
 	log.Println("initializing routes...")
-	routes = routing.NewRoutes(config.Routes, config.Spool_dir, &statsdClient)
-	err := routes.Init()
+	var err error
+	routes, err = routing.NewRoutes(config.Routes, config.Spool_dir, &statsdClient)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	err = routes.Run()
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
