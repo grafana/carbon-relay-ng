@@ -13,29 +13,54 @@ import (
 )
 
 type Route struct {
-	Key          string            // must be set on create. to identify in stats/logs
-	Patt         string            // regex string. must be set on create
-	Addr         string            // tcp dest. must be set on create
-	Reg          *regexp.Regexp    // compiled version of patt.  will be set on init
-	Spool        bool              // spool metrics to disk while endpoint down?
-	ch           chan []byte       // to pump data to dest. will be ready on init
-	shutdown     chan bool         // signals shutdown internally. will be set on init
-	instrument   *statsd.Client    // to submit stats to.
+	// basic properties in init and copy
+	Key        string         // to identify in stats/logs
+	Patt       string         // regex string
+	Addr       string         // tcp dest
+	spoolDir   string         // where to store spool files (if enabled)
+	Spool      bool           // spool metrics to disk while endpoint down?
+	instrument *statsd.Client // to submit stats to
+
+	// set automatically in init, passed on in copy
+	Reg *regexp.Regexp // compiled version of patt
+
+	// set in/via Run()
+	ch           chan []byte       // to pump data to dest
+	shutdown     chan bool         // signals shutdown internally
 	queue        *nsqd.DiskQueue   // queue used if spooling enabled
-	spoolDir     string            // where to store spool files (if enabled)
 	raddr        *net.TCPAddr      // resolved remote addr
 	connUpdates  chan *net.TCPConn // when the route connects to a new endpoint (possibly nil)
-	inConnUpdate chan bool         // used to signal when we start a new conn and when we finish
+	inConnUpdate chan bool         // to signal when we start a new conn and when we finish
 }
 
 // after creating, run Run()!
 func NewRoute(key, patt, addr, spoolDir string, spool bool, instrument *statsd.Client) (*Route, error) {
-	route := &Route{key, "", addr, nil, spool, make(chan []byte), nil, instrument, nil, spoolDir, nil, nil, nil}
+	route := &Route{
+		Key:        key,
+		Patt:       "",
+		Addr:       addr,
+		spoolDir:   spoolDir,
+		Spool:      spool,
+		instrument: instrument,
+	}
 	err := route.updatePattern(patt)
 	if err != nil {
 		return nil, err
 	}
 	return route, nil
+}
+
+// a "basic" static copy of the route, not actually running
+func (route *Route) Copy() *Route {
+	return &Route{
+		Key:        route.Key,
+		Patt:       route.Patt,
+		Addr:       route.Addr,
+		spoolDir:   route.spoolDir,
+		Spool:      route.Spool,
+		instrument: route.instrument,
+		Reg:        route.Reg,
+	}
 }
 
 func (route *Route) updatePattern(pattern string) error {
@@ -222,8 +247,7 @@ func (routes *Routes) List() map[string]Route {
 	routes.lock.Lock()
 	defer routes.lock.Unlock()
 	for k, v := range routes.Map {
-		ret[k] = Route{Key: v.Key, Patt: v.Patt, Addr: v.Addr, Spool: v.Spool}
-		// notice: not set: Reg, ch, shutdown, instrument, queue, spoolDir, raddr, connUpdates
+		ret[k] = *v.Copy()
 	}
 	return ret
 }
