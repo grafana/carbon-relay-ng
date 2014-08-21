@@ -84,7 +84,7 @@
         pass = false;
       }
 
-      var re = /^[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\:[0-9]*$/
+      var re = /^[^:]+\:[0-9]+$/
       if (re.test(form.addr.value) == false) {
         $('#addr').addClass('has-error');
         pass = false
