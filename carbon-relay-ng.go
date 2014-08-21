@@ -227,7 +227,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request, title string) {
 	tc["Title"] = title
 	tc["routes"] = routes.Map
 
-	templates := template.Must(template.ParseFiles("templates/base.html", "templates/index.html"))
+	templates := template.Must(loadTemplates("templates/base.html", "templates/index.html"))
 	if err := templates.Execute(w, tc); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -244,7 +244,7 @@ func editHandler(w http.ResponseWriter, r *http.Request, title string) {
 	tc["Addr"] = route.Addr
 	tc["Patt"] = route.Patt
 
-	templates := template.Must(template.ParseFiles("templates/base.html", "templates/edit.html"))
+	templates := template.Must(loadTemplates("templates/base.html", "templates/edit.html"))
 
 	if err := templates.Execute(w, tc); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

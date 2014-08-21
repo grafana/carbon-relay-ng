@@ -28,15 +28,21 @@ Future work aka what's missing
 * consistent hashing across different endpoints, if it can be implemented in an elegant way.  (note that this would still be a hack and mostly aimed for legacy setups, [decent storage has redundancy and distribution built in properly ](http://dieter.plaetinck.be/on-graphite-whisper-and-influxdb.html).
 
 
+Building
+--------
+
+    export GOPATH=/some/path/
+    export PATH="$PATH:$GOPATH/bin"
+    go get github.com/graphite-ng/carbon-relay-ng
+    go get github.com/jteeuwen/go-bindata/...
+    cd "$GOPATH/github.com/graphite-ng/carbon-relay-ng"
+    ./make.sh
+
+
 Installation
 ------------
 
-    export GOPATH=/some/path/
-    go get github.com/graphite-ng/carbon-relay-ng
-    cd "$GOPATH/github.com/graphite-ng/carbon-relay-ng"
-    go build carbon-relay-ng.go
-    mv carbon-relay-ng /usr/local/bin/
-    cp carbon-relay-ng.ini /etc/
+    You only need the compiled binary and a config.  Put them whereever you want.
 
 Usage
 -----
