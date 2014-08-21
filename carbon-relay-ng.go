@@ -306,7 +306,11 @@ func httpListener() {
 	http.HandleFunc("/update/", makeHandler(updateHandler))
 	http.HandleFunc("/delete/", makeHandler(deleteHandler))
 	http.HandleFunc("/", makeHandler(homeHandler))
-	http.ListenAndServe(config.Http_addr, nil)
+	err := http.ListenAndServe(config.Http_addr, nil)
+	if err != nil {
+		fmt.Println("Error listening:", err.Error())
+		os.Exit(1)
+	}
 	log.Printf("listening on %v", config.Http_addr)
 }
 
