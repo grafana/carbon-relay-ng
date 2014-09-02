@@ -33,9 +33,9 @@ Building
 
     export GOPATH=/some/path/
     export PATH="$PATH:$GOPATH/bin"
-    go get github.com/graphite-ng/carbon-relay-ng
+    go get -d github.com/graphite-ng/carbon-relay-ng
     go get github.com/jteeuwen/go-bindata/...
-    cd "$GOPATH/github.com/graphite-ng/carbon-relay-ng"
+    cd "$GOPATH/src/github.com/graphite-ng/carbon-relay-ng"
     ./make.sh
 
 
