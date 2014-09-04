@@ -40,10 +40,10 @@ func getHandler(cmd string) (fn adminFunc) {
 }
 func ListenAndServe(addr string) error {
 	l, err := net.Listen("tcp", addr)
-	defer l.Close()
 	if err != nil {
 		return err
 	}
+	defer l.Close()
 	for {
 		// Listen for an incoming connection.
 		conn, err := l.Accept()
