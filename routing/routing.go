@@ -64,7 +64,7 @@ func (route *Route) Copy() *Route {
 }
 
 func (route *Route) updatePattern(pattern string) error {
-	regex, err := regexp.Compile(route.Patt)
+	regex, err := regexp.Compile(pattern)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func (routes *Routes) Dispatch(buf []byte, first_only bool) (routed bool) {
 	for _, route := range routes.Map {
 		if route.Reg.Match(buf) {
 			routed = true
-			//fmt.Println("routing to " + k)
+			//fmt.Println("routing to " + route.Key)
 			route.ch <- buf
 			if first_only {
 				break
