@@ -278,14 +278,15 @@ func (routes *Routes) Update(key string, addr, patt *string) error {
 	if !found {
 		return errors.New("unknown route '" + key + "'")
 	}
-	if addr != nil {
-		return route.updateConn()
-	}
 	if patt != nil {
 		err := route.updatePattern(*patt)
 		if err != nil {
 			return err
 		}
+	}
+	if addr != nil {
+		route.Addr = *addr
+		return route.updateConn()
 	}
 	return nil
 }
