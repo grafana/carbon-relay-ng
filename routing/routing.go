@@ -94,11 +94,11 @@ func (route *Route) Shutdown() error {
 	return nil
 }
 
-func (route *Route) updateConn() error {
-	log.Printf("%v (re)connecting to %v\n", route.Key, route.Addr)
+func (route *Route) updateCon(addr string) error {
+	log.Printf("%v (re)connecting to %v\n", route.Key, addr)
 	route.inConnUpdate <- true
 	defer func() { route.inConnUpdate <- false }()
-	raddr, err := net.ResolveTCPAddr("tcp", route.Addr)
+	raddr, err := net.ResolveTCPAddr("tcp", addr)
 	if nil != err {
 		log.Printf("%v resolve failed: %s\n", route.Key, err.Error())
 		return err
@@ -111,6 +111,10 @@ func (route *Route) updateConn() error {
 		return err
 	}
 	log.Printf("%v connected\n", route.Key)
+	if (addr != route.Addr) {
+		log.Printf("%v update address to %v\n", route.Key, addr)
+		route.Addr = addr
+	}
 	route.connUpdates <- new_conn
 	return nil
 }
@@ -160,7 +164,7 @@ func (route *Route) relay() {
 	}
 
 	conn_updates := 0
-	go route.updateConn()
+	go route.updateCon(route.Addr)
 
 	for {
 		// only process spool queue if we have an outbound connection
@@ -181,7 +185,7 @@ func (route *Route) relay() {
 			conn = new_conn // can be nil and that's ok (it means we had to [re]connect but couldn't)
 		case <-ticker.C: // periodically try to bring connection (back) up, if we have to, and no other connect is happening
 			if conn == nil && conn_updates == 0 {
-				go route.updateConn()
+				go route.updateCon(route.Addr)
 			}
 		case <-route.shutdown:
 			//fmt.Println(route.Key + " route relay -> requested shutdown. quitting")
@@ -278,14 +282,14 @@ func (routes *Routes) Update(key string, addr, patt *string) error {
 	if !found {
 		return errors.New("unknown route '" + key + "'")
 	}
-	if addr != nil {
-		return route.updateConn()
-	}
 	if patt != nil {
 		err := route.updatePattern(*patt)
 		if err != nil {
 			return err
 		}
+	}
+	if addr != nil {
+		return route.updateCon(*addr)
 	}
 	return nil
 }
