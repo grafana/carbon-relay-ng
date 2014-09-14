@@ -93,15 +93,6 @@ func (route *Route) Shutdown() error {
 	route.shutdown <- true
 	return nil
 }
- 
-func (route *Route) updateAddr(addr string) error {
-	err := route.updateCon(addr)
-	if (nil == err) {
-		log.Printf("%v update address to %v\n", route.Key, addr)
-		route.Addr = addr
-	}
-	return err
-}
 
 func (route *Route) updateCon(addr string) error {
 	log.Printf("%v (re)connecting to %v\n", route.Key, addr)
@@ -120,6 +111,10 @@ func (route *Route) updateCon(addr string) error {
 		return err
 	}
 	log.Printf("%v connected\n", route.Key)
+	if (addr != route.Addr) {
+		log.Printf("%v update address to %v\n", route.Key, addr)
+		route.Addr = addr
+	}
 	route.connUpdates <- new_conn
 	return nil
 }
@@ -294,7 +289,7 @@ func (routes *Routes) Update(key string, addr, patt *string) error {
 		}
 	}
 	if addr != nil {
-		return route.updateAddr(*addr)
+		return route.updateCon(*addr)
 	}
 	return nil
 }
