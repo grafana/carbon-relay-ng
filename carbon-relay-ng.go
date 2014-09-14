@@ -214,12 +214,12 @@ func adminListener() {
 	admin.HandleFunc("route patt", tcpPattHandler)
 	admin.HandleFunc("help", tcpHelpHandler)
 	admin.HandleFunc("", tcpDefaultHandler)
+	log.Printf("admin TCP listener starting on %v", config.Admin_addr)
 	err := admin.ListenAndServe(config.Admin_addr)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)
 	}
-	log.Printf("listening on %v", config.Admin_addr)
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request, title string) {
@@ -306,12 +306,12 @@ func httpListener() {
 	http.HandleFunc("/update/", makeHandler(updateHandler))
 	http.HandleFunc("/delete/", makeHandler(deleteHandler))
 	http.HandleFunc("/", makeHandler(homeHandler))
+	log.Printf("admin HTTP listener starting on %v", config.Http_addr)
 	err := http.ListenAndServe(config.Http_addr, nil)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)
 	}
-	log.Printf("listening on %v", config.Http_addr)
 }
 
 func usage() {
