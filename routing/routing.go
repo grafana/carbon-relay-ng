@@ -103,7 +103,6 @@ func (route *Route) updateConn(addr string) error {
 		log.Printf("%v resolve failed: %s\n", route.Key, err.Error())
 		return err
 	}
-	route.raddr = raddr
 	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0")
 	new_conn, err := net.DialTCP("tcp", laddr, route.raddr)
 	if nil != err {
@@ -111,9 +110,10 @@ func (route *Route) updateConn(addr string) error {
 		return err
 	}
 	log.Printf("%v connected\n", route.Key)
-	if (addr != route.Addr) {
-		log.Printf("%v update address to %v\n", route.Key, addr)
+	if addr != route.Addr {
+		log.Printf("%v update address to %v (%v)\n", route.Key, addr, raddr)
 		route.Addr = addr
+		route.raddr = raddr
 	}
 	route.connUpdates <- new_conn
 	return nil
