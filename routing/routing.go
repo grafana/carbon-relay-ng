@@ -94,7 +94,7 @@ func (route *Route) Shutdown() error {
 	return nil
 }
 
-func (route *Route) updateCon(addr string) error {
+func (route *Route) updateConn(addr string) error {
 	log.Printf("%v (re)connecting to %v\n", route.Key, addr)
 	route.inConnUpdate <- true
 	defer func() { route.inConnUpdate <- false }()
@@ -164,7 +164,7 @@ func (route *Route) relay() {
 	}
 
 	conn_updates := 0
-	go route.updateCon(route.Addr)
+	go route.updateConn(route.Addr)
 
 	for {
 		// only process spool queue if we have an outbound connection
@@ -185,7 +185,7 @@ func (route *Route) relay() {
 			conn = new_conn // can be nil and that's ok (it means we had to [re]connect but couldn't)
 		case <-ticker.C: // periodically try to bring connection (back) up, if we have to, and no other connect is happening
 			if conn == nil && conn_updates == 0 {
-				go route.updateCon(route.Addr)
+				go route.updateConn(route.Addr)
 			}
 		case <-route.shutdown:
 			//fmt.Println(route.Key + " route relay -> requested shutdown. quitting")
@@ -289,7 +289,7 @@ func (routes *Routes) Update(key string, addr, patt *string) error {
 		}
 	}
 	if addr != nil {
-		return route.updateCon(*addr)
+		return route.updateConn(*addr)
 	}
 	return nil
 }
