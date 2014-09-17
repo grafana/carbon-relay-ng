@@ -17,7 +17,7 @@ Or balance load, or provide redundancy (see "first_only" config paramater), or p
 This pattern allows alerting and event processing systems to act on the data as it is received (which is much better than repeated reading from your storage)
 
 
-![screen shot 2014-07-24 at 7 01 13 pm](https://cloud.githubusercontent.com/assets/465717/3697144/b1efce7e-139f-11e4-83d1-c6e659fa093a.png)
+![screenshot](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/screenshot.png)
 
 
 Future work aka what's missing
