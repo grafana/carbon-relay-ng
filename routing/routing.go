@@ -104,7 +104,7 @@ func (route *Route) updateConn(addr string) error {
 		return err
 	}
 	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0")
-	new_conn, err := net.DialTCP("tcp", laddr, route.raddr)
+	new_conn, err := net.DialTCP("tcp", laddr, raddr)
 	if nil != err {
 		log.Printf("%v connect failed: %s\n", route.Key, err.Error())
 		return err
