@@ -23,9 +23,10 @@ This pattern allows alerting and event processing systems to act on the data as 
 Future work aka what's missing
 ------------------------------
 
-* support for pickle protocol, if anyone cares enough to implement it (libraries for pickle in Go [already exist](https://github.com/kisielk/og-rek))
+* multi-node clustered high availability (open for discussion whether it's worth it)
 * pub-sub interface, maybe
 * consistent hashing across different endpoints, if it can be implemented in an elegant way.  (note that this would still be a hack and mostly aimed for legacy setups, [decent storage has redundancy and distribution built in properly ](http://dieter.plaetinck.be/on-graphite-whisper-and-influxdb.html).
+* some people would like pickle protocol, which is an annoying and redundant proto but some graphite tools use it. so maybe.. (libraries for pickle in Go [already exist](https://github.com/kisielk/og-rek))
 
 
 Building
