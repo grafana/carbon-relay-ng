@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="carbon-relay-ng">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <link rel="icon" href="../../favicon.ico">
+
+  <title>Carbon-Relay-NG admin</title>
+
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+
+  <!-- Optional theme -->
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+
+  <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+  <!--[if lt IE 9]>
+  <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+  <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+  <![endif]-->
+</head>
+
+<body role="document" >
+
+  <!-- Fixed navbar -->
+  <div class="navbar navbar-inverse" role="navigation">
+    <div class="container">
+      <div class="navbar-header">
+        <a class="navbar-brand" href="/">Carbon-Relay-NG</a>
+      </div>
+      <div class="navbar-collapse collapse">
+        <ul class="nav navbar-nav">
+          <li class="active">
+            <a href="/">Home</a>
+          </li>
+        </ul>
+      </div>
+      <!--/.nav-collapse --> </div>
+  </div>
+
+  <div class="container" role="main" ng-controller="MainCtl">
+    <div class="page-header">
+
+      <h1>Viewing All Routes</h1>
+
+      <div class="row">
+        <alert ng-repeat="alert in alerts">{{alert.msg}}</alert>
+        <div class="col-md-12">
+          <form name="form" class="form-add form-group has-feedback" role="form" ng-submit="add()" novalidate>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Key</th>
+                  <th>Pattern</th>
+                  <th>Address</th>
+                  <th>Spool</th>
+                  <th colspan=2 >Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ng-repeat="r in routes">
+                  <td>{{r.Key}}</td>
+                  <td>{{r.Patt}}</td>
+                  <td>{{r.Addr}}</td>
+                  <td class="text-center">
+                    <icon ng-show="r.Spool" class="glyphicon glyphicon-hdd"/>
+                  </td>
+                  <td class="text-center">
+                    <a ng-click="open($index)">
+                      <icon class="glyphicon glyphicon-edit"/>
+                    </a>
+                  </td>
+                  <td class="text-center">
+                    <a ng-click="remove($index)" onclick="return confirm('Are you sure?')">
+                      <icon class="glyphicon glyphicon-remove-circle"/>
+                    </a>
+                  </td>
+                </tr>
+              </tbody>
+              <tbody>
+                <tr>
+                  <td class="form-group has-feedback">
+                    <input ng-model="newRoute.Key" name="key" class="form-control" placeholder="Key" required autofocus></td>
+                  <td class="form-group has-feedback">
+                    <input ng-model="newRoute.Patt" name="patt" class="form-control" placeholder="Pattern" ng-pattern="validPattern">
+                    <div ng-show="form.patt.$invalid">
+                      <span ng-show="form.patt.$error.pattern">Expected valid expression</span>
+                    </div>
+                  </td>
+                  <td class="form-group has-feedback">
+                    <input ng-model="newRoute.Addr" name="addr" class="form-control" placeholder="127.0.0.1:2004" required ng-pattern="validAddress">
+                    <div ng-show="form.addr.$invalid">
+                      <span ng-show="form.addr.$error.pattern">Expected: 'host:port'</span>
+                    </div>
+                  </td>
+                  <td></td>
+                  <td colspan=2>
+                    <button class="btn btn-sm btn-primary btn-block" type="submit" ng-disabled="form.$invalid">Add route</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <!-- /container -->
+
+  <!-- Bootstrap core JavaScript
+    ================================================== -->
+  <!-- Placed at the end of the document so the pages load faster -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+  <script src="http://code.angularjs.org/1.2.10/angular.min.js"></script>
+  <script src="http://code.angularjs.org/1.2.10/angular-resource.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.11.0/ui-bootstrap-tpls.js"></script>
+
+  <script src="/app.js"></script>
+  <script type="text/ng-template" id="updateRouteModal.html">
+    <div class="modal-header">
+      <h3 class="modal-title">Update route: {{route.Key}}</h3>
+    </div>
+    <form name="form" class="form-add form-group has-feedback" role="form" novalidate>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="patt">Pattern</label>
+          <input ng-model="route.Patt" name="patt" class="form-control" placeholder="Pattern" ng-pattern="validPattern">
+          <div ng-show="form.patt.$invalid">
+            <span ng-show="form.patt.$error.pattern">Expected valid expression</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="addr">Address</label>
+          <input ng-model="route.Addr" name="addr" class="form-control" placeholder="127.0.0.1:2004" required ng-pattern="validAddress">
+          <div ng-show="form.addr.$invalid">
+            <span ng-show="form.addr.$error.pattern">Expected: 'host:port'</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bbtn-default" ng-click="cancel()">Close</button>
+        <button class="btn btn-primary" ng-disabled="form.$invalid" ng-click="ok()">Update</button>
+      </div>
+    </form>
+  </script>
+</body>
+</html>

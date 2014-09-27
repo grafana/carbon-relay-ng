@@ -13,13 +13,10 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/admin"
 	"github.com/graphite-ng/carbon-relay-ng/routing"
 	"github.com/rcrowley/goagain"
-	"html/template"
 	"io"
 	"log"
 	"net"
-	"net/http"
 	"os"
-	"regexp"
 	"runtime/pprof"
 )
 
@@ -222,98 +219,6 @@ func adminListener() {
 	}
 }
 
-func homeHandler(w http.ResponseWriter, r *http.Request, title string) {
-	tc := make(map[string]interface{})
-	tc["Title"] = title
-	tc["routes"] = routes.Map
-
-	templates := template.Must(loadTemplates("templates/base.html", "templates/index.html"))
-	if err := templates.Execute(w, tc); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func editHandler(w http.ResponseWriter, r *http.Request, title string) {
-	key := r.URL.Path[len("/edit/"):]
-	route := routes.Map[key]
-	fmt.Printf("Editting %s with %s - %s \n", route.Key, route.Patt, route.Addr)
-
-	tc := make(map[string]interface{})
-	tc["Title"] = title
-	tc["Key"] = route.Key
-	tc["Addr"] = route.Addr
-	tc["Patt"] = route.Patt
-
-	templates := template.Must(loadTemplates("templates/base.html", "templates/edit.html"))
-
-	if err := templates.Execute(w, tc); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
-	key := r.FormValue("key")
-	patt := r.FormValue("patt")
-	addr := r.FormValue("addr")
-
-	err := routes.Add(key, patt, addr, false, &statsdClient)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/", http.StatusFound)
-}
-
-func updateHandler(w http.ResponseWriter, r *http.Request, title string) {
-	key := r.FormValue("key")
-	patt := r.FormValue("patt")
-	addr := r.FormValue("addr")
-
-	err := routes.Update(key, &addr, &patt)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/", http.StatusFound)
-}
-
-func deleteHandler(w http.ResponseWriter, r *http.Request, title string) {
-	key := r.URL.Path[len("/delete/"):]
-	err := routes.Del(key)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/", http.StatusFound)
-}
-
-func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		validPath := regexp.MustCompile("^/(edit|save|delete|update)?(.*)$")
-		m := validPath.FindStringSubmatch(r.URL.Path)
-		if m == nil {
-			http.NotFound(w, r)
-			return
-		}
-		fn(w, r, m[2])
-	}
-}
-
-func httpListener() {
-	// TODO treat errors like 'not found' etc differently, don't just return http.StatusInternalServerError in all cases
-	http.HandleFunc("/edit/", makeHandler(editHandler))
-	http.HandleFunc("/save/", makeHandler(saveHandler))
-	http.HandleFunc("/update/", makeHandler(updateHandler))
-	http.HandleFunc("/delete/", makeHandler(deleteHandler))
-	http.HandleFunc("/", makeHandler(homeHandler))
-	log.Printf("admin HTTP listener starting on %v", config.Http_addr)
-	err := http.ListenAndServe(config.Http_addr, nil)
-	if err != nil {
-		fmt.Println("Error listening:", err.Error())
-		os.Exit(1)
-	}
-}
-
 func usage() {
 	fmt.Fprintln(
 		os.Stderr,
@@ -391,7 +296,7 @@ func main() {
 	}
 
 	if config.Http_addr != "" {
-		go httpListener()
+		go admin.HttpListener(config.Http_addr, routes, &statsdClient)
 	}
 
 	go Router()
