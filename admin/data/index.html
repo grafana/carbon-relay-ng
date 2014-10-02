@@ -61,7 +61,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr ng-repeat="r in routes">
+                <tr ng-repeat="r in routes" ng-class="{ 'danger' : !r.Online }">
                   <td>{{r.Key}}</td>
                   <td>{{r.Patt}}</td>
                   <td>{{r.Addr}}</td>
