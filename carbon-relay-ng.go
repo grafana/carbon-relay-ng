@@ -143,8 +143,9 @@ func tcpAddHandler(req admin.Req) (err error) {
 	if spool_str == "1" {
 		spool = true
 	}
+	pickle := false
 
-	err = routes.Add(key, patt, addr, spool, &statsdClient)
+	err = routes.Add(key, patt, addr, spool, pickle, &statsdClient)
 	if err != nil {
 		return err
 	}
@@ -256,7 +257,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	patt := r.FormValue("patt")
 	addr := r.FormValue("addr")
 
-	err := routes.Add(key, patt, addr, false, &statsdClient)
+	err := routes.Add(key, patt, addr, false, false, &statsdClient)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

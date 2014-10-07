@@ -10,6 +10,7 @@ Like carbon-relay from the graphite project, except it:
  * can be restarted without dropping packets
  * supports a per-route spooling policy.
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
+ * you can choose between plaintext or pickle output, per route.
  
 
 This makes it easy to fanout to other tools that feed in on the metrics.
@@ -26,7 +27,6 @@ Future work aka what's missing
 * multi-node clustered high availability (open for discussion whether it's worth it)
 * pub-sub interface, maybe
 * consistent hashing across different endpoints, if it can be implemented in an elegant way.  (note that this would still be a hack and mostly aimed for legacy setups, [decent storage has redundancy and distribution built in properly ](http://dieter.plaetinck.be/on-graphite-whisper-and-influxdb.html).
-* some people would like pickle protocol, which is an annoying and redundant proto but some graphite tools use it. so maybe.. (libraries for pickle in Go [already exist](https://github.com/kisielk/og-rek))
 
 
 Building

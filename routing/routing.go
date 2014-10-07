@@ -1,12 +1,16 @@
 package routing
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/Dieterbe/statsd-go"
 	"github.com/graphite-ng/carbon-relay-ng/nsqd"
+	pickle "github.com/kisielk/og-rek"
 	"log"
 	"net"
+	"os"
 	"regexp"
 	"sync"
 	"time"
@@ -19,6 +23,7 @@ type Route struct {
 	Addr       string         // tcp dest
 	spoolDir   string         // where to store spool files (if enabled)
 	Spool      bool           // spool metrics to disk while endpoint down?
+	Pickle     bool           // send in pickle format?
 	instrument *statsd.Client // to submit stats to
 
 	// set automatically in init, passed on in copy
@@ -34,7 +39,7 @@ type Route struct {
 }
 
 // after creating, run Run()!
-func NewRoute(key, patt, addr, spoolDir string, spool bool, instrument *statsd.Client) (*Route, error) {
+func NewRoute(key, patt, addr, spoolDir string, spool, pickle bool, instrument *statsd.Client) (*Route, error) {
 	route := &Route{
 		Key:        key,
 		Patt:       "",
@@ -42,6 +47,7 @@ func NewRoute(key, patt, addr, spoolDir string, spool bool, instrument *statsd.C
 		spoolDir:   spoolDir,
 		Spool:      spool,
 		instrument: instrument,
+		Pickle:     pickle,
 	}
 	err := route.updatePattern(patt)
 	if err != nil {
@@ -60,6 +66,7 @@ func (route *Route) Copy() *Route {
 		Spool:      route.Spool,
 		instrument: route.instrument,
 		Reg:        route.Reg,
+		Pickle:     route.Pickle,
 	}
 }
 
@@ -99,13 +106,13 @@ func (route *Route) updateConn(addr string) error {
 	route.inConnUpdate <- true
 	defer func() { route.inConnUpdate <- false }()
 	raddr, err := net.ResolveTCPAddr("tcp", addr)
-	if nil != err {
+	if err != nil {
 		log.Printf("%v resolve failed: %s\n", route.Key, err.Error())
 		return err
 	}
 	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0")
 	new_conn, err := net.DialTCP("tcp", laddr, raddr)
-	if nil != err {
+	if err != nil {
 		log.Printf("%v connect failed: %s\n", route.Key, err.Error())
 		return err
 	}
@@ -139,8 +146,34 @@ func (route *Route) relay() {
 			return
 		}
 		route.instrument.Increment("route=" + route.Key + ".target_type=count.unit=Metric.direction=out")
-		n, err := conn.Write(buf)
-		if nil != err {
+
+		var err error
+		var n int
+		if route.Pickle {
+			dp, err := parseDataPoint(buf)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return // no point in spooling these again, so just drop the packet
+			}
+			dataBuf := &bytes.Buffer{}
+			pickler := pickle.NewEncoder(dataBuf)
+
+			// pickle format (in python talk): [(path, (timestamp, value)), ...]
+			point := []interface{}{string(dp.Name), []interface{}{dp.Time, dp.Val}}
+			list := []interface{}{point}
+			pickler.Encode(list)
+			messageBuf := &bytes.Buffer{}
+			err = binary.Write(messageBuf, binary.BigEndian, uint64(dataBuf.Len()))
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+			messageBuf.Write(dataBuf.Bytes())
+			n, err = conn.Write(messageBuf.Bytes())
+			buf = messageBuf.Bytes() // so that we can check len(buf) later
+		} else {
+			n, err = conn.Write(buf)
+		}
+		if err != nil {
 			route.instrument.Increment("route=" + route.Key + ".target_type=count.unit=Err")
 			log.Println(err)
 			conn.Close()
@@ -208,7 +241,7 @@ type Routes struct {
 func NewRoutes(routeDefsMap map[string]*Route, spoolDir string, instrument *statsd.Client) (routes *Routes, err error) {
 	routesMap := make(map[string]*Route)
 	for k, routeDef := range routeDefsMap {
-		route, err := NewRoute(k, routeDef.Patt, routeDef.Addr, spoolDir, routeDef.Spool, instrument)
+		route, err := NewRoute(k, routeDef.Patt, routeDef.Addr, spoolDir, routeDef.Spool, routeDef.Pickle, instrument)
 		if err != nil {
 			return nil, err
 		}
@@ -222,7 +255,7 @@ func NewRoutes(routeDefsMap map[string]*Route, spoolDir string, instrument *stat
 func (routes *Routes) Run() error {
 	for _, route := range routes.Map {
 		err := route.Run()
-		if nil != err {
+		if err != nil {
 			return err
 		}
 	}
@@ -256,14 +289,14 @@ func (routes *Routes) List() map[string]Route {
 	return ret
 }
 
-func (routes *Routes) Add(key, patt, addr string, spool bool, instrument *statsd.Client) error {
+func (routes *Routes) Add(key, patt, addr string, spool, pickle bool, instrument *statsd.Client) error {
 	routes.lock.Lock()
 	defer routes.lock.Unlock()
 	_, found := routes.Map[key]
 	if found {
 		return errors.New("route with given key already exists")
 	}
-	route, err := NewRoute(key, patt, addr, routes.SpoolDir, spool, instrument)
+	route, err := NewRoute(key, patt, addr, routes.SpoolDir, spool, pickle, instrument)
 	if err != nil {
 		return err
 	}
