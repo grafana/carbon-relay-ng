@@ -21,6 +21,7 @@ import (
 	"os"
 	"regexp"
 	"runtime/pprof"
+	"strings"
 )
 
 type StatsdConfig struct {
@@ -28,6 +29,11 @@ type StatsdConfig struct {
 	Instance string
 	Host     string
 	Port     int
+}
+
+type Blacklist struct {
+	Patt    string
+	Comment string
 }
 
 type Config struct {
@@ -38,6 +44,7 @@ type Config struct {
 	First_only  bool
 	Routes      map[string]*routing.Route
 	Statsd      StatsdConfig
+	Blacklist   []Blacklist
 }
 
 var (
@@ -68,6 +75,7 @@ func handle(c *net.TCPConn, config Config) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
+LineReader:
 	for {
 		buf, isPrefix, err := r.ReadLine()
 		if nil != err {
@@ -80,6 +88,13 @@ func handle(c *net.TCPConn, config Config) {
 			log.Println("isPrefix: true")
 			break
 		}
+		for _, blacklist := range config.Blacklist {
+			if strings.Contains(string(buf), blacklist.Patt) {
+				statsdClient.Increment("target_type=count.unit=Metric.direction=blacklist")
+				continue LineReader
+			}
+		}
+
 		buf = append(buf, '\n')
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
