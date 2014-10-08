@@ -24,6 +24,7 @@ type Route struct {
 	spoolDir   string         // where to store spool files (if enabled)
 	Spool      bool           // spool metrics to disk while endpoint down?
 	Pickle     bool           // send in pickle format?
+	Online     bool           // state of connection online/offline
 	instrument *statsd.Client // to submit stats to
 
 	// set automatically in init, passed on in copy
@@ -67,6 +68,7 @@ func (route *Route) Copy() *Route {
 		instrument: route.instrument,
 		Reg:        route.Reg,
 		Pickle:     route.Pickle,
+		Online:     route.Online,
 	}
 }
 
@@ -216,6 +218,7 @@ func (route *Route) relay() {
 			}
 		case new_conn := <-route.connUpdates:
 			conn = new_conn // can be nil and that's ok (it means we had to [re]connect but couldn't)
+			route.Online = conn != nil
 		case <-ticker.C: // periodically try to bring connection (back) up, if we have to, and no other connect is happening
 			if conn == nil && conn_updates == 0 {
 				go route.updateConn(route.Addr)
