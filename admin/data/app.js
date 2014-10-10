@@ -40,8 +40,10 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   };
 
   $scope.remove = function(idx){
-    $scope.routes[idx].$delete();
-    $scope.list();
+    if (confirm('Are you sure?')) {
+      $scope.routes[idx].$delete();
+      $scope.list();
+    }
   };
 
   $scope.open = function (idx) {
