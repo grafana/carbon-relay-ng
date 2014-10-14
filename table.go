@@ -1,5 +1,10 @@
 package main
 
+import (
+	statsD "github.com/Dieterbe/statsd-go"
+	"sync"
+)
+
 type Table struct {
 	sync.Mutex
 	routes   []*Route
@@ -7,32 +12,23 @@ type Table struct {
 	statsd   *statsD.Client
 }
 
-type Route struct {
-	sync.Mutex
-	Type  RouteType
-	Dests []*Destination
-}
-
-type RouteType int
-type sendAllMatch RouteType
-type sendFirstMatch RouteType
-
 func NewTable(spoolDir string, statsd *statsD.Client) *Table {
 	routes := make([]*Route, 0, 0)
 	return &Table{routes, spoolDir, statsd}
 }
 
 // not thread safe, run this once only
-func (dests *Destinations) Run() error {
-	for _, dest := range dests.Map {
-		err := dest.Run()
+func (table *Table) Run() error {
+	for _, route := range table.routes {
+		err := route.Run()
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-func (dests *Destinations) Dispatch(buf []byte, first_only bool) (destd bool) {
+
+func (table *Table) Dispatch(buf []byte, first_only bool) (destd bool) {
 	//fmt.Println("entering dispatch")
 	dests.Lock()
 	defer dests.Unlock()
@@ -50,36 +46,25 @@ func (dests *Destinations) Dispatch(buf []byte, first_only bool) (destd bool) {
 	return destd
 }
 
-func (dests *Destinations) List() map[string]Destination {
-	ret := make(map[string]Destination)
-	dests.Lock()
-	defer dests.Unlock()
-	for k, v := range dests.Map {
-		ret[k] = *v.Copy()
+// to view the state of the table/route at any point in time
+// we might add more functions to view specific entries if the need for that appears
+func (table *Table) Snapshot() Table {
+	table.Lock()
+	ret := make([]Route, len(table.routes))
+	defer table.Unlock()
+	for i, r := range table.routes {
+		ret[i] = r.Snapshot()
 	}
-	return ret
+	return table{routes, spoolDir, statsd}
 }
 
-func (dests *Destinations) Add(key, patt, addr string, spool, pickle bool, statsd *statsD.Client) error {
-	dests.Lock()
-	defer dests.Unlock()
-	_, found := dests.Map[key]
-	if found {
-		return errors.New("dest with given key already exists")
-	}
-	dest, err := NewDestination(key, patt, addr, dests.SpoolDir, spool, pickle, statsd)
-	if err != nil {
-		return err
-	}
-	err = dest.Run()
-	if err != nil {
-		return err
-	}
-	dests.Map[key] = dest
-	return nil
+func (table *Table) Add(route Route) {
+	table.Lock()
+	defer table.Unlock()
+    table.routes = append(table.routes, route)
 }
 
-func (dests *Destinations) Update(key string, addr, patt *string) error {
+func (table *Table) Update(key string, addr, patt *string) error {
 	dests.Lock()
 	defer dests.Unlock()
 	dest, found := dests.Map[key]
@@ -98,7 +83,7 @@ func (dests *Destinations) Update(key string, addr, patt *string) error {
 	return nil
 }
 
-func (dests *Destinations) Del(key string) error {
+func (table *Table) Del(key string) error {
 	dests.Lock()
 	defer dests.Unlock()
 	dest, found := dests.Map[key]

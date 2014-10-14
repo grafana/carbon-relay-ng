@@ -12,7 +12,6 @@ import (
 	"net"
 	"os"
 	"regexp"
-	"sync"
 	"time"
 )
 
@@ -58,7 +57,7 @@ func NewDestination(key, patt, addr, spoolDir string, spool, pickle bool, statsd
 }
 
 // a "basic" static copy of the dest, not actually running
-func (dest *Destination) Copy() *Destination {
+func (dest *Destination) Snapshot() *Destination {
 	return &Destination{
 		Key:      dest.Key,
 		Patt:     dest.Patt,
