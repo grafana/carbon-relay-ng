@@ -51,6 +51,16 @@ Usage
 <pre><code>carbon-relay-ng [-cpuprofile <em>cpuprofile-file</em>] <em>config-file</em></code></pre>
 
 
+Configuration
+-------------
+
+
+Look at the included carbon-relay-ng.ini, it should be self describing.
+In the init option you can create routes, populate the blacklist, etc using the same command as the telnet interface, detailed below.
+This mechanism is choosen so we can reuse the code, instead of doing much configuration boilerplate code which would have to execute on
+a declarative specification.  We can just use the same imperative commands since we just set up the initial state here.
+
+
 Web interface
 -------------
 
