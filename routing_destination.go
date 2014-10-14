@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/Dieterbe/statsd-go"
+	statsD "github.com/Dieterbe/statsd-go"
 	"github.com/graphite-ng/carbon-relay-ng/nsqd"
 	pickle "github.com/kisielk/og-rek"
 	"log"
@@ -18,14 +18,14 @@ import (
 
 type Destination struct {
 	// basic properties in init and copy
-	Key        string         // to identify in stats/logs
-	Patt       string         // regex string
-	Addr       string         // tcp dest
-	spoolDir   string         // where to store spool files (if enabled)
-	Spool      bool           // spool metrics to disk while dest down?
-	Pickle     bool           // send in pickle format?
-	Online     bool           // state of connection online/offline
-	instrument *statsd.Client // to submit stats to
+	Key      string         // to identify in stats/logs
+	Patt     string         // regex string
+	Addr     string         // tcp dest
+	spoolDir string         // where to store spool files (if enabled)
+	Spool    bool           // spool metrics to disk while dest down?
+	Pickle   bool           // send in pickle format?
+	Online   bool           // state of connection online/offline
+	statsd   *statsD.Client // to submit stats to
 
 	// set automatically in init, passed on in copy
 	Reg *regexp.Regexp // compiled version of patt
@@ -40,15 +40,15 @@ type Destination struct {
 }
 
 // after creating, run Run()!
-func NewDestination(key, patt, addr, spoolDir string, spool, pickle bool, instrument *statsd.Client) (*Destination, error) {
+func NewDestination(key, patt, addr, spoolDir string, spool, pickle bool, statsd *statsD.Client) (*Destination, error) {
 	dest := &Destination{
-		Key:        key,
-		Patt:       "",
-		Addr:       addr,
-		spoolDir:   spoolDir,
-		Spool:      spool,
-		instrument: instrument,
-		Pickle:     pickle,
+		Key:      key,
+		Patt:     "",
+		Addr:     addr,
+		spoolDir: spoolDir,
+		Spool:    spool,
+		statsd:   statsd,
+		Pickle:   pickle,
 	}
 	err := dest.updatePattern(patt)
 	if err != nil {
@@ -60,15 +60,15 @@ func NewDestination(key, patt, addr, spoolDir string, spool, pickle bool, instru
 // a "basic" static copy of the dest, not actually running
 func (dest *Destination) Copy() *Destination {
 	return &Destination{
-		Key:        dest.Key,
-		Patt:       dest.Patt,
-		Addr:       dest.Addr,
-		spoolDir:   dest.spoolDir,
-		Spool:      dest.Spool,
-		instrument: dest.instrument,
-		Reg:        dest.Reg,
-		Pickle:     dest.Pickle,
-		Online:     dest.Online,
+		Key:      dest.Key,
+		Patt:     dest.Patt,
+		Addr:     dest.Addr,
+		spoolDir: dest.spoolDir,
+		Spool:    dest.Spool,
+		statsd:   dest.statsd,
+		Reg:      dest.Reg,
+		Pickle:   dest.Pickle,
+		Online:   dest.Online,
 	}
 }
 
@@ -139,15 +139,15 @@ func (dest *Destination) relay() {
 	process_packet := func(buf []byte) {
 		if conn == nil {
 			if dest.Spool {
-				dest.instrument.Increment("dest=" + dest.Key + ".target_type=count.unit=Metric.direction=spool")
+				dest.statsd.Increment("dest=" + dest.Key + ".target_type=count.unit=Metric.direction=spool")
 				dest.queue.Put(buf)
 			} else {
 				// note, we drop packets while we set up connection
-				dest.instrument.Increment("dest=" + dest.Key + ".target_type=count.unit=Metric.direction=drop")
+				dest.statsd.Increment("dest=" + dest.Key + ".target_type=count.unit=Metric.direction=drop")
 			}
 			return
 		}
-		dest.instrument.Increment("dest=" + dest.Key + ".target_type=count.unit=Metric.direction=out")
+		dest.statsd.Increment("dest=" + dest.Key + ".target_type=count.unit=Metric.direction=out")
 
 		var err error
 		var n int
@@ -176,7 +176,7 @@ func (dest *Destination) relay() {
 			n, err = conn.Write(buf)
 		}
 		if err != nil {
-			dest.instrument.Increment("dest=" + dest.Key + ".target_type=count.unit=Err")
+			dest.statsd.Increment("dest=" + dest.Key + ".target_type=count.unit=Err")
 			log.Println(err)
 			conn.Close()
 			conn = nil
@@ -187,7 +187,7 @@ func (dest *Destination) relay() {
 			return
 		}
 		if len(buf) != n {
-			dest.instrument.Increment("dest=" + dest.Key + ".target_type=count.unit=Err")
+			dest.statsd.Increment("dest=" + dest.Key + ".target_type=count.unit=Err")
 			log.Printf(dest.Key+" truncated: %s\n", buf)
 			conn.Close()
 			conn = nil

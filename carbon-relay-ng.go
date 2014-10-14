@@ -9,7 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
-	"github.com/Dieterbe/statsd-go"
+	statsD "github.com/Dieterbe/statsd-go"
 	"github.com/graphite-ng/carbon-relay-ng/admin"
 	"github.com/rcrowley/goagain"
 	"io"
@@ -44,12 +44,12 @@ type Config struct {
 }
 
 var (
-	config_file  string
-	config       Config
-	to_dispatch  = make(chan []byte)
-	table        *Table
-	statsdClient statsd.Client
-	cpuprofile   = flag.String("cpuprofile", "", "write cpu profile to file")
+	config_file string
+	config      Config
+	to_dispatch = make(chan []byte)
+	table       *Table
+	statsd      statsD.Client
+	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file")
 )
 
 func init() {

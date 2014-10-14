@@ -12,15 +12,16 @@ type Route struct {
 }
 
 type Table struct {
-    sync.Mutex
-    routes []*Route
-    spooldir string
-    statsd *statsd.Client
+	sync.Mutex
+	routes   []*Route
+	spooldir string
+	statsd   *statsD.Client
 }
 
-func NewTable() *Table {
-    routes := make([]*Route, 0, 0)
-    return &Table{routes}
+type Route struct {
+	sync.Mutex
+	Type  RouteType
+	Dests []*Destination
 }
 
 func NewDestinations(destDefsMap map[string]*Destination, spoolDir string, instrument *statsd.Client) (dests *Destinations, err error) {

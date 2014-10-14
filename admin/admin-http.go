@@ -1,21 +1,21 @@
 package admin
 
 import (
-	"os"
-	"fmt"
-	"log"
-	"io/ioutil"
-	"net/http"
 	"encoding/json"
+	"fmt"
+	statsD "github.com/Dieterbe/statsd-go"
+	"github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
 	"github.com/graphite-ng/carbon-relay-ng"
-	"github.com/Dieterbe/statsd-go"
-	"github.com/elazarl/go-bindata-assetfs"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
 )
 
 var (
-	routes       *Routes
-	statsdClient *statsd.Client // TODO do we need it here
+	routes *Routes
+	statsd *statsD.Client // TODO do we need it here
 )
 
 // error response contains everything we need to use http.Error
@@ -63,7 +63,7 @@ func listRoutes(w http.ResponseWriter, r *http.Request) (interface{}, *handlerEr
 	m := routes.List()
 	// TODO, move it to routes.List()
 	v := make([]Route, 0, len(m))
-	for  _, value := range m {
+	for _, value := range m {
 		v = append(v, value)
 	}
 	return v, nil
@@ -109,7 +109,7 @@ func updateRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerE
 
 	e := routes.Update(payload.Key, &payload.Addr, &payload.Patt)
 	if e != nil {
-		return nil, &handlerError{e, "Could not update route (" +e.Error()+ ")", http.StatusBadRequest}
+		return nil, &handlerError{e, "Could not update route (" + e.Error() + ")", http.StatusBadRequest}
 	}
 	return routes.Map[payload.Key], nil
 }
@@ -120,16 +120,16 @@ func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 		return nil, err
 	}
 
-	e := routes.Add(payload.Key, payload.Patt, payload.Addr, false, false, statsdClient)
+	e := routes.Add(payload.Key, payload.Patt, payload.Addr, false, false, statsd)
 	if e != nil {
-		return nil, &handlerError{e, "Could not create route (" +e.Error() + ")", http.StatusBadRequest}
+		return nil, &handlerError{e, "Could not create route (" + e.Error() + ")", http.StatusBadRequest}
 	}
 	return routes.Map[payload.Key], nil
 }
 
-func HttpListener(addr string, r *Routes, statsd *statsd.Client) {
+func HttpListener(addr string, r *Routes, statsd *statsD.Client) {
 	routes = r
-	statsdClient = statsd
+	statsd = statsd // not sure if this is ok
 
 	// setup routes
 	router := mux.NewRouter()
