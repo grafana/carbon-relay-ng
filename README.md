@@ -51,6 +51,25 @@ Usage
 <pre><code>carbon-relay-ng [-cpuprofile <em>cpuprofile-file</em>] <em>config-file</em></code></pre>
 
 
+Concepts
+--------
+
+You have 1 master routing table.  This table contains 0-N routes.  Each route can contain 0-M destinations (tcp endpoints)
+
+First: "matching": you can match metrics on one or more of: prefix, substring, or regex.  All 3 default to "" (empty string, i.e. allow all).
+The conditions are AND-ed.  Regexes are more resource intensive and hence should, and often can be avoided.
+
+* All incoming matrics get filtered through the blacklist and then go into the table.
+* The table sends the metric to any routes that matches
+* The route can have different behaviors, based on its type:
+
+  * sendAllMatch: send all metrics to all the defined endpoints (possibly, and commonly only 1 endpoint).
+  * sendFirstMatch: send the metrics to the first endpoint that matches it.
+  * consistent hashing: the route is a CH pool (not implemented)
+  * round robin: the route is a RR pool (not implemented)
+
+
+
 Configuration
 -------------
 
