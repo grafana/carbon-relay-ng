@@ -61,7 +61,7 @@ func (table *Table) Snapshot() Table {
 func (table *Table) Add(route Route) {
 	table.Lock()
 	defer table.Unlock()
-    table.routes = append(table.routes, route)
+	table.routes = append(table.routes, route)
 }
 
 func (table *Table) Update(key string, addr, patt *string) error {

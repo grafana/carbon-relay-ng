@@ -1,7 +1,6 @@
 package main
 
 import (
-	statsD "github.com/Dieterbe/statsd-go"
 	"sync"
 )
 
@@ -9,6 +8,7 @@ type Route struct {
 	sync.Mutex
 	Type  RouteType
 	Dests []*Destination
+	Key   string
 }
 
 type RouteType int
@@ -40,7 +40,7 @@ func (route *Route) Snapshot() Route {
 }
 
 func (route *Route) Add(dest Destination) {
-    route.Lock()
-    defer route.Unlock()
-    route.dests = append(route.dests, dest)
+	route.Lock()
+	defer route.Unlock()
+	route.dests = append(route.dests, dest)
 }

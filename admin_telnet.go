@@ -1,33 +1,24 @@
-package admin
+package main
 
 import (
-//	"bufio"
-//	"errors"
-//	"flag"
-//	"fmt"
-//	"github.com/BurntSushi/toml"
-//	statsD "github.com/Dieterbe/statsd-go"
-//	"github.com/graphite-ng/carbon-relay-ng/admin"
-//	"github.com/rcrowley/goagain"
-//	"io"
-//	"log"
-//	"net"
-//	"os"
-//	"runtime/pprof"
-//	"strings"
+	"errors"
+	"fmt"
+	"github.com/graphite-ng/carbon-relay-ng/telnet"
+	"log"
+	"net"
 )
 
-func tcpViewHandler(req admin.Req) (err error) {
+func tcpViewHandler(req telnet.Req) (err error) {
 	if len(req.Command) != 2 {
 		return errors.New("extraneous arguments")
 	}
 	longest_key := 9
 	longest_patt := 9
 	longest_addr := 9
-	list := table.Copy()
-	for key, route := range list {
-		if len(key) > longest_key {
-			longest_key = len(key)
+	t := table.Snapshot()
+	for i, route := range t.routes {
+		if len(route.Key) > longest_key {
+			longest_key = len(route.key)
 		}
 		if len(route.Patt) > longest_patt {
 			longest_patt = len(route.Patt)
@@ -45,8 +36,8 @@ func tcpViewHandler(req admin.Req) (err error) {
 	return
 }
 
-func tcpModHandler(req admin.Req) (err error) {
-	err = applyCommand(table, req.Command)
+func tcpModHandler(req telnet.Req) (err error) {
+	err = applyCommand(table, req.Command[1])
 	if err != nil {
 		return err
 	}
@@ -54,11 +45,11 @@ func tcpModHandler(req admin.Req) (err error) {
 	return
 }
 
-func tcpHelpHandler(req admin.Req) (err error) {
+func tcpHelpHandler(req telnet.Req) (err error) {
 	writeHelp(*req.Conn, []byte(""))
 	return
 }
-func tcpDefaultHandler(req admin.Req) (err error) {
+func tcpDefaultHandler(req telnet.Req) (err error) {
 	writeHelp(*req.Conn, []byte("unknown command\n"))
 	return
 }
@@ -78,13 +69,13 @@ commands:
 	conn.Write([]byte(help))
 }
 
-func adminListener(addr string) {
-	admin.HandleFunc("add", tcpModHandler)
-	admin.HandleFunc("del", tcpModHandler)
-	admin.HandleFunc("mod", tcpModHandler)
-	admin.HandleFunc("view", tcpViewHandler)
-	admin.HandleFunc("help", tcpHelpHandler)
-	admin.HandleFunc("", tcpDefaultHandler)
+func adminListener(addr string) error {
+	telnet.HandleFunc("add", tcpModHandler)
+	telnet.HandleFunc("del", tcpModHandler)
+	telnet.HandleFunc("mod", tcpModHandler)
+	telnet.HandleFunc("view", tcpViewHandler)
+	telnet.HandleFunc("help", tcpHelpHandler)
+	telnet.HandleFunc("", tcpDefaultHandler)
 	log.Printf("admin TCP listener starting on %v", addr)
-	return admin.ListenAndServe(addr)
+	return telnet.ListenAndServe(addr)
 }

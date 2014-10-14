@@ -5,12 +5,10 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
 	statsD "github.com/Dieterbe/statsd-go"
-	"github.com/graphite-ng/carbon-relay-ng/admin"
 	"github.com/rcrowley/goagain"
 	"io"
 	"log"
@@ -45,6 +43,7 @@ type Config struct {
 var (
 	config_file string
 	config      Config
+	blacklist   Blacklist
 	to_dispatch = make(chan []byte)
 	table       *Table
 	statsd      statsD.Client
@@ -83,9 +82,9 @@ LineReader:
 			log.Println("isPrefix: true")
 			break
 		}
-		for _, blacklist := range config.Blacklist {
-			if strings.Contains(string(buf), blacklist.Patt) {
-				statsdClient.Increment("target_type=count.unit=Metric.direction=blacklist")
+		for _, black := range blacklist.Patterns {
+			if strings.Contains(string(buf), black) {
+				statsd.Increment("target_type=count.unit=Metric.direction=blacklist")
 				continue LineReader
 			}
 		}
@@ -93,7 +92,7 @@ LineReader:
 		buf = append(buf, '\n')
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
-		statsdClient.Increment("target_type=count.unit=Metric.direction=in")
+		statsd.Increment("target_type=count.unit=Metric.direction=in")
 		to_dispatch <- buf_copy
 	}
 }
@@ -140,7 +139,7 @@ func main() {
 	}
 
 	log.Println("creating routing table...")
-	table = NewTable(config.Spool_dir, &statsdClient)
+	table = NewTable(config.Spool_dir, &statsd)
 	log.Println("initializing routing table...")
 	var err error
 	for i, cmd := range config.Init {
@@ -151,14 +150,14 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	err = routes.Run()
+	err = table.Run()
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
 
 	statsdPrefix := fmt.Sprintf("service=carbon-relay-ng.instance=%s.", config.Statsd.Instance)
-	statsdClient = *statsd.NewClient(config.Statsd.Enabled, config.Statsd.Host, config.Statsd.Port, statsdPrefix)
+	statsd = *statsD.NewClient(config.Statsd.Enabled, config.Statsd.Host, config.Statsd.Port, statsdPrefix)
 
 	// Follow the goagain protocol, <https://github.com/rcrowley/goagain>.
 	l, ppid, err := goagain.GetEnvs()
@@ -186,7 +185,7 @@ func main() {
 
 	if config.Admin_addr != "" {
 		go func() {
-			err := admin.adminListener(config.Admin_addr)
+			err := adminListener(config.Admin_addr)
 			if err != nil {
 				fmt.Println("Error listening:", err.Error())
 				os.Exit(1)
@@ -195,7 +194,7 @@ func main() {
 	}
 
 	if config.Http_addr != "" {
-		go admin.HttpListener(config.Http_addr, routes, &statsdClient)
+		go HttpListener(config.Http_addr, table, &statsd)
 	}
 
 	go Router()

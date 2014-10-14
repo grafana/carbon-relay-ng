@@ -1,3 +1,3 @@
 #!/bin/bash
-go-bindata -pkg admin -o admin/bindata.go admin/data
+go-bindata admin_http_assets
 go build

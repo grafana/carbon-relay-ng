@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/taylorchu/toki"
 	"strings"
@@ -36,20 +37,20 @@ var tokenDefDest = []toki.TokenDef{
 // we should read and apply all destinations at once,
 // or at least make sure we apply them to the global datastruct at once,
 // otherwise we can destabilize things / send wrong traffic, etc
-func readDestinations(specs []string) {
-	destinations := make([]destination, 0, 0)
+func readDestinations(specs []string) error {
+	destinations := make([]Destination, 0, 0)
 	s := toki.New(tokenDefDest)
-	for spec := range specs {
+	for _, spec := range specs {
 		s.SetInput(spec)
 		t := s.Next()
 		if t.Type != str {
-			return errors.New("expected destination endpoint spec, not '" + t + "'")
+			return errors.New(fmt.Sprintf("expected destination endpoint spec, not '%s'", t))
 		}
 		// TODO validate spec!
 		for {
 			t := s.Next()
 			if t.Type == opt {
-				switch t {
+				switch t.Value {
 				case "sub=":
 					sub := t.Next()
 				case "prefix=":
@@ -87,7 +88,7 @@ func readDestinations(specs []string) {
 //"addRoute sendAllMatch carbon-default  127.0.0.1:2005 spool=false pickle=false",
 //"addRoute sendFirstMatch demo sub=foo prefix=foo re=foo  127.0.0.1:12345 spool=true"
 
-func applyCommand(cmd string) error {
+func applyCommand(table *Table, cmd string) error {
 	inputs := strings.Split(cmd, "  ")
 	s := toki.New(tokenDefGlobal)
 	s.SetInput(input)
@@ -112,7 +113,7 @@ func applyCommand(cmd string) error {
 				return errors.New(t)
 			}
 			if t.Type == opt {
-				switch t {
+				switch t.Value {
 				case "sub=":
 					"sub"
 				case "prefix=":

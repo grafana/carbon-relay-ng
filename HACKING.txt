@@ -8,3 +8,5 @@ and internally takes care of its locking to avoid data races.
 * fix initialisation of routing structures on app startup.  I thought it would be better to use an imperative, command-driven approach so that we could share code with the telnet interface. imperative.go will contain the functions that process commands and manipulate the routing table.
 My impression was that maintaining a declarative definition of the initial state would be too much hassle and code for just this one use case.
 Depending on how we evolve the api to support the http admin ui that may be incorrect and we might want to switch back to declarative configuration, if we can reuse the code that we write to support the http ui.
+
+* route, destination, and blacklist all have a similar/same way to match a metric against prefix, substring or regex.  we should probably create a Match type that they all can share

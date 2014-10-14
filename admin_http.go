@@ -1,4 +1,4 @@
-package admin
+package main
 
 import (
 	"encoding/json"
@@ -10,11 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-)
-
-var (
-	table *Table
-	statsd *statsD.Client // TODO do we need it here
 )
 
 // error response contains everything we need to use http.Error
@@ -59,13 +54,8 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func listRoutes(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
-	m := routes.List()
-	// TODO, move it to routes.List()
-	v := make([]Route, 0, len(m))
-	for _, value := range m {
-		v = append(v, value)
-	}
-	return v, nil
+	t := table.Snapshot()
+	return t, nil
 }
 
 func getRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
@@ -126,9 +116,9 @@ func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 	return routes.Map[payload.Key], nil
 }
 
-func HttpListener(addr string, r *Routes, statsd *statsD.Client) {
-	routes = r
-	statsd = statsd // not sure if this is ok
+func HttpListener(addr string, t *Table, s *statsD.Client) {
+	table = t
+	statsd = s
 
 	// setup routes
 	router := mux.NewRouter()
