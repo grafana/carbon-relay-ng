@@ -1,20 +1,20 @@
 package admin
 
 import (
-	"bufio"
-	"errors"
-	"flag"
-	"fmt"
-	"github.com/BurntSushi/toml"
-	statsD "github.com/Dieterbe/statsd-go"
-	"github.com/graphite-ng/carbon-relay-ng/admin"
-	"github.com/rcrowley/goagain"
-	"io"
-	"log"
-	"net"
-	"os"
-	"runtime/pprof"
-	"strings"
+//	"bufio"
+//	"errors"
+//	"flag"
+//	"fmt"
+//	"github.com/BurntSushi/toml"
+//	statsD "github.com/Dieterbe/statsd-go"
+//	"github.com/graphite-ng/carbon-relay-ng/admin"
+//	"github.com/rcrowley/goagain"
+//	"io"
+//	"log"
+//	"net"
+//	"os"
+//	"runtime/pprof"
+//	"strings"
 )
 
 func tcpViewHandler(req admin.Req) (err error) {

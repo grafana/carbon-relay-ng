@@ -6,7 +6,6 @@ import (
 	statsD "github.com/Dieterbe/statsd-go"
 	"github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
-	"github.com/graphite-ng/carbon-relay-ng"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -14,7 +13,7 @@ import (
 )
 
 var (
-	routes *Routes
+	table *Table
 	statsd *statsD.Client // TODO do we need it here
 )
 
