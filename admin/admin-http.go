@@ -8,13 +8,13 @@ import (
 	"net/http"
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"github.com/graphite-ng/carbon-relay-ng/routing"
+	"github.com/graphite-ng/carbon-relay-ng"
 	"github.com/Dieterbe/statsd-go"
 	"github.com/elazarl/go-bindata-assetfs"
 )
 
 var (
-	routes       *routing.Routes
+	routes       *Routes
 	statsdClient *statsd.Client // TODO do we need it here
 )
 
@@ -62,7 +62,7 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func listRoutes(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	m := routes.List()
 	// TODO, move it to routes.List()
-	v := make([]routing.Route, 0, len(m))
+	v := make([]Route, 0, len(m))
 	for  _, value := range m {
 		v = append(v, value)
 	}
@@ -87,16 +87,16 @@ func removeRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerE
 	return make(map[string]string), nil
 }
 
-func parseRouteRequest(r *http.Request) (routing.Route, *handlerError) {
+func parseRouteRequest(r *http.Request) (Route, *handlerError) {
 	data, e := ioutil.ReadAll(r.Body)
 	if e != nil {
-		return routing.Route{}, &handlerError{e, "Could not read request", http.StatusBadRequest}
+		return Route{}, &handlerError{e, "Could not read request", http.StatusBadRequest}
 	}
 
-	var payload routing.Route
+	var payload Route
 	e = json.Unmarshal(data, &payload)
 	if e != nil {
-		return routing.Route{}, &handlerError{e, "Could not parse JSON", http.StatusBadRequest}
+		return Route{}, &handlerError{e, "Could not parse JSON", http.StatusBadRequest}
 	}
 	return payload, nil
 }
@@ -127,7 +127,7 @@ func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 	return routes.Map[payload.Key], nil
 }
 
-func HttpListener(addr string, r *routing.Routes, statsd *statsd.Client) {
+func HttpListener(addr string, r *Routes, statsd *statsd.Client) {
 	routes = r
 	statsdClient = statsd
 

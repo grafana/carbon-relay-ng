@@ -1,4 +1,4 @@
-package routing
+package main
 
 import (
 	"bytes"

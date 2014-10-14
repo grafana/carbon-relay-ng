@@ -11,7 +11,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/statsd-go"
 	"github.com/graphite-ng/carbon-relay-ng/admin"
-	"github.com/graphite-ng/carbon-relay-ng/routing"
 	"github.com/rcrowley/goagain"
 	"io"
 	"log"
@@ -39,7 +38,7 @@ type Config struct {
 	Http_addr   string
 	Spool_dir   string
 	First_only  bool
-	Routes      map[string]*routing.Route
+	Routes      []*Route
 	Statsd      StatsdConfig
 	Blacklist   []Blacklist
 }
@@ -48,7 +47,7 @@ var (
 	config_file  string
 	config       Config
 	to_dispatch  = make(chan []byte)
-	routes       *routing.Routes
+	table        *Table
 	statsdClient statsd.Client
 	cpuprofile   = flag.String("cpuprofile", "", "write cpu profile to file")
 )
