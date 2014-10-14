@@ -107,14 +107,14 @@ func Router() {
 	}
 }
 
-func tcpListHandler(req admin.Req) (err error) {
+func tcpViewHandler(req admin.Req) (err error) {
 	if len(req.Command) != 2 {
 		return errors.New("extraneous arguments")
 	}
 	longest_key := 9
 	longest_patt := 9
 	longest_addr := 9
-	list := routes.List()
+	list := table.Copy()
 	for key, route := range list {
 		if len(key) > longest_key {
 			longest_key = len(key)
@@ -134,63 +134,13 @@ func tcpListHandler(req admin.Req) (err error) {
 	(*req.Conn).Write([]byte("--\n"))
 	return
 }
-func tcpAddHandler(req admin.Req) (err error) {
-	key := req.Command[2]
-	var patt, addr, spool_str string
-	if len(req.Command) == 5 {
-		patt = ""
-		addr = req.Command[3]
-		spool_str = req.Command[4]
-	} else if len(req.Command) == 6 {
-		patt = req.Command[3]
-		addr = req.Command[4]
-		spool_str = req.Command[5]
-	} else {
-		return errors.New("bad number of arguments")
-	}
 
-	spool := false
-	if spool_str == "1" {
-		spool = true
-	}
-	pickle := false
-
-	err = routes.Add(key, patt, addr, spool, pickle, &statsdClient)
+func tcpModHandler(req admin.Req) (err error) {
+	err = applyCommand(table, req.Command)
 	if err != nil {
 		return err
 	}
-	(*req.Conn).Write([]byte("added\n"))
-	return
-}
-
-func tcpDelHandler(req admin.Req) (err error) {
-	if len(req.Command) != 3 {
-		return errors.New("bad number of arguments")
-	}
-	key := req.Command[2]
-	err = routes.Del(key)
-	if err != nil {
-		return err
-	}
-	(*req.Conn).Write([]byte("deleted\n"))
-	return
-}
-
-func tcpPattHandler(req admin.Req) (err error) {
-	key := req.Command[2]
-	var patt string
-	if len(req.Command) == 4 {
-		patt = req.Command[3]
-	} else if len(req.Command) == 3 {
-		patt = ""
-	} else {
-		return errors.New("bad number of arguments")
-	}
-	err = routes.Update(key, nil, &patt)
-	if err != nil {
-		return err
-	}
-	(*req.Conn).Write([]byte("updated\n"))
+	(*req.Conn).Write([]byte("ok\n"))
 	return
 }
 
@@ -219,10 +169,10 @@ commands:
 }
 
 func adminListener() {
-	admin.HandleFunc("route list", tcpListHandler)
-	admin.HandleFunc("route add", tcpAddHandler)
-	admin.HandleFunc("route del", tcpDelHandler)
-	admin.HandleFunc("route patt", tcpPattHandler)
+	admin.HandleFunc("add", tcpModHandler)
+	admin.HandleFunc("del", tcpModHandler)
+	admin.HandleFunc("mod", tcpModHandler)
+	admin.HandleFunc("view", tcpViewHandler)
 	admin.HandleFunc("help", tcpHelpHandler)
 	admin.HandleFunc("", tcpDefaultHandler)
 	log.Printf("admin TCP listener starting on %v", config.Admin_addr)
