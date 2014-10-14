@@ -1,5 +1,5 @@
 // carbon-relay-ng
-// route traffic to anything that speaks the Graphite Carbon protocol,
+// route traffic to anything that speaks the Graphite Carbon protocol (text or pickle)
 // such as Graphite's carbon-cache.py, influxdb, ...
 package main
 
@@ -28,8 +28,7 @@ type StatsdConfig struct {
 }
 
 type Blacklist struct {
-	Patt    string
-	Comment string
+	Patterns []string
 }
 
 type Config struct {
@@ -40,7 +39,7 @@ type Config struct {
 	First_only  bool
 	Routes      []*Route
 	Statsd      StatsdConfig
-	Blacklist   []Blacklist
+	Init        []string
 }
 
 var (
@@ -101,7 +100,7 @@ LineReader:
 
 func Router() {
 	for buf := range to_dispatch {
-		routed := routes.Dispatch(buf, config.First_only)
+		routed := table.Dispatch(buf, config.First_only)
 		if !routed {
 			log.Printf("unrouteable: %s\n", buf)
 		}
@@ -266,12 +265,17 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	log.Println("initializing routes...")
+	log.Println("creating routing table...")
+	table = NewTable(config.Spool_dir, &statsdClient)
+	log.Println("initializing routing table...")
 	var err error
-	routes, err = routing.NewRoutes(config.Routes, config.Spool_dir, &statsdClient)
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
+	for i, cmd := range config.Init {
+		err = applyCommand(table, cmd)
+		if err != nil {
+			log.Println("could not apply init cmd #", i+1)
+			log.Println(err)
+			os.Exit(1)
+		}
 	}
 	err = routes.Run()
 	if err != nil {
