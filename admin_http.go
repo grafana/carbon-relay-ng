@@ -60,8 +60,8 @@ func listRoutes(w http.ResponseWriter, r *http.Request) (interface{}, *handlerEr
 
 func getRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	key := mux.Vars(r)["key"]
-	route := routes.Map[key]
-	if r == nil {
+	route := table.GetRoute(key)
+	if route == nil {
 		return nil, &handlerError{nil, "Could not find route " + key, http.StatusNotFound}
 	}
 	return route, nil
@@ -69,7 +69,7 @@ func getRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 
 func removeRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	key := mux.Vars(r)["key"]
-	err := routes.Del(key)
+	err := table.DelRoute(key)
 	if err != nil {
 		return nil, &handlerError{nil, "Could not find entry " + key, http.StatusNotFound}
 	}
@@ -108,10 +108,21 @@ func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 	if err != nil {
 		return nil, err
 	}
+	if payload.Type == "sendAllMatch" {
+		t := sendAllMatch(1)
+	} else if payload.Type == "sendFirstMatch" {
+		t := sendFirstMatch(1)
+	} else {
+		return nil, &handlerError{e, "unknown route type '" + payload.Type + "'", http.StatusBadRequest}
+	}
 
-	e := routes.Add(payload.Key, payload.Patt, payload.Addr, false, false, statsd)
-	if e != nil {
-		return nil, &handlerError{e, "Could not create route (" + e.Error() + ")", http.StatusBadRequest}
+	route, err := NewRoute(t, payload.Key, payload.Prefix, payload.Sub, payload.Regex)
+	if err != nil {
+		return nil, &handlerError{err, "Could not create route (" + err.Error() + ")", http.StatusBadRequest}
+	}
+	err = table.AddRoute(route)
+	if err != nil {
+		return nil, &handlerError{err, "Could not add route to table (" + err.Error() + ")", http.StatusInternalServerError}
 	}
 	return routes.Map[payload.Key], nil
 }

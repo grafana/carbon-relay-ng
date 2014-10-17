@@ -86,6 +86,17 @@ func (table *Table) Snapshot() Table {
 	return Table{sync.Mutex{}, blacklist, routes, table.spoolDir, nil}
 }
 
+func (table *Table) GetRoute(key string) *Route {
+	table.Lock()
+	defer table.Unlock()
+	for _, r := range table.routes {
+		if r.Key == key {
+			return r
+		}
+	}
+	return nil
+}
+
 func (table *Table) AddRoute(route *Route) {
 	table.Lock()
 	defer table.Unlock()
@@ -98,21 +109,28 @@ func (table *Table) AddBlacklist(matcher *Matcher) {
 	table.Blacklist = append(table.Blacklist, matcher)
 }
 
-func (table *Table) Del(index int) error {
-	// TODO implement this better, maybe by route key to avoid race conditions
+// idempotent semantics, not existing is fine
+func (table *Table) DelRoute(key string) error {
 	table.Lock()
 	defer table.Unlock()
-	//route, found := table.routes[index]
-	//if !found {
-	//		return errors.New("unknown route '" + key + "'")
-	//	}
-	//delete(dests.Map, key)
-	//err := route.Shutdown()
-	//if err != nil {
-	// dest removed from routing table but still trying to connect
-	// it won't get new stuff on its input though
-	//	return err
-	//}
-	//return nil
+	toDelete := -1
+	for i, route := range table.routes {
+		if r.Key == key {
+			toDelete = i
+			break
+		}
+	}
+	if toDelete == -1 {
+		return nil
+	}
+
+	table.routes = append(a[:toDelete], a[toDelete+1:]...)
+
+	err := route.Shutdown()
+	if err != nil {
+		// dest removed from routing table but still trying to connect
+		// it won't get new stuff on its input though
+		return err
+	}
 	return nil
 }
