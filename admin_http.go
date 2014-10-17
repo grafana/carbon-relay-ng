@@ -5,6 +5,7 @@ import (
 	"fmt"
 	statsD "github.com/Dieterbe/statsd-go"
 	"github.com/elazarl/go-bindata-assetfs"
+	//    "errors"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
@@ -90,6 +91,7 @@ func parseRouteRequest(r *http.Request) (Route, *handlerError) {
 	return payload, nil
 }
 
+/* needs updating, but using what api?
 func updateRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	payload, err := parseRouteRequest(r)
 	if err != nil {
@@ -103,20 +105,24 @@ func updateRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerE
 	return routes.Map[payload.Key], nil
 }
 
+*/
+/* needs updating. not sure what's the best way to get the route from the http data
 func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	payload, err := parseRouteRequest(r)
 	if err != nil {
 		return nil, err
 	}
+    var t interface{}
+
 	if payload.Type == "sendAllMatch" {
-		t := sendAllMatch(1)
+		t = sendAllMatch(1)
 	} else if payload.Type == "sendFirstMatch" {
-		t := sendFirstMatch(1)
+		t = sendFirstMatch(1)
 	} else {
-		return nil, &handlerError{e, "unknown route type '" + payload.Type + "'", http.StatusBadRequest}
+		return nil, &handlerError{errors.New("unknown route type"), fmt.Sprintf("unknown route type '%v'", payload.Type), http.StatusBadRequest}
 	}
 
-	route, err := NewRoute(t, payload.Key, payload.Prefix, payload.Sub, payload.Regex)
+	route, err := NewRoute(t, payload.Key, payload.Matcher.Prefix, payload.Matcher.Sub, payload.Matcher.Regex)
 	if err != nil {
 		return nil, &handlerError{err, "Could not create route (" + err.Error() + ")", http.StatusBadRequest}
 	}
@@ -126,17 +132,18 @@ func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 	}
 	return routes.Map[payload.Key], nil
 }
+*/
 
 func HttpListener(addr string, t *Table, s *statsD.Client) {
 	table = t
-	statsd = s
+	statsd = *s
 
 	// setup routes
 	router := mux.NewRouter()
 	router.Handle("/routes", handler(listRoutes)).Methods("GET")
-	router.Handle("/routes", handler(addRoute)).Methods("POST")
+	//router.Handle("/routes", handler(addRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(getRoute)).Methods("GET")
-	router.Handle("/routes/{key}", handler(updateRoute)).Methods("POST")
+	//router.Handle("/routes/{key}", handler(updateRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(removeRoute)).Methods("DELETE")
 	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset, AssetDir, "admin/data/"}))
 	http.Handle("/", router)
