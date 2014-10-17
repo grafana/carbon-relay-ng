@@ -59,9 +59,13 @@ func (table *Table) Dispatch(buf []byte) {
 		}
 	}
 
+	// this is a bit sloppy (no synchronisation), but basically we don't want to block here
+	// Dispatch should return asap
 	if !routed {
-		statsd.Increment("target_type=count.unit=Metric.direction=unroutable")
-		log.Printf("unrouteable: %s\n", buf)
+		go func() {
+			statsd.Increment("target_type=count.unit=Metric.direction=unroutable")
+			log.Printf("unrouteable: %s\n", buf)
+		}()
 	}
 
 }
