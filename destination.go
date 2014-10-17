@@ -12,13 +12,17 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 )
 
+func addrToPath(s string) string {
+	return strings.Replace(s, ":", "_", -1)
+}
+
 type Destination struct {
 	// basic properties in init and copy
-	Key      string         // to identify in stats/logs
-	Patt     string         // regex string
+	Matcher  Matcher
 	Addr     string         // tcp dest
 	spoolDir string         // where to store spool files (if enabled)
 	Spool    bool           // spool metrics to disk while dest down?
@@ -30,7 +34,7 @@ type Destination struct {
 	Reg *regexp.Regexp // compiled version of patt
 
 	// set in/via Run()
-	ch           chan []byte       // to pump data to dest
+	In           chan []byte       // incoming metrics
 	shutdown     chan bool         // signals shutdown internally
 	queue        *nsqd.DiskQueue   // queue used if spooling enabled
 	raddr        *net.TCPAddr      // resolved remote addr
@@ -39,28 +43,30 @@ type Destination struct {
 }
 
 // after creating, run Run()!
-func NewDestination(key, patt, addr, spoolDir string, spool, pickle bool, statsd *statsD.Client) (*Destination, error) {
+func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, statsd *statsD.Client) (*Destination, error) {
+	m, err := NewMatcher(prefix, sub, regex)
+	if err != nil {
+		return nil, err
+	}
 	dest := &Destination{
-		Key:      key,
-		Patt:     "",
+		Matcher:  *m,
 		Addr:     addr,
 		spoolDir: spoolDir,
 		Spool:    spool,
 		statsd:   statsd,
 		Pickle:   pickle,
 	}
-	err := dest.updatePattern(patt)
-	if err != nil {
-		return nil, err
-	}
 	return dest, nil
 }
 
+func (dest *Destination) Match(s []byte) bool {
+	return dest.Matcher.Match(s)
+}
+
 // a "basic" static copy of the dest, not actually running
-func (dest *Destination) Snapshot() *Destination {
-	return &Destination{
-		Key:      dest.Key,
-		Patt:     dest.Patt,
+func (dest *Destination) Snapshot() Destination {
+	return Destination{
+		Matcher:  dest.Matcher.Snapshot(),
 		Addr:     dest.Addr,
 		spoolDir: dest.spoolDir,
 		Spool:    dest.Spool,
@@ -71,23 +77,13 @@ func (dest *Destination) Snapshot() *Destination {
 	}
 }
 
-func (dest *Destination) updatePattern(pattern string) error {
-	regex, err := regexp.Compile(pattern)
-	if err != nil {
-		return err
-	}
-	dest.Patt = pattern
-	dest.Reg = regex
-	return nil
-}
-
 func (dest *Destination) Run() (err error) {
-	dest.ch = make(chan []byte)
+	dest.In = make(chan []byte)
 	dest.shutdown = make(chan bool)
 	dest.connUpdates = make(chan *net.TCPConn)
 	dest.inConnUpdate = make(chan bool)
 	if dest.Spool {
-		dqName := "spool_" + dest.Key
+		dqName := "spool_" + dest.Addr
 		dest.queue = nsqd.NewDiskQueue(dqName, dest.spoolDir, 200*1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
 	}
 	go dest.relay()
@@ -103,23 +99,23 @@ func (dest *Destination) Shutdown() error {
 }
 
 func (dest *Destination) updateConn(addr string) error {
-	log.Printf("%v (re)connecting to %v\n", dest.Key, addr)
+	log.Printf("%v (re)connecting\n", dest.Addr)
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
 	raddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
-		log.Printf("%v resolve failed: %s\n", dest.Key, err.Error())
+		log.Printf("%v resolve failed: %s\n", dest.Addr, err.Error())
 		return err
 	}
 	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0")
 	new_conn, err := net.DialTCP("tcp", laddr, raddr)
 	if err != nil {
-		log.Printf("%v connect failed: %s\n", dest.Key, err.Error())
+		log.Printf("%v connect failed: %s\n", dest.Addr, err.Error())
 		return err
 	}
-	log.Printf("%v connected\n", dest.Key)
+	log.Printf("%v connected\n", dest.Addr)
 	if addr != dest.Addr {
-		log.Printf("%v update address to %v (%v)\n", dest.Key, addr, raddr)
+		log.Printf("%v update address to %v (%v)\n", dest.Addr, addr, raddr)
 		dest.Addr = addr
 		dest.raddr = raddr
 	}
@@ -138,15 +134,15 @@ func (dest *Destination) relay() {
 	process_packet := func(buf []byte) {
 		if conn == nil {
 			if dest.Spool {
-				dest.statsd.Increment("dest=" + dest.Key + ".target_type=count.unit=Metric.direction=spool")
+				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.direction=spool")
 				dest.queue.Put(buf)
 			} else {
 				// note, we drop packets while we set up connection
-				dest.statsd.Increment("dest=" + dest.Key + ".target_type=count.unit=Metric.direction=drop")
+				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.direction=drop")
 			}
 			return
 		}
-		dest.statsd.Increment("dest=" + dest.Key + ".target_type=count.unit=Metric.direction=out")
+		dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.direction=out")
 
 		var err error
 		var n int
@@ -175,7 +171,7 @@ func (dest *Destination) relay() {
 			n, err = conn.Write(buf)
 		}
 		if err != nil {
-			dest.statsd.Increment("dest=" + dest.Key + ".target_type=count.unit=Err")
+			dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Err")
 			log.Println(err)
 			conn.Close()
 			conn = nil
@@ -186,8 +182,8 @@ func (dest *Destination) relay() {
 			return
 		}
 		if len(buf) != n {
-			dest.statsd.Increment("dest=" + dest.Key + ".target_type=count.unit=Err")
-			log.Printf(dest.Key+" truncated: %s\n", buf)
+			dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Err")
+			log.Printf(dest.Addr+" truncated: %s\n", buf)
 			conn.Close()
 			conn = nil
 			if dest.Spool {
@@ -223,11 +219,11 @@ func (dest *Destination) relay() {
 				go dest.updateConn(dest.Addr)
 			}
 		case <-dest.shutdown:
-			//fmt.Println(dest.Key + " dest relay -> requested shutdown. quitting")
+			//fmt.Println(dest.Addr + " dest relay -> requested shutdown. quitting")
 			return
 		case buf := <-to_unspool:
 			process_packet(buf)
-		case buf := <-dest.ch:
+		case buf := <-dest.In:
 			process_packet(buf)
 		}
 	}

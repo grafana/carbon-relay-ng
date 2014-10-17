@@ -37,101 +37,134 @@ var tokenDefDest = []toki.TokenDef{
 // we should read and apply all destinations at once,
 // or at least make sure we apply them to the global datastruct at once,
 // otherwise we can destabilize things / send wrong traffic, etc
-func readDestinations(specs []string) error {
-	destinations := make([]Destination, 0, 0)
+func readDestinations(specs []string) (destinations []*Destination, err error) {
 	s := toki.New(tokenDefDest)
 	for _, spec := range specs {
+		var prefix, sub, regex, addr, spoolDir string
+		var spool, pickle bool
+		spoolDir = "TODO" // also set statsd somehow
 		s.SetInput(spec)
 		t := s.Next()
 		if t.Type != str {
-			return errors.New(fmt.Sprintf("expected destination endpoint spec, not '%s'", t))
+			return destinations, errors.New(fmt.Sprintf("expected destination endpoint spec, not '%s'", t))
 		}
-		// TODO validate spec!
 		for {
 			t := s.Next()
 			if t.Type == opt {
 				switch t.Value {
-				case "sub=":
-					sub := t.Next()
 				case "prefix=":
-					pref := t.Next()
+					val := s.Next()
+					prefix = val.Value
+				case "sub=":
+					val := s.Next()
+					sub = val.Value
 				case "regex=":
-					reg := t.Next()
+					val := s.Next()
+					regex = val.Value
+				case "addr=":
+					val := s.Next()
+					addr = val.Value
 				case "pickle=":
 					t := s.Next()
-					if t == "true" {
-					} else if t == "false" {
+					if t.Value == "true" {
+					} else if t.Value == "false" {
 					} else {
-						return errors.New("unrecognized pickle value '" + t + "'")
+						return destinations, errors.New("unrecognized pickle value '" + t.Value + "'")
 					}
 				case "spool=":
 					t := s.Next()
-					if t == "true" {
-					} else if t == "false" {
-					} else {
-						return errors.New("unrecognized spool value '" + t + "'")
+					if t.Value == "true" {
+						spool = true
+					} else if t.Value != "false" {
+						return destinations, errors.New("unrecognized spool value '" + t.Value + "'")
 					}
 				default:
-					return errors.New("unrecognized option '" + t + "'")
+					return destinations, errors.New("unrecognized option '" + t.Value + "'")
 				}
 			} else {
-				return errors.New("expected endpoint option, not '" + t + "'")
+				return destinations, errors.New("expected endpoint option, not '" + t.Value + "'")
 			}
 		}
+		dest, err := NewDestination(prefix, sub, regex, addr, spoolDir, spool, pickle, &statsd)
+		if err != nil {
+			return destinations, err
+		}
+		destinations = append(destinations, dest)
 	}
-	destinations = append(destinations, nil)
-	return destinations
+	return destinations, nil
 }
 
 // note the two spaces between a route and endpoints
 //"addBlack filter-out-all-metrics-matching-this-substring",
 //"addRoute sendAllMatch carbon-default  127.0.0.1:2005 spool=false pickle=false",
 //"addRoute sendFirstMatch demo sub=foo prefix=foo re=foo  127.0.0.1:12345 spool=true"
+//addBlack string-without-spaces
+//addRoute <type> <key> <match options>  <dests> # match options can't have spaces for now. sorry
+//dests:
+// <tcp addr> <options>
 
 func applyCommand(table *Table, cmd string) error {
 	inputs := strings.Split(cmd, "  ")
 	s := toki.New(tokenDefGlobal)
-	s.SetInput(input)
+	s.SetInput(inputs[0])
 	t := s.Next()
 	if t.Type == addBlack {
-		split := strings.Split(t, " ")
+		split := strings.Split(t.Value, " ")
 		patt := split[1]
 		if t = s.Next(); t.Type != toki.TokenEOF {
-			return errors.New("extraneous input '" + t + "'")
+			return errors.New("extraneous input '" + t.Value + "'")
 		}
+		fmt.Println(patt)
+		// TODO make match, make blacklist part of table and         table.AddBlack(patt)
 	} else if t.Type == addRouteSendAllMatch {
-		split := strings.Split(t, " ")
+		split := strings.Split(t.Value, " ")
 		key := split[2]
 		// read opts
 		t = s.Next()
+		var prefix, sub, regex string
 		for {
 			t := s.Next()
 			if t.Type == toki.TokenEOF {
 				break
 			}
 			if t.Type == toki.TokenError {
-				return errors.New(t)
+				return errors.New(t.Value)
 			}
 			if t.Type == opt {
 				switch t.Value {
-				case "sub=":
-					"sub"
 				case "prefix=":
+					val := s.Next()
+					prefix = val.Value
+				case "sub=":
+					val := s.Next()
+					sub = val.Value
 				case "regex=":
+					val := s.Next()
+					regex = val.Value
 				default:
-					return errors.New("unrecognized option '" + t + "'")
+					return errors.New("unrecognized option '" + t.Value + "'")
 				}
 			}
 		}
 		if len(inputs) < 2 {
-			// must get at least 1 endpoints
+			return errors.New("must get at least 1 destination for route " + key)
 		}
-		endpoints := readEndpoints(inputs[1:])
+		destinations, err := readDestinations(inputs[1:])
+		if err != nil {
+			return err
+		}
+		route, err := NewRoute(sendAllMatch(1), key, prefix, sub, regex)
+		if err != nil {
+			return err
+		}
+		route.Dests = destinations
+		table.Add(route)
 	} else if t.Type == addRouteSendFirstMatch {
 	} else {
-		return errors.New("unrecognized command '" + t + "'")
+		return errors.New("unrecognized command '" + t.Value + "'")
 	}
 	if t = s.Next(); t.Type != toki.TokenEOF {
-		return errors.New("extraneous input '" + t + "'")
+		return errors.New("extraneous input '" + t.Value + "'")
 	}
+	return nil
 }

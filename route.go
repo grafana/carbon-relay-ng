@@ -5,42 +5,67 @@ import (
 )
 
 type Route struct {
+	Type    interface{} // actually RouteType, can we do this better?
+	Key     string
+	Matcher Matcher
+	Dests   []*Destination
+	In      chan []byte // incoming metrics
 	sync.Mutex
-	Type  RouteType
-	Dests []*Destination
-	Key   string
 }
 
 type RouteType int
 type sendAllMatch RouteType
 type sendFirstMatch RouteType
 
+func NewRoute(routeType interface{}, key, prefix, sub, regex string) (*Route, error) {
+	m, err := NewMatcher(prefix, sub, regex)
+	if err != nil {
+		return nil, err
+	}
+	return &Route{routeType, key, *m, make([]*Destination, 0), make(chan []byte), sync.Mutex{}}, nil
+}
+
 func (route *Route) Run() error {
-	if route.Type == sendAllMatch || route.Type == sendFirstMatch {
-		for _, dest := range route.Dests {
-			err := dest.Run()
-			if err != nil {
-				return err
-			}
+	// later, as we add more route types (consistent hashing, RR, etc) we might need to do something like:
+	//switch route.Type.(type) {
+	//case sendAllMatch:
+	//    fallthrough
+	//case sendFirstMatch:
+
+	for _, dest := range route.Dests {
+		err := dest.Run()
+		if err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func (route *Route) Match(s []byte) bool {
+	return route.Matcher.Match(s)
 }
 
 // to view the state of the table/route at any point in time
 // we might add more functions to view specific entries if the need for that appears
 func (route *Route) Snapshot() Route {
 	route.Lock()
-	ret := make([]Destination, len(route.dests))
+	dests := make([]*Destination, len(route.Dests))
 	defer route.Unlock()
-	for i, d := range route.dests {
-		ret[i] = d.Snapshot()
+	for i, d := range route.Dests {
+		snap := d.Snapshot()
+		dests[i] = &snap
 	}
-	return route{route.Type, dests}
+	return Route{route.Type, route.Key, route.Matcher.Snapshot(), dests, nil, sync.Mutex{}}
 }
 
 func (route *Route) Add(dest Destination) {
 	route.Lock()
 	defer route.Unlock()
-	route.dests = append(route.dests, dest)
+	route.Dests = append(route.Dests, &dest)
+}
+
+func (route *Route) UpdateMatcher(matcher Matcher) {
+	route.Lock()
+	route.Matcher = matcher
+	defer route.Unlock()
 }

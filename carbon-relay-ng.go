@@ -15,7 +15,6 @@ import (
 	"net"
 	"os"
 	"runtime/pprof"
-	"strings"
 )
 
 type StatsdConfig struct {
@@ -23,10 +22,6 @@ type StatsdConfig struct {
 	Instance string
 	Host     string
 	Port     int
-}
-
-type Blacklist struct {
-	Patterns []string
 }
 
 type Config struct {
@@ -82,11 +77,9 @@ LineReader:
 			log.Println("isPrefix: true")
 			break
 		}
-		for _, black := range blacklist.Patterns {
-			if strings.Contains(string(buf), black) {
-				statsd.Increment("target_type=count.unit=Metric.direction=blacklist")
-				continue LineReader
-			}
+		if blacklist.Match(buf) {
+			statsd.Increment("target_type=count.unit=Metric.direction=blacklist")
+			continue LineReader
 		}
 
 		buf = append(buf, '\n')

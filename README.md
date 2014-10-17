@@ -14,7 +14,7 @@ Like carbon-relay from the graphite project, except it:
  
 
 This makes it easy to fanout to other tools that feed in on the metrics.
-Or balance load, or provide redundancy (see "first_only" config paramater), or partition the data, etc.
+Or balance/split load, or provide redundancy, or partition the data, etc.
 This pattern allows alerting and event processing systems to act on the data as it is received (which is much better than repeated reading from your storage)
 
 
