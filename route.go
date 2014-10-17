@@ -22,7 +22,9 @@ func NewRoute(routeType interface{}, key, prefix, sub, regex string) (*Route, er
 	if err != nil {
 		return nil, err
 	}
-	return &Route{routeType, key, *m, make([]*Destination, 0), make(chan []byte), sync.Mutex{}}, nil
+	r := &Route{routeType, key, *m, make([]*Destination, 0), make(chan []byte), sync.Mutex{}}
+	r.Run()
+	return r, nil
 }
 
 func (route *Route) Run() error {
@@ -31,6 +33,9 @@ func (route *Route) Run() error {
 	//case sendAllMatch:
 	//    fallthrough
 	//case sendFirstMatch:
+
+	route.Lock()
+	defer route.Unlock()
 
 	for _, dest := range route.Dests {
 		err := dest.Run()

@@ -115,7 +115,11 @@ func applyCommand(table *Table, cmd string) error {
 			return errors.New("extraneous input '" + t.Value + "'")
 		}
 		fmt.Println(patt)
-		// TODO make match, make blacklist part of table and         table.AddBlack(patt)
+		m, err := NewMatcher("", patt, "")
+		if err != nil {
+			return err
+		}
+		table.AddBlacklist(m)
 	} else if t.Type == addRouteSendAllMatch {
 		split := strings.Split(t.Value, " ")
 		key := split[2]
@@ -158,7 +162,7 @@ func applyCommand(table *Table, cmd string) error {
 			return err
 		}
 		route.Dests = destinations
-		table.Add(route)
+		table.AddRoute(route)
 	} else if t.Type == addRouteSendFirstMatch {
 	} else {
 		return errors.New("unrecognized command '" + t.Value + "'")

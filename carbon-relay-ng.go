@@ -38,7 +38,6 @@ type Config struct {
 var (
 	config_file string
 	config      Config
-	blacklist   Blacklist
 	to_dispatch = make(chan []byte)
 	table       *Table
 	statsd      statsD.Client
@@ -64,7 +63,6 @@ func handle(c *net.TCPConn, config Config) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
-LineReader:
 	for {
 		buf, isPrefix, err := r.ReadLine()
 		if nil != err {
@@ -77,25 +75,11 @@ LineReader:
 			log.Println("isPrefix: true")
 			break
 		}
-		if blacklist.Match(buf) {
-			statsd.Increment("target_type=count.unit=Metric.direction=blacklist")
-			continue LineReader
-		}
-
 		buf = append(buf, '\n')
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
 		statsd.Increment("target_type=count.unit=Metric.direction=in")
-		to_dispatch <- buf_copy
-	}
-}
-
-func Router() {
-	for buf := range to_dispatch {
-		routed := table.Dispatch(buf, config.First_only)
-		if !routed {
-			log.Printf("unrouteable: %s\n", buf)
-		}
+		table.Dispatch(buf_copy)
 	}
 }
 
@@ -189,8 +173,6 @@ func main() {
 	if config.Http_addr != "" {
 		go HttpListener(config.Http_addr, table, &statsd)
 	}
-
-	go Router()
 
 	if err := goagain.AwaitSignals(l); nil != err {
 		log.Println(err)
