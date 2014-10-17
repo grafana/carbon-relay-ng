@@ -60,6 +60,13 @@ func (dest *Destination) Match(s []byte) bool {
 	return dest.Matcher.Match(s)
 }
 
+func (dest *Destination) UpdateMatcher(matcher Matcher) {
+	// TODO: looks like we need lock here, not sure yet how to organize this
+	//dest.Lock()
+	//defer dest.Unlock()
+	dest.Matcher = matcher
+}
+
 // a "basic" static copy of the dest, not actually running
 func (dest *Destination) Snapshot() Destination {
 	return Destination{

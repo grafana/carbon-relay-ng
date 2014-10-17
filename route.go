@@ -76,6 +76,8 @@ func (route *Route) RelaySendFirstMatch() {
 }
 
 func (route *Route) Match(s []byte) bool {
+	route.Lock()
+	defer route.Unlock()
 	return route.Matcher.Match(s)
 }
 
@@ -123,6 +125,6 @@ func (route *Route) Add(dest Destination) {
 
 func (route *Route) UpdateMatcher(matcher Matcher) {
 	route.Lock()
-	route.Matcher = matcher
 	defer route.Unlock()
+	route.Matcher = matcher
 }

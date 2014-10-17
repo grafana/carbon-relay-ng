@@ -39,7 +39,7 @@ func (table *Table) Run() error {
 
 func (table *Table) Dispatch(buf []byte) {
 	table.Lock()
-	table.Unlock()
+	defer table.Unlock()
 
 	for _, matcher := range table.Blacklist {
 		if matcher.Match(buf) {
