@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -28,12 +29,6 @@ func NewRoute(routeType interface{}, key, prefix, sub, regex string) (*Route, er
 }
 
 func (route *Route) Run() error {
-	// later, as we add more route types (consistent hashing, RR, etc) we might need to do something like:
-	//switch route.Type.(type) {
-	//case sendAllMatch:
-	//    fallthrough
-	//case sendFirstMatch:
-
 	route.Lock()
 	defer route.Unlock()
 
@@ -43,11 +38,68 @@ func (route *Route) Run() error {
 			return err
 		}
 	}
+	// this probably can be cleaner if we make Route an interface.
+	switch route.Type.(type) {
+	case sendAllMatch:
+		go route.RelaySendAllMatch()
+	case sendFirstMatch:
+		go route.RelaySendFirstMatch()
+	}
 	return nil
+}
+
+func (route *Route) RelaySendAllMatch() {
+	for metric := range route.In {
+		route.Lock()
+		for _, dest := range route.Dests {
+			if dest.Match(metric) {
+				// dest should handle this as quickly as it can
+				dest.In <- metric
+			}
+		}
+		route.Unlock()
+	}
+}
+
+func (route *Route) RelaySendFirstMatch() {
+	for metric := range route.In {
+		route.Lock()
+		for _, dest := range route.Dests {
+			if dest.Match(metric) {
+				// dest should handle this as quickly as it can
+				dest.In <- metric
+				break
+			}
+		}
+		route.Unlock()
+	}
 }
 
 func (route *Route) Match(s []byte) bool {
 	return route.Matcher.Match(s)
+}
+
+func (route *Route) Shutdown() error {
+	route.Lock()
+	defer route.Unlock()
+
+	destErrs := make([]error, 0)
+
+	for _, d := range route.Dests {
+		err := d.Shutdown()
+		if err != nil {
+			destErrs = append(destErrs, err)
+		}
+	}
+
+	if len(destErrs) == 0 {
+		return nil
+	}
+	errStr := ""
+	for _, e := range destErrs {
+		errStr += "   " + e.Error()
+	}
+	return errors.New("one or more destinations failed to shutdown:" + errStr)
 }
 
 // to view the state of the table/route at any point in time

@@ -54,6 +54,7 @@ func (table *Table) Dispatch(buf []byte) {
 		if route.Match(buf) {
 			routed = true
 			//fmt.Println("routing to " + dest.Key)
+			// routes should take this in as fast as they can
 			route.In <- buf
 		}
 	}
@@ -114,8 +115,10 @@ func (table *Table) DelRoute(key string) error {
 	table.Lock()
 	defer table.Unlock()
 	toDelete := -1
-	for i, route := range table.routes {
-		if r.Key == key {
+	var i int
+	var route *Route
+	for i, route = range table.routes {
+		if route.Key == key {
 			toDelete = i
 			break
 		}
@@ -124,7 +127,7 @@ func (table *Table) DelRoute(key string) error {
 		return nil
 	}
 
-	table.routes = append(a[:toDelete], a[toDelete+1:]...)
+	table.routes = append(table.routes[:toDelete], table.routes[toDelete+1:]...)
 
 	err := route.Shutdown()
 	if err != nil {

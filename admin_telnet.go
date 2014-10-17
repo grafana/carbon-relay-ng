@@ -8,29 +8,58 @@ import (
 	"net"
 )
 
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func tcpViewHandler(req telnet.Req) (err error) {
 	if len(req.Command) != 2 {
 		return errors.New("extraneous arguments")
 	}
-	longest_key := 9
-	longest_patt := 9
-	longest_addr := 9
+	// TODO also print route type
+	// we want to print things concisely (but no smaller than the defaults below)
+	// so we have to figure out the max lengths of everything first
+	// the default values can be arbitrary (bot not smaller than the column titles),
+	// i figured multiples of 4 should look good
+	// 'R' stands for Route, 'D' for dest
+	maxRKey := 8
+	maxRPrefix := 4
+	maxRSub := 4
+	maxRRegex := 4
+	maxDPrefix := 4
+	maxDSub := 4
+	maxDRegex := 4
+	maxDAddr := 16
+	maxDSpoolDir := 16
+
 	t := table.Snapshot()
-	for i, route := range t.routes {
-		if len(route.Key) > longest_key {
-			longest_key = len(route.key)
-		}
-		if len(route.Patt) > longest_patt {
-			longest_patt = len(route.Patt)
-		}
-		if len(route.Addr) > longest_addr {
-			longest_addr = len(route.Addr)
+	for _, route := range t.routes {
+		maxRKey = max(maxRKey, len(route.Key))
+		maxRPrefix = max(maxRPrefix, len(route.Matcher.Prefix))
+		maxRSub = max(maxRSub, len(route.Matcher.Sub))
+		maxRRegex = max(maxRRegex, len(route.Matcher.Regex))
+		for _, dest := range route.Dests {
+			maxDPrefix = max(maxDPrefix, len(dest.Matcher.Prefix))
+			maxDSub = max(maxDSub, len(dest.Matcher.Sub))
+			maxDRegex = max(maxDRegex, len(dest.Matcher.Regex))
+			maxDAddr = max(maxDAddr, len(dest.Addr))
+			maxDSpoolDir = max(maxDSpoolDir, len(dest.spoolDir))
 		}
 	}
-	fmt_str := fmt.Sprintf("%%%ds %%%ds %%%ds %%8v\n", longest_key+1, longest_patt+1, longest_addr+1)
-	(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, "key", "pattern", "addr", "spool")))
-	for key, route := range list {
-		(*req.Conn).Write([]byte(fmt.Sprintf(fmt_str, key, route.Patt, route.Addr, route.Spool)))
+	routeFmt := fmt.Sprintf("%%%ds %%%ds %%%ds %%%ds\n", maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
+	destFmt := fmt.Sprintf("    %%%ds %%%ds %%%ds %%%ds %%%ds %%6s %%6s %%6s\n", maxRPrefix+1, maxRSub+1, maxRRegex+1, maxDAddr+1, maxDSpoolDir+1)
+	(*req.Conn).Write([]byte(fmt.Sprintf(routeFmt, "key", "prefix", "substr", "regex")))
+	for _, route := range t.routes {
+		m := route.Matcher
+		(*req.Conn).Write([]byte(fmt.Sprintf(routeFmt, route.Key, m.Prefix, m.Sub, m.Regex)))
+		(*req.Conn).Write([]byte(fmt.Sprintf(destFmt, "prefix", "substr", "regex", "addr", "spoolDir", "spool", "pickle", "online")))
+		for _, dest := range route.Dests {
+			m := dest.Matcher
+			(*req.Conn).Write([]byte(fmt.Sprintf(destFmt, m.Prefix, m.Sub, m.Regex, dest.Addr, dest.spoolDir, dest.Spool, dest.Pickle, dest.Online)))
+		}
 	}
 	(*req.Conn).Write([]byte("--\n"))
 	return

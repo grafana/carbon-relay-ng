@@ -128,10 +128,10 @@ func (dest *Destination) updateConn(addr string) error {
 func (dest *Destination) relay() {
 	period_assure_conn := time.Duration(60) * time.Second
 	ticker := time.NewTicker(period_assure_conn)
-	var to_unspool chan []byte
+	var toUnspool chan []byte
 	var conn *net.TCPConn
 
-	process_packet := func(buf []byte) {
+	processPacket := func(buf []byte) {
 		if conn == nil {
 			if dest.Spool {
 				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.direction=spool")
@@ -193,38 +193,38 @@ func (dest *Destination) relay() {
 		}
 	}
 
-	conn_updates := 0
+	numConnUpdates := 0
 	go dest.updateConn(dest.Addr)
 
 	for {
 		// only process spool queue if we have an outbound connection
 		if conn != nil && dest.Spool {
-			to_unspool = dest.queue.ReadChan()
+			toUnspool = dest.queue.ReadChan()
 		} else {
-			to_unspool = nil
+			toUnspool = nil
 		}
 
 		select {
 		case inConnUpdate := <-dest.inConnUpdate:
 			if inConnUpdate {
-				conn_updates += 1
+				numConnUpdates += 1
 			} else {
-				conn_updates -= 1
+				numConnUpdates -= 1
 			}
 		case new_conn := <-dest.connUpdates:
 			conn = new_conn // can be nil and that's ok (it means we had to [re]connect but couldn't)
 			dest.Online = conn != nil
 		case <-ticker.C: // periodically try to bring connection (back) up, if we have to, and no other connect is happening
-			if conn == nil && conn_updates == 0 {
+			if conn == nil && numConnUpdates == 0 {
 				go dest.updateConn(dest.Addr)
 			}
 		case <-dest.shutdown:
 			//fmt.Println(dest.Addr + " dest relay -> requested shutdown. quitting")
 			return
-		case buf := <-to_unspool:
-			process_packet(buf)
+		case buf := <-toUnspool:
+			processPacket(buf)
 		case buf := <-dest.In:
-			process_packet(buf)
+			processPacket(buf)
 		}
 	}
 

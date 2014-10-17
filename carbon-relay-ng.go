@@ -79,6 +79,7 @@ func handle(c *net.TCPConn, config Config) {
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
 		statsd.Increment("target_type=count.unit=Metric.direction=in")
+		// table should handle this as fast as it can
 		table.Dispatch(buf_copy)
 	}
 }
