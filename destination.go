@@ -35,6 +35,7 @@ type Destination struct {
 	In           chan []byte     // incoming metrics
 	shutdown     chan bool       // signals shutdown internally
 	queue        *nsqd.DiskQueue // queue used if spooling enabled
+	queueIn      chan []byte     // send data to queue
 	connUpdates  chan *Conn      // when the dest changes (possibly nil)
 	inConnUpdate chan bool       // to signal when we start a new conn and when we finish
 }
@@ -89,9 +90,18 @@ func (dest *Destination) Run() (err error) {
 	if dest.Spool {
 		dqName := "spool_" + dest.Addr
 		dest.queue = nsqd.NewDiskQueue(dqName, dest.spoolDir, 200*1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
+		dest.queueIn = make(chan []byte)
 	}
+	go dest.QueueWriter()
 	go dest.relay()
 	return err
+}
+
+// provides a channel based api to the queue
+func (dest *Destination) QueueWriter() {
+	for buf := range dest.queueIn {
+		dest.queue.Put(buf)
+	}
 }
 
 func (dest *Destination) Shutdown() error {
@@ -106,7 +116,7 @@ func (dest *Destination) updateConn(addr string) {
 	log.Printf("%v (re)connecting to %v\n", dest.Addr, addr)
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
-	conn, err := NewConn(addr)
+	conn, err := NewConn(addr, dest)
 	if err != nil {
 		log.Printf("%v: %v\n", dest.Addr, err.Error())
 		return
@@ -128,65 +138,41 @@ func (dest *Destination) relay() {
 	var toUnspool chan []byte
 	var conn *Conn
 
-	sender := make(chan []byte)
-
-	processPacket := func(buf []byte) {
-		if conn == nil {
-			if dest.Spool {
-				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.direction=spool")
-				dest.queue.Put(buf)
-			} else {
-				// note, we drop packets while we set up connection
-				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.direction=drop")
-			}
-			return
-		}
-		dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.direction=out")
-
-		var err error
-		var n int
+	// try to send the data on the buffered tcp conn
+	// if that's slow or down, discard the data
+	nonBlockingSend := func(buf []byte) {
 		if dest.Pickle {
 			dp, err := parseDataPoint(buf)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
-				return // no point in spooling these again, so just drop the packet
+				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
+				return
 			}
 			buf = pickle(dp)
 		}
-
-		n, err = conn.Write(buf)
-		if err == nil && len(buf) != n {
-			err = errors.New(fmt.Sprintf("truncated write: %s", string(buf)))
-		}
-		if err != nil {
-			dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Err")
-			log.Println(dest.Addr + " " + err.Error())
-			conn.Close()
-			dest.connUpdates <- nil
-			if dest.Spool {
-				fmt.Println("writing to spool")
-				dest.queue.Put(buf)
-			}
-			return
+		select {
+		// this op won't succeed as long as the conn is busy processing/flushing
+		case conn.In <- buf:
+		default:
+			// we don't want to just buffer everything in memory,
+			// it would probably keep piling up until OOM.  let's just drop the traffic.
+			go func() {
+				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
+			}()
+			dest.SlowNow = true // racey, channelify this
 		}
 	}
 
-	// process the data, but without blocking!
-	// -> try to send the data on the buffered tcp conn
-	// -> if it's slow or down, try to write to spool
-	// -> if that's slow or down, discard the data
-	nonBlockingSend := func(buf []byte) {
+	// try to send the data to the spool
+	// if slow or down, drop and move on
+	nonBlockingSpool := func(buf []byte) {
 		select {
-		case sender <- buf:
-			processPacket(buf)
+		case dest.queueIn <- buf:
+			dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.direction=spool")
 		default:
-			// sender is doing really bad. sending and spooling to disk queue both can't keep up.
-			// we can't keep the routing pipeline blocking, and we also don't want to just buffer everything in memory,
-			// it would probably keep piling up until OOM.  let's just drop the traffic.
 			go func() {
-				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.direction=drop")
+				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
 			}()
-			dest.SlowNow = true // racey, channelify this
 		}
 	}
 
@@ -195,6 +181,11 @@ func (dest *Destination) relay() {
 
 	// this loop/select should never block, we can't hang dest.In or the route & table locks up
 	for {
+		if conn != nil {
+			if !conn.isAlive() {
+				conn = nil
+			}
+		}
 		// only process spool queue if we have an outbound connection and we haven't needed to drop packets in a while
 		if conn != nil && dest.Spool && !dest.SlowLastLoop && !dest.SlowNow {
 			toUnspool = dest.queue.ReadChan()
@@ -222,9 +213,18 @@ func (dest *Destination) relay() {
 			//fmt.Println(dest.Addr + " dest relay -> requested shutdown. quitting")
 			return
 		case buf := <-toUnspool:
+			// we know that conn != nil here
 			nonBlockingSend(buf)
 		case buf := <-dest.In:
-			nonBlockingSend(buf)
+			if conn != nil {
+				nonBlockingSend(buf)
+			} else if dest.Spool {
+				nonBlockingSpool(buf)
+			} else {
+				go func() {
+					dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
+				}()
+			}
 		}
 	}
 }
