@@ -61,16 +61,12 @@ func (c *Conn) HandleData() {
 			errBecauseTruncated := false
 			if err == nil && len(buf) != n {
 				errBecauseTruncated = true
-				go func() {
-					c.dest.statsd.Increment("dest=" + addrToPath(c.dest.Addr) + ".target_type=count.unit=Err.type=truncated")
-				}()
+				c.dest.numErrTruncated.Add(1)
 				err = errors.New(fmt.Sprintf("truncated write: %s", string(buf)))
 			}
 			if err != nil {
 				if !errBecauseTruncated {
-					go func() {
-						c.dest.statsd.Increment("dest=" + addrToPath(c.dest.Addr) + ".target_type=count.unit=Err.type=write")
-					}()
+					c.dest.numErrWrite.Add(1)
 				}
 				log.Println(c.dest.Addr + " " + err.Error())
 				c.updateUp <- false
@@ -78,9 +74,7 @@ func (c *Conn) HandleData() {
 				// TODO: should add function that returns unflushed data, for dest to query so it can spool it
 				return
 			} else {
-				go func() {
-					c.dest.statsd.Increment("dest=" + addrToPath(c.dest.Addr) + ".target_type=count.unit=Metric.direction=out")
-				}()
+				c.dest.numOut.Add(1)
 			}
 		case <-tickerFlush.C:
 			c.buffered.Flush()

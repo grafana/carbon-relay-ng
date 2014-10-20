@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	statsD "github.com/Dieterbe/statsd-go"
 	"github.com/elazarl/go-bindata-assetfs"
 	//    "errors"
 	"github.com/gorilla/mux"
@@ -134,9 +133,8 @@ func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 }
 */
 
-func HttpListener(addr string, t *Table, s *statsD.Client) {
+func HttpListener(addr string, t *Table) {
 	table = t
-	statsd = *s
 
 	// setup routes
 	router := mux.NewRouter()

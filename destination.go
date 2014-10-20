@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
+	"expvar"
 	"fmt"
-	statsD "github.com/Dieterbe/statsd-go"
 	"github.com/graphite-ng/carbon-relay-ng/nsqd"
 	"log"
 	"os"
@@ -19,14 +19,14 @@ func addrToPath(s string) string {
 type Destination struct {
 	// basic properties in init and copy
 	Matcher      Matcher
-	Addr         string         // tcp dest
-	spoolDir     string         // where to store spool files (if enabled)
-	Spool        bool           // spool metrics to disk while dest down?
-	Pickle       bool           // send in pickle format?
-	Online       bool           // state of connection online/offline.
-	SlowNow      bool           // did we have to drop packets in current loop
-	SlowLastLoop bool           // "" last loop
-	statsd       *statsD.Client // to submit stats to
+	Addr         string // tcp dest
+	spoolDir     string // where to store spool files (if enabled)
+	Spool        bool   // spool metrics to disk while dest down?
+	Pickle       bool   // send in pickle format?
+	Online       bool   // state of connection online/offline.
+	SlowNow      bool   // did we have to drop packets in current loop
+	SlowLastLoop bool   // "" last loop
+	CleanAddr    string
 
 	// set automatically in init, passed on in copy
 	Reg *regexp.Regexp // compiled version of patt
@@ -38,23 +38,45 @@ type Destination struct {
 	queueIn      chan []byte     // send data to queue
 	connUpdates  chan *Conn      // when the dest changes (possibly nil)
 	inConnUpdate chan bool       // to signal when we start a new conn and when we finish
+
+	numDropNoConnNoSpool *expvar.Int
+	numSpool             *expvar.Int
+	numDropSlowSpool     *expvar.Int
+	numDropSlowConn      *expvar.Int
+	numDropBadPickle     *expvar.Int
+	numErrTruncated      *expvar.Int
+	numErrWrite          *expvar.Int
+	numOut               *expvar.Int
 }
 
 // after creating, run Run()!
-func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, statsd *statsD.Client) (*Destination, error) {
+func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle bool) (*Destination, error) {
 	m, err := NewMatcher(prefix, sub, regex)
 	if err != nil {
 		return nil, err
 	}
+	cleanAddr := addrToPath(addr)
 	dest := &Destination{
-		Matcher:  *m,
-		Addr:     addr,
-		spoolDir: spoolDir,
-		Spool:    spool,
-		statsd:   statsd,
-		Pickle:   pickle,
+		Matcher:   *m,
+		Addr:      addr,
+		spoolDir:  spoolDir,
+		Spool:     spool,
+		Pickle:    pickle,
+		CleanAddr: cleanAddr,
 	}
+	dest.setExpvars()
 	return dest, nil
+}
+
+func (dest *Destination) setExpvars() {
+	dest.numDropNoConnNoSpool = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
+	dest.numSpool = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.direction=spool")
+	dest.numDropSlowSpool = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
+	dest.numDropSlowConn = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
+	dest.numDropBadPickle = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
+	dest.numErrTruncated = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Err.type=truncated")
+	dest.numErrWrite = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Err.type=write")
+	dest.numOut = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.direction=out")
 }
 
 func (dest *Destination) Match(s []byte) bool {
@@ -71,14 +93,14 @@ func (dest *Destination) UpdateMatcher(matcher Matcher) {
 // a "basic" static copy of the dest, not actually running
 func (dest *Destination) Snapshot() Destination {
 	return Destination{
-		Matcher:  dest.Matcher.Snapshot(),
-		Addr:     dest.Addr,
-		spoolDir: dest.spoolDir,
-		Spool:    dest.Spool,
-		statsd:   dest.statsd,
-		Reg:      dest.Reg,
-		Pickle:   dest.Pickle,
-		Online:   dest.Online,
+		Matcher:   dest.Matcher.Snapshot(),
+		Addr:      dest.Addr,
+		spoolDir:  dest.spoolDir,
+		Spool:     dest.Spool,
+		Reg:       dest.Reg,
+		Pickle:    dest.Pickle,
+		Online:    dest.Online,
+		CleanAddr: dest.CleanAddr,
 	}
 }
 
@@ -88,7 +110,7 @@ func (dest *Destination) Run() (err error) {
 	dest.connUpdates = make(chan *Conn)
 	dest.inConnUpdate = make(chan bool)
 	if dest.Spool {
-		dqName := "spool_" + dest.Addr
+		dqName := "spool_" + dest.CleanAddr
 		dest.queue = nsqd.NewDiskQueue(dqName, dest.spoolDir, 200*1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
 		dest.queueIn = make(chan []byte)
 	}
@@ -125,6 +147,8 @@ func (dest *Destination) updateConn(addr string) {
 	if addr != dest.Addr {
 		log.Printf("%v update address to %v)\n", dest.Addr, addr)
 		dest.Addr = addr
+		dest.CleanAddr = addrToPath(addr)
+		dest.setExpvars()
 	}
 	dest.connUpdates <- conn
 	return
@@ -145,7 +169,7 @@ func (dest *Destination) relay() {
 			dp, err := parseDataPoint(buf)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
-				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
+				dest.numDropBadPickle.Add(1)
 				return
 			}
 			buf = pickle(dp)
@@ -156,9 +180,7 @@ func (dest *Destination) relay() {
 		default:
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
-			go func() {
-				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
-			}()
+			dest.numDropSlowConn.Add(1)
 			dest.SlowNow = true // racey, channelify this
 		}
 	}
@@ -168,11 +190,9 @@ func (dest *Destination) relay() {
 	nonBlockingSpool := func(buf []byte) {
 		select {
 		case dest.queueIn <- buf:
-			dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.direction=spool")
+			dest.numSpool.Add(1)
 		default:
-			go func() {
-				dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
-			}()
+			dest.numDropSlowSpool.Add(1)
 		}
 	}
 
@@ -221,9 +241,7 @@ func (dest *Destination) relay() {
 			} else if dest.Spool {
 				nonBlockingSpool(buf)
 			} else {
-				go func() {
-					dest.statsd.Increment("dest=" + addrToPath(dest.Addr) + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
-				}()
+				dest.numDropNoConnNoSpool.Add(1)
 			}
 		}
 	}

@@ -100,7 +100,7 @@ func readDestinations(specs []string, config Config) (destinations []*Destinatio
 				//return destinations, errors.New(fmt.Sprintf("expected endpoint option, not token type %v with value '%s'", t.Token, t.Value))
 			}
 		}
-		dest, err := NewDestination(prefix, sub, regex, addr, spoolDir, spool, pickle, &statsd)
+		dest, err := NewDestination(prefix, sub, regex, addr, spoolDir, spool, pickle)
 		if err != nil {
 			return destinations, err
 		}

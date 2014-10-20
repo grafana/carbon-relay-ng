@@ -5,10 +5,10 @@ package main
 
 import (
 	"bufio"
+	"expvar"
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
-	statsD "github.com/Dieterbe/statsd-go"
 	"github.com/rcrowley/goagain"
 	"io"
 	"log"
@@ -17,13 +17,6 @@ import (
 	"runtime/pprof"
 )
 
-type StatsdConfig struct {
-	Enabled  bool
-	Instance string
-	Host     string
-	Port     int
-}
-
 type Config struct {
 	Listen_addr string
 	Admin_addr  string
@@ -31,8 +24,8 @@ type Config struct {
 	Spool_dir   string
 	First_only  bool
 	Routes      []*Route
-	Statsd      StatsdConfig
 	Init        []string
+	Instance    string
 }
 
 var (
@@ -40,8 +33,8 @@ var (
 	config      Config
 	to_dispatch = make(chan []byte)
 	table       *Table
-	statsd      statsD.Client
 	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file")
+	numIn       = expvar.NewInt("target_type=count.unit=Metric.direction=in")
 )
 
 func init() {
@@ -78,7 +71,7 @@ func handle(c *net.TCPConn, config Config) {
 		buf = append(buf, '\n')
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
-		statsd.Increment("target_type=count.unit=Metric.direction=in")
+		numIn.Add(1)
 		// table should handle this as fast as it can
 		table.Dispatch(buf_copy)
 	}
@@ -116,8 +109,14 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
+	if len(config.Instance) == 0 {
+		log.Println("instance identifier cannot be empty")
+		os.Exit(1)
+	}
+	log.Printf("===== carbon-relay-ng instance '%s' starting. =====\n", config.Instance)
+
 	log.Println("creating routing table...")
-	table = NewTable(config.Spool_dir, &statsd)
+	table = NewTable(config.Spool_dir)
 	log.Println("initializing routing table...")
 	var err error
 	for i, cmd := range config.Init {
@@ -136,8 +135,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	statsdPrefix := fmt.Sprintf("service=carbon-relay-ng.instance=%s.", config.Statsd.Instance)
-	statsd = *statsD.NewClient(config.Statsd.Enabled, config.Statsd.Host, config.Statsd.Port, statsdPrefix)
+	instance := expvar.NewString("instance")
+	service := expvar.NewString("service")
+	instance.Set(config.Instance)
+	service.Set("carbon-relay-ng")
 
 	// Follow the goagain protocol, <https://github.com/rcrowley/goagain>.
 	l, ppid, err := goagain.GetEnvs()
@@ -174,7 +175,7 @@ func main() {
 	}
 
 	if config.Http_addr != "" {
-		go HttpListener(config.Http_addr, table, &statsd)
+		go HttpListener(config.Http_addr, table)
 	}
 
 	if err := goagain.AwaitSignals(l); nil != err {

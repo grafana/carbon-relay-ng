@@ -1,24 +1,32 @@
 package main
 
 import (
+	"expvar"
 	"fmt"
-	statsD "github.com/Dieterbe/statsd-go"
 	"log"
 	"sync"
 )
 
 type Table struct {
 	sync.Mutex
-	Blacklist []*Matcher
-	routes    []*Route
-	spoolDir  string
-	statsd    *statsD.Client
+	Blacklist     []*Matcher
+	routes        []*Route
+	spoolDir      string
+	numBlacklist  *expvar.Int
+	numUnroutable *expvar.Int
 }
 
-func NewTable(spoolDir string, statsd *statsD.Client) *Table {
+func NewTable(spoolDir string) *Table {
 	routes := make([]*Route, 0)
 	blacklist := make([]*Matcher, 0)
-	t := &Table{sync.Mutex{}, blacklist, routes, spoolDir, statsd}
+	t := &Table{
+		sync.Mutex{},
+		blacklist,
+		routes,
+		spoolDir,
+		expvar.NewInt("target_type=count.unit=Metric.direction=blacklist"),
+		expvar.NewInt("target_type=count.unit=Metric.direction=unroutable"),
+	}
 	t.Run()
 	return t
 }
@@ -44,7 +52,7 @@ func (table *Table) Dispatch(buf []byte) {
 
 	for _, matcher := range table.Blacklist {
 		if matcher.Match(buf) {
-			statsd.Increment("target_type=count.unit=Metric.direction=blacklist")
+			table.numBlacklist.Add(1)
 			return
 		}
 	}
@@ -63,10 +71,8 @@ func (table *Table) Dispatch(buf []byte) {
 	// this is a bit sloppy (no synchronisation), but basically we don't want to block here
 	// Dispatch should return asap
 	if !routed {
-		go func() {
-			statsd.Increment("target_type=count.unit=Metric.direction=unroutable")
-			log.Printf("unrouteable: %s\n", buf)
-		}()
+		table.numUnroutable.Add(1)
+		log.Printf("unrouteable: %s\n", buf)
 	}
 
 }
@@ -89,7 +95,7 @@ func (table *Table) Snapshot() Table {
 		snap := r.Snapshot()
 		routes[i] = &snap
 	}
-	return Table{sync.Mutex{}, blacklist, routes, table.spoolDir, nil}
+	return Table{sync.Mutex{}, blacklist, routes, table.spoolDir, nil, nil}
 }
 
 func (table *Table) GetRoute(key string) *Route {

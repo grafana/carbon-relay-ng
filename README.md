@@ -114,3 +114,9 @@ commands:
     route patt <key> [pattern]       update pattern for given route key.  (empty pattern allows all)
 
 
+
+Instrumentation
+---------------
+
+All performance variables are available at http://localhost:8081/debug/vars
+(update port if you change it in config)
