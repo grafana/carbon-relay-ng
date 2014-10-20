@@ -121,13 +121,15 @@ func main() {
 	log.Println("initializing routing table...")
 	var err error
 	for i, cmd := range config.Init {
-		err = applyCommand(table, cmd)
+		fmt.Println("applying", cmd)
+		err = applyCommand(table, cmd, config)
 		if err != nil {
 			log.Println("could not apply init cmd #", i+1)
 			log.Println(err)
 			os.Exit(1)
 		}
 	}
+	fmt.Println(table.Print())
 	err = table.Run()
 	if err != nil {
 		log.Println(err)

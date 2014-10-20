@@ -23,7 +23,7 @@ func tcpViewHandler(req telnet.Req) (err error) {
 }
 
 func tcpModHandler(req telnet.Req) (err error) {
-	err = applyCommand(table, req.Command[1])
+	err = applyCommand(table, req.Command[1], config)
 	if err != nil {
 		return err
 	}
