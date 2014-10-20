@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	statsD "github.com/Dieterbe/statsd-go"
 	"log"
 	"sync"
@@ -140,4 +141,81 @@ func (table *Table) DelRoute(key string) error {
 		return err
 	}
 	return nil
+}
+
+func (table *Table) Print() (str string) {
+	// TODO also print route type, print blacklist
+	// we want to print things concisely (but no smaller than the defaults below)
+	// so we have to figure out the max lengths of everything first
+	// the default values can be arbitrary (bot not smaller than the column titles),
+	// i figured multiples of 4 should look good
+	// 'R' stands for Route, 'D' for dest, 'B' blacklist
+	maxBPrefix := 4
+	maxBSub := 4
+	maxBRegex := 4
+	maxRKey := 8
+	maxRPrefix := 4
+	maxRSub := 4
+	maxRRegex := 4
+	maxDPrefix := 4
+	maxDSub := 4
+	maxDRegex := 4
+	maxDAddr := 16
+	maxDSpoolDir := 16
+
+	t := table.Snapshot()
+	for _, black := range t.Blacklist {
+		maxBPrefix = max(maxBRegex, len(black.Prefix))
+		maxBSub = max(maxBSub, len(black.Sub))
+		maxBRegex = max(maxBRegex, len(black.Regex))
+	}
+	for _, route := range t.routes {
+		maxRKey = max(maxRKey, len(route.Key))
+		maxRPrefix = max(maxRPrefix, len(route.Matcher.Prefix))
+		maxRSub = max(maxRSub, len(route.Matcher.Sub))
+		maxRRegex = max(maxRRegex, len(route.Matcher.Regex))
+		for _, dest := range route.Dests {
+			maxDPrefix = max(maxDPrefix, len(dest.Matcher.Prefix))
+			maxDSub = max(maxDSub, len(dest.Matcher.Sub))
+			maxDRegex = max(maxDRegex, len(dest.Matcher.Regex))
+			maxDAddr = max(maxDAddr, len(dest.Addr))
+			maxDSpoolDir = max(maxDSpoolDir, len(dest.spoolDir))
+		}
+	}
+	heaFmtB := fmt.Sprintf("Blacklist: %%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
+	rowFmtB := fmt.Sprintf("           %%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
+	heaFmtR := fmt.Sprintf("Routes: %%%ds %%%ds %%%ds %%%ds\n", maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
+	rowFmtR := fmt.Sprintf(">       %%%ds %%%ds %%%ds %%%ds\n", maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
+	heaFmtD := fmt.Sprintf("              %%%ds %%%ds %%%ds %%%ds %%%ds %%6s %%6s %%6s\n", maxDPrefix+1, maxDSub+1, maxDRegex+1, maxDAddr+1, maxDSpoolDir+1)
+	rowFmtD := fmt.Sprintf("                %%%ds %%%ds %%%ds %%%ds %%%ds %%6t %%6t %%6t\n", maxDPrefix+1, maxDSub+1, maxDRegex+1, maxDAddr+1, maxDSpoolDir+1)
+
+	str += fmt.Sprintf(heaFmtB, "prefix", "substr", "regex")
+	for _, black := range t.Blacklist {
+		str += fmt.Sprintf(rowFmtB, black.Prefix, black.Sub, black.Regex)
+	}
+	str += "\n"
+
+	str += fmt.Sprintf(heaFmtR, "key", "prefix", "substr", "regex")
+	str += "==========="
+	for i := 1; i < maxRKey+maxRPrefix+maxRSub+maxRRegex+7; i++ {
+		str += "="
+	}
+	str += "\n"
+
+	for _, route := range t.routes {
+		m := route.Matcher
+		str += fmt.Sprintf(rowFmtR, route.Key, m.Prefix, m.Sub, m.Regex)
+		str += fmt.Sprintf(heaFmtD, "prefix", "substr", "regex", "addr", "spoolDir", "spool", "pickle", "online")
+		str += "              "
+		for i := 1; i < maxDPrefix+maxDSub+maxDRegex+maxDAddr+maxDSpoolDir+5+3*6+10; i++ {
+			str += "-"
+		}
+		str += "\n"
+		for _, dest := range route.Dests {
+			m := dest.Matcher
+			str += fmt.Sprintf(rowFmtD, m.Prefix, m.Sub, m.Regex, dest.Addr, dest.spoolDir, dest.Spool, dest.Pickle, dest.Online)
+		}
+		str += "\n"
+	}
+	return
 }
