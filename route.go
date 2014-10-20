@@ -49,12 +49,12 @@ func (route *Route) Run() error {
 }
 
 func (route *Route) RelaySendAllMatch() {
-	for metric := range route.In {
+	for buf := range route.In {
 		route.Lock()
 		for _, dest := range route.Dests {
-			if dest.Match(metric) {
+			if dest.Match(buf) {
 				// dest should handle this as quickly as it can
-				dest.In <- metric
+				dest.In <- buf
 			}
 		}
 		route.Unlock()
@@ -62,12 +62,12 @@ func (route *Route) RelaySendAllMatch() {
 }
 
 func (route *Route) RelaySendFirstMatch() {
-	for metric := range route.In {
+	for buf := range route.In {
 		route.Lock()
 		for _, dest := range route.Dests {
-			if dest.Match(metric) {
+			if dest.Match(buf) {
 				// dest should handle this as quickly as it can
-				dest.In <- metric
+				dest.In <- buf
 				break
 			}
 		}
