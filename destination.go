@@ -201,7 +201,7 @@ func (dest *Destination) relay() {
 				numConnUpdates -= 1
 			}
 		// note: new conn can be nil and that's ok (it means we had to [re]connect but couldn't)
-		case conn := <-dest.connUpdates:
+		case conn = <-dest.connUpdates:
 			dest.Online = conn != nil
 		case <-ticker.C: // periodically try to bring connection (back) up, if we have to, and no other connect is happening
 			if conn == nil && numConnUpdates == 0 {

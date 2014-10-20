@@ -73,8 +73,8 @@ func (c *Conn) HandleData() {
 					}()
 				}
 				log.Println(c.dest.Addr + " " + err.Error())
-				c.Close()
 				c.updateUp <- false
+				c.Close() // this can take a while but that's ok. this conn won't be used anymore
 				// TODO: should add function that returns unflushed data, for dest to query so it can spool it
 				return
 			} else {
