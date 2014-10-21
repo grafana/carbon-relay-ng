@@ -69,14 +69,15 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 }
 
 func (dest *Destination) setExpvars() {
-	dest.numDropNoConnNoSpool = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
-	dest.numSpool = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.direction=spool")
-	dest.numDropSlowSpool = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
-	dest.numDropSlowConn = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
-	dest.numDropBadPickle = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
-	dest.numErrTruncated = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Err.type=truncated")
-	dest.numErrWrite = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Err.type=write")
-	dest.numOut = expvar.NewInt("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.direction=out")
+
+	dest.numDropNoConnNoSpool = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
+	dest.numSpool = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.direction=spool")
+	dest.numDropSlowSpool = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
+	dest.numDropSlowConn = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
+	dest.numDropBadPickle = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
+	dest.numErrTruncated = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Err.type=truncated")
+	dest.numErrWrite = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Err.type=write")
+	dest.numOut = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.direction=out")
 }
 
 func (dest *Destination) Match(s []byte) bool {

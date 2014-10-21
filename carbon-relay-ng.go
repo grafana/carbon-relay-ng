@@ -34,7 +34,7 @@ var (
 	to_dispatch = make(chan []byte)
 	table       *Table
 	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file")
-	numIn       = expvar.NewInt("target_type=count.unit=Metric.direction=in")
+	numIn       = Int("target_type=count.unit=Metric.direction=in")
 )
 
 func init() {
