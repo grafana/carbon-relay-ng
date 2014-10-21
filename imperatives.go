@@ -27,13 +27,13 @@ var tokenDefGlobal = []toki.Def{
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch [a-z-_]+"},
 	{Token: opt, Pattern: "[a-z]+="},
 	{Token: str, Pattern: "\".*\""},
-	{Token: word, Pattern: "[a-z0-9:\\.]+"},
+	{Token: word, Pattern: "[^ ]+"},
 }
 
 var tokenDefDest = []toki.Def{
 	{Token: opt, Pattern: "[a-z]+="},
 	{Token: str, Pattern: "\".*\""},
-	{Token: word, Pattern: "[a-z0-9:\\.]+"},
+	{Token: word, Pattern: "[^ ]+"},
 }
 
 // we should read and apply all destinations at once,
@@ -80,6 +80,7 @@ func readDestinations(specs []string, config Config) (destinations []*Destinatio
 					t := s.Next()
 					val := string(t.Value)
 					if val == "true" {
+						pickle = true
 					} else if val == "false" {
 					} else {
 						return destinations, errors.New("unrecognized pickle value '" + val + "'")
@@ -196,7 +197,7 @@ func readRouteOpts(s *toki.Scanner) (prefix, sub, regex string, err error) {
 			break
 		}
 		if t.Token == toki.Error {
-			return "", "", "", errors.New(string(t.Value))
+			return "", "", "", errors.New("read the error token instead of one i recognize")
 		}
 		if t.Token == opt {
 			//fmt.Println("yet")
@@ -214,7 +215,6 @@ func readRouteOpts(s *toki.Scanner) (prefix, sub, regex string, err error) {
 				return "", "", "", errors.New("unrecognized option '" + string(t.Value) + "'")
 			}
 		}
-		//fmt.Println("k")
 	}
 	return
 }
