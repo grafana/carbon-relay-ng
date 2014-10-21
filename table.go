@@ -64,6 +64,7 @@ func (table *Table) Dispatch(buf []byte) {
 			routed = true
 			//fmt.Println("routing to " + dest.Key)
 			// routes should take this in as fast as they can
+			fmt.Println("table sending to route", string(buf))
 			route.In <- buf
 		}
 	}
@@ -119,6 +120,31 @@ func (table *Table) AddBlacklist(matcher *Matcher) {
 	table.Lock()
 	defer table.Unlock()
 	table.Blacklist = append(table.Blacklist, matcher)
+}
+
+func (table *Table) Flush() error {
+	table.Lock()
+	defer table.Unlock()
+	for _, route := range table.routes {
+		err := route.Flush()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (table *Table) Shutdown() error {
+	table.Lock()
+	defer table.Unlock()
+	for _, route := range table.routes {
+		err := route.Shutdown()
+		if err != nil {
+			return err
+		}
+	}
+	table.routes = make([]*Route, 0)
+	return nil
 }
 
 // idempotent semantics, not existing is fine

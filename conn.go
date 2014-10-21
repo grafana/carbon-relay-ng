@@ -45,7 +45,9 @@ func (c *Conn) HandleStatus() {
 	for {
 		select {
 		case c.up = <-c.updateUp:
+			//log.Println("conn.up is now", c.up)
 		case c.checkUp <- c.up:
+			//log.Println("query for conn.up, responded with", c.up)
 		}
 	}
 }
@@ -57,6 +59,7 @@ func (c *Conn) HandleData() {
 	for {
 		select {
 		case buf := <-c.In:
+			log.Printf("%s conn writing %s\n", c.dest.Addr, string(buf))
 			n, err := c.Write(buf)
 			errBecauseTruncated := false
 			if err == nil && len(buf) != n {
@@ -69,7 +72,9 @@ func (c *Conn) HandleData() {
 					c.dest.numErrWrite.Add(1)
 				}
 				log.Println(c.dest.Addr + " " + err.Error())
+				fmt.Println("updating")
 				c.updateUp <- false
+				fmt.Println("closing")
 				c.Close() // this can take a while but that's ok. this conn won't be used anymore
 				// TODO: should add function that returns unflushed data, for dest to query so it can spool it
 				return
@@ -88,7 +93,18 @@ func (c *Conn) Write(buf []byte) (int, error) {
 	return c.buffered.Write(buf)
 }
 
+func (c *Conn) Flush() error {
+	log.Println("flushing mah buffer")
+	err := c.buffered.Flush()
+	log.Println("flush err", err)
+	return err
+}
+
 func (c *Conn) Close() error {
+	log.Println("Close() called.  sending shutdown")
 	c.shutdown <- true
-	return c.conn.Close()
+	log.Println("conn close")
+	a := c.conn.Close()
+	log.Println("closed")
+	return a
 }

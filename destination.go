@@ -38,6 +38,8 @@ type Destination struct {
 	queueIn      chan []byte     // send data to queue
 	connUpdates  chan *Conn      // when the dest changes (possibly nil)
 	inConnUpdate chan bool       // to signal when we start a new conn and when we finish
+	flush        chan bool
+	flushErr     chan error
 
 	numDropNoConnNoSpool *expvar.Int
 	numSpool             *expvar.Int
@@ -110,6 +112,8 @@ func (dest *Destination) Run() (err error) {
 	dest.shutdown = make(chan bool)
 	dest.connUpdates = make(chan *Conn)
 	dest.inConnUpdate = make(chan bool)
+	dest.flush = make(chan bool)
+	dest.flushErr = make(chan error)
 	if dest.Spool {
 		dqName := "spool_" + dest.CleanAddr
 		dest.queue = nsqd.NewDiskQueue(dqName, dest.spoolDir, 200*1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
@@ -125,6 +129,11 @@ func (dest *Destination) QueueWriter() {
 	for buf := range dest.queueIn {
 		dest.queue.Put(buf)
 	}
+}
+
+func (dest *Destination) Flush() error {
+	dest.flush <- true
+	return <-dest.flushErr
 }
 
 func (dest *Destination) Shutdown() error {
@@ -214,6 +223,7 @@ func (dest *Destination) relay() {
 			toUnspool = nil
 		}
 
+		log.Printf("#### %s entering the main select ######\n", dest.Addr)
 		select {
 		case inConnUpdate := <-dest.inConnUpdate:
 			if inConnUpdate {
@@ -223,6 +233,7 @@ func (dest *Destination) relay() {
 			}
 		// note: new conn can be nil and that's ok (it means we had to [re]connect but couldn't)
 		case conn = <-dest.connUpdates:
+			log.Printf("%s updating conn to %v\n", dest.Addr, conn)
 			dest.Online = conn != nil
 		case <-ticker.C: // periodically try to bring connection (back) up, if we have to, and no other connect is happening
 			if conn == nil && numConnUpdates == 0 {
@@ -230,13 +241,25 @@ func (dest *Destination) relay() {
 			}
 			dest.SlowLastLoop = dest.SlowNow
 			dest.SlowNow = false
+		case <-dest.flush:
+			if conn != nil {
+				dest.flushErr <- conn.Flush()
+			} else {
+				dest.flushErr <- nil
+			}
 		case <-dest.shutdown:
-			//fmt.Println(dest.Addr + " dest relay -> requested shutdown. quitting")
+			log.Printf("%v shutting down\n", dest.Addr)
+			if conn != nil {
+				conn.Flush()
+				conn.Close()
+			}
 			return
 		case buf := <-toUnspool:
 			// we know that conn != nil here
+			log.Printf("%v received from spool: %s\n", dest.Addr, string(buf))
 			nonBlockingSend(buf)
 		case buf := <-dest.In:
+			log.Printf("%v received from In: %s\n", dest.Addr, string(buf))
 			if conn != nil {
 				nonBlockingSend(buf)
 			} else if dest.Spool {
