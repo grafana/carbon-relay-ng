@@ -60,6 +60,7 @@ func (c *Conn) HandleData() {
 		select {
 		case buf := <-c.In:
 			log.Printf("%s conn writing %s\n", c.dest.Addr, string(buf))
+			buf = append(buf, '\n')
 			n, err := c.Write(buf)
 			errBecauseTruncated := false
 			if err == nil && len(buf) != n {

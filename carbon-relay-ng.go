@@ -68,7 +68,6 @@ func handle(c *net.TCPConn, config Config) {
 			log.Println("isPrefix: true")
 			break
 		}
-		buf = append(buf, '\n')
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
 		numIn.Add(1)

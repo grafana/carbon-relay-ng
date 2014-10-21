@@ -46,6 +46,7 @@ func (table *Table) Run() error {
 	return nil
 }
 
+// buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
 	table.Lock()
 	defer table.Unlock()

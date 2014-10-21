@@ -16,9 +16,9 @@ var kMetricsC [10][]byte
 
 func init() {
 	for i := 0; i < 10; i++ {
-		kMetricsA[i] = []byte(fmt.Sprintf("test-metric 123 %d\n", i))
-		kMetricsB[i] = []byte(fmt.Sprintf("test-metric 123 %d\n", 10+i))
-		kMetricsC[i] = []byte(fmt.Sprintf("test-metric 123 %d\n", 20+i))
+		kMetricsA[i] = []byte(fmt.Sprintf("test-metric 123 %d", i))
+		kMetricsB[i] = []byte(fmt.Sprintf("test-metric 123 %d", 10+i))
+		kMetricsC[i] = []byte(fmt.Sprintf("test-metric 123 %d", 20+i))
 	}
 }
 
@@ -80,8 +80,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	seenUDU := <-tUDU.IHaveSeen
 	assert.Equal(t, len(seenUUU), 10)
 	assert.Equal(t, len(seenUDU), 10)
-	assert.Equal(t, seenUUU, kMetricsA)
-	assert.Equal(t, seenUDU, kMetricsA)
+	assert.Equal(t, seenUUU, kMetricsA[:])
+	assert.Equal(t, seenUDU, kMetricsA[:])
 
 	time.Sleep(10 * time.Millisecond) // give time to traverse the routing pipeline into conn
 	err = table.Shutdown()
