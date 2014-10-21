@@ -67,6 +67,13 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	time.Sleep(200 * time.Millisecond) // give time to establish conn
 	for _, m := range kMetricsA {
 		table.Dispatch(m)
+		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
+		// note i'm afraid this sleep masks another issue: data can get reordered.
+		// if you take this sleep away, and run like so:
+		// go test 2>&1 | egrep '(table sending to route|route.*receiving)' | grep -v 2006
+		// you should see that data goes through the table in the right order, but the route receives
+		// the points in a different order.
+		time.Sleep(10 * time.Microsecond)
 	}
 	time.Sleep(200 * time.Millisecond) // give time to traverse the routing pipeline
 	err = table.Flush()
