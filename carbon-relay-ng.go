@@ -98,6 +98,7 @@ func main() {
 	if _, err := toml.DecodeFile(config_file, &config); err != nil {
 		fmt.Printf("Cannot use config file '%s':\n", config_file)
 		fmt.Println(err)
+		usage()
 		return
 	}
 	if *cpuprofile != "" {
