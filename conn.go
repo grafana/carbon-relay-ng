@@ -18,6 +18,8 @@ type Conn struct {
 	up       bool
 	checkUp  chan bool
 	updateUp chan bool
+	flush    chan bool
+	flushErr chan error
 }
 
 func NewConn(addr string, dest *Destination) (*Conn, error) {
@@ -30,7 +32,18 @@ func NewConn(addr string, dest *Destination) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	connObj := &Conn{conn, bufio.NewWriter(conn), make(chan bool), make(chan []byte), dest, true, make(chan bool), make(chan bool)}
+	connObj := &Conn{
+		conn:     conn,
+		buffered: bufio.NewWriter(conn),
+		shutdown: make(chan bool),
+		In:       make(chan []byte),
+		dest:     dest,
+		up:       true,
+		checkUp:  make(chan bool),
+		updateUp: make(chan bool),
+		flush:    make(chan bool),
+		flushErr: make(chan error),
+	}
 
 	go connObj.HandleData()
 	go connObj.HandleStatus()
@@ -84,6 +97,8 @@ func (c *Conn) HandleData() {
 			}
 		case <-tickerFlush.C:
 			c.buffered.Flush()
+		case <-c.flush:
+			c.flushErr <- c.buffered.Flush()
 		case <-c.shutdown:
 			return
 		}
@@ -95,9 +110,11 @@ func (c *Conn) Write(buf []byte) (int, error) {
 }
 
 func (c *Conn) Flush() error {
-	log.Println("flushing mah buffer")
-	err := c.buffered.Flush()
-	log.Println("flush err", err)
+	log.Println("going to flush mah buffer")
+	c.flush <- true
+	log.Println("flushing mah buffer, getting error maybe")
+	err := <-c.flushErr
+	log.Println("flush done; err:", err)
 	return err
 }
 
