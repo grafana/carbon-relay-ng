@@ -22,6 +22,8 @@ type Conn struct {
 	flush       chan bool
 	flushErr    chan error
 	periodFlush time.Duration
+	unFlushed   []byte
+	keepSafe    *keepSafe
 }
 
 func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, error) {
@@ -37,8 +39,8 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 	connObj := &Conn{
 		conn:        conn,
 		buffered:    bufio.NewWriter(conn),
-		shutdown:    make(chan bool, 1), // when we write here, HandleData() may not be running anymore to read from the chan
-		In:          make(chan []byte),
+		shutdown:    make(chan bool, 1),      // when we write here, HandleData() may not be running anymore to read from the chan
+		In:          make(chan []byte, 1000), // to make sure writes to In are fast until we really can't keep up.  we should track flush() durations to tune this
 		dest:        dest,
 		up:          true,
 		checkUp:     make(chan bool),
@@ -46,6 +48,9 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 		flush:       make(chan bool),
 		flushErr:    make(chan error),
 		periodFlush: periodFlush,
+		// this interval should be long enough to capture all failure modes
+		// (endpoint down, delayed timeout, etc), so it should be at least as long as the flush interval
+		keepSafe: NewKeepSafe(100000, time.Duration(10*time.Second)),
 	}
 
 	go connObj.checkEOF()
@@ -82,9 +87,18 @@ func (c *Conn) checkEOF() {
 	}
 }
 
+// all these messages should potentially be resubmitted, because we're not confident about their delivery
+// note: getting this data means resetting it! so handle it wisely.
+func (c *Conn) getRedo() [][]byte {
+	return c.keepSafe.GetAll()
+}
+
 func (c *Conn) HandleStatus() {
 	for {
 		select {
+		// note: when we mark as down here, it is expected that conn doesn't absorb any more data,
+		// so that you can call getRedo() and get the full picture
+		// this is actually not true yet.
 		case c.up = <-c.updateUp:
 			log.Printf("%s conn marking alive as %v\n", c.dest.Addr, c.up)
 			//log.Println("conn.up is now", c.up)
@@ -103,6 +117,7 @@ func (c *Conn) HandleData() {
 		select {
 		case buf := <-c.In:
 			log.Printf("%s conn HandleData writing %s\n", c.dest.Addr, string(buf))
+			c.keepSafe.Add(buf)
 			buf = append(buf, '\n')
 			n, err := c.Write(buf)
 			errBecauseTruncated := false
@@ -120,7 +135,6 @@ func (c *Conn) HandleData() {
 				c.updateUp <- false // assure In won't receive more data because every loop that writes to In reads this out
 				log.Printf("%s conn Closing\n", c.dest.Addr)
 				go c.Close() // this can take a while but that's ok. this conn won't be used anymore
-				// TODO: should add function that returns unflushed data, for dest to query so it can spool it
 				return
 			} else {
 				c.dest.numOut.Add(1)

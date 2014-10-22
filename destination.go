@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -42,6 +43,7 @@ type Destination struct {
 	inConnUpdate chan bool       // to signal when we start a new conn and when we finish
 	flush        chan bool
 	flushErr     chan error
+	tasks        sync.WaitGroup
 
 	numDropNoConnNoSpool *expvar.Int
 	numSpool             *expvar.Int
@@ -123,6 +125,7 @@ func (dest *Destination) Run() (err error) {
 		dest.queue = nsqd.NewDiskQueue(dqName, dest.spoolDir, 200*1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
 		dest.queueIn = make(chan []byte)
 	}
+	dest.tasks = sync.WaitGroup{}
 	go dest.QueueWriter()
 	go dest.relay()
 	return err
@@ -145,6 +148,7 @@ func (dest *Destination) Shutdown() error {
 		return errors.New("not running yet")
 	}
 	dest.shutdown <- true
+	// TODO handle running dest.tasks
 	return nil
 }
 
@@ -166,6 +170,13 @@ func (dest *Destination) updateConn(addr string) {
 	}
 	dest.connUpdates <- conn
 	return
+}
+
+func (dest *Destination) collectRedo(conn *Conn) {
+	dest.tasks.Add(1)
+	// TODO reliably resend this data when conn comes back up, without overloading it so that we don't drop data!
+	_ = conn.getRedo()
+	dest.tasks.Done()
 }
 
 // TODO func (l *TCPListener) SetDeadline(t time.Time)
@@ -218,6 +229,7 @@ func (dest *Destination) relay() {
 	for {
 		if conn != nil {
 			if !conn.isAlive() {
+				go dest.collectRedo(conn)
 				conn = nil
 			}
 		}
