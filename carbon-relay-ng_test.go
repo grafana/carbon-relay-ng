@@ -34,14 +34,14 @@ func TestSinglePointSingleRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(200 * time.Millisecond) // give time to establish conn
+	time.Sleep(20 * time.Millisecond) // give time to establish conn
 	table.Dispatch(singleMetric)
-	time.Sleep(10 * time.Millisecond) // give time to traverse the routing pipeline into conn
+	time.Sleep(time.Millisecond) // give time to traverse the routing pipeline into conn
 	err = table.Shutdown()
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(200 * time.Millisecond) // give time to read data
+	time.Sleep(10 * time.Millisecond) // give time to read data
 	tE.WhatHaveISeen <- true
 	seen := <-tE.IHaveSeen
 	assert.Equal(t, len(seen), 1)
@@ -64,7 +64,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(200 * time.Millisecond) // give time to establish conn
+	time.Sleep(time.Millisecond) // give time to establish conn
 	for _, m := range kMetricsA {
 		table.Dispatch(m)
 		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
@@ -75,12 +75,12 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		// the points in a different order.
 		time.Sleep(10 * time.Microsecond)
 	}
-	time.Sleep(200 * time.Millisecond) // give time to traverse the routing pipeline
+	time.Sleep(time.Millisecond) // give time to traverse the routing pipeline
 	err = table.Flush()
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(800 * time.Millisecond) // give time to read data
+	time.Sleep(10 * time.Millisecond) // give time to read data
 	tUUU.WhatHaveISeen <- true
 	seenUUU := <-tUUU.IHaveSeen
 	tUDU.WhatHaveISeen <- true
@@ -90,9 +90,55 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	assert.Equal(t, seenUUU, kMetricsA[:])
 	assert.Equal(t, seenUDU, kMetricsA[:])
 
-	time.Sleep(10 * time.Millisecond) // give time to traverse the routing pipeline into conn
+	// STEP 2: tUDU goes down! simulate outage
+	tUDU.Close()
+
+	for _, m := range kMetricsB {
+		table.Dispatch(m)
+		time.Sleep(10 * time.Microsecond)
+	}
+
+	time.Sleep(time.Millisecond) // give time to traverse the routing pipeline
+	err = table.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(10 * time.Millisecond) // give time to read data
+	tUUU.WhatHaveISeen <- true
+	seenUUU = <-tUUU.IHaveSeen
+	assert.Equal(t, len(seenUUU), 20)
+	allSent := make([][]byte, 20)
+	copy(allSent[0:10], kMetricsA[:])
+	copy(allSent[10:20], kMetricsB[:])
+	// human friendly:
+	for i, m := range seenUUU {
+		if string(m) != string(allSent[i]) {
+			t.Errorf("error in UUU at pos %d: expected '%s', received: '%s'", i, allSent[i], m)
+		}
+	}
+	// equivalent, but for deeper debugging
+	assert.Equal(t, seenUUU, allSent)
+
+	// STEP 3: bring the one that was down back up, it should receive all data it missed thanks to the spooling
+	tUDU = NewTestEndpoint(t, ":2006")
+
+	for _, m := range kMetricsC {
+		table.Dispatch(m)
+		time.Sleep(10 * time.Microsecond)
+	}
+
+	time.Sleep(time.Millisecond) // give time to traverse the routing pipeline
+	err = table.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(10 * time.Millisecond) // give time to read data
+
+	time.Sleep(1 * time.Millisecond) // give time to traverse the routing pipeline into conn
 	err = table.Shutdown()
 	if err != nil {
 		t.Fatal(err)
 	}
 }
+
+// TODO benchmark the pipeline/matching
