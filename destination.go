@@ -191,7 +191,8 @@ func (dest *Destination) relay() {
 		// this op won't succeed as long as the conn is busy processing/flushing
 		case conn.In <- buf:
 		default:
-			log.Printf("%s DROPPING DUE TO SLOW CONN\n", dest.Addr)
+			log.Printf("%s DROPPING DUE TO SLOW CONN (just to be safe, conn.In is %v)\n", dest.Addr, conn.In)
+			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
 			dest.numDropSlowConn.Add(1)

@@ -99,9 +99,10 @@ func (c *Conn) HandleData() {
 	tickerFlush := time.NewTicker(periodFlush)
 
 	for {
+		start := time.Now()
 		select {
 		case buf := <-c.In:
-			log.Printf("%s conn writing %s\n", c.dest.Addr, string(buf))
+			log.Printf("%s conn HandleData writing %s\n", c.dest.Addr, string(buf))
 			buf = append(buf, '\n')
 			n, err := c.Write(buf)
 			errBecauseTruncated := false
@@ -126,14 +127,15 @@ func (c *Conn) HandleData() {
 			}
 		case <-tickerFlush.C:
 			err := c.buffered.Flush()
-			log.Printf("%s conn c.buffered auto-flush done. error maybe: %s\n", c.dest.Addr, err)
+			log.Printf("%s conn HandleData c.buffered auto-flush done. error maybe: %s\n", c.dest.Addr, err)
 		case <-c.flush:
 			err := c.buffered.Flush()
-			log.Printf("%s conn c.buffered manual flush done. error maybe: %s\n", c.dest.Addr, err)
+			log.Printf("%s conn HandleData c.buffered manual flush done. error maybe: %s\n", c.dest.Addr, err)
 			c.flushErr <- err
 		case <-c.shutdown:
 			return
 		}
+		log.Printf("%s conn HandleData iteration took %s (this needs to be super responsive!)\n", c.dest.Addr, time.Now().Sub(start))
 	}
 }
 
