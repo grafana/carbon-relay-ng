@@ -121,7 +121,7 @@ func main() {
 	var err error
 	for i, cmd := range config.Init {
 		fmt.Println("applying", cmd)
-		err = applyCommand(table, cmd, config)
+		err = applyCommand(table, cmd)
 		if err != nil {
 			log.Println("could not apply init cmd #", i+1)
 			log.Println(err)

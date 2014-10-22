@@ -39,13 +39,13 @@ var tokenDefDest = []toki.Def{
 // we should read and apply all destinations at once,
 // or at least make sure we apply them to the global datastruct at once,
 // otherwise we can destabilize things / send wrong traffic, etc
-func readDestinations(specs []string, config Config) (destinations []*Destination, err error) {
+func readDestinations(specs []string, table *Table) (destinations []*Destination, err error) {
 	s := toki.NewScanner(tokenDefDest)
 	for _, spec := range specs {
 		//fmt.Println("spec" + spec)
 		var prefix, sub, regex, addr, spoolDir string
 		var spool, pickle bool
-		spoolDir = config.Spool_dir
+		spoolDir = table.spoolDir
 		s.SetInput(spec)
 		t := s.Next()
 		//fmt.Println("thisisit")
@@ -119,7 +119,7 @@ func readDestinations(specs []string, config Config) (destinations []*Destinatio
 //dests:
 // <tcp addr> <options>
 
-func applyCommand(table *Table, cmd string, config Config) error {
+func applyCommand(table *Table, cmd string) error {
 	inputs := strings.Split(cmd, "  ")
 	s := toki.NewScanner(tokenDefGlobal)
 	s.SetInput(inputs[0])
@@ -147,7 +147,7 @@ func applyCommand(table *Table, cmd string, config Config) error {
 		if err != nil {
 			return err
 		}
-		destinations, err := readDestinations(inputs[1:], config)
+		destinations, err := readDestinations(inputs[1:], table)
 		if err != nil {
 			return err
 		}
@@ -168,7 +168,7 @@ func applyCommand(table *Table, cmd string, config Config) error {
 		if err != nil {
 			return err
 		}
-		destinations, err := readDestinations(inputs[1:], config)
+		destinations, err := readDestinations(inputs[1:], table)
 		if err != nil {
 			return err
 		}

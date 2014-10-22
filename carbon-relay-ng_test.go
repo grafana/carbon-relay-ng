@@ -27,7 +27,7 @@ func TestSinglePointSingleRoute(t *testing.T) {
 	tE := NewTestEndpoint(t, ":2005")
 	defer tE.Close()
 	table = NewTable("")
-	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005", config)
+	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	tUUU := NewTestEndpoint(t, ":2005")
 	tUDU := NewTestEndpoint(t, ":2006")
 	table = NewTable("test_spool")
-	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005  127.0.0.1:2006 spool=true", config)
+	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005  127.0.0.1:2006 spool=true")
 	if err != nil {
 		t.Fatal(err)
 	}
