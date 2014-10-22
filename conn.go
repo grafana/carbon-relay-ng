@@ -37,7 +37,7 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 	connObj := &Conn{
 		conn:        conn,
 		buffered:    bufio.NewWriter(conn),
-		shutdown:    make(chan bool),
+		shutdown:    make(chan bool, 1), // when we write here, HandleData() may not be running anymore to read from the chan
 		In:          make(chan []byte),
 		dest:        dest,
 		up:          true,
@@ -48,6 +48,8 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 		periodFlush: periodFlush,
 	}
 
+	go connObj.checkEOF()
+
 	go connObj.HandleData()
 	go connObj.HandleStatus()
 	return connObj, nil
@@ -57,10 +59,34 @@ func (c *Conn) isAlive() bool {
 	return <-c.checkUp
 }
 
+// normally the remote end should never write anything back
+// but we know when we get EOF that the other end closed the conn
+// if not for this, we can happily write and flush without getting errors (in Go) but getting RST tcp packets back (!)
+// props to Tv` for this trick.
+func (c *Conn) checkEOF() {
+	b := make([]byte, 1024)
+	for {
+		num, err := c.conn.Read(b)
+		if err == io.EOF {
+			log.Printf("%s conn c.conn.Read returned EOF -> conn is closed", c.dest.Addr)
+			c.Close()
+			return
+		}
+		// just in case i misunderstand something or the remote behaves badly
+		if num != 0 {
+			log.Printf("ERROR %s conn c.conn.Read data? did not expect that.  data: %s\n", c.dest.Addr, b[:num])
+		}
+		if err != io.EOF {
+			log.Printf("ERROR %s conn c.conn.Read returned but without err=EOF.  did not expect that.  error: %s\n", c.dest.Addr, err)
+		}
+	}
+}
+
 func (c *Conn) HandleStatus() {
 	for {
 		select {
 		case c.up = <-c.updateUp:
+			log.Printf("%s conn marking alive as %v\n", c.dest.Addr, c.up)
 			//log.Println("conn.up is now", c.up)
 		case c.checkUp <- c.up:
 			//log.Println("query for conn.up, responded with", c.up)
@@ -88,20 +114,23 @@ func (c *Conn) HandleData() {
 				if !errBecauseTruncated {
 					c.dest.numErrWrite.Add(1)
 				}
-				log.Println(c.dest.Addr + " " + err.Error())
-				fmt.Println("updating")
-				c.updateUp <- false
-				fmt.Println("closing")
-				c.Close() // this can take a while but that's ok. this conn won't be used anymore
+				log.Printf("%s conn write error: %s\n", c.dest.Addr, err)
+				log.Printf("%s conn setting up=false\n", c.dest.Addr)
+				c.updateUp <- false // assure In won't receive more data because every loop that writes to In reads this out
+				log.Printf("%s conn Closing\n", c.dest.Addr)
+				go c.Close() // this can take a while but that's ok. this conn won't be used anymore
 				// TODO: should add function that returns unflushed data, for dest to query so it can spool it
 				return
 			} else {
 				c.dest.numOut.Add(1)
 			}
 		case <-tickerFlush.C:
-			c.buffered.Flush()
+			err := c.buffered.Flush()
+			log.Printf("%s conn c.buffered auto-flush done. error maybe: %s\n", c.dest.Addr, err)
 		case <-c.flush:
-			c.flushErr <- c.buffered.Flush()
+			err := c.buffered.Flush()
+			log.Printf("%s conn c.buffered manual flush done. error maybe: %s\n", c.dest.Addr, err)
+			c.flushErr <- err
 		case <-c.shutdown:
 			return
 		}
@@ -113,19 +142,18 @@ func (c *Conn) Write(buf []byte) (int, error) {
 }
 
 func (c *Conn) Flush() error {
-	log.Println("going to flush mah buffer")
+	log.Printf("%s conn going to flush my buffer\n", c.dest.Addr)
 	c.flush <- true
-	log.Println("flushing mah buffer, getting error maybe")
-	err := <-c.flushErr
-	log.Println("flush done; err:", err)
-	return err
+	log.Printf("%s conn waiting for flush, getting error.\n", c.dest.Addr)
+	return <-c.flushErr
 }
 
 func (c *Conn) Close() error {
-	log.Println("Close() called.  sending shutdown")
+	c.updateUp <- false // redundant in case HandleData() called us, but not if the dest called us
+	log.Printf("%s conn Close() called. sending shutdown\n", c.dest.Addr)
 	c.shutdown <- true
-	log.Println("conn close")
+	log.Printf("%s conn c.conn.Close()\n", c.dest.Addr)
 	a := c.conn.Close()
-	log.Println("closed")
+	log.Printf("%s conn c.conn is closed\n", c.dest.Addr)
 	return a
 }
