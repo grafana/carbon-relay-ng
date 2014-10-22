@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"io"
 	"log"
 	"net"
 	"testing"
@@ -25,6 +24,7 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 	if err != nil {
 		panic(err)
 	}
+	log.Printf("tE %s is now listening\n", addr)
 	// shutdown chan size 1 so that Close() doesn't have to wait on the write
 	// because the loops will typically be stuck in Accept ad Readline
 	tE := &TestEndpoint{
@@ -45,16 +45,16 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 				return
 			default:
 			}
-			log.Println("tE waiting for accept")
+			log.Printf("tE %s waiting for accept\n", tE.addr)
 			conn, err := ln.Accept()
 			// when closing, this can happen: accept tcp [::]:2005: use of closed network connection
 			if err != nil {
-				log.Println("tE accept error:", err, "stopping tE")
-				//t.Fatal(err)
+				log.Printf("tE %s accept error: '%s' -> stopping tE\n", tE.addr, err)
 				return
 			}
-			log.Println("tE accepted new conn")
+			log.Printf("tE %s accepted new conn\n", tE.addr)
 			go tE.handle(conn)
+			defer func() { log.Printf("tE %s closing conn.\n", tE.addr); conn.Close() }()
 		}
 	}()
 	go func() {
@@ -73,7 +73,10 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 }
 
 func (tE *TestEndpoint) handle(c net.Conn) {
-	defer c.Close()
+	defer func() {
+		log.Printf("tE %s closing conn %s\n", tE.addr, c)
+		c.Close()
+	}()
 	r := bufio.NewReaderSize(c, 4096)
 	for {
 		select {
@@ -82,10 +85,11 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 		default:
 		}
 		buf, _, err := r.ReadLine()
-		log.Println(tE.addr, "read", string(buf))
-		if err == io.EOF {
-			break
+		if err != nil {
+			log.Printf("tE %s read error: %s. closing handler\n", tE.addr, err)
+			return
 		}
+		log.Printf("tE %s read %s\n", tE.addr, string(buf))
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
 		tE.seen <- buf_copy
@@ -93,10 +97,11 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 }
 
 func (tE *TestEndpoint) Close() {
-	//log.Println("AAAAcalling shut")
+	log.Printf("tE %s shutting down accepter (after accept breaks)", tE.addr)
 	tE.shutdown <- true
+	log.Printf("tE %s shutting down handler (after readLine breaks)", tE.addr)
 	tE.shutdownHandle <- true
-	//log.Println("AAAAcalled shut")
+	log.Printf("tE %s shutting down listener", tE.addr)
 	tE.ln.Close()
-	//log.Println("AAACLOSE")
+	log.Printf("tE %s listener down", tE.addr)
 }

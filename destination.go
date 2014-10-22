@@ -190,6 +190,7 @@ func (dest *Destination) relay() {
 		// this op won't succeed as long as the conn is busy processing/flushing
 		case conn.In <- buf:
 		default:
+			log.Printf("%s DROPPING DUE TO SLOW CONN\n", dest.Addr)
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
 			dest.numDropSlowConn.Add(1)
@@ -226,6 +227,9 @@ func (dest *Destination) relay() {
 		}
 
 		log.Printf("#### %s entering the main select ######\n", dest.Addr)
+		//if conn == nil {
+		//    log.Printf("#### %s has conn nil ######\n", dest.Addr)
+		// }
 		select {
 		case inConnUpdate := <-dest.inConnUpdate:
 			if inConnUpdate {
