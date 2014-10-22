@@ -142,10 +142,22 @@ func (c *Conn) HandleData() {
 		case <-tickerFlush.C:
 			err := c.buffered.Flush()
 			log.Printf("%s conn HandleData c.buffered auto-flush done. error maybe: %s\n", c.dest.Addr, err)
+			if err != nil {
+				// TODO instrument
+				c.updateUp <- false
+				go c.Close()
+				return
+			}
 		case <-c.flush:
 			err := c.buffered.Flush()
 			log.Printf("%s conn HandleData c.buffered manual flush done. error maybe: %s\n", c.dest.Addr, err)
 			c.flushErr <- err
+			if err != nil {
+				// TODO instrument
+				c.updateUp <- false
+				go c.Close()
+				return
+			}
 		case <-c.shutdown:
 			return
 		}
