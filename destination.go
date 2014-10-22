@@ -243,6 +243,11 @@ func (dest *Destination) relay() {
 		case conn = <-dest.connUpdates:
 			log.Printf("%s updating conn to %v\n", dest.Addr, conn)
 			dest.Online = conn != nil
+			if dest.Online {
+				// new conn? start with a clean slate!
+				dest.SlowLastLoop = false
+				dest.SlowNow = false
+			}
 		case <-ticker.C: // periodically try to bring connection (back) up, if we have to, and no other connect is happening
 			if conn == nil && numConnUpdates == 0 {
 				go dest.updateConn(dest.Addr)
