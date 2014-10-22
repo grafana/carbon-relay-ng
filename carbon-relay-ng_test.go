@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/bmizerany/assert"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -53,6 +54,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	os.RemoveAll("test_spool")
 	os.Mkdir("test_spool", os.ModePerm)
 
+	log.Println("##### START STEP 1 #####")
 	// UUU -> up-up-up
 	// UDU -> up-down-up
 	tUUU := NewTestEndpoint(t, ":2005")
@@ -95,6 +97,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	assert.Equal(t, seenUDU, kMetricsA[:])
 
 	// STEP 2: tUDU goes down! simulate outage
+	log.Println("##### START STEP 2 #####")
 	tUDU.Close()
 
 	for _, m := range kMetricsB {
@@ -123,7 +126,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	// equivalent, but for deeper debugging
 	assert.Equal(t, seenUUU, allSent)
 
-	// STEP 3: bring the one that was down back up, it should receive all data it missed thanks to the spooling
+	// STEP 3: bring the one that was down back up, it should receive all data it missed thanks to the spooling (+ new data)
+	log.Println("##### START STEP 3 #####")
 	tUDU = NewTestEndpoint(t, ":2006")
 
 	for _, m := range kMetricsC {
@@ -137,8 +141,31 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(10 * time.Millisecond) // give time to read data
+	allSent = make([][]byte, 30)
+	copy(allSent[0:10], kMetricsA[:])
+	copy(allSent[10:20], kMetricsB[:])
+	copy(allSent[20:30], kMetricsC[:])
+	tUUU.WhatHaveISeen <- true
+	seenUUU = <-tUUU.IHaveSeen
+	tUDU.WhatHaveISeen <- true
+	seenUDU = <-tUDU.IHaveSeen
 
-	time.Sleep(1 * time.Millisecond) // give time to traverse the routing pipeline into conn
+	//check UUU
+	assert.Equal(t, len(seenUUU), 30)
+	// human friendly:
+	for i, m := range seenUUU {
+		if string(m) != string(allSent[i]) {
+			t.Errorf("error in UUU at pos %d: expected '%s', received: '%s'", i, allSent[i], m)
+		}
+	}
+	// equivalent, but for deeper debugging
+	assert.Equal(t, seenUUU, allSent)
+
+	//check UDU
+	assert.Equal(t, len(seenUDU), 20)
+	//assert.Equal(t, len(seenUDU), 30)
+	fmt.Println(seenUDU)
+
 	err = table.Shutdown()
 	if err != nil {
 		t.Fatal(err)
