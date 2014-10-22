@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/bmizerany/assert"
+	"os"
 	"testing"
 	"time"
 )
@@ -49,11 +50,14 @@ func TestSinglePointSingleRoute(t *testing.T) {
 }
 
 func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
+	os.RemoveAll("test_spool")
+	os.Mkdir("test_spool", os.ModePerm)
+
 	// UUU -> up-up-up
 	// UDU -> up-down-up
 	tUUU := NewTestEndpoint(t, ":2005")
 	tUDU := NewTestEndpoint(t, ":2006")
-	table = NewTable("")
+	table = NewTable("test_spool")
 	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005  127.0.0.1:2006 spool=true", config)
 	if err != nil {
 		t.Fatal(err)
