@@ -28,6 +28,7 @@ type Destination struct {
 	SlowLastLoop bool   // "" last loop
 	CleanAddr    string
 	periodFlush  time.Duration
+	periodReConn time.Duration
 
 	// set automatically in init, passed on in copy
 	Reg *regexp.Regexp // compiled version of patt
@@ -53,20 +54,21 @@ type Destination struct {
 }
 
 // after creating, run Run()!
-func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush time.Duration) (*Destination, error) {
+func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration) (*Destination, error) {
 	m, err := NewMatcher(prefix, sub, regex)
 	if err != nil {
 		return nil, err
 	}
 	cleanAddr := addrToPath(addr)
 	dest := &Destination{
-		Matcher:     *m,
-		Addr:        addr,
-		spoolDir:    spoolDir,
-		Spool:       spool,
-		Pickle:      pickle,
-		CleanAddr:   cleanAddr,
-		periodFlush: periodFlush,
+		Matcher:      *m,
+		Addr:         addr,
+		spoolDir:     spoolDir,
+		Spool:        spool,
+		Pickle:       pickle,
+		CleanAddr:    cleanAddr,
+		periodFlush:  periodFlush,
+		periodReConn: periodReConn,
 	}
 	dest.setExpvars()
 	return dest, nil
@@ -169,8 +171,7 @@ func (dest *Destination) updateConn(addr string) {
 // TODO func (l *TCPListener) SetDeadline(t time.Time)
 // TODO Decide when to drop this buffer and move on.
 func (dest *Destination) relay() {
-	periodAssureConn := time.Duration(60) * time.Second
-	ticker := time.NewTicker(periodAssureConn)
+	ticker := time.NewTicker(dest.periodReConn)
 	var toUnspool chan []byte
 	var conn *Conn
 

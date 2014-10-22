@@ -89,7 +89,7 @@ func (c *Conn) HandleStatus() {
 			log.Printf("%s conn marking alive as %v\n", c.dest.Addr, c.up)
 			//log.Println("conn.up is now", c.up)
 		case c.checkUp <- c.up:
-			//log.Println("query for conn.up, responded with", c.up)
+			log.Println("query for conn.up, responded with", c.up)
 		}
 	}
 }

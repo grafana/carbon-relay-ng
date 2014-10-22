@@ -60,7 +60,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	tUUU := NewTestEndpoint(t, ":2005")
 	tUDU := NewTestEndpoint(t, ":2006")
 	table = NewTable("test_spool")
-	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005  127.0.0.1:2006 spool=true")
+	// reconnect retry should be quick now, so we can proceed quicker
+	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005  127.0.0.1:2006 spool=true reconn=200")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,6 +130,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	// STEP 3: bring the one that was down back up, it should receive all data it missed thanks to the spooling (+ new data)
 	log.Println("##### START STEP 3 #####")
 	tUDU = NewTestEndpoint(t, ":2006")
+
+	time.Sleep(250 * time.Millisecond) // make sure conn can detect the endpoint is back up
 
 	for _, m := range kMetricsC {
 		table.Dispatch(m)
