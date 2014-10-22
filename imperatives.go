@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/taylorchu/toki"
+	"strconv"
 	"strings"
+	"time"
 	//"github.com/davecgh/go-spew/spew"
 )
 
@@ -45,6 +47,7 @@ func readDestinations(specs []string, table *Table) (destinations []*Destination
 		//fmt.Println("spec" + spec)
 		var prefix, sub, regex, addr, spoolDir string
 		var spool, pickle bool
+		periodFlush := 1000
 		spoolDir = table.spoolDir
 		s.SetInput(spec)
 		t := s.Next()
@@ -76,6 +79,13 @@ func readDestinations(specs []string, table *Table) (destinations []*Destination
 				case "addr=":
 					val := s.Next()
 					addr = string(val.Value)
+				case "flush=":
+					val := s.Next()
+					i, err := strconv.Atoi(string(val.Value))
+					if err != nil {
+						return destinations, err
+					}
+					periodFlush = i
 				case "pickle=":
 					t := s.Next()
 					val := string(t.Value)
@@ -101,7 +111,7 @@ func readDestinations(specs []string, table *Table) (destinations []*Destination
 				//return destinations, errors.New(fmt.Sprintf("expected endpoint option, not token type %v with value '%s'", t.Token, t.Value))
 			}
 		}
-		dest, err := NewDestination(prefix, sub, regex, addr, spoolDir, spool, pickle)
+		dest, err := NewDestination(prefix, sub, regex, addr, spoolDir, spool, pickle, time.Duration(periodFlush)*time.Millisecond)
 		if err != nil {
 			return destinations, err
 		}

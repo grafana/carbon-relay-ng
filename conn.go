@@ -4,25 +4,27 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"time"
 )
 
 type Conn struct {
-	conn     *net.TCPConn
-	buffered *bufio.Writer
-	shutdown chan bool
-	In       chan []byte
-	dest     *Destination // which dest do we correspond to
-	up       bool
-	checkUp  chan bool
-	updateUp chan bool
-	flush    chan bool
-	flushErr chan error
+	conn        *net.TCPConn
+	buffered    *bufio.Writer
+	shutdown    chan bool
+	In          chan []byte
+	dest        *Destination // which dest do we correspond to
+	up          bool
+	checkUp     chan bool
+	updateUp    chan bool
+	flush       chan bool
+	flushErr    chan error
+	periodFlush time.Duration
 }
 
-func NewConn(addr string, dest *Destination) (*Conn, error) {
+func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, error) {
 	raddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -33,16 +35,17 @@ func NewConn(addr string, dest *Destination) (*Conn, error) {
 		return nil, err
 	}
 	connObj := &Conn{
-		conn:     conn,
-		buffered: bufio.NewWriter(conn),
-		shutdown: make(chan bool),
-		In:       make(chan []byte),
-		dest:     dest,
-		up:       true,
-		checkUp:  make(chan bool),
-		updateUp: make(chan bool),
-		flush:    make(chan bool),
-		flushErr: make(chan error),
+		conn:        conn,
+		buffered:    bufio.NewWriter(conn),
+		shutdown:    make(chan bool),
+		In:          make(chan []byte),
+		dest:        dest,
+		up:          true,
+		checkUp:     make(chan bool),
+		updateUp:    make(chan bool),
+		flush:       make(chan bool),
+		flushErr:    make(chan error),
+		periodFlush: periodFlush,
 	}
 
 	go connObj.HandleData()
@@ -66,7 +69,7 @@ func (c *Conn) HandleStatus() {
 }
 
 func (c *Conn) HandleData() {
-	periodFlush := time.Duration(1) * time.Second
+	periodFlush := c.periodFlush
 	tickerFlush := time.NewTicker(periodFlush)
 
 	for {

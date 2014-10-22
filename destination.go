@@ -27,6 +27,7 @@ type Destination struct {
 	SlowNow      bool   // did we have to drop packets in current loop
 	SlowLastLoop bool   // "" last loop
 	CleanAddr    string
+	periodFlush  time.Duration
 
 	// set automatically in init, passed on in copy
 	Reg *regexp.Regexp // compiled version of patt
@@ -52,19 +53,20 @@ type Destination struct {
 }
 
 // after creating, run Run()!
-func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle bool) (*Destination, error) {
+func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush time.Duration) (*Destination, error) {
 	m, err := NewMatcher(prefix, sub, regex)
 	if err != nil {
 		return nil, err
 	}
 	cleanAddr := addrToPath(addr)
 	dest := &Destination{
-		Matcher:   *m,
-		Addr:      addr,
-		spoolDir:  spoolDir,
-		Spool:     spool,
-		Pickle:    pickle,
-		CleanAddr: cleanAddr,
+		Matcher:     *m,
+		Addr:        addr,
+		spoolDir:    spoolDir,
+		Spool:       spool,
+		Pickle:      pickle,
+		CleanAddr:   cleanAddr,
+		periodFlush: periodFlush,
 	}
 	dest.setExpvars()
 	return dest, nil
@@ -148,7 +150,7 @@ func (dest *Destination) updateConn(addr string) {
 	log.Printf("%v (re)connecting to %v\n", dest.Addr, addr)
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
-	conn, err := NewConn(addr, dest)
+	conn, err := NewConn(addr, dest, dest.periodFlush)
 	if err != nil {
 		log.Printf("%v: %v\n", dest.Addr, err.Error())
 		return
