@@ -234,6 +234,7 @@ func (dest *Destination) relay() {
 			}
 		}
 		// only process spool queue if we have an outbound connection and we haven't needed to drop packets in a while
+		log.Println(dest.Addr, "in for loop. conn:", conn, "DEST SPOOL", dest.Spool, "slowlastloop", dest.SlowLastLoop, "slownow", dest.SlowNow)
 		if conn != nil && dest.Spool && !dest.SlowLastLoop && !dest.SlowNow {
 			toUnspool = dest.queue.ReadChan()
 		} else {
@@ -286,10 +287,13 @@ func (dest *Destination) relay() {
 		case buf := <-dest.In:
 			log.Printf("%v received from In: %s\n", dest.Addr, string(buf))
 			if conn != nil {
+				log.Printf("%v conn != nil so nonBlockingSend\n", dest.Addr)
 				nonBlockingSend(buf)
 			} else if dest.Spool {
+				log.Printf("%v conn == nil but spooling so nonBlockingSpool\n", dest.Addr)
 				nonBlockingSpool(buf)
 			} else {
+				log.Printf("%v conn == nil, no spooling so drop\n", dest.Addr)
 				dest.numDropNoConnNoSpool.Add(1)
 			}
 		}
