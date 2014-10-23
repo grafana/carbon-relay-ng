@@ -9,12 +9,13 @@ import (
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
+	logging "github.com/op/go-logging"
 	"github.com/rcrowley/goagain"
 	"io"
-	"log"
 	"net"
 	"os"
 	"runtime/pprof"
+	"strings"
 )
 
 type Config struct {
@@ -37,15 +38,22 @@ var (
 	numIn       = Int("target_type=count.unit=Metric.direction=in")
 )
 
+var log = logging.MustGetLogger("carbon-relay-ng")
+
 func init() {
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Lshortfile)
+	logging.SetLevel(logging.DEBUG, "carbon-relay-ng")
+	var format = "%{color}%{time:15:04:05.000000} ▶ %{level:.4s} %{color:reset} %{message}"
+	logBackend := logging.NewLogBackend(os.Stderr, "", 0)
+	logging.SetFormatter(logging.MustStringFormatter(format))
+	logging.SetBackend(logBackend)
+
 }
 
 func accept(l *net.TCPListener, config Config) {
 	for {
 		c, err := l.AcceptTCP()
 		if nil != err {
-			log.Println(err)
+			log.Error(err.Error())
 			break
 		}
 		go handle(c, config)
@@ -57,15 +65,12 @@ func handle(c *net.TCPConn, config Config) {
 	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
 	for {
-		buf, isPrefix, err := r.ReadLine()
+		// note that we don't support lines longer than 4096B. that seems very reasonable..
+		buf, _, err := r.ReadLine()
 		if nil != err {
 			if io.EOF != err {
-				log.Println(err)
+				log.Error(err.Error())
 			}
-			break
-		}
-		if isPrefix { // TODO Recover from partial reads.
-			log.Println("isPrefix: true")
 			break
 		}
 		buf_copy := make([]byte, len(buf), len(buf))
@@ -95,8 +100,8 @@ func main() {
 	}
 
 	if _, err := toml.DecodeFile(config_file, &config); err != nil {
-		fmt.Printf("Cannot use config file '%s':\n", config_file)
-		fmt.Println(err)
+		log.Error("Cannot use config file '%s':\n", config_file)
+		log.Error(err.Error())
 		usage()
 		return
 	}
@@ -110,28 +115,32 @@ func main() {
 	}
 
 	if len(config.Instance) == 0 {
-		log.Println("instance identifier cannot be empty")
+		log.Error("instance identifier cannot be empty")
 		os.Exit(1)
 	}
-	log.Printf("===== carbon-relay-ng instance '%s' starting. =====\n", config.Instance)
+	log.Notice("===== carbon-relay-ng instance '%s' starting. =====\n", config.Instance)
 
-	log.Println("creating routing table...")
+	log.Notice("creating routing table...")
 	table = NewTable(config.Spool_dir)
-	log.Println("initializing routing table...")
+	log.Notice("initializing routing table...")
 	var err error
 	for i, cmd := range config.Init {
-		fmt.Println("applying", cmd)
+		log.Notice("applying: %s", cmd)
 		err = applyCommand(table, cmd)
 		if err != nil {
-			log.Println("could not apply init cmd #", i+1)
-			log.Println(err)
+			log.Error("could not apply init cmd #", i+1)
+			log.Error(err.Error())
 			os.Exit(1)
 		}
 	}
-	fmt.Println(table.Print())
+	tablePrinted := table.Print()
+	log.Notice("TABLE:")
+	for _, line := range strings.Split(tablePrinted, "\n") {
+		log.Notice(line)
+	}
 	err = table.Run()
 	if err != nil {
-		log.Println(err)
+		log.Error(err.Error())
 		os.Exit(1)
 	}
 
@@ -145,21 +154,22 @@ func main() {
 	if nil != err {
 		laddr, err := net.ResolveTCPAddr("tcp", config.Listen_addr)
 		if nil != err {
-			log.Println(err)
+			log.Error(err.Error())
 			os.Exit(1)
 		}
 		l, err = net.ListenTCP("tcp", laddr)
 		if nil != err {
-			log.Println(err)
+			log.Error(err.Error())
+
 			os.Exit(1)
 		}
-		log.Printf("listening on %v", laddr)
+		log.Notice("listening on %v", laddr)
 		go accept(l.(*net.TCPListener), config)
 	} else {
-		log.Printf("resuming listening on %v", l.Addr())
+		log.Notice("resuming listening on %v", l.Addr())
 		go accept(l.(*net.TCPListener), config)
 		if err := goagain.KillParent(ppid); nil != err {
-			log.Println(err)
+			log.Error(err.Error())
 			os.Exit(1)
 		}
 	}
@@ -179,7 +189,7 @@ func main() {
 	}
 
 	if err := goagain.AwaitSignals(l); nil != err {
-		log.Println(err)
+		log.Error(err.Error())
 		os.Exit(1)
 	}
 }

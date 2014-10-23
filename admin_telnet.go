@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"github.com/graphite-ng/carbon-relay-ng/telnet"
-	"log"
 	"net"
 	"strings"
 )
@@ -79,6 +78,6 @@ func adminListener(addr string) error {
 	telnet.HandleFunc("view", tcpViewHandler)
 	telnet.HandleFunc("help", tcpHelpHandler)
 	telnet.HandleFunc("", tcpDefaultHandler)
-	log.Printf("admin TCP listener starting on %v", addr)
+	log.Notice("admin TCP listener starting on %v", addr)
 	return telnet.ListenAndServe(addr)
 }

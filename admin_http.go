@@ -7,7 +7,6 @@ import (
 	//    "errors"
 	"github.com/gorilla/mux"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 )
@@ -31,12 +30,12 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// check for errors
 	if err != nil {
-		log.Printf("ERROR: %v\n", err.Error)
+		//log.Printf("ERROR: %v\n", err.Error)
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Message), err.Code)
 		return
 	}
 	if response == nil {
-		log.Printf("ERROR: response from method is nil\n")
+		//log.Printf("ERROR: response from method is nil\n")
 		http.Error(w, "Internal server error. Check the logs.", http.StatusInternalServerError)
 		return
 	}
@@ -146,7 +145,7 @@ func HttpListener(addr string, t *Table) {
 	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset, AssetDir, "admin/data/"}))
 	http.Handle("/", router)
 
-	log.Printf("admin HTTP listener starting on %v", addr)
+	log.Notice("admin HTTP listener starting on %v", addr)
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())

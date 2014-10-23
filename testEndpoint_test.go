@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"log"
 	"net"
 	"testing"
 )
@@ -24,7 +23,7 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("tE %s is now listening\n", addr)
+	log.Notice("tE %s is now listening\n", addr)
 	// shutdown chan size 1 so that Close() doesn't have to wait on the write
 	// because the loops will typically be stuck in Accept ad Readline
 	tE := &TestEndpoint{
@@ -45,16 +44,16 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 				return
 			default:
 			}
-			log.Printf("tE %s waiting for accept\n", tE.addr)
+			log.Debug("tE %s waiting for accept\n", tE.addr)
 			conn, err := ln.Accept()
 			// when closing, this can happen: accept tcp [::]:2005: use of closed network connection
 			if err != nil {
-				log.Printf("tE %s accept error: '%s' -> stopping tE\n", tE.addr, err)
+				log.Debug("tE %s accept error: '%s' -> stopping tE\n", tE.addr, err)
 				return
 			}
-			log.Printf("tE %s accepted new conn\n", tE.addr)
+			log.Notice("tE %s accepted new conn\n", tE.addr)
 			go tE.handle(conn)
-			defer func() { log.Printf("tE %s closing conn.\n", tE.addr); conn.Close() }()
+			defer func() { log.Debug("tE %s closing conn.\n", tE.addr); conn.Close() }()
 		}
 	}()
 	go func() {
@@ -74,7 +73,7 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 
 func (tE *TestEndpoint) handle(c net.Conn) {
 	defer func() {
-		log.Printf("tE %s closing conn %s\n", tE.addr, c)
+		log.Debug("tE %s closing conn %s\n", tE.addr, c)
 		c.Close()
 	}()
 	r := bufio.NewReaderSize(c, 4096)
@@ -86,10 +85,10 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 		}
 		buf, _, err := r.ReadLine()
 		if err != nil {
-			log.Printf("tE %s read error: %s. closing handler\n", tE.addr, err)
+			log.Warning("tE %s read error: %s. closing handler\n", tE.addr, err)
 			return
 		}
-		log.Printf("tE %s read %s\n", tE.addr, string(buf))
+		log.Info("tE %s %s read\n", tE.addr, string(buf))
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
 		tE.seen <- buf_copy
@@ -97,11 +96,11 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 }
 
 func (tE *TestEndpoint) Close() {
-	log.Printf("tE %s shutting down accepter (after accept breaks)", tE.addr)
+	log.Debug("tE %s shutting down accepter (after accept breaks)", tE.addr)
 	tE.shutdown <- true
-	log.Printf("tE %s shutting down handler (after readLine breaks)", tE.addr)
+	log.Debug("tE %s shutting down handler (after readLine breaks)", tE.addr)
 	tE.shutdownHandle <- true
-	log.Printf("tE %s shutting down listener", tE.addr)
+	log.Debug("tE %s shutting down listener", tE.addr)
 	tE.ln.Close()
-	log.Printf("tE %s listener down", tE.addr)
+	log.Debug("tE %s listener down", tE.addr)
 }

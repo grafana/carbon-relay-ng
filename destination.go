@@ -5,7 +5,6 @@ import (
 	"expvar"
 	"fmt"
 	"github.com/graphite-ng/carbon-relay-ng/nsqd"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -146,15 +145,15 @@ func (dest *Destination) QueueWriter() {
 	for {
 		select {
 		case buf := <-dest.queueInRT:
-			log.Println("satisfying spool RT 1")
+			log.Debug("dest %v satisfying spool RT 1")
 			dest.queue.Put(buf)
 		default:
 			select {
 			case buf := <-dest.queueInRT:
-				log.Println("satisfying spool RT 2")
+				log.Debug("dest %v satisfying spool RT 2")
 				dest.queue.Put(buf)
 			case buf := <-dest.queueInBulk:
-				log.Println("satisfying spool BULK")
+				log.Debug("dest %v satisfying spool BULK")
 				dest.queue.Put(buf)
 			default:
 			}
@@ -177,17 +176,17 @@ func (dest *Destination) Shutdown() error {
 }
 
 func (dest *Destination) updateConn(addr string) {
-	log.Printf("%v (re)connecting to %v\n", dest.Addr, addr)
+	log.Debug("dest %v (re)connecting to %v\n", dest.Addr, addr)
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
 	conn, err := NewConn(addr, dest, dest.periodFlush)
 	if err != nil {
-		log.Printf("%v: %v\n", dest.Addr, err.Error())
+		log.Debug("dest %v: %v\n", dest.Addr, err.Error())
 		return
 	}
-	log.Printf("%v connected to %v\n", dest.Addr, addr)
+	log.Debug("dest %v connected to %v\n", dest.Addr, addr)
 	if addr != dest.Addr {
-		log.Printf("%v update address to %v)\n", dest.Addr, addr)
+		log.Notice("dest %v update address to %v)\n", dest.Addr, addr)
 		dest.Addr = addr
 		dest.CleanAddr = addrToPath(addr)
 		dest.setExpvars()
@@ -228,7 +227,7 @@ func (dest *Destination) relay() {
 		// this op won't succeed as long as the conn is busy processing/flushing
 		case conn.In <- buf:
 		default:
-			log.Printf("%s DROPPING DUE TO SLOW CONN (just to be safe, conn.In is %v)\n", dest.Addr, conn.In)
+			log.Warning("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Addr)
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
@@ -243,8 +242,9 @@ func (dest *Destination) relay() {
 		select {
 		case dest.queueInRT <- buf:
 			dest.numSpool.Add(1)
+			log.Info("dest %s %s nonBlockingSpool -> added to spool\n", dest.Addr, string(buf))
 		default:
-			log.Printf("%s DROPPING %s DUE TO SLOW SPOOL\n", dest.Addr, string(buf))
+			log.Warning("dest %s nonBlockingSpool -> dropping due to slow spool\n", dest.Addr)
 			dest.numDropSlowSpool.Add(1)
 		}
 	}
@@ -268,12 +268,7 @@ func (dest *Destination) relay() {
 		} else {
 			toUnspool = nil
 		}
-		log.Println(dest.Addr, "in for loop. conn:", conn, "DEST SPOOL", dest.Spool, "slowlastloop", dest.SlowLastLoop, "slownow", dest.SlowNow, "spoolqueue", toUnspool)
-
-		log.Printf("#### %s entering the main select ######\n", dest.Addr)
-		//if conn == nil {
-		//    log.Printf("#### %s has conn nil ######\n", dest.Addr)
-		// }
+		log.Notice("dest %v entering select. conn: %v spooling: %v slowLastloop: %v, slowNow: %v spoolQueue: %v", dest.Addr, conn != nil, dest.Spool, dest.SlowLastLoop, dest.SlowNow, toUnspool != nil)
 		select {
 		case inConnUpdate := <-dest.inConnUpdate:
 			if inConnUpdate {
@@ -283,8 +278,8 @@ func (dest *Destination) relay() {
 			}
 		// note: new conn can be nil and that's ok (it means we had to [re]connect but couldn't)
 		case conn = <-dest.connUpdates:
-			log.Printf("%s updating conn to %v\n", dest.Addr, conn)
 			dest.Online = conn != nil
+			log.Notice("dest %s updating conn. online: %v\n", dest.Addr, dest.Online)
 			if dest.Online {
 				// new conn? start with a clean slate!
 				dest.SlowLastLoop = false
@@ -303,7 +298,7 @@ func (dest *Destination) relay() {
 				dest.flushErr <- nil
 			}
 		case <-dest.shutdown:
-			log.Printf("%v shutting down\n", dest.Addr)
+			log.Notice("dest %v shutting down\n", dest.Addr)
 			if conn != nil {
 				conn.Flush()
 				conn.Close()
@@ -311,18 +306,17 @@ func (dest *Destination) relay() {
 			return
 		case buf := <-toUnspool:
 			// we know that conn != nil here because toUnspool is set above
-			log.Printf("%v received from spool: %s\n", dest.Addr, string(buf))
+			log.Info("dest %v %s received from spool -> nonBlockingSend\n", dest.Addr, string(buf))
 			nonBlockingSend(buf)
 		case buf := <-dest.In:
-			log.Printf("%v received from In: %s\n", dest.Addr, string(buf))
 			if conn != nil {
-				log.Printf("%v conn != nil so nonBlockingSend\n", dest.Addr)
+				log.Info("dest %v %s received from In -> nonBlockingSend\n", dest.Addr, string(buf))
 				nonBlockingSend(buf)
 			} else if dest.Spool {
-				log.Printf("%v conn == nil but spooling so nonBlockingSpool\n", dest.Addr)
+				log.Info("dest %v %s received from In -> nonBlockingSpool\n", dest.Addr, string(buf))
 				nonBlockingSpool(buf)
 			} else {
-				log.Printf("%v conn == nil, no spooling so drop\n", dest.Addr)
+				log.Info("dest %v %s received from In -> no conn no spool -> drop\n", dest.Addr, string(buf))
 				dest.numDropNoConnNoSpool.Add(1)
 			}
 		}

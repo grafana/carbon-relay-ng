@@ -3,7 +3,6 @@ package main
 import (
 	"expvar"
 	"fmt"
-	"log"
 	"sync"
 )
 
@@ -74,7 +73,7 @@ func (table *Table) Dispatch(buf []byte) {
 	// Dispatch should return asap
 	if !routed {
 		table.numUnroutable.Add(1)
-		log.Printf("unrouteable: %s\n", buf)
+		log.Notice("unrouteable: %s\n", buf)
 	}
 
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/kisielk/og-rek"
-	"log"
 )
 
 func pickle(dp *Datapoint) []byte {

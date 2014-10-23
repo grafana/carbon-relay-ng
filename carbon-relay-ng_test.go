@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/bmizerany/assert"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -54,7 +53,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	os.RemoveAll("test_spool")
 	os.Mkdir("test_spool", os.ModePerm)
 
-	log.Println("##### START STEP 1 #####")
+	log.Notice("##### START STEP 1 #####")
 	// UUU -> up-up-up
 	// UDU -> up-down-up
 	tUUU := NewTestEndpoint(t, ":2005")
@@ -98,7 +97,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	assert.Equal(t, seenUDU, kMetricsA[:])
 
 	// STEP 2: tUDU goes down! simulate outage
-	log.Println("##### START STEP 2 #####")
+	log.Notice("##### START STEP 2 #####")
 	tUDU.Close()
 
 	for _, m := range kMetricsB {
@@ -128,7 +127,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	assert.Equal(t, seenUUU, allSent)
 
 	// STEP 3: bring the one that was down back up, it should receive all data it missed thanks to the spooling (+ new data)
-	log.Println("##### START STEP 3 #####")
+	log.Notice("##### START STEP 3 #####")
 	tUDU = NewTestEndpoint(t, ":2006")
 
 	time.Sleep(250 * time.Millisecond) // make sure conn can detect the endpoint is back up

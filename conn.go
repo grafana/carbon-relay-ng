@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"time"
 )
@@ -73,16 +72,16 @@ func (c *Conn) checkEOF() {
 	for {
 		num, err := c.conn.Read(b)
 		if err == io.EOF {
-			log.Printf("%s conn c.conn.Read returned EOF -> conn is closed", c.dest.Addr)
+			log.Notice("conn %s .conn.Read returned EOF -> conn is closed", c.dest.Addr)
 			c.Close()
 			return
 		}
 		// just in case i misunderstand something or the remote behaves badly
 		if num != 0 {
-			log.Printf("ERROR %s conn c.conn.Read data? did not expect that.  data: %s\n", c.dest.Addr, b[:num])
+			log.Error("conn %s .conn.Read data? did not expect that.  data: %s\n", c.dest.Addr, b[:num])
 		}
 		if err != io.EOF {
-			log.Printf("ERROR %s conn c.conn.Read returned but without err=EOF.  did not expect that.  error: %s\n", c.dest.Addr, err)
+			log.Error("conn %s .conn.Read returned but without err=EOF.  did not expect that.  error: %s\n", c.dest.Addr, err)
 		}
 	}
 }
@@ -100,10 +99,9 @@ func (c *Conn) HandleStatus() {
 		// so that you can call getRedo() and get the full picture
 		// this is actually not true yet.
 		case c.up = <-c.updateUp:
-			log.Printf("%s conn marking alive as %v\n", c.dest.Addr, c.up)
-			//log.Println("conn.up is now", c.up)
+			log.Debug("conn %s .up set to %v\n", c.dest.Addr, c.up)
 		case c.checkUp <- c.up:
-			log.Println("query for conn.up, responded with", c.up)
+			log.Debug("conn %s .up query responded with %t", c.dest.Addr, c.up)
 		}
 	}
 }
@@ -116,7 +114,7 @@ func (c *Conn) HandleData() {
 		start := time.Now()
 		select {
 		case buf := <-c.In:
-			log.Printf("%s conn HandleData writing %s\n", c.dest.Addr, string(buf))
+			log.Info("conn %s HandleData writing %s\n", c.dest.Addr, string(buf))
 			c.keepSafe.Add(buf)
 			buf = append(buf, '\n')
 			n, err := c.Write(buf)
@@ -130,10 +128,10 @@ func (c *Conn) HandleData() {
 				if !errBecauseTruncated {
 					c.dest.numErrWrite.Add(1)
 				}
-				log.Printf("%s conn write error: %s\n", c.dest.Addr, err)
-				log.Printf("%s conn setting up=false\n", c.dest.Addr)
+				log.Warning("conn %s write error: %s\n", c.dest.Addr, err)
+				log.Debug("conn %s setting up=false\n", c.dest.Addr)
 				c.updateUp <- false // assure In won't receive more data because every loop that writes to In reads this out
-				log.Printf("%s conn Closing\n", c.dest.Addr)
+				log.Debug("conn %s Closing\n", c.dest.Addr)
 				go c.Close() // this can take a while but that's ok. this conn won't be used anymore
 				return
 			} else {
@@ -141,27 +139,29 @@ func (c *Conn) HandleData() {
 			}
 		case <-tickerFlush.C:
 			err := c.buffered.Flush()
-			log.Printf("%s conn HandleData c.buffered auto-flush done. error maybe: %s\n", c.dest.Addr, err)
 			if err != nil {
+				log.Warning("conn %s HandleData c.buffered auto-flush done but with error: %s, closing\n", c.dest.Addr, err)
 				// TODO instrument
 				c.updateUp <- false
 				go c.Close()
 				return
 			}
+			log.Debug("conn %s HandleData c.buffered auto-flush done without error\n", c.dest.Addr)
 		case <-c.flush:
 			err := c.buffered.Flush()
-			log.Printf("%s conn HandleData c.buffered manual flush done. error maybe: %s\n", c.dest.Addr, err)
 			c.flushErr <- err
 			if err != nil {
+				log.Warning("conn %s HandleData c.buffered manual flush done but witth error: %s, closing\n", c.dest.Addr, err)
 				// TODO instrument
 				c.updateUp <- false
 				go c.Close()
 				return
 			}
+			log.Notice("conn %s HandleData c.buffered manual flush done without error\n", c.dest.Addr)
 		case <-c.shutdown:
 			return
 		}
-		log.Printf("%s conn HandleData iteration took %s (this needs to be super responsive!)\n", c.dest.Addr, time.Now().Sub(start))
+		log.Debug("conn %s HandleData iteration took %s (use this to tune your In buffering)\n", c.dest.Addr, time.Now().Sub(start))
 	}
 }
 
@@ -170,18 +170,18 @@ func (c *Conn) Write(buf []byte) (int, error) {
 }
 
 func (c *Conn) Flush() error {
-	log.Printf("%s conn going to flush my buffer\n", c.dest.Addr)
+	log.Debug("conn %s going to flush my buffer\n", c.dest.Addr)
 	c.flush <- true
-	log.Printf("%s conn waiting for flush, getting error.\n", c.dest.Addr)
+	log.Debug("conn %s waiting for flush, getting error.\n", c.dest.Addr)
 	return <-c.flushErr
 }
 
 func (c *Conn) Close() error {
 	c.updateUp <- false // redundant in case HandleData() called us, but not if the dest called us
-	log.Printf("%s conn Close() called. sending shutdown\n", c.dest.Addr)
+	log.Debug("conn %s Close() called. sending shutdown\n", c.dest.Addr)
 	c.shutdown <- true
-	log.Printf("%s conn c.conn.Close()\n", c.dest.Addr)
+	log.Debug("conn %s c.conn.Close()\n", c.dest.Addr)
 	a := c.conn.Close()
-	log.Printf("%s conn c.conn is closed\n", c.dest.Addr)
+	log.Debug("conn %s c.conn is closed\n", c.dest.Addr)
 	return a
 }
