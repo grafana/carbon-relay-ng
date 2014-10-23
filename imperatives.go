@@ -77,9 +77,6 @@ func readDestinations(specs []string, table *Table) (destinations []*Destination
 				case "regex=":
 					val := s.Next()
 					regex = string(val.Value)
-				case "addr=":
-					val := s.Next()
-					addr = string(val.Value)
 				case "flush=":
 					val := s.Next()
 					i, err := strconv.Atoi(string(val.Value))
