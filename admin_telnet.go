@@ -5,6 +5,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/telnet"
 	"log"
 	"net"
+	"strings"
 )
 
 func max(a, b int) int {
@@ -15,7 +16,7 @@ func max(a, b int) int {
 }
 
 func tcpViewHandler(req telnet.Req) (err error) {
-	if len(req.Command) != 2 {
+	if len(req.Command) != 1 {
 		return errors.New("extraneous arguments")
 	}
 	(*req.Conn).Write([]byte(table.Print() + "\n--\n"))
@@ -23,7 +24,7 @@ func tcpViewHandler(req telnet.Req) (err error) {
 }
 
 func tcpModHandler(req telnet.Req) (err error) {
-	err = applyCommand(table, req.Command[1])
+	err = applyCommand(table, strings.Join(req.Command, " "))
 	if err != nil {
 		return err
 	}
@@ -45,11 +46,27 @@ func writeHelp(conn net.Conn, write_first []byte) { // bytes.Buffer
 	conn.Write(write_first)
 	help := `
 commands:
-    help                                     show this menu
-    route list                               list routes
-    route add <key> [pattern] <addr> <spool> add the route. (empty pattern allows all). (spool has to be 1 or 0)
-    route del <key>                          delete the matching route
-    route patt <key> [pattern]               update pattern for given route key.  (empty pattern allows all)
+    help                                         show this menu
+    view                                         view full current routing table
+    addBlack <substring>                         blacklist (drops the metric matching this as soon as it is received)
+    addRoute <type> <key> [opts]   <dest>  [<dest>[...]] add a new route. note 2 spaces to separate destinations
+             <type>:
+               sendAllMatch                      send metrics in the route to all destinations
+               sendFirstMatch                    send metrics in the route to the first one that matches it
+             <opts>:
+               prefix=<str>                      only take in metrics that have this prefix
+               sub=<str>                         only take in metrics that match this substring
+               regex=<regex>                     only take in metrics that match this regex (expensive!)
+             <dest>: <addr> <opts>
+               <addr>                            a tcp endpoint. i.e. ip:port or hostname:port
+               <opts>:
+                   prefix=<str>                  only take in metrics that have this prefix
+                   sub=<str>                     only take in metrics that match this substring
+                   regex=<regex>                 only take in metrics that match this regex (expensive!)
+                   flush=<int>                   flush interval in ms
+                   reconn=<int>                  reconnection interval in ms
+                   pickle={true,false}           pickle output format instead of the default text protocol
+                   spool={true,false}            enable spooling for this endpoint
 
 `
 	conn.Write([]byte(help))

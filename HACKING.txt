@@ -1,6 +1,4 @@
 main TODO's:
 
-* the API of the table/route/destination structures needs to be a bit more fleshed out, based on the requirements of the http and telnet interface but the simplest seems that every "thing" (table, route, destination) exposes functions to manipulate it,
-and internally takes care of its locking to avoid data races.
-
-* update http and telnet admin interface for the new routing system
+* update http admin ui for the new system
+* extend api functions for making modifications, deleting routes/destinations, etc.
