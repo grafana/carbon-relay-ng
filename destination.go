@@ -38,7 +38,8 @@ type Destination struct {
 	In           chan []byte     // incoming metrics
 	shutdown     chan bool       // signals shutdown internally
 	queue        *nsqd.DiskQueue // queue used if spooling enabled
-	queueIn      chan []byte     // send data to queue
+	queueInRT    chan []byte     // send data to queue
+	queueInBulk  chan []byte     // send data to queue
 	connUpdates  chan *Conn      // when the dest changes (possibly nil)
 	inConnUpdate chan bool       // to signal when we start a new conn and when we finish
 	flush        chan bool
@@ -123,7 +124,8 @@ func (dest *Destination) Run() (err error) {
 	if dest.Spool {
 		dqName := "spool_" + dest.CleanAddr
 		dest.queue = nsqd.NewDiskQueue(dqName, dest.spoolDir, 200*1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
-		dest.queueIn = make(chan []byte)
+		dest.queueInRT = make(chan []byte)
+		dest.queueInBulk = make(chan []byte)
 	}
 	dest.tasks = sync.WaitGroup{}
 	go dest.QueueWriter()
@@ -133,8 +135,30 @@ func (dest *Destination) Run() (err error) {
 
 // provides a channel based api to the queue
 func (dest *Destination) QueueWriter() {
-	for buf := range dest.queueIn {
-		dest.queue.Put(buf)
+	// we always try to serve realtime traffic as much as we can
+	// because that's an inputstream at a fixed rate, it won't slow down
+	// but if no realtime traffic is coming in, then we can use spare capacity
+	// to read from the Bulk input, which is used to offload a known (potentially large) set of data
+	// that could easily exhaust the capacity of our disk queue.  But it doesn't require RT processing,
+	// so just handle this to the extent we can
+	// note that this still allows for channel ops to come in on queueInRT and to be starved, resulting
+	// in some realtime traffic to be dropped, but that shouldn't be too much of an issue. experience will tell..
+	for {
+		select {
+		case buf := <-dest.queueInRT:
+			log.Println("satisfying spool RT 1")
+			dest.queue.Put(buf)
+		default:
+			select {
+			case buf := <-dest.queueInRT:
+				log.Println("satisfying spool RT 2")
+				dest.queue.Put(buf)
+			case buf := <-dest.queueInBulk:
+				log.Println("satisfying spool BULK")
+				dest.queue.Put(buf)
+			default:
+			}
+		}
 	}
 }
 
@@ -148,7 +172,7 @@ func (dest *Destination) Shutdown() error {
 		return errors.New("not running yet")
 	}
 	dest.shutdown <- true
-	// TODO handle running dest.tasks
+	dest.tasks.Wait()
 	return nil
 }
 
@@ -174,8 +198,10 @@ func (dest *Destination) updateConn(addr string) {
 
 func (dest *Destination) collectRedo(conn *Conn) {
 	dest.tasks.Add(1)
-	// TODO reliably resend this data when conn comes back up, without overloading it so that we don't drop data!
-	_ = conn.getRedo()
+	bulkData := conn.getRedo()
+	for _, buf := range bulkData {
+		dest.queueInBulk <- buf
+	}
 	dest.tasks.Done()
 }
 
@@ -215,9 +241,10 @@ func (dest *Destination) relay() {
 	// if slow or down, drop and move on
 	nonBlockingSpool := func(buf []byte) {
 		select {
-		case dest.queueIn <- buf:
+		case dest.queueInRT <- buf:
 			dest.numSpool.Add(1)
 		default:
+			log.Printf("%s DROPPING %s DUE TO SLOW SPOOL\n", dest.Addr, string(buf))
 			dest.numDropSlowSpool.Add(1)
 		}
 	}
@@ -229,17 +256,19 @@ func (dest *Destination) relay() {
 	for {
 		if conn != nil {
 			if !conn.isAlive() {
-				go dest.collectRedo(conn)
+				if dest.Spool {
+					go dest.collectRedo(conn)
+				}
 				conn = nil
 			}
 		}
 		// only process spool queue if we have an outbound connection and we haven't needed to drop packets in a while
-		log.Println(dest.Addr, "in for loop. conn:", conn, "DEST SPOOL", dest.Spool, "slowlastloop", dest.SlowLastLoop, "slownow", dest.SlowNow)
 		if conn != nil && dest.Spool && !dest.SlowLastLoop && !dest.SlowNow {
 			toUnspool = dest.queue.ReadChan()
 		} else {
 			toUnspool = nil
 		}
+		log.Println(dest.Addr, "in for loop. conn:", conn, "DEST SPOOL", dest.Spool, "slowlastloop", dest.SlowLastLoop, "slownow", dest.SlowNow, "spoolqueue", toUnspool)
 
 		log.Printf("#### %s entering the main select ######\n", dest.Addr)
 		//if conn == nil {
@@ -281,7 +310,7 @@ func (dest *Destination) relay() {
 			}
 			return
 		case buf := <-toUnspool:
-			// we know that conn != nil here
+			// we know that conn != nil here because toUnspool is set above
 			log.Printf("%v received from spool: %s\n", dest.Addr, string(buf))
 			nonBlockingSend(buf)
 		case buf := <-dest.In:

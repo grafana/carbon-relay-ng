@@ -43,7 +43,7 @@ func TestSinglePointSingleRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(10 * time.Millisecond) // give time to read data
+	time.Sleep(50 * time.Millisecond) // give time to read data
 	tE.WhatHaveISeen <- true
 	seen := <-tE.IHaveSeen
 	assert.Equal(t, len(seen), 1)
@@ -71,7 +71,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Millisecond) // give time to establish conn
+	time.Sleep(100 * time.Millisecond) // give time to establish conn
 	for _, m := range kMetricsA {
 		table.Dispatch(m)
 		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
@@ -80,14 +80,14 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		// go test 2>&1 | egrep '(table sending to route|route.*receiving)' | grep -v 2006
 		// you should see that data goes through the table in the right order, but the route receives
 		// the points in a different order.
-		time.Sleep(10 * time.Microsecond)
+		time.Sleep(20 * time.Microsecond)
 	}
-	time.Sleep(time.Millisecond) // give time to traverse the routing pipeline
+	time.Sleep(10 * time.Millisecond) // give time to traverse the routing pipeline
 	err = table.Flush()
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(10 * time.Millisecond) // give time to read data
+	time.Sleep(50 * time.Millisecond) // give time to read data
 	tUUU.WhatHaveISeen <- true
 	seenUUU := <-tUUU.IHaveSeen
 	tUDU.WhatHaveISeen <- true
@@ -106,12 +106,12 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		time.Sleep(10 * time.Microsecond)
 	}
 
-	time.Sleep(time.Millisecond) // give time to traverse the routing pipeline
+	time.Sleep(10 * time.Millisecond) // give time to traverse the routing pipeline
 	err = table.Flush()
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(10 * time.Millisecond) // give time to read data
+	time.Sleep(50 * time.Millisecond) // give time to read data
 	tUUU.WhatHaveISeen <- true
 	seenUUU = <-tUUU.IHaveSeen
 	assert.Equal(t, len(seenUUU), 20)
@@ -143,7 +143,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(10 * time.Millisecond) // give time to read data
+	time.Sleep(5000 * time.Millisecond) // give time to read data
 	allSent = make([][]byte, 30)
 	copy(allSent[0:10], kMetricsA[:])
 	copy(allSent[10:20], kMetricsB[:])
@@ -165,8 +165,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	assert.Equal(t, seenUUU, allSent)
 
 	//check UDU
-	assert.Equal(t, len(seenUDU), 20)
-	//assert.Equal(t, len(seenUDU), 30)
+	// in theory we only need 20 points here, but because of the redo buffer it should have sent the first 10 points as well
+	assert.Equal(t, len(seenUDU), 30)
 	fmt.Println(seenUDU)
 
 	err = table.Shutdown()
@@ -174,5 +174,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+//TODO the length of some of those sleeps are not satisfactory, we should maybe look into some perf issue or something
 
 // TODO benchmark the pipeline/matching
