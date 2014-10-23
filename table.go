@@ -69,8 +69,6 @@ func (table *Table) Dispatch(buf []byte) {
 		}
 	}
 
-	// this is a bit sloppy (no synchronisation), but basically we don't want to block here
-	// Dispatch should return asap
 	if !routed {
 		table.numUnroutable.Add(1)
 		log.Notice("unrouteable: %s\n", buf)
