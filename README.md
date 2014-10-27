@@ -14,7 +14,7 @@ Like carbon-relay from the graphite project, except it:
  
 
 This makes it easy to fanout to other tools that feed in on the metrics.
-Or balance load, or provide redundancy (see "first_only" config paramater), or partition the data, etc.
+Or balance/split load, or provide redundancy, or partition the data, etc.
 This pattern allows alerting and event processing systems to act on the data as it is received (which is much better than repeated reading from your storage)
 
 
@@ -61,6 +61,42 @@ Usage
 <pre><code>carbon-relay-ng [-cpuprofile <em>cpuprofile-file</em>] <em>config-file</em></code></pre>
 
 
+Concepts
+--------
+
+You have 1 master routing table.  This table contains 0-N routes.  Each route can contain 0-M destinations (tcp endpoints)
+
+First: "matching": you can match metrics on one or more of: prefix, substring, or regex.  All 3 default to "" (empty string, i.e. allow all).
+The conditions are AND-ed.  Regexes are more resource intensive and hence should, and often can be avoided.
+
+* All incoming matrics get filtered through the blacklist and then go into the table.
+* The table sends the metric to any routes that matches
+* The route can have different behaviors, based on its type:
+
+  * sendAllMatch: send all metrics to all the defined endpoints (possibly, and commonly only 1 endpoint).
+  * sendFirstMatch: send the metrics to the first endpoint that matches it.
+  * consistent hashing: the route is a CH pool (not implemented)
+  * round robin: the route is a RR pool (not implemented)
+
+
+carbon-relay-ng (for now) focuses on staying up and not consuming much resources.
+
+if connection is up but slow, we drop the data
+if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data
+if connection is down and spooling disabled -> drop the data
+
+
+
+Configuration
+-------------
+
+
+Look at the included carbon-relay-ng.ini, it should be self describing.
+In the init option you can create routes, populate the blacklist, etc using the same command as the telnet interface, detailed below.
+This mechanism is choosen so we can reuse the code, instead of doing much configuration boilerplate code which would have to execute on
+a declarative specification.  We can just use the same imperative commands since we just set up the initial state here.
+
+
 Web interface
 -------------
 
@@ -88,3 +124,9 @@ commands:
     route patt <key> [pattern]       update pattern for given route key.  (empty pattern allows all)
 
 
+
+Instrumentation
+---------------
+
+All performance variables are available at http://localhost:8081/debug/vars
+(update port if you change it in config)

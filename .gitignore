@@ -2,3 +2,4 @@
 *.swp
 carbon-relay-ng
 bindata.go
+test_spool
