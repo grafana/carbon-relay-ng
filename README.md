@@ -29,6 +29,15 @@ Future work aka what's missing
 * consistent hashing across different endpoints, if it can be implemented in an elegant way.  (note that this would still be a hack and mostly aimed for legacy setups, [decent storage has redundancy and distribution built in properly ](http://dieter.plaetinck.be/on-graphite-whisper-and-influxdb.html).
 
 
+Releases & versions
+-------------------
+
+* master (work in progress): refactored version with non-blocking operations, extensive internal stats and a more extensive routing system (which can support round robin & hashing) (see #23)
+  note: *the http admin interface in the current master branch does not work*
+* v0.5 extended version with config file, http and telnet interfaces, disk spooling support, but still blocking operations
+* v0.1 initial, simple version that used commandline args to configure. no admin interfaces. blocking sends
+
+
 Building
 --------
 
@@ -37,6 +46,7 @@ Building
     go get -d github.com/graphite-ng/carbon-relay-ng
     go get github.com/jteeuwen/go-bindata/...
     cd "$GOPATH/src/github.com/graphite-ng/carbon-relay-ng"
+    git checkout v0.5
     ./make.sh
 
 
