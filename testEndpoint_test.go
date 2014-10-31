@@ -2,20 +2,28 @@ package main
 
 import (
 	"bufio"
+	"github.com/bmizerany/assert"
 	"net"
 	"testing"
+	"time"
 )
 
 type TestEndpoint struct {
-	t              *testing.T
-	ln             net.Listener
-	seen           chan []byte
-	seenBufs       [][]byte
-	shutdown       chan bool
-	shutdownHandle chan bool // to shut down 1 handler. if you start more handlers they'll keep running
-	WhatHaveISeen  chan bool
-	IHaveSeen      chan [][]byte
-	addr           string
+	t                       *testing.T
+	ln                      net.Listener
+	seen                    chan []byte
+	seenBufs                [][]byte
+	shutdown                chan bool
+	shutdownHandle          chan bool // to shut down 1 handler. if you start more handlers they'll keep running
+	WhatHaveISeen           chan bool
+	IHaveSeen               chan [][]byte
+	addr                    string
+	numSeen                 chan int
+	WaitUntilNumSeemReq     chan int
+	WaitUntilNumSeenResp    chan int
+	WaitUntilNumAcceptsReq  chan int
+	WaitUntilNumAcceptsResp chan int
+	accepts                 chan int
 }
 
 func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
@@ -27,16 +35,36 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 	// shutdown chan size 1 so that Close() doesn't have to wait on the write
 	// because the loops will typically be stuck in Accept ad Readline
 	tE := &TestEndpoint{
-		addr:           addr,
-		t:              t,
-		ln:             ln,
-		seen:           make(chan []byte),
-		seenBufs:       make([][]byte, 0),
-		shutdown:       make(chan bool, 1),
-		shutdownHandle: make(chan bool, 1),
-		WhatHaveISeen:  make(chan bool),
-		IHaveSeen:      make(chan [][]byte),
+		t:                       t,
+		addr:                    addr,
+		ln:                      ln,
+		seen:                    make(chan []byte),
+		seenBufs:                make([][]byte, 0),
+		shutdown:                make(chan bool, 1),
+		shutdownHandle:          make(chan bool, 1),
+		WhatHaveISeen:           make(chan bool),
+		IHaveSeen:               make(chan [][]byte),
+		numSeen:                 make(chan int),
+		WaitUntilNumSeemReq:     make(chan int),
+		WaitUntilNumSeenResp:    make(chan int, 1), // don't block on other end reading.
+		WaitUntilNumAcceptsReq:  make(chan int),
+		WaitUntilNumAcceptsResp: make(chan int, 1), // don't block on other end reading
+		accepts:                 make(chan int),
 	}
+	go func() {
+		waitUntilNumAccepts := -1
+		numAccepts := 0
+		for {
+			select {
+			case diff := <-tE.accepts:
+				numAccepts += diff
+			case waitUntilNumAccepts = <-tE.WaitUntilNumAcceptsReq:
+			}
+			if numAccepts == waitUntilNumAccepts {
+				tE.WaitUntilNumAcceptsResp <- numAccepts
+			}
+		}
+	}()
 	go func() {
 		for {
 			select {
@@ -51,16 +79,25 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 				log.Debug("tE %s accept error: '%s' -> stopping tE\n", tE.addr, err)
 				return
 			}
+			tE.accepts <- 1
 			log.Notice("tE %s accepted new conn\n", tE.addr)
 			go tE.handle(conn)
 			defer func() { log.Debug("tE %s closing conn.\n", tE.addr); conn.Close() }()
 		}
 	}()
 	go func() {
+		waitUntilNumSeen := -1
 		for {
 			select {
 			case buf := <-tE.seen:
 				tE.seenBufs = append(tE.seenBufs, buf)
+				if len(tE.seenBufs) == waitUntilNumSeen {
+					tE.WaitUntilNumSeenResp <- len(tE.seenBufs)
+				}
+			case waitUntilNumSeen = <-tE.WaitUntilNumSeemReq:
+				if len(tE.seenBufs) == waitUntilNumSeen {
+					tE.WaitUntilNumSeenResp <- len(tE.seenBufs)
+				}
 			case <-tE.WhatHaveISeen:
 				var c [][]byte
 				c = append(c, tE.seenBufs...)
@@ -69,6 +106,52 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 		}
 	}()
 	return tE
+}
+
+func (tE *TestEndpoint) WaitNumSeenOrFatal(numSeen int, timeout time.Duration) {
+	tE.WaitUntilNumSeemReq <- numSeen
+	select {
+	case <-tE.WaitUntilNumSeenResp:
+	case <-time.After(timeout):
+		tE.t.Fatalf("tE %s timed out after %s waiting for %d msg", tE.addr, timeout, numSeen)
+	}
+}
+
+func (tE *TestEndpoint) WaitNumAcceptsOrFatal(numAccepts int, timeout time.Duration) {
+	tE.WaitUntilNumAcceptsReq <- numAccepts
+	select {
+	case <-tE.WaitUntilNumAcceptsResp:
+	case <-time.After(timeout):
+		tE.t.Fatalf("tE %s timed out after %s waiting for %d accepts", tE.addr, timeout, numAccepts)
+	}
+}
+
+// don't call this concurrently
+func (tE *TestEndpoint) WaitUntilNumAccepts(numAccept int) {
+	tE.WaitUntilNumAcceptsReq <- numAccept
+	<-tE.WaitUntilNumAcceptsResp
+	return
+}
+
+// don't call this concurrently
+func (tE *TestEndpoint) WaitUntilNumMsg(numMsg int) {
+	tE.WaitUntilNumSeemReq <- numMsg
+	<-tE.WaitUntilNumSeenResp
+	return
+}
+
+func (tE *TestEndpoint) SeenThisOrFatal(ref [][]byte) {
+	tE.WhatHaveISeen <- true
+	seen := <-tE.IHaveSeen
+	assert.Equal(tE.t, len(seen), len(ref))
+	// human friendly:
+	for i, m := range seen {
+		if string(m) != string(ref[i]) {
+			tE.t.Errorf("tE %s error at pos %d: expected '%s', received: '%s'", tE.addr, i, ref[i], m)
+		}
+	}
+	// equivalent, but for deeper debugging
+	assert.Equal(tE.t, seen, ref)
 }
 
 func (tE *TestEndpoint) handle(c net.Conn) {

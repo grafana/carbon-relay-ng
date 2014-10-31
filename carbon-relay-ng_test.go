@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/bmizerany/assert"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
-
-var singleMetric = []byte("test-metric 123 1234567890")
 
 // for now the tests use the one with 10 vals, once everything works better and is tweaked, we can use the larger ones
 var tenMetricsA [10][]byte
@@ -41,11 +39,9 @@ func init() {
 	}
 }
 
-func TestSinglePointSingleRoute(t *testing.T) {
-	tE := NewTestEndpoint(t, ":2005")
-	defer tE.Close()
-	table = NewTable("")
-	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005")
+func NewTableOrFatal(t *testing.T, spool_dir, cmd string) *Table {
+	table = NewTable(spool_dir)
+	err := applyCommand(table, cmd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,42 +49,50 @@ func TestSinglePointSingleRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(20 * time.Millisecond) // give time to establish conn
-	table.Dispatch(singleMetric)
-	time.Sleep(time.Millisecond) // give time to traverse the routing pipeline into conn
-	err = table.Shutdown()
+	return table
+}
+
+func (table *Table) ShutdownOrFatal(t *testing.T) {
+	err := table.Shutdown()
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(50 * time.Millisecond) // give time to read data
-	tE.WhatHaveISeen <- true
-	seen := <-tE.IHaveSeen
-	assert.Equal(t, len(seen), 1)
-	assert.Equal(t, seen[0], singleMetric)
+}
+
+//TODO the length of some of those sleeps/timeouts are not satisfactory, we need to do more perf testing and tuning
+//TODO get rid of all sleeps, we can do better sync wait constructs
+
+func TestSinglePointSingleRoute(t *testing.T) {
+	tE := NewTestEndpoint(t, ":2005")
+	defer tE.Close()
+	table := NewTableOrFatal(t, "", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10")
+	tE.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, nil)
+	table.Dispatch(tenMetricsA[0])
+	tE.WaitNumSeenOrFatal(1, 500*time.Millisecond, nil)
+	tE.SeenThisOrFatal(tenMetricsA[:1])
+	table.ShutdownOrFatal(t)
+	time.Sleep(100 * time.Millisecond) // not sure yet why, but for some reason there's annoying/confusing conn Close() logs still showing up
+	// we don't want to mess up the view of the next test
 }
 
 func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	os.RemoveAll("test_spool")
 	os.Mkdir("test_spool", os.ModePerm)
+	tEWaits := sync.WaitGroup{} // for when we want to wait on both tE's simultaneously
 
 	log.Notice("##### START STEP 1 #####")
 	// UUU -> up-up-up
 	// UDU -> up-down-up
 	tUUU := NewTestEndpoint(t, ":2005")
 	tUDU := NewTestEndpoint(t, ":2006")
-	table = NewTable("test_spool")
 	// reconnect retry should be quick now, so we can proceed quicker
-	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005  127.0.0.1:2006 spool=true reconn=200")
-	if err != nil {
-		t.Fatal(err)
-	}
+	// also flushing freq is increased so we don't have to wait as long
+	table := NewTableOrFatal(t, "test_spool", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10  127.0.0.1:2006 spool=true reconn=200 flush=10")
 	fmt.Println(table.Print())
-
-	err = table.Run()
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(100 * time.Millisecond) // give time to establish conn
+	tEWaits.Add(2)
+	go tUUU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, &tEWaits)
+	go tUDU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, &tEWaits)
+	tEWaits.Wait()
 	for _, m := range kMetricsA {
 		table.Dispatch(m)
 		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
@@ -99,20 +103,12 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		// the points in a different order.
 		time.Sleep(20 * time.Microsecond)
 	}
-	time.Sleep(10 * time.Millisecond) // give time to traverse the routing pipeline
-	err = table.Flush()
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(50 * time.Millisecond) // give time to read data
-	tUUU.WhatHaveISeen <- true
-	seenUUU := <-tUUU.IHaveSeen
-	tUDU.WhatHaveISeen <- true
-	seenUDU := <-tUDU.IHaveSeen
-	assert.Equal(t, len(seenUUU), 10)
-	assert.Equal(t, len(seenUDU), 10)
-	assert.Equal(t, seenUUU, kMetricsA[:])
-	assert.Equal(t, seenUDU, kMetricsA[:])
+	tEWaits.Add(2)
+	go tUUU.WaitNumSeenOrFatal(1000, 2*time.Second, &tEWaits)
+	go tUDU.WaitNumSeenOrFatal(1000, 1*time.Millisecond, &tEWaits)
+	tEWaits.Wait()
+	tUUU.SeenThisOrFatal(kMetricsA[:])
+	tUDU.SeenThisOrFatal(kMetricsA[:])
 
 	// STEP 2: tUDU goes down! simulate outage
 	log.Notice("##### START STEP 2 #####")
@@ -120,29 +116,14 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 
 	for _, m := range kMetricsB {
 		table.Dispatch(m)
-		time.Sleep(10 * time.Microsecond)
+		time.Sleep(10 * time.Microsecond) // see above
 	}
 
-	time.Sleep(10 * time.Millisecond) // give time to traverse the routing pipeline
-	err = table.Flush()
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(50 * time.Millisecond) // give time to read data
-	tUUU.WhatHaveISeen <- true
-	seenUUU = <-tUUU.IHaveSeen
-	assert.Equal(t, len(seenUUU), 20)
-	allSent := make([][]byte, 20)
-	copy(allSent[0:10], kMetricsA[:])
-	copy(allSent[10:20], kMetricsB[:])
-	// human friendly:
-	for i, m := range seenUUU {
-		if string(m) != string(allSent[i]) {
-			t.Errorf("error in UUU at pos %d: expected '%s', received: '%s'", i, allSent[i], m)
-		}
-	}
-	// equivalent, but for deeper debugging
-	assert.Equal(t, seenUUU, allSent)
+	tUUU.WaitNumSeenOrFatal(2000, 4*time.Second, nil)
+	allSent := make([][]byte, 2000)
+	copy(allSent[0:1000], kMetricsA[:])
+	copy(allSent[1000:2000], kMetricsB[:])
+	tUUU.SeenThisOrFatal(allSent)
 
 	// STEP 3: bring the one that was down back up, it should receive all data it missed thanks to the spooling (+ new data)
 	log.Notice("##### START STEP 3 #####")
@@ -152,46 +133,57 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 
 	for _, m := range kMetricsC {
 		table.Dispatch(m)
-		time.Sleep(10 * time.Microsecond)
+		time.Sleep(10 * time.Microsecond) // see above
 	}
 
-	time.Sleep(time.Millisecond) // give time to traverse the routing pipeline
-	err = table.Flush()
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(5000 * time.Millisecond) // give time to read data
-	allSent = make([][]byte, 30)
-	copy(allSent[0:10], kMetricsA[:])
-	copy(allSent[10:20], kMetricsB[:])
-	copy(allSent[20:30], kMetricsC[:])
-	tUUU.WhatHaveISeen <- true
-	seenUUU = <-tUUU.IHaveSeen
-	tUDU.WhatHaveISeen <- true
-	seenUDU = <-tUDU.IHaveSeen
+	tEWaits.Add(2)
+	go tUUU.WaitNumSeenOrFatal(3000, 6*time.Second, &tEWaits)
+	// in theory we only need 2000 points here, but because of the redo buffer it should have sent the first points as well
+	go tUDU.WaitNumSeenOrFatal(3000, 6*time.Second, &tEWaits)
+	tEWaits.Wait()
+	allSent = make([][]byte, 3000)
+	copy(allSent[0:1000], kMetricsA[:])
+	copy(allSent[1000:2000], kMetricsB[:])
+	copy(allSent[2000:3000], kMetricsC[:])
 
-	//check UUU
-	assert.Equal(t, len(seenUUU), 30)
-	// human friendly:
-	for i, m := range seenUUU {
-		if string(m) != string(allSent[i]) {
-			t.Errorf("error in UUU at pos %d: expected '%s', received: '%s'", i, allSent[i], m)
-		}
-	}
-	// equivalent, but for deeper debugging
-	assert.Equal(t, seenUUU, allSent)
+	tUUU.SeenThisOrFatal(allSent)
+	tUDU.SeenThisOrFatal(allSent)
 
-	//check UDU
-	// in theory we only need 20 points here, but because of the redo buffer it should have sent the first 10 points as well
-	assert.Equal(t, len(seenUDU), 30)
-	fmt.Println(seenUDU)
+	table.ShutdownOrFatal(t)
+}
 
-	err = table.Shutdown()
-	if err != nil {
-		t.Fatal(err)
+func BenchmarkSanity(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		fmt.Println("loop SANITY #", i, "START")
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
-//TODO the length of some of those sleeps are not satisfactory, we should maybe look into some perf issue or something
-
 // TODO benchmark the pipeline/matching
+func BenchmarkSend(b *testing.B) {
+	tE := NewTestEndpoint(nil, ":2005")
+	table = NewTable("")
+	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005")
+	if err != nil {
+		b.Fatal(err)
+	}
+	err = table.Run()
+	if err != nil {
+		b.Fatal(err)
+	}
+	tE.WaitUntilNumAccepts(1)
+	for i := 0; i < b.N; i++ {
+		fmt.Println("loop #", i, "START")
+		for _, m := range kMetricsA {
+			table.Dispatch(m)
+		}
+		fmt.Println("loop #", i, "DONE")
+	}
+	tE.WaitUntilNumMsg(1000 * b.N)
+	log.Notice("received all", string(1000*b.N), "messages. wrapping up benchmark run")
+	err = table.Shutdown()
+	if err != nil {
+		b.Fatal(err)
+	}
+	tE.Close()
+}
