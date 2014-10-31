@@ -15,6 +15,7 @@ const (
 	addBlack toki.Token = iota
 	addRouteSendAllMatch
 	addRouteSendFirstMatch
+	addDest
 	opt
 	str
 	word
@@ -27,6 +28,7 @@ var tokenDefGlobal = []toki.Def{
 	{Token: addBlack, Pattern: "addBlack [a-z-_]+"},
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch [a-z-_]+"},
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch [a-z-_]+"},
+	{Token: addDest, Pattern: "addDest [a-z-_]+"},
 	{Token: opt, Pattern: "[a-z]+="},
 	{Token: str, Pattern: "\".*\""},
 	{Token: word, Pattern: "[^ ]+"},
@@ -196,6 +198,12 @@ func applyCommand(table *Table, cmd string) error {
 		}
 		route.Dests = destinations
 		table.AddRoute(route)
+	} else if t.Token == addDest {
+		//split := strings.Split(string(t.Value), " ")
+		//key := split[2]
+
+		fmt.Println("val", t.Value)
+		fmt.Println("inputs", inputs[0])
 	} else {
 		return errors.New("unrecognized command '" + string(t.Value) + "'")
 	}
