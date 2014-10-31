@@ -10,16 +10,34 @@ import (
 
 var singleMetric = []byte("test-metric 123 1234567890")
 
-// when testing works, make this 1000
-var kMetricsA [10][]byte
-var kMetricsB [10][]byte
-var kMetricsC [10][]byte
+// for now the tests use the one with 10 vals, once everything works better and is tweaked, we can use the larger ones
+var tenMetricsA [10][]byte
+var tenMetricsB [10][]byte
+var tenMetricsC [10][]byte
+
+var kMetricsA [1000][]byte
+var kMetricsB [1000][]byte
+var kMetricsC [1000][]byte
+
+var MMetricsA [1000000][]byte
+var MMetricsB [1000000][]byte
+var MMetricsC [1000000][]byte
 
 func init() {
 	for i := 0; i < 10; i++ {
-		kMetricsA[i] = []byte(fmt.Sprintf("test-metric 123 %d", i))
-		kMetricsB[i] = []byte(fmt.Sprintf("test-metric 123 %d", 10+i))
-		kMetricsC[i] = []byte(fmt.Sprintf("test-metric 123 %d", 20+i))
+		tenMetricsA[i] = []byte(fmt.Sprintf("test-metricA 123 %d", i))
+		tenMetricsB[i] = []byte(fmt.Sprintf("test-metricB 123 %d", i))
+		tenMetricsC[i] = []byte(fmt.Sprintf("test-metricC 123 %d", i))
+	}
+	for i := 0; i < 1000; i++ {
+		kMetricsA[i] = []byte(fmt.Sprintf("test-metricA 123 %d", i))
+		kMetricsB[i] = []byte(fmt.Sprintf("test-metricB 123 %d", i))
+		kMetricsC[i] = []byte(fmt.Sprintf("test-metricC 123 %d", i))
+	}
+	for i := 0; i < 1000000; i++ {
+		MMetricsA[i] = []byte(fmt.Sprintf("test-metricA 123 %d", i))
+		MMetricsB[i] = []byte(fmt.Sprintf("test-metricB 123 %d", i))
+		MMetricsC[i] = []byte(fmt.Sprintf("test-metricC 123 %d", i))
 	}
 }
 
