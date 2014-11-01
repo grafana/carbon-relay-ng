@@ -85,8 +85,7 @@ func (table *Table) Snapshot() Table {
 
 	blacklist := make([]*Matcher, len(table.Blacklist))
 	for i, p := range table.Blacklist {
-		snap := p.Snapshot()
-		blacklist[i] = &snap
+		blacklist[i] = p
 	}
 
 	routes := make([]*Route, len(table.routes))

@@ -6,57 +6,46 @@ import (
 )
 
 type Matcher struct {
-	Prefix   []byte
-	Sub      []byte
-	Regex    string
-	regexObj *regexp.Regexp // compiled version of Regex
+	Prefix, Sub, Regex string
+	// internal represenation for performance optimalization
+	prefix, substring []byte
+	regex             *regexp.Regexp // compiled version of Regex
 }
 
 func NewMatcher(prefix, sub, regex string) (*Matcher, error) {
-	match := Matcher{[]byte(prefix), []byte(sub), regex, nil}
-	err := match.UpdateRegex(regex)
+	match := new(Matcher)
+	match.Prefix = prefix
+	match.Sub = sub
+	match.Regex = regex
+	err := match.updateInternals()
 	if err != nil {
 		return nil, err
 	}
-	return &match, nil
+	return match, nil
 }
 
-func (m *Matcher) UpdateRegex(regex string) error {
-	if len(regex) == 0 {
-		m.Regex = regex
-		m.regexObj = nil
-		return nil
+func (m *Matcher) updateInternals() error {
+	m.prefix = []byte(m.Prefix)
+	m.substring = []byte(m.Sub)
+	if len(m.Regex) > 0 {
+		regexObj, err := regexp.Compile(m.Regex)
+		if err != nil {
+			return err
+		}
+		m.regex = regexObj
 	}
-	obj, err := regexp.Compile(regex)
-	if err != nil {
-		return err
-	}
-	m.Regex = regex
-	m.regexObj = obj
 	return nil
 }
 
 func (m *Matcher) Match(s []byte) bool {
-	if len(m.Prefix) > 0 && !bytes.HasPrefix(s, m.Prefix) {
+	if len(m.prefix) > 0 && !bytes.HasPrefix(s, m.prefix) {
 		return false
 	}
-	if len(m.Sub) > 0 && !bytes.Contains(s, m.Sub) {
+	if len(m.substring) > 0 && !bytes.Contains(s, m.substring) {
 		return false
 	}
-	if m.regexObj != nil && !m.regexObj.Match(s) {
+	if m.regex != nil && !m.regex.Match(s) {
 		return false
 	}
 	return true
-}
-
-func (m *Matcher) Snapshot() Matcher {
-	prefix := make([]byte, len(m.Prefix))
-	copy(prefix, m.Prefix)
-
-	sub := make([]byte, len(m.Sub))
-	copy(sub, m.Sub)
-
-	obj, _ := regexp.Compile(m.Regex)
-
-	return Matcher{prefix, sub, m.Regex, obj}
 }

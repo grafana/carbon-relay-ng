@@ -130,7 +130,7 @@ func (route *Route) Snapshot() Route {
 		snap := d.Snapshot()
 		dests[i] = &snap
 	}
-	return Route{route.Type, route.Key, route.Matcher.Snapshot(), dests, nil, sync.Mutex{}}
+	return Route{route.Type, route.Key, route.Matcher, dests, nil, sync.Mutex{}}
 }
 
 func (route *Route) Add(dest Destination) {
