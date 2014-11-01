@@ -2,7 +2,7 @@ var app = new angular.module("carbon-relay-ng", ["ngResource", "ui.bootstrap"]);
 
 app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $resource, $modal){
   $scope.alerts = [];
-  var Route = $resource("/routes/:key", {key: '@Key'}, {});
+  var Route = $resource("/routes/:key", {key: '@key'}, {});
 
   $scope.validAddress = /^[^:]+\:[0-9]+$/;
   $scope.validPattern = (function() {

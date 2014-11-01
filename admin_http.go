@@ -142,7 +142,7 @@ func HttpListener(addr string, t *Table) {
 	router.Handle("/routes/{key}", handler(getRoute)).Methods("GET")
 	//router.Handle("/routes/{key}", handler(updateRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(removeRoute)).Methods("DELETE")
-	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset, AssetDir, "admin/data/"}))
+	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset, AssetDir, "admin_http_assets/"}))
 	http.Handle("/", router)
 
 	log.Notice("admin HTTP listener starting on %v", addr)
