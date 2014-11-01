@@ -7,11 +7,11 @@ import (
 )
 
 type Route struct {
-	Type    interface{} // actually RouteType, can we do this better?
-	Key     string
-	Matcher Matcher
-	Dests   []*Destination
-	in      chan []byte // incoming metrics
+	Type    interface{}    `json:"type"` // actually RouteType, can we do this better?
+	Key     string         `json:"key"`
+	Matcher Matcher        `json:"matcher"`
+	Dests   []*Destination `json:"destination"`
+	in      chan []byte    // incoming metrics
 	sync.Mutex
 }
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/graphite-ng/carbon-relay-ng/nsqd"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -18,20 +17,17 @@ func addrToPath(s string) string {
 
 type Destination struct {
 	// basic properties in init and copy
-	Matcher      Matcher
-	Addr         string // tcp dest
-	spoolDir     string // where to store spool files (if enabled)
-	Spool        bool   // spool metrics to disk while dest down?
-	Pickle       bool   // send in pickle format?
-	Online       bool   // state of connection online/offline.
-	SlowNow      bool   // did we have to drop packets in current loop
-	SlowLastLoop bool   // "" last loop
-	CleanAddr    string
+	Matcher      Matcher `json:"matcher"`
+	Addr         string  `json:"address"` // tcp dest
+	spoolDir     string  // where to store spool files (if enabled)
+	Spool        bool    `json:"spool"`        // spool metrics to disk while dest down?
+	Pickle       bool    `json:"pickle"`       // send in pickle format?
+	Online       bool    `json:"online"`       // state of connection online/offline.
+	SlowNow      bool    `json:"slowNow"`      // did we have to drop packets in current loop
+	SlowLastLoop bool    `json:"slowLastLoop"` // "" last loop
+	cleanAddr    string
 	periodFlush  time.Duration
 	periodReConn time.Duration
-
-	// set automatically in init, passed on in copy
-	Reg *regexp.Regexp // compiled version of patt
 
 	// set in/via Run()
 	in           chan []byte     // incoming metrics
@@ -68,7 +64,7 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 		spoolDir:     spoolDir,
 		Spool:        spool,
 		Pickle:       pickle,
-		CleanAddr:    cleanAddr,
+		cleanAddr:    cleanAddr,
 		periodFlush:  periodFlush,
 		periodReConn: periodReConn,
 	}
@@ -78,14 +74,14 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 
 func (dest *Destination) setExpvars() {
 
-	dest.numDropNoConnNoSpool = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
-	dest.numSpool = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.direction=spool")
-	dest.numDropSlowSpool = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
-	dest.numDropSlowConn = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
-	dest.numDropBadPickle = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
-	dest.numErrTruncated = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Err.type=truncated")
-	dest.numErrWrite = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Err.type=write")
-	dest.numOut = Int("dest=" + dest.CleanAddr + ".target_type=count.unit=Metric.direction=out")
+	dest.numDropNoConnNoSpool = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
+	dest.numSpool = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.direction=spool")
+	dest.numDropSlowSpool = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
+	dest.numDropSlowConn = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
+	dest.numDropBadPickle = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
+	dest.numErrTruncated = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Err.type=truncated")
+	dest.numErrWrite = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Err.type=write")
+	dest.numOut = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.direction=out")
 }
 
 func (dest *Destination) Match(s []byte) bool {
@@ -106,10 +102,9 @@ func (dest *Destination) Snapshot() Destination {
 		Addr:      dest.Addr,
 		spoolDir:  dest.spoolDir,
 		Spool:     dest.Spool,
-		Reg:       dest.Reg,
 		Pickle:    dest.Pickle,
 		Online:    dest.Online,
-		CleanAddr: dest.CleanAddr,
+		cleanAddr: dest.cleanAddr,
 	}
 }
 
@@ -121,7 +116,7 @@ func (dest *Destination) Run() (err error) {
 	dest.flush = make(chan bool)
 	dest.flushErr = make(chan error)
 	if dest.Spool {
-		dqName := "spool_" + dest.CleanAddr
+		dqName := "spool_" + dest.cleanAddr
 		dest.queue = nsqd.NewDiskQueue(dqName, dest.spoolDir, 200*1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
 		dest.queueInRT = make(chan []byte)
 		dest.queueInBulk = make(chan []byte)
@@ -188,7 +183,7 @@ func (dest *Destination) updateConn(addr string) {
 	if addr != dest.Addr {
 		log.Notice("dest %v update address to %v)\n", dest.Addr, addr)
 		dest.Addr = addr
-		dest.CleanAddr = addrToPath(addr)
+		dest.cleanAddr = addrToPath(addr)
 		dest.setExpvars()
 	}
 	dest.connUpdates <- conn
