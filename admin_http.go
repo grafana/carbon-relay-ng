@@ -54,7 +54,7 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func listRoutes(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	t := table.Snapshot()
-	return t, nil
+	return t.routes, nil
 }
 
 func getRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {

@@ -11,7 +11,7 @@ type Route struct {
 	Key     string
 	Matcher Matcher
 	Dests   []*Destination
-	In      chan []byte // incoming metrics
+	in      chan []byte // incoming metrics
 	sync.Mutex
 }
 
@@ -50,14 +50,14 @@ func (route *Route) Run() error {
 }
 
 func (route *Route) RelaySendAllMatch() {
-	for buf := range route.In {
+	for buf := range route.in {
 		fmt.Println("route", route.Key, "receiving ", string(buf))
 		route.Lock()
 		for _, dest := range route.Dests {
 			if dest.Match(buf) {
 				// dest should handle this as quickly as it can
 				fmt.Println("route", route.Key, "sending to dest", dest.Addr, string(buf))
-				dest.In <- buf
+				dest.in <- buf
 			}
 		}
 		route.Unlock()
@@ -65,12 +65,12 @@ func (route *Route) RelaySendAllMatch() {
 }
 
 func (route *Route) RelaySendFirstMatch() {
-	for buf := range route.In {
+	for buf := range route.in {
 		route.Lock()
 		for _, dest := range route.Dests {
 			if dest.Match(buf) {
 				// dest should handle this as quickly as it can
-				dest.In <- buf
+				dest.in <- buf
 				break
 			}
 		}

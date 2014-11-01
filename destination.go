@@ -34,7 +34,7 @@ type Destination struct {
 	Reg *regexp.Regexp // compiled version of patt
 
 	// set in/via Run()
-	In           chan []byte     // incoming metrics
+	in           chan []byte     // incoming metrics
 	shutdown     chan bool       // signals shutdown internally
 	queue        *nsqd.DiskQueue // queue used if spooling enabled
 	queueInRT    chan []byte     // send data to queue
@@ -114,7 +114,7 @@ func (dest *Destination) Snapshot() Destination {
 }
 
 func (dest *Destination) Run() (err error) {
-	dest.In = make(chan []byte)
+	dest.in = make(chan []byte)
 	dest.shutdown = make(chan bool)
 	dest.connUpdates = make(chan *Conn)
 	dest.inConnUpdate = make(chan bool)
@@ -308,7 +308,7 @@ func (dest *Destination) relay() {
 			// we know that conn != nil here because toUnspool is set above
 			log.Info("dest %v %s received from spool -> nonBlockingSend\n", dest.Addr, string(buf))
 			nonBlockingSend(buf)
-		case buf := <-dest.In:
+		case buf := <-dest.in:
 			if conn != nil {
 				log.Info("dest %v %s received from In -> nonBlockingSend\n", dest.Addr, string(buf))
 				nonBlockingSend(buf)

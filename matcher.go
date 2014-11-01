@@ -9,7 +9,7 @@ type Matcher struct {
 	Prefix   []byte
 	Sub      []byte
 	Regex    string
-	RegexObj *regexp.Regexp // compiled version of Regex
+	regexObj *regexp.Regexp // compiled version of Regex
 }
 
 func NewMatcher(prefix, sub, regex string) (*Matcher, error) {
@@ -24,7 +24,7 @@ func NewMatcher(prefix, sub, regex string) (*Matcher, error) {
 func (m *Matcher) UpdateRegex(regex string) error {
 	if len(regex) == 0 {
 		m.Regex = regex
-		m.RegexObj = nil
+		m.regexObj = nil
 		return nil
 	}
 	obj, err := regexp.Compile(regex)
@@ -32,7 +32,7 @@ func (m *Matcher) UpdateRegex(regex string) error {
 		return err
 	}
 	m.Regex = regex
-	m.RegexObj = obj
+	m.regexObj = obj
 	return nil
 }
 
@@ -43,7 +43,7 @@ func (m *Matcher) Match(s []byte) bool {
 	if len(m.Sub) > 0 && !bytes.Contains(s, m.Sub) {
 		return false
 	}
-	if m.RegexObj != nil && !m.RegexObj.Match(s) {
+	if m.regexObj != nil && !m.regexObj.Match(s) {
 		return false
 	}
 	return true
