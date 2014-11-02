@@ -190,7 +190,7 @@ func applyCommand(table *Table, cmd string) error {
 		if err != nil {
 			return err
 		}
-		route, err := NewRoute(sendFirstMatch(1), key, prefix, sub, regex)
+		route, err := NewRoute(sendFirstMatch(2), key, prefix, sub, regex)
 		if err != nil {
 			return err
 		}

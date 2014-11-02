@@ -65,7 +65,7 @@ func (table *Table) Dispatch(buf []byte) {
 			//fmt.Println("routing to " + dest.Key)
 			// routes should take this in as fast as they can
 			fmt.Println("table sending to route", string(buf))
-			route.In <- buf
+			route.in <- buf
 		}
 	}
 
@@ -85,8 +85,7 @@ func (table *Table) Snapshot() Table {
 
 	blacklist := make([]*Matcher, len(table.Blacklist))
 	for i, p := range table.Blacklist {
-		snap := p.Snapshot()
-		blacklist[i] = &snap
+		blacklist[i] = p
 	}
 
 	routes := make([]*Route, len(table.routes))
