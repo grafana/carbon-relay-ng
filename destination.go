@@ -150,7 +150,6 @@ func (dest *Destination) QueueWriter() {
 			case buf := <-dest.queueInBulk:
 				log.Debug("dest %v satisfying spool BULK")
 				dest.queue.Put(buf)
-			default:
 			}
 		}
 	}
