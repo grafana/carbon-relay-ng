@@ -54,7 +54,7 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func listRoutes(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	t := table.Snapshot()
-	return t, nil
+	return t.routes, nil
 }
 
 func getRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
@@ -142,7 +142,7 @@ func HttpListener(addr string, t *Table) {
 	router.Handle("/routes/{key}", handler(getRoute)).Methods("GET")
 	//router.Handle("/routes/{key}", handler(updateRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(removeRoute)).Methods("DELETE")
-	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset, AssetDir, "admin/data/"}))
+	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset, AssetDir, "admin_http_assets/"}))
 	http.Handle("/", router)
 
 	log.Notice("admin HTTP listener starting on %v", addr)
