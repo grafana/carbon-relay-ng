@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 )
 
@@ -51,12 +50,12 @@ func (route *Route) Run() error {
 
 func (route *Route) RelaySendAllMatch() {
 	for buf := range route.in {
-		fmt.Println("route", route.Key, "receiving ", string(buf))
+		log.Info("route %s receiving %s", route.Key, buf)
 		route.Lock()
 		for _, dest := range route.Dests {
 			if dest.Match(buf) {
 				// dest should handle this as quickly as it can
-				fmt.Println("route", route.Key, "sending to dest", dest.Addr, string(buf))
+				log.Info("route %s sending to dest %s: %s", route.Key, dest.Addr, buf)
 				dest.in <- buf
 			}
 		}

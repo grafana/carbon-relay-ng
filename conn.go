@@ -72,7 +72,7 @@ func (c *Conn) checkEOF() {
 	for {
 		num, err := c.conn.Read(b)
 		if err == io.EOF {
-			log.Notice("conn %s .conn.Read returned EOF -> conn is closed", c.dest.Addr)
+			log.Notice("conn %s .conn.Read returned EOF -> conn is closed. closing conn explicitly", c.dest.Addr)
 			c.Close()
 			return
 		}
@@ -81,7 +81,9 @@ func (c *Conn) checkEOF() {
 			log.Error("conn %s .conn.Read data? did not expect that.  data: %s\n", c.dest.Addr, b[:num])
 		}
 		if err != io.EOF {
-			log.Error("conn %s .conn.Read returned but without err=EOF.  did not expect that.  error: %s\n", c.dest.Addr, err)
+			log.Error("conn %s checkEOF .conn.Read returned err != EOF, which is unexpected.  closing conn. error: %s\n", c.dest.Addr, err)
+			c.Close()
+			return
 		}
 	}
 }
@@ -114,7 +116,7 @@ func (c *Conn) HandleData() {
 		start := time.Now()
 		select {
 		case buf := <-c.In:
-			log.Info("conn %s HandleData writing %s\n", c.dest.Addr, string(buf))
+			log.Info("conn %s HandleData: writing %s\n", c.dest.Addr, string(buf))
 			c.keepSafe.Add(buf)
 			buf = append(buf, '\n')
 			n, err := c.Write(buf)
@@ -138,6 +140,7 @@ func (c *Conn) HandleData() {
 				c.dest.numOut.Add(1)
 			}
 		case <-tickerFlush.C:
+			log.Debug("conn %s HandleData: c.buffered auto-flushing...\n", c.dest.Addr)
 			err := c.buffered.Flush()
 			if err != nil {
 				log.Warning("conn %s HandleData c.buffered auto-flush done but with error: %s, closing\n", c.dest.Addr, err)
@@ -148,6 +151,7 @@ func (c *Conn) HandleData() {
 			}
 			log.Debug("conn %s HandleData c.buffered auto-flush done without error\n", c.dest.Addr)
 		case <-c.flush:
+			log.Debug("conn %s HandleData: c.buffered manual flushing...\n", c.dest.Addr)
 			err := c.buffered.Flush()
 			c.flushErr <- err
 			if err != nil {
@@ -159,6 +163,7 @@ func (c *Conn) HandleData() {
 			}
 			log.Notice("conn %s HandleData c.buffered manual flush done without error\n", c.dest.Addr)
 		case <-c.shutdown:
+			log.Debug("conn %s HandleData: shutdown received. returning.\n", c.dest.Addr)
 			return
 		}
 		log.Debug("conn %s HandleData iteration took %s (use this to tune your In buffering)\n", c.dest.Addr, time.Now().Sub(start))

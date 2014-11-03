@@ -64,7 +64,7 @@ func (table *Table) Dispatch(buf []byte) {
 			routed = true
 			//fmt.Println("routing to " + dest.Key)
 			// routes should take this in as fast as they can
-			fmt.Println("table sending to route", string(buf))
+			log.Info("table sending to route: %s", buf)
 			route.in <- buf
 		}
 	}

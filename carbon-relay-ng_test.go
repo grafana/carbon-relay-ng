@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	logging "github.com/op/go-logging"
 	"os"
 	"sync"
 	"testing"
@@ -23,31 +24,39 @@ var MMetricsC [1000000][]byte
 
 func init() {
 	for i := 0; i < 10; i++ {
-		tenMetricsA[i] = []byte(fmt.Sprintf("test-metricA 123 %d", i))
-		tenMetricsB[i] = []byte(fmt.Sprintf("test-metricB 123 %d", i))
-		tenMetricsC[i] = []byte(fmt.Sprintf("test-metricC 123 %d", i))
+		tenMetricsA[i] = []byte(fmt.Sprintf("test.tenMetricsA 123 %d", i))
+		tenMetricsB[i] = []byte(fmt.Sprintf("test.tenMetricsB 123 %d", i))
+		tenMetricsC[i] = []byte(fmt.Sprintf("test.tenMetricsC 123 %d", i))
 	}
 	for i := 0; i < 1000; i++ {
-		kMetricsA[i] = []byte(fmt.Sprintf("test-metricA 123 %d", i))
-		kMetricsB[i] = []byte(fmt.Sprintf("test-metricB 123 %d", i))
-		kMetricsC[i] = []byte(fmt.Sprintf("test-metricC 123 %d", i))
+		kMetricsA[i] = []byte(fmt.Sprintf("test.kMetricsA 123 %d", i))
+		kMetricsB[i] = []byte(fmt.Sprintf("test.kMetricsB 123 %d", i))
+		kMetricsC[i] = []byte(fmt.Sprintf("test.kMetricsC 123 %d", i))
 	}
 	for i := 0; i < 1000000; i++ {
-		MMetricsA[i] = []byte(fmt.Sprintf("test-metricA 123 %d", i))
-		MMetricsB[i] = []byte(fmt.Sprintf("test-metricB 123 %d", i))
-		MMetricsC[i] = []byte(fmt.Sprintf("test-metricC 123 %d", i))
+		MMetricsA[i] = []byte(fmt.Sprintf("test.MMetricsA 123 %d", i))
+		MMetricsB[i] = []byte(fmt.Sprintf("test.MMetricsB 123 %d", i))
+		MMetricsC[i] = []byte(fmt.Sprintf("test.MMetricsC 123 %d", i))
 	}
 }
 
-func NewTableOrFatal(t *testing.T, spool_dir, cmd string) *Table {
+func NewTableOrFatal(tb interface{}, spool_dir, cmd string) *Table {
 	table = NewTable(spool_dir)
+	fatal := func(err error) {
+		switch tb.(type) {
+		case *testing.T:
+			tb.(*testing.T).Fatal(err)
+		case *testing.B:
+			tb.(*testing.B).Fatal(err)
+		}
+	}
 	err := applyCommand(table, cmd)
 	if err != nil {
-		t.Fatal(err)
+		fatal(err)
 	}
 	err = table.Run()
 	if err != nil {
-		t.Fatal(err)
+		fatal(err)
 	}
 	return table
 }
@@ -105,7 +114,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	}
 	tEWaits.Add(2)
 	go tUUU.WaitNumSeenOrFatal(1000, 2*time.Second, &tEWaits)
-	go tUDU.WaitNumSeenOrFatal(1000, 1*time.Millisecond, &tEWaits)
+	go tUDU.WaitNumSeenOrFatal(1000, 2*time.Second, &tEWaits)
 	tEWaits.Wait()
 	tUUU.SeenThisOrFatal(kMetricsA[:])
 	tUDU.SeenThisOrFatal(kMetricsA[:])
@@ -119,7 +128,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		time.Sleep(10 * time.Microsecond) // see above
 	}
 
-	tUUU.WaitNumSeenOrFatal(2000, 4*time.Second, nil)
+	tUUU.WaitNumSeenOrFatal(2000, 2*time.Second, nil)
 	allSent := make([][]byte, 2000)
 	copy(allSent[0:1000], kMetricsA[:])
 	copy(allSent[1000:2000], kMetricsB[:])
@@ -129,7 +138,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	log.Notice("##### START STEP 3 #####")
 	tUDU = NewTestEndpoint(t, ":2006")
 
-	time.Sleep(250 * time.Millisecond) // make sure conn can detect the endpoint is back up
+	tUDU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, nil)
 
 	for _, m := range kMetricsC {
 		table.Dispatch(m)
@@ -137,7 +146,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	}
 
 	tEWaits.Add(2)
-	go tUUU.WaitNumSeenOrFatal(3000, 6*time.Second, &tEWaits)
+	go tUUU.WaitNumSeenOrFatal(3000, 1*time.Second, &tEWaits)
 	// in theory we only need 2000 points here, but because of the redo buffer it should have sent the first points as well
 	go tUDU.WaitNumSeenOrFatal(3000, 6*time.Second, &tEWaits)
 	tEWaits.Wait()
@@ -152,36 +161,26 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	table.ShutdownOrFatal(t)
 }
 
-func BenchmarkSanity(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		fmt.Println("loop SANITY #", i, "START")
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-// TODO benchmark the pipeline/matching
-func BenchmarkSend(b *testing.B) {
+func BenchmarkSendAndReceive(b *testing.B) {
+	logging.SetLevel(logging.WARNING, "carbon-relay-ng")
 	tE := NewTestEndpoint(nil, ":2005")
-	table = NewTable("")
-	err := applyCommand(table, "addRoute sendAllMatch test1  127.0.0.1:2005")
-	if err != nil {
-		b.Fatal(err)
-	}
-	err = table.Run()
-	if err != nil {
-		b.Fatal(err)
-	}
+	table = NewTableOrFatal(b, "", "addRoute sendAllMatch test1  127.0.0.1:2005")
 	tE.WaitUntilNumAccepts(1)
+	// reminder: go benchmark will invoke this with N = 0, then N = 20, then maybe more
+	// and the time it prints is function run divided by N, which
+	// should be of a more or less stable time, which gets printed
 	for i := 0; i < b.N; i++ {
-		fmt.Println("loop #", i, "START")
+		log.Notice("iteration %d: sending %d metrics", i, 1000)
 		for _, m := range kMetricsA {
 			table.Dispatch(m)
+			time.Sleep(10 * time.Microsecond) // see above
 		}
-		fmt.Println("loop #", i, "DONE")
+		log.Notice("waiting until all %d messages received", 1000*(i+1))
+		tE.WaitUntilNumMsg(1000 * (i + 1))
+		log.Notice("iteration %d done. received 1000 metrics (%d total)", 1000*(i+1))
 	}
-	tE.WaitUntilNumMsg(1000 * b.N)
-	log.Notice("received all", string(1000*b.N), "messages. wrapping up benchmark run")
-	err = table.Shutdown()
+	log.Notice("received all %d messages. wrapping up benchmark run", string(1000*b.N))
+	err := table.Shutdown()
 	if err != nil {
 		b.Fatal(err)
 	}

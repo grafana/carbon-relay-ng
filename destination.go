@@ -293,7 +293,7 @@ func (dest *Destination) relay() {
 				dest.flushErr <- nil
 			}
 		case <-dest.shutdown:
-			log.Notice("dest %v shutting down\n", dest.Addr)
+			log.Notice("dest %v shutting down. flushing and closing conn\n", dest.Addr)
 			if conn != nil {
 				conn.Flush()
 				conn.Close()

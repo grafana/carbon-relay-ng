@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/bmizerany/assert"
 	"net"
+	"sync"
 	"testing"
 	"time"
 )
@@ -19,7 +21,7 @@ type TestEndpoint struct {
 	IHaveSeen               chan [][]byte
 	addr                    string
 	numSeen                 chan int
-	WaitUntilNumSeemReq     chan int
+	WaitUntilNumSeenReq     chan int
 	WaitUntilNumSeenResp    chan int
 	WaitUntilNumAcceptsReq  chan int
 	WaitUntilNumAcceptsResp chan int
@@ -45,7 +47,7 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 		WhatHaveISeen:           make(chan bool),
 		IHaveSeen:               make(chan [][]byte),
 		numSeen:                 make(chan int),
-		WaitUntilNumSeemReq:     make(chan int),
+		WaitUntilNumSeenReq:     make(chan int),
 		WaitUntilNumSeenResp:    make(chan int, 1), // don't block on other end reading.
 		WaitUntilNumAcceptsReq:  make(chan int),
 		WaitUntilNumAcceptsResp: make(chan int, 1), // don't block on other end reading
@@ -89,12 +91,16 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 		waitUntilNumSeen := -1
 		for {
 			select {
-			case buf := <-tE.seen:
-				tE.seenBufs = append(tE.seenBufs, buf)
+			// always try this first to make sure it gets set when it can
+			case waitUntilNumSeen = <-tE.WaitUntilNumSeenReq:
 				if len(tE.seenBufs) == waitUntilNumSeen {
 					tE.WaitUntilNumSeenResp <- len(tE.seenBufs)
 				}
-			case waitUntilNumSeen = <-tE.WaitUntilNumSeemReq:
+			default:
+			}
+			select {
+			case buf := <-tE.seen:
+				tE.seenBufs = append(tE.seenBufs, buf)
 				if len(tE.seenBufs) == waitUntilNumSeen {
 					tE.WaitUntilNumSeenResp <- len(tE.seenBufs)
 				}
@@ -102,14 +108,23 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 				var c [][]byte
 				c = append(c, tE.seenBufs...)
 				tE.IHaveSeen <- c
+			case waitUntilNumSeen = <-tE.WaitUntilNumSeenReq:
+				if len(tE.seenBufs) == waitUntilNumSeen {
+					tE.WaitUntilNumSeenResp <- len(tE.seenBufs)
+				}
 			}
 		}
 	}()
 	return tE
 }
 
-func (tE *TestEndpoint) WaitNumSeenOrFatal(numSeen int, timeout time.Duration) {
-	tE.WaitUntilNumSeemReq <- numSeen
+func (tE *TestEndpoint) WaitNumSeenOrFatal(numSeen int, timeout time.Duration, wg *sync.WaitGroup) {
+	defer func() {
+		if wg != nil {
+			wg.Done()
+		}
+	}()
+	tE.WaitUntilNumSeenReq <- numSeen
 	select {
 	case <-tE.WaitUntilNumSeenResp:
 	case <-time.After(timeout):
@@ -117,7 +132,13 @@ func (tE *TestEndpoint) WaitNumSeenOrFatal(numSeen int, timeout time.Duration) {
 	}
 }
 
-func (tE *TestEndpoint) WaitNumAcceptsOrFatal(numAccepts int, timeout time.Duration) {
+func (tE *TestEndpoint) WaitNumAcceptsOrFatal(numAccepts int, timeout time.Duration, wg *sync.WaitGroup) {
+	defer func() {
+		if wg != nil {
+			wg.Done()
+		}
+	}()
+
 	tE.WaitUntilNumAcceptsReq <- numAccepts
 	select {
 	case <-tE.WaitUntilNumAcceptsResp:
@@ -135,7 +156,7 @@ func (tE *TestEndpoint) WaitUntilNumAccepts(numAccept int) {
 
 // don't call this concurrently
 func (tE *TestEndpoint) WaitUntilNumMsg(numMsg int) {
-	tE.WaitUntilNumSeemReq <- numMsg
+	tE.WaitUntilNumSeenReq <- numMsg
 	<-tE.WaitUntilNumSeenResp
 	return
 }
