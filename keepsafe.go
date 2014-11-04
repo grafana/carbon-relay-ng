@@ -1,22 +1,23 @@
 package main
 
 import (
-	"container/list"
 	"sync"
 	"time"
 )
 
 type keepSafe struct {
-	safeOld    *list.List
-	safeRecent *list.List
+	initialCap int
+	safeOld    [][]byte
+	safeRecent [][]byte
 	periodKeep time.Duration // period to keep at least.  you get this period + a bit more
 	sync.Mutex
 }
 
-func NewKeepSafe(periodKeep time.Duration) *keepSafe {
+func NewKeepSafe(initialCap int, periodKeep time.Duration) *keepSafe {
 	k := keepSafe{
-		safeOld:    list.New(),
-		safeRecent: list.New(),
+		initialCap: initialCap,
+		safeOld:    make([][]byte, 0, initialCap),
+		safeRecent: make([][]byte, 0, initialCap),
 		periodKeep: periodKeep,
 	}
 	go k.keepClean()
@@ -28,28 +29,22 @@ func (k *keepSafe) keepClean() {
 	for _ = range tick.C {
 		k.Lock()
 		k.safeOld = k.safeRecent
-		k.safeRecent = list.New()
+		k.safeRecent = make([][]byte, 0, k.initialCap)
 		k.Unlock()
 	}
 }
 
 func (k *keepSafe) Add(buf []byte) {
 	k.Lock()
-	k.safeRecent.PushBack(buf)
+	k.safeRecent = append(k.safeRecent, buf)
 	k.Unlock()
 }
 
-func (k *keepSafe) GetAll() chan []byte {
-	ret := make(chan []byte)
+func (k *keepSafe) GetAll() [][]byte {
 	k.Lock()
-	go func(ret chan []byte, old, recent *list.List) {
-		for e := old.Front(); e != nil; e = e.Next() {
-			ret <- e.Value.([]byte)
-		}
-		for e := recent.Front(); e != nil; e = e.Next() {
-			ret <- e.Value.([]byte)
-		}
-	}(ret, k.safeOld, k.safeRecent)
+	ret := append(k.safeOld, k.safeRecent...)
+	k.safeOld = make([][]byte, 0, k.initialCap)
+	k.safeRecent = make([][]byte, 0, k.initialCap)
 	k.Unlock()
 	return ret
 }
