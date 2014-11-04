@@ -49,7 +49,7 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 		periodFlush: periodFlush,
 		// this interval should be long enough to capture all failure modes
 		// (endpoint down, delayed timeout, etc), so it should be at least as long as the flush interval
-		keepSafe: NewKeepSafe(100000, time.Duration(10*time.Second)),
+		keepSafe: NewKeepSafe(time.Duration(10 * time.Second)),
 	}
 
 	go connObj.checkEOF()
@@ -90,7 +90,7 @@ func (c *Conn) checkEOF() {
 
 // all these messages should potentially be resubmitted, because we're not confident about their delivery
 // note: getting this data means resetting it! so handle it wisely.
-func (c *Conn) getRedo() [][]byte {
+func (c *Conn) getRedo() chan []byte {
 	return c.keepSafe.GetAll()
 }
 

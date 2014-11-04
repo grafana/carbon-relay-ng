@@ -192,7 +192,7 @@ func (dest *Destination) updateConn(addr string) {
 func (dest *Destination) collectRedo(conn *Conn) {
 	dest.tasks.Add(1)
 	bulkData := conn.getRedo()
-	for _, buf := range bulkData {
+	for buf := range bulkData {
 		dest.queueInBulk <- buf
 	}
 	dest.tasks.Done()
