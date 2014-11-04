@@ -155,9 +155,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	table.ShutdownOrFatal(t)
 }
 
-func BenchmarkSendAndReceiveThousand(b *testing.B) {
-	amount := 100000
-	logging.SetLevel(logging.WARNING, "carbon-relay-ng")
+func benchmarkSendAndReceive(b *testing.B, amount int) {
+	logging.SetLevel(logging.ERROR, "carbon-relay-ng")
 	tE := NewTestEndpoint(nil, ":2005")
 	table = NewTableOrFatal(b, "", "addRoute sendAllMatch test1  127.0.0.1:2005")
 	tE.WaitUntilNumAccepts(1)
@@ -182,4 +181,17 @@ func BenchmarkSendAndReceiveThousand(b *testing.B) {
 		b.Fatal(err)
 	}
 	tE.Close()
+}
+
+func BenchmarkSendAndReceiveThousand(b *testing.B) {
+	benchmarkSendAndReceive(b, 1e3)
+}
+func BenchmarkSendAndReceiveTenThousand(b *testing.B) {
+	benchmarkSendAndReceive(b, 1e4)
+}
+func BenchmarkSendAndReceiveHundredThousand(b *testing.B) {
+	benchmarkSendAndReceive(b, 1e5)
+}
+func BenchmarkSendAndReceiveMillion(b *testing.B) {
+	benchmarkSendAndReceive(b, 1e6)
 }
