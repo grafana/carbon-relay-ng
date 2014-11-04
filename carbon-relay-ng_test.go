@@ -54,7 +54,10 @@ func TestSinglePointSingleRoute(t *testing.T) {
 	table.Dispatch(metricBuf.Bytes())
 	metricBuf.Reset()
 	tE.WaitNumSeenOrFatal(1, 500*time.Millisecond, nil)
-	// TODOtE.SeenThisOrFatal(metricBuf.Bytes())
+	//c := make(chan []byte, 1)
+	//c <- metricBuf.Bytes()
+	//close(c)
+	//tE.SeenThisOrFatal(c)
 	table.ShutdownOrFatal(t)
 	time.Sleep(100 * time.Millisecond) // not sure yet why, but for some reason there's annoying/confusing conn Close() logs still showing up
 	// we don't want to mess up the view of the next test
@@ -63,6 +66,8 @@ func TestSinglePointSingleRoute(t *testing.T) {
 func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	os.RemoveAll("test_spool")
 	os.Mkdir("test_spool", os.ModePerm)
+	//var checkerUUU chan []byte
+	//var checkerUDU chan []byte
 	tEWaits := sync.WaitGroup{} // for when we want to wait on both tE's simultaneously
 
 	log.Notice("##### START STEP 1 #####")
@@ -78,9 +83,13 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	go tUUU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, &tEWaits)
 	go tUDU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, &tEWaits)
 	tEWaits.Wait()
+	//checkerUUU = make(chan []byte, 1000)
+	//checkerUDU = make(chan []byte, 1000)
 	for i := 0; i < 1000; i++ {
 		fmt.Fprintf(&metricBuf, "testMetricA 123 %d", i)
 		table.Dispatch(metricBuf.Bytes())
+		//checkerUUU <- metricBuf.Bytes()
+		//checkerUDU <- metricBuf.Bytes()
 		metricBuf.Reset()
 		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
 		// note i'm afraid this sleep masks another issue: data can get reordered.
@@ -90,33 +99,36 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		// the points in a different order.
 		time.Sleep(20 * time.Microsecond)
 	}
+	//close(checkerUUU)
+	//close(checkerUDU)
 	tEWaits.Add(2)
 	go tUUU.WaitNumSeenOrFatal(1000, 2*time.Second, &tEWaits)
 	go tUDU.WaitNumSeenOrFatal(1000, 2*time.Second, &tEWaits)
 	tEWaits.Wait()
-	//tUUU.SeenThisOrFatal(kMetricsA[:])
-	//tUDU.SeenThisOrFatal(kMetricsA[:])
+	//tUUU.SeenThisOrFatal(checkerUUU)
+	//tUDU.SeenThisOrFatal(checkerUDU)
 
 	// STEP 2: tUDU goes down! simulate outage
 	log.Notice("##### START STEP 2 #####")
 	tUDU.Close()
 
+	//checkerUUU = make(chan []byte, 1000)
 	for i := 0; i < 1000; i++ {
 		fmt.Fprintf(&metricBuf, "testMetricB 123 %d", i)
 		table.Dispatch(metricBuf.Bytes())
+		//checkerUUU <- metricBuf.Bytes()
 		metricBuf.Reset()
 		time.Sleep(10 * time.Microsecond) // see above
 	}
 
 	tUUU.WaitNumSeenOrFatal(2000, 2*time.Second, nil)
-	//allSent := make([][]byte, 2000)
-	//copy(allSent[0:1000], kMetricsA[:])
-	//copy(allSent[1000:2000], kMetricsB[:])
-	//tUUU.SeenThisOrFatal(allSent)
+	//tUUU.SeenThisOrFatal(checkerUUU)
 
 	// STEP 3: bring the one that was down back up, it should receive all data it missed thanks to the spooling (+ new data)
 	log.Notice("##### START STEP 3 #####")
 	tUDU = NewTestEndpoint(t, ":2006")
+	//checkerUUU = make(chan []byte, 1000)
+	//checkerUDU = make(chan []byte, 1000)
 
 	tUDU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, nil)
 
