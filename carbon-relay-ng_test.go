@@ -2,8 +2,8 @@ package main
 
 // for now the tests use 10 vals,
 // once everything works better and is tweaked, we can use larger amounts
+
 import (
-	"bytes"
 	"fmt"
 	logging "github.com/op/go-logging"
 	"os"
@@ -12,7 +12,34 @@ import (
 	"time"
 )
 
-var metricBuf bytes.Buffer
+var packets1A *dummyPackets
+var packets1B *dummyPackets
+var packets1C *dummyPackets
+
+var packets3A *dummyPackets
+var packets3B *dummyPackets
+var packets3C *dummyPackets
+
+var packets4A *dummyPackets
+var packets5A *dummyPackets
+
+var packets6A *dummyPackets
+var packets6B *dummyPackets
+var packets6C *dummyPackets
+
+func init() {
+	packets1A = NewDummyPackets("1A", 10)
+	packets1B = NewDummyPackets("1B", 10)
+	packets1C = NewDummyPackets("1C", 10)
+	packets3A = NewDummyPackets("3A", 1000)
+	packets3B = NewDummyPackets("3B", 1000)
+	packets3C = NewDummyPackets("3C", 1000)
+	packets4A = NewDummyPackets("4A", 10000)
+	packets5A = NewDummyPackets("5A", 100000)
+	packets6A = NewDummyPackets("6A", 1000000)
+	//packets6B = NewDummyPackets("6B", 1000000)
+	//packets6C = NewDummyPackets("6C", 1000000)
+}
 
 func NewTableOrFatal(tb interface{}, spool_dir, cmd string) *Table {
 	table = NewTable(spool_dir)
@@ -50,9 +77,7 @@ func TestSinglePointSingleRoute(t *testing.T) {
 	defer tE.Close()
 	table := NewTableOrFatal(t, "", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10")
 	tE.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, nil)
-	fmt.Fprintf(&metricBuf, "testMetric 123 1")
-	table.Dispatch(metricBuf.Bytes())
-	metricBuf.Reset()
+	table.Dispatch(packets1A.Get(0))
 	tE.WaitNumSeenOrFatal(1, 500*time.Millisecond, nil)
 	//c := make(chan []byte, 1)
 	//c <- metricBuf.Bytes()
@@ -87,14 +112,9 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	//checkerUUU = make(chan []byte, 1000)
 	//checkerUDU = make(chan []byte, 1000)
 	for i := 0; i < 1000; i++ {
-		fmt.Fprintf(&metricBuf, "testMetricA 123 %d", i)
-		val := metricBuf.Bytes()
-		valCopy := make([]byte, len(val), len(val))
-		copy(valCopy, val)
-		table.Dispatch(valCopy)
+		table.Dispatch(packets3A.Get(i))
 		//checkerUUU <- metricBuf.Bytes()
 		//checkerUDU <- metricBuf.Bytes()
-		metricBuf.Reset()
 		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
 		// note i'm afraid this sleep masks another issue: data can get reordered.
 		// if you take this sleep away, and run like so:
@@ -118,13 +138,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 
 	//checkerUUU = make(chan []byte, 1000)
 	for i := 0; i < 1000; i++ {
-		fmt.Fprintf(&metricBuf, "testMetricB 123 %d", i)
-		val := metricBuf.Bytes()
-		valCopy := make([]byte, len(val), len(val))
-		copy(valCopy, val)
-		table.Dispatch(valCopy)
+		table.Dispatch(packets3B.Get(i))
 		//checkerUUU <- metricBuf.Bytes()
-		metricBuf.Reset()
 		time.Sleep(10 * time.Microsecond) // see above
 	}
 
@@ -140,12 +155,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	tUDU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, nil)
 
 	for i := 0; i < 1000; i++ {
-		fmt.Fprintf(&metricBuf, "testMetricC 123 %d", i)
-		val := metricBuf.Bytes()
-		valCopy := make([]byte, len(val), len(val))
-		copy(valCopy, val)
-		table.Dispatch(valCopy)
-		metricBuf.Reset()
+		table.Dispatch(packets3C.Get(i))
 		time.Sleep(10 * time.Microsecond) // see above
 	}
 
@@ -155,9 +165,6 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	go tUDU.WaitNumSeenOrFatal(3000, 6*time.Second, &tEWaits)
 	tEWaits.Wait()
 	//allSent = make([][]byte, 3000)
-	//copy(allSent[0:1000], kMetricsA[:])
-	//copy(allSent[1000:2000], kMetricsB[:])
-	//copy(allSent[2000:3000], kMetricsC[:])
 
 	//tUUU.SeenThisOrFatal(allSent)
 	//tUDU.SeenThisOrFatal(allSent)
@@ -165,27 +172,28 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	table.ShutdownOrFatal(t)
 }
 
-func benchmarkSendAndReceive(b *testing.B, amount int) {
-	logging.SetLevel(logging.ERROR, "carbon-relay-ng")
+func benchmarkSendAndReceive(b *testing.B, dp *dummyPackets) {
+	logging.SetLevel(logging.WARNING, "carbon-relay-ng")
 	tE := NewTestEndpoint(nil, ":2005")
 	table = NewTableOrFatal(b, "", "addRoute sendAllMatch test1  127.0.0.1:2005")
 	tE.WaitUntilNumAccepts(1)
-	// reminder: go benchmark will invoke this with N = 0, then N = 20, then maybe more
+	// reminder: go benchmark will invoke this with N = 0, then maybe N = 20, then maybe more
 	// and the time it prints is function run divided by N, which
 	// should be of a more or less stable time, which gets printed
+	fmt.Println()
 	for i := 0; i < b.N; i++ {
-		log.Notice("iteration %d: sending %d metrics", i, amount)
-		for i := 0; i < amount; i++ {
-			fmt.Fprintf(&metricBuf, "testMetric 123 %d", i)
-			table.Dispatch(metricBuf.Bytes())
-			metricBuf.Reset()
+		log.Notice("iteration %d: sending %d metrics", i, dp.amount)
+		for m := range dp.All() {
+			//fmt.Println("dispatching", m)
+			//fmt.Printf("dispatching '%s'\n", string(m))
+			table.Dispatch(m)
 			time.Sleep(10 * time.Microsecond) // see above
 		}
-		log.Notice("waiting until all %d messages received", amount*(i+1))
-		tE.WaitUntilNumMsg(amount * (i + 1))
-		log.Notice("iteration %d done. received %d metrics (%d total)", i, amount, amount*(i+1))
+		log.Notice("waiting until all %d messages received", dp.amount*(i+1))
+		tE.WaitUntilNumMsg(dp.amount * (i + 1))
+		log.Notice("iteration %d done. received %d metrics (%d total)", i, dp.amount, dp.amount*(i+1))
 	}
-	log.Notice("received all %d messages. wrapping up benchmark run", string(amount*b.N))
+	log.Notice("received all %d messages. wrapping up benchmark run", string(dp.amount*b.N))
 	err := table.Shutdown()
 	if err != nil {
 		b.Fatal(err)
@@ -194,14 +202,14 @@ func benchmarkSendAndReceive(b *testing.B, amount int) {
 }
 
 func BenchmarkSendAndReceiveThousand(b *testing.B) {
-	benchmarkSendAndReceive(b, 1e3)
+	benchmarkSendAndReceive(b, packets3A)
 }
 func BenchmarkSendAndReceiveTenThousand(b *testing.B) {
-	benchmarkSendAndReceive(b, 1e4)
+	benchmarkSendAndReceive(b, packets4A)
 }
 func BenchmarkSendAndReceiveHundredThousand(b *testing.B) {
-	benchmarkSendAndReceive(b, 1e5)
+	benchmarkSendAndReceive(b, packets5A)
 }
 func BenchmarkSendAndReceiveMillion(b *testing.B) {
-	benchmarkSendAndReceive(b, 1e6)
+	benchmarkSendAndReceive(b, packets6A)
 }
