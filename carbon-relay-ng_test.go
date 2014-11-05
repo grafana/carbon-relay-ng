@@ -88,7 +88,10 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	//checkerUDU = make(chan []byte, 1000)
 	for i := 0; i < 1000; i++ {
 		fmt.Fprintf(&metricBuf, "testMetricA 123 %d", i)
-		table.Dispatch(metricBuf.Bytes())
+		val := metricBuf.Bytes()
+		valCopy := make([]byte, len(val), len(val))
+		copy(valCopy, val)
+		table.Dispatch(valCopy)
 		//checkerUUU <- metricBuf.Bytes()
 		//checkerUDU <- metricBuf.Bytes()
 		metricBuf.Reset()
@@ -116,7 +119,10 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	//checkerUUU = make(chan []byte, 1000)
 	for i := 0; i < 1000; i++ {
 		fmt.Fprintf(&metricBuf, "testMetricB 123 %d", i)
-		table.Dispatch(metricBuf.Bytes())
+		val := metricBuf.Bytes()
+		valCopy := make([]byte, len(val), len(val))
+		copy(valCopy, val)
+		table.Dispatch(valCopy)
 		//checkerUUU <- metricBuf.Bytes()
 		metricBuf.Reset()
 		time.Sleep(10 * time.Microsecond) // see above
@@ -135,7 +141,10 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 
 	for i := 0; i < 1000; i++ {
 		fmt.Fprintf(&metricBuf, "testMetricC 123 %d", i)
-		table.Dispatch(metricBuf.Bytes())
+		val := metricBuf.Bytes()
+		valCopy := make([]byte, len(val), len(val))
+		copy(valCopy, val)
+		table.Dispatch(valCopy)
 		metricBuf.Reset()
 		time.Sleep(10 * time.Microsecond) // see above
 	}
