@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/bmizerany/assert"
 	"net"
 	"sync"
@@ -21,6 +20,10 @@ type TestEndpoint struct {
 	IHaveSeen               chan [][]byte
 	addr                    string
 	numSeen                 chan int
+	NumSeenReq              chan int
+	NumSeenResp             chan int
+	NumAcceptsReq           chan int
+	NumAcceptsResp          chan int
 	WaitUntilNumSeenReq     chan int
 	WaitUntilNumSeenResp    chan int
 	WaitUntilNumAcceptsReq  chan int
@@ -47,6 +50,10 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 		WhatHaveISeen:           make(chan bool),
 		IHaveSeen:               make(chan [][]byte),
 		numSeen:                 make(chan int),
+		NumSeenReq:              make(chan int),
+		NumSeenResp:             make(chan int),
+		NumAcceptsReq:           make(chan int),
+		NumAcceptsResp:          make(chan int),
 		WaitUntilNumSeenReq:     make(chan int),
 		WaitUntilNumSeenResp:    make(chan int, 1), // don't block on other end reading.
 		WaitUntilNumAcceptsReq:  make(chan int),
@@ -61,6 +68,8 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 			case diff := <-tE.accepts:
 				numAccepts += diff
 			case waitUntilNumAccepts = <-tE.WaitUntilNumAcceptsReq:
+			case <-tE.NumAcceptsReq:
+				tE.NumAcceptsResp <- numAccepts
 			}
 			if numAccepts == waitUntilNumAccepts {
 				tE.WaitUntilNumAcceptsResp <- numAccepts
@@ -108,6 +117,8 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 				var c [][]byte
 				c = append(c, tE.seenBufs...)
 				tE.IHaveSeen <- c
+			case <-tE.NumSeenReq:
+				tE.NumSeenResp <- len(tE.seenBufs)
 			case waitUntilNumSeen = <-tE.WaitUntilNumSeenReq:
 				if len(tE.seenBufs) == waitUntilNumSeen {
 					tE.WaitUntilNumSeenResp <- len(tE.seenBufs)
@@ -128,7 +139,9 @@ func (tE *TestEndpoint) WaitNumSeenOrFatal(numSeen int, timeout time.Duration, w
 	select {
 	case <-tE.WaitUntilNumSeenResp:
 	case <-time.After(timeout):
-		tE.t.Fatalf("tE %s timed out after %s waiting for %d msg", tE.addr, timeout, numSeen)
+		tE.NumSeenReq <- 0
+		currentNum := <-tE.NumSeenResp
+		tE.t.Fatalf("tE %s timed out after %s waiting for %d msg (only saw %d)", tE.addr, timeout, numSeen, currentNum)
 	}
 }
 
@@ -143,7 +156,9 @@ func (tE *TestEndpoint) WaitNumAcceptsOrFatal(numAccepts int, timeout time.Durat
 	select {
 	case <-tE.WaitUntilNumAcceptsResp:
 	case <-time.After(timeout):
-		tE.t.Fatalf("tE %s timed out after %s waiting for %d accepts", tE.addr, timeout, numAccepts)
+		tE.NumAcceptsReq <- 0
+		currentNum := <-tE.NumAcceptsResp
+		tE.t.Fatalf("tE %s timed out after %s waiting for %d accepts (only saw %d)", tE.addr, timeout, numAccepts, currentNum)
 	}
 }
 
