@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+var packets0A *dummyPackets
 var packets1A *dummyPackets
 var packets1B *dummyPackets
 var packets1C *dummyPackets
@@ -28,6 +29,7 @@ var packets6B *dummyPackets
 var packets6C *dummyPackets
 
 func init() {
+	packets0A = NewDummyPackets("0A", 1)
 	packets1A = NewDummyPackets("1A", 10)
 	packets1B = NewDummyPackets("1B", 10)
 	packets1C = NewDummyPackets("1C", 10)
@@ -69,6 +71,8 @@ func (table *Table) ShutdownOrFatal(t *testing.T) {
 	}
 }
 
+// TODO verify that the input buffers are not modified by the routing pipeline
+
 //TODO the length of some of those sleeps/timeouts are not satisfactory, we need to do more perf testing and tuning
 //TODO get rid of all sleeps, we can do better sync wait constructs
 
@@ -77,23 +81,18 @@ func TestSinglePointSingleRoute(t *testing.T) {
 	defer tE.Close()
 	table := NewTableOrFatal(t, "", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10")
 	tE.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, nil)
-	table.Dispatch(packets1A.Get(0))
+	table.Dispatch(packets0A.Get(0))
 	tE.WaitNumSeenOrFatal(1, 500*time.Millisecond, nil)
-	//c := make(chan []byte, 1)
-	//c <- metricBuf.Bytes()
-	//close(c)
-	//tE.SeenThisOrFatal(c)
+	tE.SeenThisOrFatal(packets0A.All())
 	table.ShutdownOrFatal(t)
 	time.Sleep(100 * time.Millisecond) // not sure yet why, but for some reason there's annoying/confusing conn Close() logs still showing up
 	// we don't want to mess up the view of the next test
 }
 
 func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
-	logging.SetLevel(logging.DEBUG, "carbon-relay-ng")
+	logging.SetLevel(logging.WARNING, "carbon-relay-ng")
 	os.RemoveAll("test_spool")
 	os.Mkdir("test_spool", os.ModePerm)
-	//var checkerUUU chan []byte
-	//var checkerUDU chan []byte
 	tEWaits := sync.WaitGroup{} // for when we want to wait on both tE's simultaneously
 
 	log.Notice("##### START STEP 1 #####")
@@ -109,12 +108,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	go tUUU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, &tEWaits)
 	go tUDU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, &tEWaits)
 	tEWaits.Wait()
-	//checkerUUU = make(chan []byte, 1000)
-	//checkerUDU = make(chan []byte, 1000)
 	for i := 0; i < 1000; i++ {
 		table.Dispatch(packets3A.Get(i))
-		//checkerUUU <- metricBuf.Bytes()
-		//checkerUDU <- metricBuf.Bytes()
 		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
 		// note i'm afraid this sleep masks another issue: data can get reordered.
 		// if you take this sleep away, and run like so:
@@ -123,34 +118,31 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		// the points in a different order.
 		time.Sleep(20 * time.Microsecond)
 	}
-	//close(checkerUUU)
-	//close(checkerUDU)
 	tEWaits.Add(2)
 	go tUUU.WaitNumSeenOrFatal(1000, 2*time.Second, &tEWaits)
 	go tUDU.WaitNumSeenOrFatal(1000, 2*time.Second, &tEWaits)
 	tEWaits.Wait()
-	//tUUU.SeenThisOrFatal(checkerUUU)
-	//tUDU.SeenThisOrFatal(checkerUDU)
+	tUUU.SeenThisOrFatal(packets3A.All())
+	tUDU.SeenThisOrFatal(packets3A.All())
 
 	// STEP 2: tUDU goes down! simulate outage
 	log.Notice("##### START STEP 2 #####")
 	tUDU.Close()
 
-	//checkerUUU = make(chan []byte, 1000)
 	for i := 0; i < 1000; i++ {
 		table.Dispatch(packets3B.Get(i))
 		//checkerUUU <- metricBuf.Bytes()
-		time.Sleep(10 * time.Microsecond) // see above
+		// avoid slow conn drops, but also messages like:
+		// 18:39:34.858684 ▶ WARN  dest 127.0.0.1:2006 3B.dummyPacket 123 1000000004 nonBlockingSpool -> dropping due to slow spool
+		time.Sleep(50 * time.Millisecond) // this suffices on my SSD.  but this is way too slow. TODO optimize spool non-block perf
 	}
 
 	tUUU.WaitNumSeenOrFatal(2000, 2*time.Second, nil)
-	//tUUU.SeenThisOrFatal(checkerUUU)
+	tUUU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All()))
 
 	// STEP 3: bring the one that was down back up, it should receive all data it missed thanks to the spooling (+ new data)
 	log.Notice("##### START STEP 3 #####")
 	tUDU = NewTestEndpoint(t, ":2006")
-	//checkerUUU = make(chan []byte, 1000)
-	//checkerUDU = make(chan []byte, 1000)
 
 	tUDU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, nil)
 
@@ -164,10 +156,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	// in theory we only need 2000 points here, but because of the redo buffer it should have sent the first points as well
 	go tUDU.WaitNumSeenOrFatal(3000, 6*time.Second, &tEWaits)
 	tEWaits.Wait()
-	//allSent = make([][]byte, 3000)
-
-	//tUUU.SeenThisOrFatal(allSent)
-	//tUDU.SeenThisOrFatal(allSent)
+	tUUU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All(), packets3C.All()))
+	// no further test of tUDU because the order of data may have changed. for now we assume the waitNumSeen check is sufficient..
 
 	table.ShutdownOrFatal(t)
 }

@@ -47,12 +47,24 @@ func (dp *dummyPackets) Get(i int) []byte {
 
 func (dp *dummyPackets) All() chan []byte {
 	ret := make(chan []byte, 10000) // pretty arbitrary, but seems to help perf
-	go func() {
+	go func(dp *dummyPackets, ret chan []byte) {
 		sliceFull := dp.scratch.Bytes()
 		for i := 0; i < dp.amount; i++ {
 			ret <- sliceFull[dp.packetLen*i : dp.packetLen*(i+1)]
 		}
 		close(ret)
+	}(dp, ret)
+	return ret
+}
+
+func mergeAll(in ...chan []byte) chan []byte {
+	ret := make(chan []byte, 10000) // pretty arbitrary, but seems to help perf
+	go func() {
+		for _, inChan := range in {
+			for val := range inChan {
+				ret <- val
+			}
+		}
 	}()
 	return ret
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"github.com/bmizerany/assert"
 	"net"
 	"sync"
 	"testing"
@@ -176,18 +175,29 @@ func (tE *TestEndpoint) WaitUntilNumMsg(numMsg int) {
 	return
 }
 
-func (tE *TestEndpoint) SeenThisOrFatal(ref [][]byte) {
+func (tE *TestEndpoint) SeenThisOrFatal(ref chan []byte) {
 	tE.WhatHaveISeen <- true
 	seen := <-tE.IHaveSeen
-	assert.Equal(tE.t, len(seen), len(ref))
-	// human friendly:
-	for i, m := range seen {
-		if string(m) != string(ref[i]) {
-			tE.t.Errorf("tE %s error at pos %d: expected '%s', received: '%s'", tE.addr, i, ref[i], m)
+	i := 0
+	ok := true
+	for buf := range ref {
+		if len(seen) <= i {
+			tE.t.Errorf("not enough data seen (%d metrics seen, ref contains at least %d)", len(seen), i+1)
+			ok = false
 		}
+		if string(seen[i]) != string(buf) {
+			tE.t.Errorf("tE %s error at pos %d: expected '%s', received: '%s'", tE.addr, i, buf, seen[i])
+			ok = false
+		}
+		i++
 	}
-	// equivalent, but for deeper debugging
-	assert.Equal(tE.t, seen, ref)
+	if i != len(seen) {
+		tE.t.Errorf("seen extraneous data (%d metrics seen, ref contains %d)", len(seen), i)
+		ok = false
+	}
+	if !ok {
+		tE.t.Fatal("bad data")
+	}
 }
 
 func (tE *TestEndpoint) handle(c net.Conn) {
