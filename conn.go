@@ -111,6 +111,7 @@ func (c *Conn) HandleStatus() {
 func (c *Conn) HandleData() {
 	periodFlush := c.periodFlush
 	tickerFlush := time.NewTicker(periodFlush)
+	newLine := []byte{'\n'}
 
 	for {
 		start := time.Now()
@@ -118,10 +119,14 @@ func (c *Conn) HandleData() {
 		case buf := <-c.In:
 			log.Info("conn %s HandleData: writing %s\n", c.dest.Addr, string(buf))
 			c.keepSafe.Add(buf)
-			buf = append(buf, '\n')
+			size := len(buf)
 			n, err := c.Write(buf)
+			if err == nil && size == n {
+				n, err = c.Write(newLine)
+				size = 1
+			}
 			errBecauseTruncated := false
-			if err == nil && len(buf) != n {
+			if err == nil && size != n {
 				errBecauseTruncated = true
 				c.dest.numErrTruncated.Add(1)
 				err = errors.New(fmt.Sprintf("truncated write: %s", string(buf)))
