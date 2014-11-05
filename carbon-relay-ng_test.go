@@ -64,6 +64,7 @@ func TestSinglePointSingleRoute(t *testing.T) {
 }
 
 func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
+	logging.SetLevel(logging.DEBUG, "carbon-relay-ng")
 	os.RemoveAll("test_spool")
 	os.Mkdir("test_spool", os.ModePerm)
 	//var checkerUUU chan []byte
