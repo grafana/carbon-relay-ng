@@ -77,7 +77,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	tUDU := NewTestEndpoint(t, ":2006")
 	// reconnect retry should be quick now, so we can proceed quicker
 	// also flushing freq is increased so we don't have to wait as long
-	table := NewTableOrFatal(t, "test_spool", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10  127.0.0.1:2006 spool=true reconn=200 flush=10")
+	table := NewTableOrFatal(t, "test_spool", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10  127.0.0.1:2006 spool=true reconn=20 flush=10")
 	fmt.Println(table.Print())
 	tEWaits.Add(2)
 	go tUUU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, &tEWaits)
