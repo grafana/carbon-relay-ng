@@ -140,15 +140,18 @@ func (dest *Destination) QueueWriter() {
 	for {
 		select {
 		case buf := <-dest.queueInRT:
-			log.Debug("dest %v satisfying spool RT 1")
+			log.Debug("dest %v satisfying spool RT 1", dest.Addr)
+			log.Info("dest %s %s QueueWriter -> queue.Put\n", dest.Addr, string(buf))
 			dest.queue.Put(buf)
 		default:
 			select {
 			case buf := <-dest.queueInRT:
-				log.Debug("dest %v satisfying spool RT 2")
+				log.Debug("dest %v satisfying spool RT 2", dest.Addr)
+				log.Info("dest %s %s QueueWriter -> queue.Put\n", dest.Addr, string(buf))
 				dest.queue.Put(buf)
 			case buf := <-dest.queueInBulk:
-				log.Debug("dest %v satisfying spool BULK")
+				log.Debug("dest %v satisfying spool BULK", dest.Addr)
+				log.Info("dest %s %s QueueWriter -> queue.Put\n", dest.Addr, string(buf))
 				dest.queue.Put(buf)
 			}
 		}
@@ -238,7 +241,7 @@ func (dest *Destination) relay() {
 			dest.numSpool.Add(1)
 			log.Info("dest %s %s nonBlockingSpool -> added to spool\n", dest.Addr, string(buf))
 		default:
-			log.Warning("dest %s nonBlockingSpool -> dropping due to slow spool\n", dest.Addr)
+			log.Warning("dest %s %s nonBlockingSpool -> dropping due to slow spool\n", dest.Addr, string(buf))
 			dest.numDropSlowSpool.Add(1)
 		}
 	}
