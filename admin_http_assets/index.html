@@ -61,7 +61,15 @@
                   <th colspan=2 >Actions</th>
                 </tr>
               </thead>
-              <tbody ng-repeat="r in routes">
+              <tbody ng-repeat="b in table.blacklist">
+                <tr>
+                  <td>Blacklist</td>
+                  <td>{{b}}</td>
+                  <td colspan="3"></td>
+                  <td colspan="2"><!--a ng-click="remove($index)"><i class="glyphicon glyphicon-remove-circle"/--></a></td>
+                </tr>
+              </tbody>
+              <tbody ng-repeat="r in table.routes">
                 <tr>
                   <td>{{r.key}}</td>
                   <td>{{r.matcher}}</td>
