@@ -187,9 +187,14 @@ func (tE *TestEndpoint) SeenThisOrFatal(ref chan []byte) {
 			break
 		}
 		if string(seen[i]) != string(buf) {
-			tE.t.Errorf("tE %s error at pos %d: expected '%s', received: '%s'", tE.addr, i, buf, seen[i])
+			tE.t.Errorf("tE %s error at pos %d: expected '%s', received: '%s'. stopping comparison", tE.addr, i, buf, seen[i])
 			ok = false
+			break
 		}
+		i++
+	}
+	// in case we broke out earlier, make sure we have the right number of entries in ref
+	for _ = range ref {
 		i++
 	}
 	if i != len(seen) {
