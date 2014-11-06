@@ -65,6 +65,7 @@ func mergeAll(in ...chan []byte) chan []byte {
 				ret <- val
 			}
 		}
+		close(ret)
 	}()
 	return ret
 }
