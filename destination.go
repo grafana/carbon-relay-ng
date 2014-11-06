@@ -261,7 +261,7 @@ func (dest *Destination) relay() {
 		// this op won't succeed as long as the conn is busy processing/flushing
 		case conn.In <- buf:
 		default:
-			log.Warning("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Addr)
+			log.Warning("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Addr, string(buf))
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
@@ -302,7 +302,7 @@ func (dest *Destination) relay() {
 		} else {
 			toUnspool = nil
 		}
-		log.Notice("dest %v entering select. conn: %v spooling: %v slowLastloop: %v, slowNow: %v spoolQueue: %v", dest.Addr, conn != nil, dest.Spool, dest.SlowLastLoop, dest.SlowNow, toUnspool != nil)
+		log.Debug("dest %v entering select. conn: %v spooling: %v slowLastloop: %v, slowNow: %v spoolQueue: %v", dest.Addr, conn != nil, dest.Spool, dest.SlowLastLoop, dest.SlowNow, toUnspool != nil)
 		select {
 		case inConnUpdate := <-dest.inConnUpdate:
 			if inConnUpdate {
