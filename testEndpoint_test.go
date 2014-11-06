@@ -184,6 +184,7 @@ func (tE *TestEndpoint) SeenThisOrFatal(ref chan []byte) {
 		if len(seen) <= i {
 			tE.t.Errorf("not enough data seen (%d metrics seen, ref contains at least %d)", len(seen), i+1)
 			ok = false
+			break
 		}
 		if string(seen[i]) != string(buf) {
 			tE.t.Errorf("tE %s error at pos %d: expected '%s', received: '%s'", tE.addr, i, buf, seen[i])
