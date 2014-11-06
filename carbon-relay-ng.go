@@ -27,6 +27,7 @@ type Config struct {
 	Routes      []*Route
 	Init        []string
 	Instance    string
+	Log_level   string
 }
 
 var (
@@ -41,7 +42,6 @@ var (
 var log = logging.MustGetLogger("carbon-relay-ng")
 
 func init() {
-	logging.SetLevel(logging.DEBUG, "carbon-relay-ng")
 	var format = "%{color}%{time:15:04:05.000000} ▶ %{level:.4s} %{color:reset} %{message}"
 	logBackend := logging.NewLogBackend(os.Stderr, "", 0)
 	logging.SetFormatter(logging.MustStringFormatter(format))
@@ -105,6 +105,20 @@ func main() {
 		usage()
 		return
 	}
+	levels := map[string]logging.Level{
+		"critical": logging.CRITICAL,
+		"error":    logging.ERROR,
+		"warning":  logging.WARNING,
+		"notice":   logging.NOTICE,
+		"info":     logging.INFO,
+		"debug":    logging.DEBUG,
+	}
+	level, ok := levels[config.Log_level]
+	if !ok {
+		log.Error("unrecognized log level '%s'\n", config.Log_level)
+		return
+	}
+	logging.SetLevel(level, "carbon-relay-ng")
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
