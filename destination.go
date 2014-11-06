@@ -233,6 +233,7 @@ func (dest *Destination) collectRedo(conn *Conn) {
 	bulkData := conn.getRedo()
 	for _, buf := range bulkData {
 		dest.queueInBulk <- buf
+		time.Sleep(time.Duration(20) * time.Microsecond)
 	}
 	dest.tasks.Done()
 }
