@@ -39,7 +39,7 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 		conn:        conn,
 		buffered:    bufio.NewWriter(conn),
 		shutdown:    make(chan bool, 1),      // when we write here, HandleData() may not be running anymore to read from the chan
-		In:          make(chan []byte, 1000), // to make sure writes to In are fast until we really can't keep up.  we should track flush() durations to tune this
+		In:          make(chan []byte, 1000), // to make sure writes to In are fast until we really can't keep up
 		dest:        dest,
 		up:          true,
 		checkUp:     make(chan bool),
@@ -116,6 +116,8 @@ func (c *Conn) HandleData() {
 	for {
 		start := time.Now()
 		select {
+		// note that bufio.Writer.Write() can potentially cause a flush and hence block
+		// choose the size of In based on how long these loop iterations take
 		case buf := <-c.In:
 			log.Info("conn %s HandleData: writing %s\n", c.dest.Addr, string(buf))
 			c.keepSafe.Add(buf)
