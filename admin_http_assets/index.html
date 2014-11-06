@@ -50,56 +50,35 @@
         <alert ng-repeat="alert in alerts">{{alert.msg}}</alert>
         <div class="col-md-12">
           <form name="form" class="form-add form-group has-feedback" role="form" ng-submit="add()" novalidate>
-            <table class="table">
+            <table class="table table-condensed">
               <thead>
                 <tr>
                   <th>Key</th>
                   <th>Pattern</th>
                   <th>Address</th>
                   <th>Spool</th>
+                  <th>Pickle</th>
                   <th colspan=2 >Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr ng-repeat="r in routes" ng-class="{ 'danger' : !r.Online }">
-                  <td>{{r.key}}</td>
-                  <td>{{r.Patt}}</td>
-                  <td>{{r.Addr}}</td>
-                  <td class="text-center">
-                    <icon ng-show="r.Spool" class="glyphicon glyphicon-hdd"/>
-                  </td>
-                  <td class="text-center">
-                    <a ng-click="open($index)">
-                      <icon class="glyphicon glyphicon-edit"/>
-                    </a>
-                  </td>
-                  <td class="text-center">
-                    <a ng-click="remove($index)">
-                      <icon class="glyphicon glyphicon-remove-circle"/>
-                    </a>
-                  </td>
-                </tr>
-              </tbody>
-              <tbody>
+              <tbody ng-repeat="r in routes">
                 <tr>
-                  <td class="form-group has-feedback">
-                    <input ng-model="newRoute.Key" name="key" class="form-control" placeholder="Key" required autofocus></td>
-                  <td class="form-group has-feedback">
-                    <input ng-model="newRoute.Patt" name="patt" class="form-control" placeholder="Pattern" ng-pattern="validPattern">
-                    <div ng-show="form.patt.$invalid">
-                      <span ng-show="form.patt.$error.pattern">Expected valid expression</span>
-                    </div>
-                  </td>
-                  <td class="form-group has-feedback">
-                    <input ng-model="newRoute.Addr" name="addr" class="form-control" placeholder="127.0.0.1:2004" required ng-pattern="validAddress">
-                    <div ng-show="form.addr.$invalid">
-                      <span ng-show="form.addr.$error.pattern">Expected: 'host:port'</span>
-                    </div>
-                  </td>
+                  <td>{{r.key}}</td>
+                  <td>{{r.matcher}}</td>
+                  <td colspan="3"></td>
+                  <td colspan="2"><a ng-click="remove($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
+                </tr>
+                <tr ng-repeat="d in r.destination" ng-class="{ 'danger' : !r.online }">
                   <td></td>
-                  <td colspan=2>
-                    <button class="btn btn-sm btn-primary btn-block" type="submit" ng-disabled="form.$invalid">Add route</button>
+                  <td>{{d.matcher}}</td>
+                  <td>{{d.address}}</td>
+                  <td class="text-center">
+                    <icon ng-show="d.spool" class="glyphicon glyphicon-hdd"/>
                   </td>
+                  <td class="text-center">
+                    <icon ng-show="d.pickle" class="glyphicon glyphicon-ok-sign"/>
+                  </td>
+                  <td colspan="2"></td>
                 </tr>
               </tbody>
             </table>
