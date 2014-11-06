@@ -32,6 +32,7 @@ type Destination struct {
 	// set in/via Run()
 	in           chan []byte     // incoming metrics
 	shutdown     chan bool       // signals shutdown internally
+	queueBuffer  chan []byte     // buffer metrics into queue because it can block
 	queue        *nsqd.DiskQueue // queue used if spooling enabled
 	queueInRT    chan []byte     // send data to queue
 	queueInBulk  chan []byte     // send data to queue
@@ -115,14 +116,20 @@ func (dest *Destination) Run() (err error) {
 	dest.inConnUpdate = make(chan bool)
 	dest.flush = make(chan bool)
 	dest.flushErr = make(chan error)
+	dest.queueBuffer = make(chan []byte, 800) // have to think a bit more about this size
 	if dest.Spool {
 		dqName := "spool_" + dest.cleanAddr
-		dest.queue = nsqd.NewDiskQueue(dqName, dest.spoolDir, 200*1024*1024, 1000, 2*time.Second).(*nsqd.DiskQueue)
-		dest.queueInRT = make(chan []byte)
+		// queue will invoke sync every 1000 items, which blocks the queue a little
+		// so we should put a buffer in front of it with these properties:
+		// can buffer packets for the duration of 1 sync
+		// buffer no more then needed, esp if we know the queue is slower then the ingest rate
+		dest.queue = nsqd.NewDiskQueue(dqName, dest.spoolDir, 200*1024*1024, 500, 2*time.Second).(*nsqd.DiskQueue)
+		dest.queueInRT = make(chan []byte, 10)
 		dest.queueInBulk = make(chan []byte)
 	}
 	dest.tasks = sync.WaitGroup{}
 	go dest.QueueWriter()
+	go dest.QueueBuffer()
 	go dest.relay()
 	return err
 }
@@ -137,27 +144,56 @@ func (dest *Destination) QueueWriter() {
 	// so just handle this to the extent we can
 	// note that this still allows for channel ops to come in on queueInRT and to be starved, resulting
 	// in some realtime traffic to be dropped, but that shouldn't be too much of an issue. experience will tell..
+	//var pre time.Time
+	//var post time.Time
+	// this loop has emperically never took more then 40 micros to return back
 	for {
 		select {
+		// it looks like this is never taken though, it's always RT 2 . oh well.
+		// because: first time we're here, there's probably nothing here, so it hangs in the default
+		// when it processed default:
+		// it just read from InRT: it's highly unlikely there's another msg ready, so we go to default again
+		// it just read from InBulk: *because* there was nothing on RT, so it's highly ulikely something will be there straight after, so default again
 		case buf := <-dest.queueInRT:
+			//pre = time.Now()
 			log.Debug("dest %v satisfying spool RT 1", dest.Addr)
 			log.Info("dest %s %s QueueWriter -> queue.Put\n", dest.Addr, string(buf))
-			dest.queue.Put(buf)
+			dest.queueBuffer <- buf
+			//post = time.Now()
+			//fmt.Println("queueBuffer duration RT 1:", post.Sub(pre).Nanoseconds())
 		default:
 			select {
 			case buf := <-dest.queueInRT:
+				//pre = time.Now()
 				log.Debug("dest %v satisfying spool RT 2", dest.Addr)
 				log.Info("dest %s %s QueueWriter -> queue.Put\n", dest.Addr, string(buf))
-				dest.queue.Put(buf)
+				dest.queueBuffer <- buf
+				//post = time.Now()
+				//fmt.Println("queueBuffer duration RT 2:", post.Sub(pre).Nanoseconds())
 			case buf := <-dest.queueInBulk:
+				//pre = time.Now()
 				log.Debug("dest %v satisfying spool BULK", dest.Addr)
 				log.Info("dest %s %s QueueWriter -> queue.Put\n", dest.Addr, string(buf))
-				dest.queue.Put(buf)
+				dest.queueBuffer <- buf
+				//post = time.Now()
+				//fmt.Println("queueBuffer duration BULK:", post.Sub(pre).Nanoseconds())
 			}
 		}
 	}
 }
 
+func (dest *Destination) QueueBuffer() {
+	// TODO clean shutdown
+	for buf := range dest.queueBuffer {
+		//pre := time.Now()
+		// Put takes about 10 micros normally, but sometimes upto a few hundred micros
+		// when it syncs, that goes up to 10ms
+		// 20 micros is a good average across all
+		dest.queue.Put(buf)
+		//post := time.Now()
+		//fmt.Println("PUT DURATION", post.Sub(pre).Nanoseconds())
+	}
+}
 func (dest *Destination) Flush() error {
 	dest.flush <- true
 	return <-dest.flushErr
