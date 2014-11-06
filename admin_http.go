@@ -52,9 +52,14 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(bytes)
 }
 
+func listTable(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+	t := table.Snapshot()
+	return t, nil
+}
+
 func listRoutes(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	t := table.Snapshot()
-	return t.routes, nil
+	return t.Routes, nil
 }
 
 func getRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
@@ -137,6 +142,7 @@ func HttpListener(addr string, t *Table) {
 
 	// setup routes
 	router := mux.NewRouter()
+	router.Handle("/table", handler(listTable)).Methods("GET")
 	router.Handle("/routes", handler(listRoutes)).Methods("GET")
 	//router.Handle("/routes", handler(addRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(getRoute)).Methods("GET")
