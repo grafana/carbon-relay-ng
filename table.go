@@ -8,8 +8,8 @@ import (
 
 type Table struct {
 	sync.Mutex
-	Blacklist     []*Matcher
-	routes        []*Route
+	Blacklist     []*Matcher `json:"blacklist"`
+	Routes        []*Route   `json:"routes"`
 	spoolDir      string
 	numBlacklist  *expvar.Int
 	numUnroutable *expvar.Int
@@ -36,7 +36,7 @@ func (table *Table) Run() error {
 	table.Lock()
 	defer table.Unlock()
 
-	for _, route := range table.routes {
+	for _, route := range table.Routes {
 		err := route.Run()
 		if err != nil {
 			return err
@@ -59,7 +59,7 @@ func (table *Table) Dispatch(buf []byte) {
 
 	routed := false
 
-	for _, route := range table.routes {
+	for _, route := range table.Routes {
 		if route.Match(buf) {
 			routed = true
 			//fmt.Println("routing to " + dest.Key)
@@ -88,8 +88,8 @@ func (table *Table) Snapshot() Table {
 		blacklist[i] = p
 	}
 
-	routes := make([]*Route, len(table.routes))
-	for i, r := range table.routes {
+	routes := make([]*Route, len(table.Routes))
+	for i, r := range table.Routes {
 		snap := r.Snapshot()
 		routes[i] = &snap
 	}
@@ -99,7 +99,7 @@ func (table *Table) Snapshot() Table {
 func (table *Table) GetRoute(key string) *Route {
 	table.Lock()
 	defer table.Unlock()
-	for _, r := range table.routes {
+	for _, r := range table.Routes {
 		if r.Key == key {
 			return r
 		}
@@ -110,7 +110,7 @@ func (table *Table) GetRoute(key string) *Route {
 func (table *Table) AddRoute(route *Route) {
 	table.Lock()
 	defer table.Unlock()
-	table.routes = append(table.routes, route)
+	table.Routes = append(table.Routes, route)
 }
 
 func (table *Table) AddBlacklist(matcher *Matcher) {
@@ -122,7 +122,7 @@ func (table *Table) AddBlacklist(matcher *Matcher) {
 func (table *Table) Flush() error {
 	table.Lock()
 	defer table.Unlock()
-	for _, route := range table.routes {
+	for _, route := range table.Routes {
 		err := route.Flush()
 		if err != nil {
 			return err
@@ -134,13 +134,13 @@ func (table *Table) Flush() error {
 func (table *Table) Shutdown() error {
 	table.Lock()
 	defer table.Unlock()
-	for _, route := range table.routes {
+	for _, route := range table.Routes {
 		err := route.Shutdown()
 		if err != nil {
 			return err
 		}
 	}
-	table.routes = make([]*Route, 0)
+	table.Routes = make([]*Route, 0)
 	return nil
 }
 
@@ -151,7 +151,7 @@ func (table *Table) DelRoute(key string) error {
 	toDelete := -1
 	var i int
 	var route *Route
-	for i, route = range table.routes {
+	for i, route = range table.Routes {
 		if route.Key == key {
 			toDelete = i
 			break
@@ -161,7 +161,7 @@ func (table *Table) DelRoute(key string) error {
 		return nil
 	}
 
-	table.routes = append(table.routes[:toDelete], table.routes[toDelete+1:]...)
+	table.Routes = append(table.Routes[:toDelete], table.Routes[toDelete+1:]...)
 
 	err := route.Shutdown()
 	if err != nil {
@@ -198,7 +198,7 @@ func (table *Table) Print() (str string) {
 		maxBSub = max(maxBSub, len(black.Sub))
 		maxBRegex = max(maxBRegex, len(black.Regex))
 	}
-	for _, route := range t.routes {
+	for _, route := range t.Routes {
 		maxRKey = max(maxRKey, len(route.Key))
 		maxRPrefix = max(maxRPrefix, len(route.Matcher.Prefix))
 		maxRSub = max(maxRSub, len(route.Matcher.Sub))
@@ -231,7 +231,7 @@ func (table *Table) Print() (str string) {
 	}
 	str += "\n"
 
-	for _, route := range t.routes {
+	for _, route := range t.Routes {
 		m := route.Matcher
 		str += fmt.Sprintf(rowFmtR, route.Key, m.Prefix, m.Sub, m.Regex)
 		str += fmt.Sprintf(heaFmtD, "prefix", "substr", "regex", "addr", "spoolDir", "spool", "pickle", "online")
