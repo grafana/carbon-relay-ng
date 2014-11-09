@@ -54,7 +54,7 @@
                   <th>Match prefix</th>
                   <th>Match substring</th>
                   <th>Match regex</th>
-                  <th colspan=1>Actions</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody ng-repeat="b in table.blacklist">
@@ -62,7 +62,7 @@
                     <td>{{b.prefix}}</td>
                     <td>{{b.substring}}</td>
                     <td>{{b.regex}}</td>
-                  <td><!--a ng-click="remove($index)"><i class="glyphicon glyphicon-remove-circle"/></a--></td>
+                    <td><a ng-click="removeBlacklist($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
                 </tr>
               </tbody>
             </table>
@@ -89,7 +89,7 @@
                   <td class="info">{{r.matcher.substring}}</td>
                   <td class="info">{{r.matcher.regex}}</td>
                   <td class="info" colspan="3"></td>
-                  <td class="info" colspan="2"><a ng-click="remove($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
+                  <td class="info" colspan="2"><a ng-click="removeRoute(r.key)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
                 </tr>
                 <tr ng-repeat="d in r.destination">
                     <td><!--<span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>--></td>
@@ -104,7 +104,7 @@
                   <td ng-class="{ 'danger' : !r.online }" class="text-center">
                     <icon ng-show="d.pickle" class="glyphicon glyphicon-ok-sign"/>
                   </td>
-                  <td ng-class="{ 'danger' : !r.online }" colspan="2"></td>
+                  <td ng-class="{ 'danger' : !r.online }" colspan="2"><a ng-click="removeDestination(r.key,$index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
                 </tr>
               </tbody>
             </table>

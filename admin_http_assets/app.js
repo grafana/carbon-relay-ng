@@ -2,8 +2,11 @@ var app = new angular.module("carbon-relay-ng", ["ngResource", "ui.bootstrap"]);
 
 app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $resource, $modal){
   $scope.alerts = [];
-  var Route = $resource("/routes/:key", {key: '@key'}, {});
   var Table = $resource("/table/");
+  var Blacklist = $resource("/blacklists/:index");
+  var Route = $resource("/routes/:key", {key: '@key'}, {});
+  var Destination = $resource("/routes/:key/destinations/:index");
+  
 
   $scope.validAddress = /^[^:]+\:[0-9]+$/;
   $scope.validPattern = (function() {
@@ -21,9 +24,6 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   })();
 
   $scope.list = function(idx){
-    // Route.query(function(data){
-    //   $scope.routes = data;
-    // });
     Table.get(function(data){
       $scope.table = data;
     });
@@ -43,9 +43,23 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
      function(err) { $scope.alerts = [{msg: err.data.error}]; });
   };
 
-  $scope.remove = function(idx){
+  $scope.removeBlacklist = function(idx){
     if (confirm('Are you sure?')) {
-      $scope.routes[idx].$delete();
+      Blacklist.delete({'index':idx});
+      $scope.list();
+    }
+  };
+
+  $scope.removeRoute = function(key){
+    if (confirm('Are you sure?')) {
+      Route.delete({'key':key});
+      $scope.list();
+    }
+  };
+
+  $scope.removeDestination = function(key, idx){
+    if (confirm('Are you sure?')) {
+       Destination.delete({'key':key, 'index':idx});
       $scope.list();
     }
   };

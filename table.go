@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Dieterbe/go-metrics"
 	"sync"
@@ -170,6 +171,24 @@ func (table *Table) DelRoute(key string) error {
 		return err
 	}
 	return nil
+}
+
+func (table *Table) DelBlacklist(index int) error {
+	table.Lock()
+	defer table.Unlock()
+	if index >= len(table.Blacklist) {
+		return errors.New(fmt.Sprintf("Invalid index %d", index))
+	}
+	table.Blacklist = append(table.Blacklist[:index], table.Blacklist[index+1:]...)
+	return nil
+}
+
+func (table *Table) DelDestination(key string, index int) error {
+	route := table.GetRoute(key)
+	if route == nil {
+		return errors.New(fmt.Sprintf("Invalid route for %v", key))
+	}
+	return route.DelDestination(index)
 }
 
 func (table *Table) Print() (str string) {

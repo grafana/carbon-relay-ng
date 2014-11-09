@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -136,6 +137,16 @@ func (route *Route) Add(dest Destination) {
 	route.Lock()
 	defer route.Unlock()
 	route.Dests = append(route.Dests, &dest)
+}
+
+func (route *Route) DelDestination(index int) error {
+	route.Lock()
+	defer route.Unlock()
+	if index >= len(route.Dests) {
+		return errors.New(fmt.Sprintf("Invalid index %d", index))
+	}
+	route.Dests = append(route.Dests[:index], route.Dests[index+1:]...)
+	return nil
 }
 
 func (route *Route) UpdateMatcher(matcher Matcher) {
