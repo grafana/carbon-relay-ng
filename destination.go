@@ -266,7 +266,7 @@ func (dest *Destination) relay() {
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
 			dest.numDropSlowConn.Add(1)
-			dest.SlowNow = true // racey, channelify this
+			dest.SlowNow = true
 		}
 	}
 
