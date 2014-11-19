@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"errors"
+	"hash/crc32"
 	"sync"
 )
 
@@ -17,6 +19,7 @@ type Route struct {
 type RouteType int
 type sendAllMatch RouteType
 type sendFirstMatch RouteType
+type sendByHash RouteType
 
 func NewRoute(routeType interface{}, key, prefix, sub, regex string) (*Route, error) {
 	m, err := NewMatcher(prefix, sub, regex)
@@ -44,6 +47,8 @@ func (route *Route) Run() error {
 		go route.RelaySendAllMatch()
 	case sendFirstMatch:
 		go route.RelaySendFirstMatch()
+	case sendByHash:
+		go route.RelaySendByHash()
 	}
 	return nil
 }
@@ -73,6 +78,19 @@ func (route *Route) RelaySendFirstMatch() {
 				break
 			}
 		}
+		route.Unlock()
+	}
+}
+
+func (route *Route) RelaySendByHash() {
+	for buf := range route.in {
+		log.Info("route %s receiving %s", route.Key, buf)
+		n := bytes.IndexAny(buf, " ")
+		hash := crc32.ChecksumIEEE(buf[:n])
+		route.Lock()
+		dest := route.Dests[hash%uint32(len(route.Dests))]
+		log.Info("route %s sending to dest %s: %s", route.Key, dest.Addr, buf)
+		dest.in <- buf
 		route.Unlock()
 	}
 }
