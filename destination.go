@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
-	"expvar"
 	"fmt"
+	"github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/nsqd"
 	"os"
 	"strings"
@@ -12,7 +12,7 @@ import (
 )
 
 func addrToPath(s string) string {
-	return strings.Replace(s, ":", "_", -1)
+	return strings.Replace(strings.Replace(s, ".", "_", -1), ":", "_", -1)
 }
 
 type Destination struct {
@@ -42,14 +42,20 @@ type Destination struct {
 	flushErr     chan error
 	tasks        sync.WaitGroup
 
-	numDropNoConnNoSpool *expvar.Int
-	numSpool             *expvar.Int
-	numDropSlowSpool     *expvar.Int
-	numDropSlowConn      *expvar.Int
-	numDropBadPickle     *expvar.Int
-	numErrTruncated      *expvar.Int
-	numErrWrite          *expvar.Int
-	numOut               *expvar.Int
+	numDropNoConnNoSpool metrics.Counter
+	numSpool             metrics.Counter
+	numDropSlowSpool     metrics.Counter
+	numDropSlowConn      metrics.Counter
+	numDropBadPickle     metrics.Counter
+	numErrTruncated      metrics.Counter
+	numErrWrite          metrics.Counter
+	numOut               metrics.Counter
+	durationWrite        metrics.Timer
+	durationAutoFlush    metrics.Timer
+	durationManuFlush    metrics.Timer
+	autoFlushSize        metrics.Histogram
+	manuFlushSize        metrics.Histogram
+	numBuffered          metrics.Counter
 }
 
 // after creating, run Run()!
@@ -69,20 +75,27 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 		periodFlush:  periodFlush,
 		periodReConn: periodReConn,
 	}
-	dest.setExpvars()
+	dest.setMetrics()
 	return dest, nil
 }
 
-func (dest *Destination) setExpvars() {
+func (dest *Destination) setMetrics() {
 
-	dest.numDropNoConnNoSpool = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
-	dest.numSpool = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.direction=spool")
-	dest.numDropSlowSpool = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
-	dest.numDropSlowConn = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
-	dest.numDropBadPickle = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
-	dest.numErrTruncated = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Err.type=truncated")
-	dest.numErrWrite = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Err.type=write")
-	dest.numOut = Int("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.direction=out")
+	dest.numDropNoConnNoSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
+	dest.numSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.direction=spool")
+	dest.numDropSlowSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
+	dest.numDropSlowConn = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
+	dest.numDropBadPickle = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
+	dest.numErrTruncated = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Err.type=truncated")
+	dest.numErrWrite = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Err.type=write")
+	dest.numOut = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.direction=out")
+	dest.durationWrite = Timer("dest=" + dest.cleanAddr + ".what=durationWrite")
+	dest.durationAutoFlush = Timer("dest=" + dest.cleanAddr + ".what=durationAutoFlush")
+	dest.durationManuFlush = Timer("dest=" + dest.cleanAddr + ".what=durationManuFlush")
+	dest.autoFlushSize = Histogram("dest=" + dest.cleanAddr + ".what=autoFlushSize")
+	dest.manuFlushSize = Histogram("dest=" + dest.cleanAddr + ".what=manuFlushSize")
+	dest.numBuffered = Counter("dest=" + dest.cleanAddr + ".what=numBuffered")
+
 }
 
 func (dest *Destination) Match(s []byte) bool {
@@ -222,7 +235,7 @@ func (dest *Destination) updateConn(addr string) {
 		log.Notice("dest %v update address to %v)\n", dest.Addr, addr)
 		dest.Addr = addr
 		dest.cleanAddr = addrToPath(addr)
-		dest.setExpvars()
+		dest.setMetrics()
 	}
 	dest.connUpdates <- conn
 	return
@@ -252,7 +265,7 @@ func (dest *Destination) relay() {
 			dp, err := parseDataPoint(buf)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
-				dest.numDropBadPickle.Add(1)
+				dest.numDropBadPickle.Inc(1)
 				return
 			}
 			buf = pickle(dp)
@@ -260,12 +273,13 @@ func (dest *Destination) relay() {
 		select {
 		// this op won't succeed as long as the conn is busy processing/flushing
 		case conn.In <- buf:
+			dest.numBuffered.Inc(1)
 		default:
 			log.Warning("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Addr, string(buf))
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
-			dest.numDropSlowConn.Add(1)
+			dest.numDropSlowConn.Inc(1)
 			dest.SlowNow = true
 		}
 	}
@@ -275,11 +289,11 @@ func (dest *Destination) relay() {
 	nonBlockingSpool := func(buf []byte) {
 		select {
 		case dest.queueInRT <- buf:
-			dest.numSpool.Add(1)
+			dest.numSpool.Inc(1)
 			log.Info("dest %s %s nonBlockingSpool -> added to spool\n", dest.Addr, string(buf))
 		default:
 			log.Warning("dest %s %s nonBlockingSpool -> dropping due to slow spool\n", dest.Addr, string(buf))
-			dest.numDropSlowSpool.Add(1)
+			dest.numDropSlowSpool.Inc(1)
 		}
 	}
 
@@ -351,7 +365,7 @@ func (dest *Destination) relay() {
 				nonBlockingSpool(buf)
 			} else {
 				log.Info("dest %v %s received from In -> no conn no spool -> drop\n", dest.Addr, string(buf))
-				dest.numDropNoConnNoSpool.Add(1)
+				dest.numDropNoConnNoSpool.Inc(1)
 			}
 		}
 	}

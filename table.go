@@ -1,8 +1,8 @@
 package main
 
 import (
-	"expvar"
 	"fmt"
+	"github.com/Dieterbe/go-metrics"
 	"sync"
 )
 
@@ -11,8 +11,8 @@ type Table struct {
 	Blacklist     []*Matcher `json:"blacklist"`
 	Routes        []*Route   `json:"routes"`
 	spoolDir      string
-	numBlacklist  *expvar.Int
-	numUnroutable *expvar.Int
+	numBlacklist  metrics.Counter
+	numUnroutable metrics.Counter
 }
 
 func NewTable(spoolDir string) *Table {
@@ -23,8 +23,8 @@ func NewTable(spoolDir string) *Table {
 		blacklist,
 		routes,
 		spoolDir,
-		Int("target_type=count.unit=Metric.direction=blacklist"),
-		Int("target_type=count.unit=Metric.direction=unroutable"),
+		Counter("target_type=count.unit=Metric.direction=blacklist"),
+		Counter("target_type=count.unit=Metric.direction=unroutable"),
 	}
 	t.Run()
 	return t
@@ -52,7 +52,7 @@ func (table *Table) Dispatch(buf []byte) {
 
 	for _, matcher := range table.Blacklist {
 		if matcher.Match(buf) {
-			table.numBlacklist.Add(1)
+			table.numBlacklist.Inc(1)
 			return
 		}
 	}
@@ -70,7 +70,7 @@ func (table *Table) Dispatch(buf []byte) {
 	}
 
 	if !routed {
-		table.numUnroutable.Add(1)
+		table.numUnroutable.Inc(1)
 		log.Notice("unrouteable: %s\n", buf)
 	}
 

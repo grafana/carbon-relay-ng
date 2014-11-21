@@ -9,6 +9,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
+	"github.com/Dieterbe/go-metrics"
+	"github.com/Dieterbe/go-metrics/exp"
 	logging "github.com/op/go-logging"
 	"github.com/rcrowley/goagain"
 	"io"
@@ -16,27 +18,36 @@ import (
 	"os"
 	"runtime/pprof"
 	"strings"
+	"time"
 )
 
 type Config struct {
-	Listen_addr string
-	Admin_addr  string
-	Http_addr   string
-	Spool_dir   string
-	First_only  bool
-	Routes      []*Route
-	Init        []string
-	Instance    string
-	Log_level   string
+	Listen_addr     string
+	Admin_addr      string
+	Http_addr       string
+	Spool_dir       string
+	First_only      bool
+	Routes          []*Route
+	Init            []string
+	Instance        string
+	Log_level       string
+	Instrumentation instrumentation
+}
+
+type instrumentation struct {
+	Graphite_addr     string
+	Graphite_interval int
 }
 
 var (
+	instance    string
+	service     = "carbon-relay-ng"
 	config_file string
 	config      Config
 	to_dispatch = make(chan []byte)
 	table       *Table
 	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file")
-	numIn       = Int("target_type=count.unit=Metric.direction=in")
+	numIn       metrics.Counter
 )
 
 var log = logging.MustGetLogger("carbon-relay-ng")
@@ -46,6 +57,8 @@ func init() {
 	logBackend := logging.NewLogBackend(os.Stderr, "", 0)
 	logging.SetFormatter(logging.MustStringFormatter(format))
 	logging.SetBackend(logBackend)
+
+	exp.Exp(metrics.DefaultRegistry)
 
 }
 
@@ -75,7 +88,7 @@ func handle(c *net.TCPConn, config Config) {
 		}
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
-		numIn.Add(1)
+		numIn.Inc(1)
 		// table should handle this as fast as it can
 		table.Dispatch(buf_copy)
 	}
@@ -132,7 +145,21 @@ func main() {
 		log.Error("instance identifier cannot be empty")
 		os.Exit(1)
 	}
-	log.Notice("===== carbon-relay-ng instance '%s' starting. =====\n", config.Instance)
+
+	instance = config.Instance
+	expvar.NewString("instance").Set(instance)
+	expvar.NewString("service").Set(service)
+
+	log.Notice("===== carbon-relay-ng instance '%s' starting. =====\n", instance)
+
+	numIn = Counter("target_type=count.unit=Metric.direction=in")
+	if config.Instrumentation.Graphite_addr != "" {
+		addr, err := net.ResolveTCPAddr("tcp", config.Instrumentation.Graphite_addr)
+		if err != nil {
+			log.Fatal(err)
+		}
+		go metrics.Graphite(metrics.DefaultRegistry, time.Duration(config.Instrumentation.Graphite_interval)*time.Millisecond, "", addr)
+	}
 
 	log.Notice("creating routing table...")
 	table = NewTable(config.Spool_dir)
@@ -157,11 +184,6 @@ func main() {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
-
-	instance := expvar.NewString("instance")
-	service := expvar.NewString("service")
-	instance.Set(config.Instance)
-	service.Set("carbon-relay-ng")
 
 	// Follow the goagain protocol, <https://github.com/rcrowley/goagain>.
 	l, ppid, err := goagain.GetEnvs()

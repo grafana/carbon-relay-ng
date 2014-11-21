@@ -156,5 +156,6 @@ commands:
 Instrumentation (master)
 ------------------------
 
-All performance variables are available at http://localhost:8081/debug/vars
+All performance variables are available at http://localhost:8081/debug/vars2
 (update port if you change it in config)
+You can also send metrics to graphite (or feed back into the relay), see config.
