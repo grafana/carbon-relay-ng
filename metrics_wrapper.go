@@ -36,10 +36,9 @@ func Histogram(key string) metrics.Histogram {
 }
 
 func expandKey(key string) string {
-	if instance != "" {
-		key = fmt.Sprintf("service=%s.instance=%s.%s", service, instance, key)
-	} else {
-		key = fmt.Sprintf("service=%s.instance=null.%s", service, key)
+	if instance == "" {
+		panic("instance must be set in graphite expandKey!")
 	}
+	key = fmt.Sprintf("service=%s.instance=%s.%s", service, instance, key)
 	return strings.Replace(key, "=", "_is_", -1)
 }

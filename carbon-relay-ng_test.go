@@ -29,6 +29,7 @@ var packets6B *dummyPackets
 var packets6C *dummyPackets
 
 func init() {
+	instance = "test"
 	packets0A = NewDummyPackets("0A", 1)
 	packets1A = NewDummyPackets("1A", 10)
 	packets1B = NewDummyPackets("1B", 10)
