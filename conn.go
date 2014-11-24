@@ -100,6 +100,11 @@ func (c *Conn) checkEOF() {
 // all these messages should potentially be resubmitted, because we're not confident about their delivery
 // note: getting this data means resetting it! so handle it wisely.
 func (c *Conn) getRedo() [][]byte {
+	// drain In queue in case we still had some data buffered.
+	for buf := range c.In {
+		c.dest.numBuffered.Dec(1)
+		c.keepSafe.Add(buf)
+	}
 	return c.keepSafe.GetAll()
 }
 
