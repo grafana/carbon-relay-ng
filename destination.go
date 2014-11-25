@@ -16,16 +16,14 @@ func addrToPath(s string) string {
 
 type Destination struct {
 	// basic properties in init and copy
-	Matcher      Matcher       `json:"matcher"`
-	Addr         string        `json:"address"` // tcp dest
-	spoolDir     string        // where to store spool files (if enabled)
-	Spool        bool          `json:"spool"` // spool metrics to disk while dest down?
-	spoolSleep   time.Duration // how long to wait between stores to spool
-	unspoolSleep time.Duration // how long to wait between loads from spool
-	Pickle       bool          `json:"pickle"`       // send in pickle format?
-	Online       bool          `json:"online"`       // state of connection online/offline.
-	SlowNow      bool          `json:"slowNow"`      // did we have to drop packets in current loop
-	SlowLastLoop bool          `json:"slowLastLoop"` // "" last loop
+	Matcher      Matcher `json:"matcher"`
+	Addr         string  `json:"address"` // tcp dest
+	spoolDir     string  // where to store spool files (if enabled)
+	Spool        bool    `json:"spool"`        // spool metrics to disk while dest down?
+	Pickle       bool    `json:"pickle"`       // send in pickle format?
+	Online       bool    `json:"online"`       // state of connection online/offline.
+	SlowNow      bool    `json:"slowNow"`      // did we have to drop packets in current loop
+	SlowLastLoop bool    `json:"slowLastLoop"` // "" last loop
 	cleanAddr    string
 	periodFlush  time.Duration
 	periodReConn time.Duration
@@ -58,8 +56,6 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 		Addr:         addr,
 		spoolDir:     spoolDir,
 		Spool:        spool,
-		spoolSleep:   time.Duration(50) * time.Microsecond, // TODO configurable
-		unspoolSleep: time.Duration(10) * time.Microsecond, // TODO configurable
 		Pickle:       pickle,
 		cleanAddr:    cleanAddr,
 		periodFlush:  periodFlush,
@@ -108,7 +104,7 @@ func (dest *Destination) Run() (err error) {
 	dest.flush = make(chan bool)
 	dest.flushErr = make(chan error)
 	if dest.Spool {
-		dest.spool = NewSpool(dest.cleanAddr, dest.spoolDir, dest.spoolSleep, dest.unspoolSleep) // TODO better naming for spool, because it won't update when addr changes
+		dest.spool = NewSpool(dest.cleanAddr, dest.spoolDir) // TODO better naming for spool, because it won't update when addr changes
 	}
 	dest.tasks = sync.WaitGroup{}
 	go dest.relay()

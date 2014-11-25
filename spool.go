@@ -23,7 +23,6 @@ type Spool struct {
 	durationWrite  metrics.Timer
 	durationBuffer metrics.Timer
 	numBuffered    metrics.Counter // track watermark on read and write
-	numWritten     metrics.Counter
 	// metrics we could do but i don't think that useful: diskqueue depth, amount going in/out diskqueue
 	numIncomingBulk metrics.Counter // sync channel, no need to track watermark, instead we track number seen on read
 	numIncomingRT   metrics.Counter // more or less sync (small buff). we track number of drops in dest so no need for watermark, instead we track num seen on read
@@ -32,10 +31,20 @@ type Spool struct {
 // parameters should be tuned so that:
 // can buffer packets for the duration of 1 sync
 // buffer no more then needed, esp if we know the queue is slower then the ingest rate
-func NewSpool(key, spoolDir string, spoolSleep, unspoolSleep time.Duration) *Spool {
+func NewSpool(key, spoolDir string) *Spool {
 	dqName := "spool_" + key
-	queue := nsqd.NewDiskQueue(dqName, spoolDir, 200*1024*1024, 500, 2*time.Second).(*nsqd.DiskQueue)
+	// on our virtualized box i see mean write of around 100 micros upto 250 micros, max up to 200 millis.
+	// in 200 millis we can get up to 10k metrics, so let's make that our queueBuffer size
+	// for bulk, leaving 500 micros in between every metric should be enough.
+	// TODO make all these configurable:
+	queueBuffer := 10000
+	maxBytesPerFile := int64(200 * 1024 * 1024)
+	syncEvery := int64(10000)
+	periodSync := 1 * time.Second
+	queue := nsqd.NewDiskQueue(dqName, spoolDir, maxBytesPerFile, syncEvery, periodSync).(*nsqd.DiskQueue)
 
+	spoolSleep := time.Duration(500) * time.Microsecond
+	unspoolSleep := time.Duration(10) * time.Microsecond
 	s := Spool{
 		key:             key,
 		InRT:            make(chan []byte, 10),
@@ -44,7 +53,7 @@ func NewSpool(key, spoolDir string, spoolSleep, unspoolSleep time.Duration) *Spo
 		spoolSleep:      spoolSleep,
 		unspoolSleep:    unspoolSleep,
 		queue:           queue,
-		queueBuffer:     make(chan []byte, 800), // TODO configurable
+		queueBuffer:     make(chan []byte, queueBuffer),
 		durationWrite:   Timer("spool=" + key + ".unit=ns.operation=write"),
 		durationBuffer:  Timer("spool=" + key + ".unit=ns.operation=buffer"),
 		numBuffered:     Counter("spool=" + key + ".unit=Metric.status=buffered"),
