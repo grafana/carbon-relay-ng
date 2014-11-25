@@ -49,15 +49,6 @@ type Destination struct {
 	numDropSlowSpool     metrics.Counter
 	numDropSlowConn      metrics.Counter
 	numDropBadPickle     metrics.Counter
-	numErrTruncated      metrics.Counter
-	numErrWrite          metrics.Counter
-	numOut               metrics.Counter
-	durationWrite        metrics.Timer
-	durationAutoFlush    metrics.Timer
-	durationManuFlush    metrics.Timer
-	autoFlushSize        metrics.Histogram
-	manuFlushSize        metrics.Histogram
-	numBuffered          metrics.Counter
 }
 
 // after creating, run Run()!
@@ -84,22 +75,11 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 }
 
 func (dest *Destination) setMetrics() {
-
 	dest.numDropNoConnNoSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
 	dest.numSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.direction=spool")
 	dest.numDropSlowSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
 	dest.numDropSlowConn = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
 	dest.numDropBadPickle = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
-	dest.numErrTruncated = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Err.type=truncated")
-	dest.numErrWrite = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Err.type=write")
-	dest.numOut = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.direction=out")
-	dest.durationWrite = Timer("dest=" + dest.cleanAddr + ".what=durationWrite")
-	dest.durationAutoFlush = Timer("dest=" + dest.cleanAddr + ".what=durationAutoFlush")
-	dest.durationManuFlush = Timer("dest=" + dest.cleanAddr + ".what=durationManuFlush")
-	dest.autoFlushSize = Histogram("dest=" + dest.cleanAddr + ".what=autoFlushSize")
-	dest.manuFlushSize = Histogram("dest=" + dest.cleanAddr + ".what=manuFlushSize")
-	dest.numBuffered = Counter("dest=" + dest.cleanAddr + ".what=numBuffered")
-
 }
 
 func (dest *Destination) Match(s []byte) bool {
@@ -278,7 +258,7 @@ func (dest *Destination) relay() {
 		select {
 		// this op won't succeed as long as the conn is busy processing/flushing
 		case conn.In <- buf:
-			dest.numBuffered.Inc(1)
+			conn.numBuffered.Inc(1)
 		default:
 			log.Warning("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Addr, string(buf))
 			// TODO check if it was because conn closed

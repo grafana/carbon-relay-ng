@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/Dieterbe/go-metrics"
 	"io"
 	"net"
 	"time"
@@ -34,6 +35,16 @@ type Conn struct {
 	periodFlush time.Duration
 	unFlushed   []byte
 	keepSafe    *keepSafe
+
+	numErrTruncated   metrics.Counter
+	numErrWrite       metrics.Counter
+	numOut            metrics.Counter
+	durationWrite     metrics.Timer
+	durationAutoFlush metrics.Timer
+	durationManuFlush metrics.Timer
+	autoFlushSize     metrics.Histogram
+	manuFlushSize     metrics.Histogram
+	numBuffered       metrics.Counter
 }
 
 func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, error) {
@@ -46,19 +57,29 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 	if err != nil {
 		return nil, err
 	}
+	cleanAddr := addrToPath(addr)
 	connObj := &Conn{
-		conn:        conn,
-		buffered:    bufio.NewWriterSize(conn, bufio_buffer_size),
-		shutdown:    make(chan bool, 1), // when we write here, HandleData() may not be running anymore to read from the chan
-		In:          make(chan []byte, conn_in_buffer),
-		dest:        dest,
-		up:          true,
-		checkUp:     make(chan bool),
-		updateUp:    make(chan bool),
-		flush:       make(chan bool),
-		flushErr:    make(chan error),
-		periodFlush: periodFlush,
-		keepSafe:    NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
+		conn:              conn,
+		buffered:          bufio.NewWriterSize(conn, bufio_buffer_size),
+		shutdown:          make(chan bool, 1), // when we write here, HandleData() may not be running anymore to read from the chan
+		In:                make(chan []byte, conn_in_buffer),
+		dest:              dest,
+		up:                true,
+		checkUp:           make(chan bool),
+		updateUp:          make(chan bool),
+		flush:             make(chan bool),
+		flushErr:          make(chan error),
+		periodFlush:       periodFlush,
+		keepSafe:          NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
+		numErrTruncated:   Counter("dest=" + cleanAddr + ".target_type=count.unit=Err.type=truncated"),
+		numErrWrite:       Counter("dest=" + cleanAddr + ".target_type=count.unit=Err.type=write"),
+		numOut:            Counter("dest=" + cleanAddr + ".target_type=count.unit=Metric.direction=out"),
+		durationWrite:     Timer("dest=" + cleanAddr + ".what=durationWrite"),
+		durationAutoFlush: Timer("dest=" + cleanAddr + ".what=durationAutoFlush"),
+		durationManuFlush: Timer("dest=" + cleanAddr + ".what=durationManuFlush"),
+		autoFlushSize:     Histogram("dest=" + cleanAddr + ".what=autoFlushSize"),
+		manuFlushSize:     Histogram("dest=" + cleanAddr + ".what=manuFlushSize"),
+		numBuffered:       Counter("dest=" + cleanAddr + ".what=numBuffered"),
 	}
 
 	go connObj.checkEOF()
@@ -102,7 +123,7 @@ func (c *Conn) checkEOF() {
 func (c *Conn) getRedo() [][]byte {
 	// drain In queue in case we still had some data buffered.
 	for buf := range c.In {
-		c.dest.numBuffered.Dec(1)
+		c.numBuffered.Dec(1)
 		c.keepSafe.Add(buf)
 	}
 	return c.keepSafe.GetAll()
@@ -140,7 +161,7 @@ func (c *Conn) HandleData() {
 		case buf := <-c.In:
 			// seems to take about 30 micros when writing log to disk, 10 micros otherwise (100k messages/second)
 			active = time.Now()
-			c.dest.numBuffered.Dec(1)
+			c.numBuffered.Dec(1)
 			action = "write"
 			log.Info("conn %s HandleData: writing %s\n", c.dest.Addr, string(buf))
 			c.keepSafe.Add(buf)
@@ -153,12 +174,12 @@ func (c *Conn) HandleData() {
 			errBecauseTruncated := false
 			if err == nil && size != n {
 				errBecauseTruncated = true
-				c.dest.numErrTruncated.Inc(1)
+				c.numErrTruncated.Inc(1)
 				err = errors.New(fmt.Sprintf("truncated write: %s", string(buf)))
 			}
 			if err != nil {
 				if !errBecauseTruncated {
-					c.dest.numErrWrite.Inc(1)
+					c.numErrWrite.Inc(1)
 				}
 				log.Warning("conn %s write error: %s\n", c.dest.Addr, err)
 				log.Debug("conn %s setting up=false\n", c.dest.Addr)
@@ -167,11 +188,11 @@ func (c *Conn) HandleData() {
 				go c.Close() // this can take a while but that's ok. this conn won't be used anymore
 				return
 			}
-			c.dest.numOut.Inc(1)
+			c.numOut.Inc(1)
 			flushSize += int64(len(buf) + 1)
 			now = time.Now()
 			durationActive = now.Sub(active)
-			c.dest.durationWrite.Update(durationActive)
+			c.durationWrite.Update(durationActive)
 		case <-tickerFlush.C:
 			active = time.Now()
 			action = "auto-flush"
@@ -187,8 +208,8 @@ func (c *Conn) HandleData() {
 			log.Debug("conn %s HandleData c.buffered auto-flush done without error\n", c.dest.Addr)
 			now = time.Now()
 			durationActive = now.Sub(active)
-			c.dest.durationAutoFlush.Update(durationActive)
-			c.dest.autoFlushSize.Update(flushSize)
+			c.durationAutoFlush.Update(durationActive)
+			c.autoFlushSize.Update(flushSize)
 			flushSize = 0
 		case <-c.flush:
 			active = time.Now()
@@ -206,8 +227,8 @@ func (c *Conn) HandleData() {
 			log.Notice("conn %s HandleData c.buffered manual flush done without error\n", c.dest.Addr)
 			now = time.Now()
 			durationActive = now.Sub(active)
-			c.dest.durationManuFlush.Update(durationActive)
-			c.dest.manuFlushSize.Update(flushSize)
+			c.durationManuFlush.Update(durationActive)
+			c.manuFlushSize.Update(flushSize)
 			flushSize = 0
 		case <-c.shutdown:
 			active = time.Now()
