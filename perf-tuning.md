@@ -1,11 +1,10 @@
-how:
-----
-
-for now use the constants in conn.go and the flush interval option per dest.
+You should do some tuning to avoid the "dropped due to slow conn" and "dropped due to slow spool" warnings.
 
 
-what:
------
+tuning outbound tcp conn to destination
+--------------------------------
+
+(see the constants in conn.go and the flush interval option per dest)
 
 every destination has a bufio writer, with a configurable flush (but it will also autoflush during write it goes full, better to avoid this by making buffer big enough),
 since flushes and writes (see above, to be avoided) can take a while, there's also a buffered channel sitting in front of it to make sure the conn can always take writes
@@ -51,4 +50,8 @@ flush mean at 200 micros, write mean at 175 micros for 1 second
 
 
 
-ALSO: spool tuning. check the metrics and adjust the vars in spool and spoolSleep in destination
+tuning of spooling
+------------------
+
+similar as before, look at the metrics to see how long it takes to handle writes to the spool file,
+and update the values in spool.go accordingly.
