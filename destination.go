@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Dieterbe/go-metrics"
-	"github.com/graphite-ng/carbon-relay-ng/nsqd"
 	"os"
 	"strings"
 	"sync"
@@ -32,20 +31,16 @@ type Destination struct {
 	periodReConn time.Duration
 
 	// set in/via Run()
-	in           chan []byte     // incoming metrics
-	shutdown     chan bool       // signals shutdown internally
-	queueBuffer  chan []byte     // buffer metrics into queue because it can block
-	queue        *nsqd.DiskQueue // queue used if spooling enabled
-	queueInRT    chan []byte     // send data to queue
-	queueInBulk  chan []byte     // send data to queue
-	connUpdates  chan *Conn      // when the dest changes (possibly nil)
-	inConnUpdate chan bool       // to signal when we start a new conn and when we finish
+	in           chan []byte // incoming metrics
+	shutdown     chan bool   // signals shutdown internally
+	spool        *Spool      // queue used if spooling enabled
+	connUpdates  chan *Conn  // when the dest changes (possibly nil)
+	inConnUpdate chan bool   // to signal when we start a new conn and when we finish
 	flush        chan bool
 	flushErr     chan error
 	tasks        sync.WaitGroup
 
 	numDropNoConnNoSpool metrics.Counter
-	numSpool             metrics.Counter
 	numDropSlowSpool     metrics.Counter
 	numDropSlowConn      metrics.Counter
 	numDropBadPickle     metrics.Counter
@@ -76,7 +71,6 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 
 func (dest *Destination) setMetrics() {
 	dest.numDropNoConnNoSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
-	dest.numSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.direction=spool")
 	dest.numDropSlowSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
 	dest.numDropSlowConn = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
 	dest.numDropBadPickle = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
@@ -113,84 +107,14 @@ func (dest *Destination) Run() (err error) {
 	dest.inConnUpdate = make(chan bool)
 	dest.flush = make(chan bool)
 	dest.flushErr = make(chan error)
-	dest.queueBuffer = make(chan []byte, 800) // TODO configurable
 	if dest.Spool {
-		dqName := "spool_" + dest.cleanAddr
-		// queue will invoke sync every 1000 items, which blocks the queue a little
-		// so we should put a buffer in front of it with these properties:
-		// can buffer packets for the duration of 1 sync
-		// buffer no more then needed, esp if we know the queue is slower then the ingest rate
-		dest.queue = nsqd.NewDiskQueue(dqName, dest.spoolDir, 200*1024*1024, 500, 2*time.Second).(*nsqd.DiskQueue)
-		dest.queueInRT = make(chan []byte, 10)
-		dest.queueInBulk = make(chan []byte)
+		dest.spool = NewSpool(dest.cleanAddr, dest.spoolDir, dest.spoolSleep, dest.unspoolSleep) // TODO better naming for spool, because it won't update when addr changes
 	}
 	dest.tasks = sync.WaitGroup{}
-	go dest.QueueWriter()
-	go dest.QueueBuffer()
 	go dest.relay()
 	return err
 }
 
-// provides a channel based api to the queue
-func (dest *Destination) QueueWriter() {
-	// we always try to serve realtime traffic as much as we can
-	// because that's an inputstream at a fixed rate, it won't slow down
-	// but if no realtime traffic is coming in, then we can use spare capacity
-	// to read from the Bulk input, which is used to offload a known (potentially large) set of data
-	// that could easily exhaust the capacity of our disk queue.  But it doesn't require RT processing,
-	// so just handle this to the extent we can
-	// note that this still allows for channel ops to come in on queueInRT and to be starved, resulting
-	// in some realtime traffic to be dropped, but that shouldn't be too much of an issue. experience will tell..
-	//var pre time.Time
-	//var post time.Time
-	// this loop has emperically never took more then 40 micros to return back
-	for {
-		select {
-		// it looks like this is never taken though, it's always RT 2 . oh well.
-		// because: first time we're here, there's probably nothing here, so it hangs in the default
-		// when it processed default:
-		// it just read from InRT: it's highly unlikely there's another msg ready, so we go to default again
-		// it just read from InBulk: *because* there was nothing on RT, so it's highly ulikely something will be there straight after, so default again
-		case buf := <-dest.queueInRT:
-			//pre = time.Now()
-			log.Debug("dest %v satisfying spool RT 1", dest.Addr)
-			log.Info("dest %s %s QueueWriter -> queue.Put\n", dest.Addr, string(buf))
-			dest.queueBuffer <- buf
-			//post = time.Now()
-			//fmt.Println("queueBuffer duration RT 1:", post.Sub(pre).Nanoseconds())
-		default:
-			select {
-			case buf := <-dest.queueInRT:
-				//pre = time.Now()
-				log.Debug("dest %v satisfying spool RT 2", dest.Addr)
-				log.Info("dest %s %s QueueWriter -> queue.Put\n", dest.Addr, string(buf))
-				dest.queueBuffer <- buf
-				//post = time.Now()
-				//fmt.Println("queueBuffer duration RT 2:", post.Sub(pre).Nanoseconds())
-			case buf := <-dest.queueInBulk:
-				//pre = time.Now()
-				log.Debug("dest %v satisfying spool BULK", dest.Addr)
-				log.Info("dest %s %s QueueWriter -> queue.Put\n", dest.Addr, string(buf))
-				dest.queueBuffer <- buf
-				//post = time.Now()
-				//fmt.Println("queueBuffer duration BULK:", post.Sub(pre).Nanoseconds())
-			}
-		}
-	}
-}
-
-func (dest *Destination) QueueBuffer() {
-	// TODO clean shutdown
-	for buf := range dest.queueBuffer {
-		//pre := time.Now()
-		// Put takes about 10 micros normally, but sometimes upto a few hundred micros
-		// when it syncs, that goes up to 10ms
-		// 20 micros is a good average across all
-		dest.queue.Put(buf)
-		//post := time.Now()
-		//fmt.Println("PUT DURATION", post.Sub(pre).Nanoseconds())
-	}
-}
 func (dest *Destination) Flush() error {
 	dest.flush <- true
 	return <-dest.flushErr
@@ -228,10 +152,7 @@ func (dest *Destination) updateConn(addr string) {
 func (dest *Destination) collectRedo(conn *Conn) {
 	dest.tasks.Add(1)
 	bulkData := conn.getRedo()
-	for _, buf := range bulkData {
-		dest.queueInBulk <- buf
-		time.Sleep(dest.spoolSleep)
-	}
+	dest.spool.Ingest(bulkData)
 	dest.tasks.Done()
 }
 
@@ -240,7 +161,6 @@ func (dest *Destination) collectRedo(conn *Conn) {
 func (dest *Destination) relay() {
 	ticker := time.NewTicker(dest.periodReConn)
 	var toUnspool chan []byte
-	unspoolChan := NewSlowChan(dest.queue.ReadChan(), dest.unspoolSleep)
 	var conn *Conn
 
 	// try to send the data on the buffered tcp conn
@@ -273,8 +193,7 @@ func (dest *Destination) relay() {
 	// if slow or down, drop and move on
 	nonBlockingSpool := func(buf []byte) {
 		select {
-		case dest.queueInRT <- buf:
-			dest.numSpool.Inc(1)
+		case dest.spool.InRT <- buf:
 			log.Info("dest %s %s nonBlockingSpool -> added to spool\n", dest.Addr, string(buf))
 		default:
 			log.Warning("dest %s %s nonBlockingSpool -> dropping due to slow spool\n", dest.Addr, string(buf))
@@ -297,7 +216,7 @@ func (dest *Destination) relay() {
 		}
 		// only process spool queue if we have an outbound connection and we haven't needed to drop packets in a while
 		if conn != nil && dest.Spool && !dest.SlowLastLoop && !dest.SlowNow {
-			toUnspool = unspoolChan
+			toUnspool = dest.spool.Out
 		} else {
 			toUnspool = nil
 		}

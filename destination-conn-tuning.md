@@ -49,3 +49,6 @@ flush peak at 200 micros, write peak at 165ms for 2 consecutive seconds -> presu
 flush 99   at 200 micros, write 99   at 100 micros for 1 second
 flush mean at 200 micros, write mean at 175 micros for 1 second
 
+
+
+ALSO: spool tuning. check the metrics and adjust the vars in spool and spoolSleep in destination
