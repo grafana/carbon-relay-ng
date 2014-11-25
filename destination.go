@@ -17,14 +17,16 @@ func addrToPath(s string) string {
 
 type Destination struct {
 	// basic properties in init and copy
-	Matcher      Matcher `json:"matcher"`
-	Addr         string  `json:"address"` // tcp dest
-	spoolDir     string  // where to store spool files (if enabled)
-	Spool        bool    `json:"spool"`        // spool metrics to disk while dest down?
-	Pickle       bool    `json:"pickle"`       // send in pickle format?
-	Online       bool    `json:"online"`       // state of connection online/offline.
-	SlowNow      bool    `json:"slowNow"`      // did we have to drop packets in current loop
-	SlowLastLoop bool    `json:"slowLastLoop"` // "" last loop
+	Matcher      Matcher       `json:"matcher"`
+	Addr         string        `json:"address"` // tcp dest
+	spoolDir     string        // where to store spool files (if enabled)
+	Spool        bool          `json:"spool"` // spool metrics to disk while dest down?
+	spoolSleep   time.Duration // how long to wait between stores to spool
+	unspoolSleep time.Duration // how long to wait between loads from spool
+	Pickle       bool          `json:"pickle"`       // send in pickle format?
+	Online       bool          `json:"online"`       // state of connection online/offline.
+	SlowNow      bool          `json:"slowNow"`      // did we have to drop packets in current loop
+	SlowLastLoop bool          `json:"slowLastLoop"` // "" last loop
 	cleanAddr    string
 	periodFlush  time.Duration
 	periodReConn time.Duration
@@ -70,6 +72,8 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 		Addr:         addr,
 		spoolDir:     spoolDir,
 		Spool:        spool,
+		spoolSleep:   time.Duration(50) * time.Microsecond, // TODO configurable
+		unspoolSleep: time.Duration(10) * time.Microsecond, // TODO configurable
 		Pickle:       pickle,
 		cleanAddr:    cleanAddr,
 		periodFlush:  periodFlush,
@@ -129,7 +133,7 @@ func (dest *Destination) Run() (err error) {
 	dest.inConnUpdate = make(chan bool)
 	dest.flush = make(chan bool)
 	dest.flushErr = make(chan error)
-	dest.queueBuffer = make(chan []byte, 800) // have to think a bit more about this size
+	dest.queueBuffer = make(chan []byte, 800) // TODO configurable
 	if dest.Spool {
 		dqName := "spool_" + dest.cleanAddr
 		// queue will invoke sync every 1000 items, which blocks the queue a little
@@ -246,7 +250,7 @@ func (dest *Destination) collectRedo(conn *Conn) {
 	bulkData := conn.getRedo()
 	for _, buf := range bulkData {
 		dest.queueInBulk <- buf
-		time.Sleep(time.Duration(20) * time.Microsecond)
+		time.Sleep(dest.spoolSleep)
 	}
 	dest.tasks.Done()
 }
@@ -256,6 +260,7 @@ func (dest *Destination) collectRedo(conn *Conn) {
 func (dest *Destination) relay() {
 	ticker := time.NewTicker(dest.periodReConn)
 	var toUnspool chan []byte
+	unspoolChan := NewSlowChan(dest.queue.ReadChan(), dest.unspoolSleep)
 	var conn *Conn
 
 	// try to send the data on the buffered tcp conn
@@ -312,7 +317,7 @@ func (dest *Destination) relay() {
 		}
 		// only process spool queue if we have an outbound connection and we haven't needed to drop packets in a while
 		if conn != nil && dest.Spool && !dest.SlowLastLoop && !dest.SlowNow {
-			toUnspool = dest.queue.ReadChan()
+			toUnspool = unspoolChan
 		} else {
 			toUnspool = nil
 		}
