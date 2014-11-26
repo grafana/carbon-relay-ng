@@ -47,7 +47,7 @@ Building
     go get github.com/jteeuwen/go-bindata/...
     cd "$GOPATH/src/github.com/graphite-ng/carbon-relay-ng"
     git checkout v0.5
-    ./make.sh
+    make
 
 
 Installation

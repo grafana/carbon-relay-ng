@@ -1,10 +1,14 @@
 VERSION=0.0.0
 BUILD=1
 
+
+build:
+	go-bindata admin_http_assets
+	go build
+
 all:
 
-deb:
-	go build
+deb: build
 	install -d debian/usr/bin debian/usr/share/man/man1
 	install carbon-relay-ng debian/usr/bin
 	install man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
@@ -22,8 +26,7 @@ deb:
 		-C debian .
 	rm -rf debian
 
-rpm:
-	./make.sh
+rpm: build
 	install -d redhat/usr/bin redhat/usr/share/man/man1
 	install carbon-relay-ng redhat/usr/bin
 	install man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
@@ -57,7 +60,8 @@ gh-pages: man
 	git push origin gh-pages
 	git checkout -q master
 
-install:
+install: build
+	go-bindata admin_http_assets
 	go install
 
 man:
