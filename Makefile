@@ -22,6 +22,26 @@ deb:
 		-C debian .
 	rm -rf debian
 
+rpm:
+	./make.sh
+	install -d redhat/usr/bin redhat/usr/share/man/man1
+	install carbon-relay-ng redhat/usr/bin
+	install man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
+	gzip redhat/usr/share/man/man1/carbon-relay-ng.1
+	fpm \
+		-s dir \
+		-t rpm \
+		-n carbon-relay-ng \
+		-v $(VERSION) \
+		--epoch $(BUILD) \
+		-a amd64 \
+		-m "Richard Crowley <r@rcrowley.org>" \
+		--description "Route traffic to Graphite's carbon-cache.py." \
+		--license BSD \
+		--url https://github.com/rcrowley/carbon-relay-ng \
+		-C redhat .
+	rm -rf redhat	
+
 deploy:
 	scp carbon-relay-ng_$(VERSION)-$(BUILD)_amd64.deb freight@packages.rcrowley.org:
 	ssh -t freight@packages.rcrowley.org "freight add carbon-relay-ng_$(VERSION)-$(BUILD)_amd64.deb apt/precise && rm carbon-relay-ng_$(VERSION)-$(BUILD)_amd64.deb && freight cache apt/precise"
