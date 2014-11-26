@@ -42,51 +42,69 @@
   </div>
 
   <div class="container" role="main" ng-controller="MainCtl">
-    <div class="page-header">
-
-      <h1>Viewing All Routes</h1>
-
+    <div>
       <div class="row">
         <alert ng-repeat="alert in alerts">{{alert.msg}}</alert>
         <div class="col-md-12">
           <form name="form" class="form-add form-group has-feedback" role="form" ng-submit="add()" novalidate>
+            <h1>Blacklist</h1>
             <table class="table table-condensed">
               <thead>
                 <tr>
-                  <th>Key</th>
-                  <th>Pattern</th>
+                  <th>Match prefix</th>
+                  <th>Match substring</th>
+                  <th>Match regex</th>
+                  <th colspan=1>Actions</th>
+                </tr>
+              </thead>
+              <tbody ng-repeat="b in table.blacklist">
+                <tr>
+                    <td>{{b.prefix}}</td>
+                    <td>{{b.substring}}</td>
+                    <td>{{b.regex}}</td>
+                  <td><!--a ng-click="remove($index)"><i class="glyphicon glyphicon-remove-circle"/></a--></td>
+                </tr>
+              </tbody>
+            </table>
+            <h1>Routing</h1>
+            <table class="table table-condensed">
+              <thead>
+                <tr>
+                    <th></th> <!-- we'll put icons here -->
+                  <th>Route key</th>
+                  <th>Match prefix</th>
+                  <th>Match substring</th>
+                  <th>Match regex</th>
                   <th>Address</th>
                   <th>Spool</th>
                   <th>Pickle</th>
                   <th colspan=2 >Actions</th>
                 </tr>
               </thead>
-              <tbody ng-repeat="b in table.blacklist">
-                <tr>
-                  <td>Blacklist</td>
-                  <td>{{b}}</td>
-                  <td colspan="3"></td>
-                  <td colspan="2"><!--a ng-click="remove($index)"><i class="glyphicon glyphicon-remove-circle"/></a--></td>
-                </tr>
-              </tbody>
               <tbody ng-repeat="r in table.routes">
                 <tr>
-                  <td>{{r.key}}</td>
-                  <td>{{r.matcher}}</td>
-                  <td colspan="3"></td>
-                  <td colspan="2"><a ng-click="remove($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
+                  <td><span class="glyphicon glyphicon-play" aria-hidden="true"></span></td>
+                  <td class="info">{{r.key}}</td>
+                  <td class="info">{{r.matcher.prefix}}</td>
+                  <td class="info">{{r.matcher.substring}}</td>
+                  <td class="info">{{r.matcher.regex}}</td>
+                  <td class="info" colspan="3"></td>
+                  <td class="info" colspan="2"><a ng-click="remove($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
                 </tr>
-                <tr ng-repeat="d in r.destination" ng-class="{ 'danger' : !r.online }">
-                  <td></td>
-                  <td>{{d.matcher}}</td>
-                  <td>{{d.address}}</td>
-                  <td class="text-center">
+                <tr ng-repeat="d in r.destination">
+                    <td><!--<span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>--></td>
+                    <td></td>
+                    <td ng-class="{'danger': !r.online }">{{d.matcher.prefix}}</td>
+                    <td ng-class="{'danger': !r.online }">{{d.matcher.substring}}</td>
+                    <td ng-class="{'danger': !r.online }">{{d.matcher.regex}}</td>
+                    <td ng-class="{'danger': !r.online }">{{d.address}}</td>
+                    <td ng-class="{'danger': !r.online }" class="text-center">
                     <icon ng-show="d.spool" class="glyphicon glyphicon-hdd"/>
                   </td>
-                  <td class="text-center">
+                  <td ng-class="{ 'danger' : !r.online }" class="text-center">
                     <icon ng-show="d.pickle" class="glyphicon glyphicon-ok-sign"/>
                   </td>
-                  <td colspan="2"></td>
+                  <td ng-class="{ 'danger' : !r.online }" colspan="2"></td>
                 </tr>
               </tbody>
             </table>
