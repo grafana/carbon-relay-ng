@@ -25,7 +25,7 @@ const (
 // we should never half apply the change if one of them fails.
 
 var tokenDefGlobal = []toki.Def{
-	{Token: addBlack, Pattern: "addBlack [a-z-_]+"},
+	{Token: addBlack, Pattern: "addBlack [^ ]+"},
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch [a-z-_]+"},
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch [a-z-_]+"},
 	{Token: addDest, Pattern: "addDest [a-z-_]+"},
