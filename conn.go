@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"github.com/Dieterbe/go-metrics"
@@ -23,7 +22,7 @@ var keepsafe_keep_duration = time.Duration(10 * time.Second)
 
 type Conn struct {
 	conn        *net.TCPConn
-	buffered    *bufio.Writer
+	buffered    *Writer
 	shutdown    chan bool
 	In          chan []byte
 	dest        *Destination // which dest do we correspond to
@@ -40,9 +39,9 @@ type Conn struct {
 	numErrWrite       metrics.Counter
 	numOut            metrics.Counter
 	durationWrite     metrics.Timer
-	durationAutoFlush metrics.Timer
+	durationTickFlush metrics.Timer
 	durationManuFlush metrics.Timer
-	autoFlushSize     metrics.Histogram
+	tickFlushSize     metrics.Histogram
 	manuFlushSize     metrics.Histogram
 	numBuffered       metrics.Counter
 }
@@ -60,7 +59,7 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 	cleanAddr := addrToPath(addr)
 	connObj := &Conn{
 		conn:              conn,
-		buffered:          bufio.NewWriterSize(conn, bufio_buffer_size),
+		buffered:          NewWriter(conn, bufio_buffer_size, "dest="+cleanAddr+"."),
 		shutdown:          make(chan bool, 1), // when we write here, HandleData() may not be running anymore to read from the chan
 		In:                make(chan []byte, conn_in_buffer),
 		dest:              dest,
@@ -75,10 +74,10 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 		numErrWrite:       Counter("dest=" + cleanAddr + ".target_type=count.unit=Err.type=write"),
 		numOut:            Counter("dest=" + cleanAddr + ".target_type=count.unit=Metric.direction=out"),
 		durationWrite:     Timer("dest=" + cleanAddr + ".what=durationWrite"),
-		durationAutoFlush: Timer("dest=" + cleanAddr + ".what=durationAutoFlush"),
-		durationManuFlush: Timer("dest=" + cleanAddr + ".what=durationManuFlush"),
-		autoFlushSize:     Histogram("dest=" + cleanAddr + ".what=autoFlushSize"),
-		manuFlushSize:     Histogram("dest=" + cleanAddr + ".what=manuFlushSize"),
+		durationTickFlush: Timer("dest=" + cleanAddr + ".what=durationFlush.type=ticker"),
+		durationManuFlush: Timer("dest=" + cleanAddr + ".what=durationFlush.type=manual"),
+		tickFlushSize:     Histogram("dest=" + cleanAddr + ".what=FlushSize.type=ticker"),
+		manuFlushSize:     Histogram("dest=" + cleanAddr + ".what=FlushSize.type=manual"),
 		numBuffered:       Counter("dest=" + cleanAddr + ".what=numBuffered"),
 	}
 
@@ -208,8 +207,8 @@ func (c *Conn) HandleData() {
 			log.Debug("conn %s HandleData c.buffered auto-flush done without error\n", c.dest.Addr)
 			now = time.Now()
 			durationActive = now.Sub(active)
-			c.durationAutoFlush.Update(durationActive)
-			c.autoFlushSize.Update(flushSize)
+			c.durationTickFlush.Update(durationActive)
+			c.tickFlushSize.Update(flushSize)
 			flushSize = 0
 		case <-c.flush:
 			active = time.Now()
