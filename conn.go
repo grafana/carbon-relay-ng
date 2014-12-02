@@ -37,6 +37,7 @@ type Conn struct {
 
 	numErrTruncated   metrics.Counter
 	numErrWrite       metrics.Counter
+	numErrFlush       metrics.Counter
 	numOut            metrics.Counter
 	durationWrite     metrics.Timer
 	durationTickFlush metrics.Timer
@@ -72,6 +73,7 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 		keepSafe:          NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
 		numErrTruncated:   Counter("dest=" + cleanAddr + ".target_type=count.unit=Err.type=truncated"),
 		numErrWrite:       Counter("dest=" + cleanAddr + ".target_type=count.unit=Err.type=write"),
+		numErrFlush:       Counter("dest=" + cleanAddr + ".target_type=count.unit=Err.type=flush"),
 		numOut:            Counter("dest=" + cleanAddr + ".target_type=count.unit=Metric.direction=out"),
 		durationWrite:     Timer("dest=" + cleanAddr + ".what=durationWrite"),
 		durationTickFlush: Timer("dest=" + cleanAddr + ".what=durationFlush.type=ticker"),
@@ -155,7 +157,7 @@ func (c *Conn) HandleData() {
 		var active time.Time
 		var action string
 		select {
-		// note that bufio.Writer.Write() can potentially cause a flush and hence block
+		// note that Writer.Write() can potentially cause a flush and hence block
 		// choose the size of In based on how long these loop iterations take
 		case buf := <-c.In:
 			// seems to take about 30 micros when writing log to disk, 10 micros otherwise (100k messages/second)
@@ -199,7 +201,7 @@ func (c *Conn) HandleData() {
 			err := c.buffered.Flush()
 			if err != nil {
 				log.Warning("conn %s HandleData c.buffered auto-flush done but with error: %s, closing\n", c.dest.Addr, err)
-				// TODO instrument
+				c.numErrFlush.Inc(1)
 				c.updateUp <- false
 				go c.Close()
 				return
