@@ -45,7 +45,7 @@ Instrumentation (post v0.5)
 * You can also send metrics to graphite (or feed back into the relay), see config.
 * Comes with a [grafana dashboard template](https://github.com/graphite-ng/carbon-relay-ng/blob/master/grafana-dashboard.json) so you get up and running in no time.
 
-[grafana dashboard](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/grafana-screenshot.png)
+![grafana dashboard](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/grafana-screenshot.png)
 
 
 Building
