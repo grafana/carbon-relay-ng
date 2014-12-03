@@ -5,7 +5,7 @@ A relay for carbon streams, in go.
 Like carbon-relay from the graphite project, except it:
 
 
- * performs (much) better.
+ * should perform better (note: needs some work to actually make this happen)
  * you can adjust the routing table at runtime, in real time using the web or telnet interface.
  * can be restarted without dropping packets
  * supports a per-route spooling policy.
@@ -36,6 +36,16 @@ Releases & versions
   note: *the http admin interface in the current master branch does not work*, the TCP interface does work but only for adding new routes, for now.
 * v0.5 extended version with config file, http and telnet interfaces, statsd for internal instrumentation, disk spooling support, but still blocking operations
 * v0.1 initial, simple version that used commandline args to configure. no admin interfaces. blocking sends
+
+
+Instrumentation (post v0.5)
+------------------------
+
+* All performance variables are available in json at http://localhost:8081/debug/vars2 (update port if you change it in config)
+* You can also send metrics to graphite (or feed back into the relay), see config.
+* Comes with a [grafana dashboard template](https://github.com/graphite-ng/carbon-relay-ng/blob/master/grafana-dashboard.json) so you get up and running in no time.
+
+[grafana dashboard](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/grafana-screenshot.png)
 
 
 Building
@@ -151,11 +161,3 @@ commands:
                    spool={true,false}            enable spooling for this endpoint
 
 
-
-
-Instrumentation (master)
-------------------------
-
-All performance variables are available at http://localhost:8081/debug/vars2
-(update port if you change it in config)
-You can also send metrics to graphite (or feed back into the relay), see config.
