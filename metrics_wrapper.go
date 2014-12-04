@@ -8,14 +8,12 @@ import (
 
 func Counter(key string) metrics.Counter {
 	c := metrics.NewCounter()
-	metrics.Register(expandKey(key), c)
-	return c
+	return metrics.GetOrRegister(expandKey(key), c).(metrics.Counter)
 }
 
 func Gauge(key string) metrics.Gauge {
 	g := metrics.NewGauge()
-	metrics.Register(expandKey(key), g)
-	return g
+	return metrics.GetOrRegister(expandKey(key), g).(metrics.Gauge)
 }
 
 func Timer(key string) metrics.Timer {
@@ -25,14 +23,12 @@ func Timer(key string) metrics.Timer {
 	histogram := metrics.NewHistogram(metrics.NewWindowSample())
 	meter := metrics.NewMeter()
 	t := metrics.NewCustomTimer(histogram, meter)
-	metrics.Register(expandKey(key), t)
-	return t
+	return metrics.GetOrRegister(expandKey(key), t).(metrics.Timer)
 }
 
 func Histogram(key string) metrics.Histogram {
 	h := metrics.NewHistogram(metrics.NewWindowSample())
-	metrics.Register(expandKey(key), h)
-	return h
+	return metrics.GetOrRegister(expandKey(key), h).(metrics.Histogram)
 }
 
 func expandKey(key string) string {
