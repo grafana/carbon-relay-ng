@@ -6,7 +6,9 @@
 package main
 
 import (
+	"bytes"
 	"github.com/Dieterbe/go-metrics"
+	"github.com/op/go-logging"
 	"io"
 	"time"
 )
@@ -18,6 +20,7 @@ import (
 // Flush method to guarantee all data has been forwarded to
 // the underlying io.Writer.
 type Writer struct {
+	key                   string
 	err                   error
 	buf                   []byte
 	n                     int
@@ -28,14 +31,15 @@ type Writer struct {
 // NewWriterSize returns a new Writer whose buffer has at least the specified
 // size. If the argument io.Writer is already a Writer with large enough
 // size, it returns the underlying Writer.
-func NewWriter(w io.Writer, size int, statsPrefix string) *Writer {
+func NewWriter(w io.Writer, size int, key string) *Writer {
 	if size <= 0 {
 		panic("invalid size requested")
 	}
 	return &Writer{
+		key: key,
 		buf: make([]byte, size),
 		wr:  w,
-		durationOverflowFlush: Timer(statsPrefix + "what=durationFlush.type=overflow"),
+		durationOverflowFlush: Timer("dest=" + key + ".what=durationFlush.type=overflow"),
 	}
 }
 
@@ -51,6 +55,12 @@ func (b *Writer) flush() error {
 	}
 	if b.n == 0 {
 		return nil
+	}
+	if log.IsEnabledFor(logging.INFO) {
+		bufs := bytes.Split(b.buf[0:b.n], []byte{'\n'})
+		for _, buf := range bufs {
+			log.Info("bufWriter %s flush-writing to tcp %s\n", b.key, string(buf))
+		}
 	}
 	n, err := b.wr.Write(b.buf[0:b.n])
 	if n < b.n && err == nil {
@@ -86,6 +96,7 @@ func (b *Writer) Write(p []byte) (nn int, err error) {
 			// Write directly from p to avoid copy.
 			// we should measure this duration because it's equivalent to a flush
 			start := time.Now()
+			log.Info("bufWriter %s writing to tcp %s\n", b.key, string(p))
 			n, b.err = b.wr.Write(p)
 			b.durationOverflowFlush.UpdateSince(start)
 		} else {

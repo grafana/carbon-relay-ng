@@ -60,7 +60,7 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 	cleanAddr := addrToPath(addr)
 	connObj := &Conn{
 		conn:              conn,
-		buffered:          NewWriter(conn, bufio_buffer_size, "dest="+cleanAddr+"."),
+		buffered:          NewWriter(conn, bufio_buffer_size, cleanAddr),
 		shutdown:          make(chan bool, 1), // when we write here, HandleData() may not be running anymore to read from the chan
 		In:                make(chan []byte, conn_in_buffer),
 		dest:              dest,
