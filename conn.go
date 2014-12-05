@@ -121,11 +121,20 @@ func (c *Conn) checkEOF() {
 
 // all these messages should potentially be resubmitted, because we're not confident about their delivery
 // note: getting this data means resetting it! so handle it wisely.
+// we also read out the In channel until it blocks.  Don't send any more input after calling this.
 func (c *Conn) getRedo() [][]byte {
 	// drain In queue in case we still had some data buffered.
-	for buf := range c.In {
-		c.numBuffered.Dec(1)
-		c.keepSafe.Add(buf)
+	// normally this channel should already have been closed by the time we call this, but this is hard/complicated to enforce
+	// so instead let's leverage a select. as soon as it blocks (due to chan close or no more input but not closed yet) we know we're
+	// done reading and move on. it's easy to prove in the implementer that we don't send any more data to In after calling this
+	for {
+		select {
+		case buf := <-c.In:
+			c.numBuffered.Dec(1)
+			c.keepSafe.Add(buf)
+		default:
+			break
+		}
 	}
 	return c.keepSafe.GetAll()
 }
