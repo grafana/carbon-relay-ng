@@ -15,6 +15,7 @@ const (
 	addBlack toki.Token = iota
 	addRouteSendAllMatch
 	addRouteSendFirstMatch
+	addRouteHash
 	addDest
 	opt
 	str
@@ -28,6 +29,7 @@ var tokenDefGlobal = []toki.Def{
 	{Token: addBlack, Pattern: "addBlack [^ ]+"},
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch [a-z-_]+"},
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch [a-z-_]+"},
+	{Token: addRouteHash, Pattern: "addRoute hash [a-z-_,]+"},
 	{Token: addDest, Pattern: "addDest [a-z-_]+"},
 	{Token: opt, Pattern: "[a-z]+="},
 	{Token: str, Pattern: "\".*\""},
@@ -193,6 +195,27 @@ func applyCommand(table *Table, cmd string) error {
 			return err
 		}
 		route, err := NewRoute(sendFirstMatch(2), key, prefix, sub, regex)
+		if err != nil {
+			return err
+		}
+		route.Dests = destinations
+		table.AddRoute(route)
+	} else if t.Token == addRouteHash {
+		split := strings.Split(string(t.Value), " ")
+		key := split[2]
+		if len(inputs) < 2 {
+			return errors.New("must get at least 1 destination for route " + key)
+		}
+
+		prefix, sub, regex, err := readRouteOpts(s)
+		if err != nil {
+			return err
+		}
+		destinations, err := readDestinations(inputs[1:], table)
+		if err != nil {
+			return err
+		}
+		route, err := NewRoute(sendByHash(3), key, prefix, sub, regex)
 		if err != nil {
 			return err
 		}
