@@ -67,4 +67,7 @@ install: build
 man:
 	find man -name \*.ronn | xargs -n1 ronn --manual=carbon-relay-ng --style=toc
 
+run: build
+	./carbon-relay-ng carbon-relay-ng.ini
+
 .PHONY: all deb gh-pages install man

@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/elazarl/go-bindata-assetfs"
-	//    "errors"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 // error response contains everything we need to use http.Error
@@ -55,6 +55,27 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func listTable(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	t := table.Snapshot()
 	return t, nil
+}
+
+func removeBlacklist(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+	index := mux.Vars(r)["index"]
+	idx, _ := strconv.Atoi(index)
+	err := table.DelBlacklist(idx)
+	if err != nil {
+		return nil, &handlerError{nil, "Could not find entry " + index, http.StatusNotFound}
+	}
+	return make(map[string]string), nil
+}
+
+func removeDestination(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+	key := mux.Vars(r)["key"]
+	index := mux.Vars(r)["index"]
+	idx, _ := strconv.Atoi(index)
+	err := table.DelDestination(key, idx)
+	if err != nil {
+		return nil, &handlerError{nil, "Could not find entry " + key + "/" + index, http.StatusNotFound}
+	}
+	return make(map[string]string), nil
 }
 
 func listRoutes(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
@@ -142,12 +163,19 @@ func HttpListener(addr string, t *Table) {
 
 	// setup routes
 	router := mux.NewRouter()
+	// table
 	router.Handle("/table", handler(listTable)).Methods("GET")
+	// blacklist
+	router.Handle("/blacklists/{index}", handler(removeBlacklist)).Methods("DELETE")
+	// routes
 	router.Handle("/routes", handler(listRoutes)).Methods("GET")
 	//router.Handle("/routes", handler(addRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(getRoute)).Methods("GET")
 	//router.Handle("/routes/{key}", handler(updateRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(removeRoute)).Methods("DELETE")
+	// destinations
+	router.Handle("/routes/{key}/destinations/{index}", handler(removeDestination)).Methods("DELETE")
+
 	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset, AssetDir, "admin_http_assets/"}))
 	http.Handle("/", router)
 
