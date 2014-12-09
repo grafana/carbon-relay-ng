@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/elazarl/go-bindata-assetfs"
+	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
@@ -176,7 +176,7 @@ func HttpListener(addr string, t *Table) {
 	// destinations
 	router.Handle("/routes/{key}/destinations/{index}", handler(removeDestination)).Methods("DELETE")
 
-	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset, AssetDir, "admin_http_assets/"}))
+	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, Prefix: "admin_http_assets/"}))
 	http.Handle("/", router)
 
 	log.Notice("admin HTTP listener starting on %v", addr)
