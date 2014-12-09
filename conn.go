@@ -164,7 +164,7 @@ func (c *Conn) HandleData() {
 		start := time.Now()
 		var active time.Time
 		var action string
-		select {
+		select { // handle incoming data or flush/shutdown commands
 		// note that Writer.Write() can potentially cause a flush and hence block
 		// choose the size of In based on how long these loop iterations take
 		case buf := <-c.In:
