@@ -133,10 +133,9 @@ func (c *Conn) getRedo() [][]byte {
 			c.numBuffered.Dec(1)
 			c.keepSafe.Add(buf)
 		default:
-			break
+			return c.keepSafe.GetAll()
 		}
 	}
-	return c.keepSafe.GetAll()
 }
 
 func (c *Conn) HandleStatus() {
