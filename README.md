@@ -5,7 +5,7 @@ A relay for carbon streams, in go.
 Like carbon-relay from the graphite project, except it:
 
 
- * should perform better (note: needs some work to actually make this happen)
+ * should perform better (some optimization work still todo. benchmark currently reports 50k metrics/s through a table with 1 endpoint)
  * you can adjust the routing table at runtime, in real time using the web or telnet interface.
  * can be restarted without dropping packets
  * supports a per-route spooling policy.

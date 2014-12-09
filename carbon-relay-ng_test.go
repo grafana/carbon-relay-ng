@@ -145,8 +145,8 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 		time.Sleep(20 * time.Microsecond)
 	}
 	log.Notice("waiting for received data")
-	nsUUU.AllowBG(2*time.Second, &tEWaits)
-	nsUDU.AllowBG(2*time.Second, &tEWaits)
+	nsUUU.AllowBG(1*time.Second, &tEWaits)
+	nsUDU.AllowBG(1*time.Second, &tEWaits)
 	tEWaits.Wait()
 	log.Notice("validating received data")
 	tUUU.SeenThisOrFatal(packets3A.All())
@@ -167,7 +167,7 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 	}
 
 	log.Notice("validating received data")
-	nsUUU.Allow(2 * time.Second)
+	nsUUU.Allow(1 * time.Second)
 	tUUU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All()))
 
 	log.Notice("##### START STEP 3: bring tUDU back up, it should receive all data it missed thanks to the spooling. + send new data #####")
@@ -189,7 +189,7 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 
 	log.Notice("waiting for received data")
 	nsUUU.PreferBG(1*time.Second, &tEWaits)
-	nsUDU.PreferBG(6*time.Second, &tEWaits)
+	nsUDU.PreferBG(3*time.Second, &tEWaits)
 	tEWaits.Wait()
 	log.Notice("validating received data")
 	tUUU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All(), packets3C.All()))
@@ -217,7 +217,7 @@ func benchmarkSendAndReceive(b *testing.B, dp *dummyPackets) {
 			//fmt.Println("dispatching", m)
 			//fmt.Printf("dispatching '%s'\n", string(m))
 			table.Dispatch(m)
-			time.Sleep(10 * time.Microsecond) // see above
+			time.Sleep(100 * time.Nanosecond) // see above
 		}
 		log.Notice("waiting until all %d messages received", dp.amount*(i+1))
 		ns.Wait()
