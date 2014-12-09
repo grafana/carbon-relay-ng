@@ -133,10 +133,10 @@ func (route *Route) Snapshot() Route {
 	return Route{route.Type, route.Key, route.Matcher, dests, nil, sync.Mutex{}}
 }
 
-func (route *Route) Add(dest Destination) {
+func (route *Route) Add(dest *Destination) {
 	route.Lock()
 	defer route.Unlock()
-	route.Dests = append(route.Dests, &dest)
+	route.Dests = append(route.Dests, dest)
 }
 
 func (route *Route) DelDestination(index int) error {
