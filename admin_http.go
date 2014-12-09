@@ -101,18 +101,18 @@ func removeRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerE
 	return make(map[string]string), nil
 }
 
-func parseRouteRequest(r *http.Request) (Route, *handlerError) {
+func parseRouteRequest(r *http.Request) (*Route, *handlerError) {
 	data, e := ioutil.ReadAll(r.Body)
 	if e != nil {
-		return Route{}, &handlerError{e, "Could not read request", http.StatusBadRequest}
+		return &Route{}, &handlerError{e, "Could not read request", http.StatusBadRequest}
 	}
 
 	var payload Route
 	e = json.Unmarshal(data, &payload)
 	if e != nil {
-		return Route{}, &handlerError{e, "Could not parse JSON", http.StatusBadRequest}
+		return &Route{}, &handlerError{e, "Could not parse JSON", http.StatusBadRequest}
 	}
-	return payload, nil
+	return &payload, nil
 }
 
 /* needs updating, but using what api?
