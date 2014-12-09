@@ -150,6 +150,8 @@ func (c *conditionWatcher) Allow(timeout time.Duration) {
 		return
 	case <-timeoutChan:
 		c.Lock()
+		// for some reason the c.t.Fatalf often gets somehow stuck. but the fmt.Printf works at least
+		fmt.Printf("FATAL: %s timed out after %s of waiting for %s (%s)", c.key, timeout, c.desiredStatus, c.lastStatus)
 		c.t.Fatalf("%s timed out after %s of waiting for %s (%s)", c.key, timeout, c.desiredStatus, c.lastStatus)
 		c.Unlock()
 	}
