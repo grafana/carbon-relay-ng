@@ -98,9 +98,11 @@ type conditionWatcher struct {
 	t             *testing.T
 	key           string
 	desiredStatus string
-	lastStatus    string
-	sync.Mutex    // to protect lastStatus
-	met           chan bool
+
+	sync.Mutex
+	lastStatus string
+
+	met chan bool
 }
 
 func newConditionWatcher(tE *TestEndpoint, key, desiredStatus string) *conditionWatcher {
