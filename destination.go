@@ -251,6 +251,9 @@ func (dest *Destination) relay() {
 				conn.Flush()
 				conn.Close()
 			}
+			if dest.spool != nil {
+				dest.spool.Close()
+			}
 			return
 		case buf := <-toUnspool:
 			// we know that conn != nil here because toUnspool is set above
