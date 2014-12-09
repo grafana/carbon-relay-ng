@@ -83,6 +83,7 @@ func TestSinglePointSingleRoute(t *testing.T) {
 	defer tE.Close()
 	na := tE.conditionNumAccepts(1)
 	ns := tE.conditionNumSeen(1)
+	tE.Start()
 	table := NewTableOrFatal(t, "", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10")
 	na.Allow(50 * time.Millisecond)
 	table.Dispatch(packets0A.Get(0))
@@ -117,6 +118,8 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 	tUDU := NewTestEndpoint(t, ":2006")
 	naUUU := tUUU.conditionNumAccepts(1)
 	naUDU := tUDU.conditionNumAccepts(1)
+	tUUU.Start()
+	tUDU.Start()
 
 	// reconnect retry should be quick now, so we can proceed quicker
 	// also flushing freq is increased so we don't have to wait as long
@@ -170,6 +173,7 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 	log.Notice("##### START STEP 3: bring tUDU back up, it should receive all data it missed thanks to the spooling. + send new data #####")
 	tUDU = NewTestEndpoint(t, ":2006")
 	na := tUDU.conditionNumAccepts(1)
+	tUDU.Start()
 
 	log.Notice("waiting for reconnect")
 	na.Allow(time.Duration(reconnMs+50) * time.Millisecond)
@@ -199,6 +203,7 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 func benchmarkSendAndReceive(b *testing.B, dp *dummyPackets) {
 	tE := NewTestEndpoint(nil, ":2005")
 	na := tE.conditionNumAccepts(1)
+	tE.Start()
 	table = NewTableOrFatal(b, "", "addRoute sendAllMatch test1  127.0.0.1:2005")
 	na.Wait()
 	// reminder: go benchmark will invoke this with N = 0, then maybe N = 20, then maybe more

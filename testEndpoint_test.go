@@ -27,17 +27,11 @@ type TestEndpoint struct {
 }
 
 func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		panic(err)
-	}
-	log.Notice("tE %s is now listening\n", addr)
 	// shutdown chan size 1 so that Close() doesn't have to wait on the write
 	// because the loops will typically be stuck in Accept and Readline
-	tE := &TestEndpoint{
+	return &TestEndpoint{
 		t:              t,
 		addr:           addr,
-		ln:             ln,
 		seen:           make(chan []byte),
 		seenBufs:       make([][]byte, 0),
 		shutdown:       make(chan bool, 1),
@@ -47,6 +41,15 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 		accepts:        topic.New(),
 		numSeen:        topic.New(),
 	}
+}
+
+func (tE *TestEndpoint) Start() {
+	ln, err := net.Listen("tcp", tE.addr)
+	if err != nil {
+		panic(err)
+	}
+	log.Notice("tE %s is now listening\n", tE.addr)
+	tE.ln = ln
 	go func() {
 		numAccepts := 0
 		for {
@@ -84,7 +87,6 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 			}
 		}
 	}()
-	return tE
 }
 
 func (tE *TestEndpoint) String() string {
