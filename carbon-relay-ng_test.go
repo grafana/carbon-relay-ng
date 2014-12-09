@@ -143,7 +143,7 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 		// go test 2>&1 | egrep '(table sending to route|route.*receiving)' | grep -v 2006
 		// you should see that data goes through the table in the right order, but the route receives
 		// the points in a different order.
-		time.Sleep(20 * time.Microsecond)
+		time.Sleep(1 * time.Microsecond)
 	}
 	log.Notice("waiting for received data")
 	nsUUU.AllowBG(1*time.Second, &tEWaits)
