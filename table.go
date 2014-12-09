@@ -91,8 +91,7 @@ func (table *Table) Snapshot() *Table {
 
 	routes := make([]*Route, len(table.Routes))
 	for i, r := range table.Routes {
-		snap := r.Snapshot()
-		routes[i] = &snap
+		routes[i] = r.Snapshot()
 	}
 	return &Table{sync.Mutex{}, blacklist, routes, table.spoolDir, nil, nil}
 }

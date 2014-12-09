@@ -122,7 +122,7 @@ func (route *Route) Shutdown() error {
 
 // to view the state of the table/route at any point in time
 // we might add more functions to view specific entries if the need for that appears
-func (route *Route) Snapshot() Route {
+func (route *Route) Snapshot() *Route {
 	route.Lock()
 	dests := make([]*Destination, len(route.Dests))
 	defer route.Unlock()
@@ -130,7 +130,7 @@ func (route *Route) Snapshot() Route {
 		snap := d.Snapshot()
 		dests[i] = &snap
 	}
-	return Route{route.Type, route.Key, route.Matcher, dests, nil, sync.Mutex{}}
+	return &Route{route.Type, route.Key, route.Matcher, dests, nil, sync.Mutex{}}
 }
 
 func (route *Route) Add(dest *Destination) {
