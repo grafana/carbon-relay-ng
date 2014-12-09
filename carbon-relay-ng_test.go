@@ -42,6 +42,7 @@ func init() {
 	packets6A = NewDummyPackets("6A", 1000000)
 	//packets6B = NewDummyPackets("6B", 1000000)
 	//packets6C = NewDummyPackets("6C", 1000000)
+	logging.SetLevel(logging.NOTICE, "carbon-relay-ng")
 }
 
 func NewTableOrFatal(tb interface{}, spool_dir, cmd string) *Table {
@@ -169,18 +170,20 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		time.Sleep(50 * time.Microsecond) // see above
 	}
 
-	log.Notice("validating received data")
+	log.Notice("waiting for received data")
 	nsUUU.PreferBG(1*time.Second, &tEWaits)
 	nsUDU.PreferBG(6*time.Second, &tEWaits)
 	tEWaits.Wait()
+	log.Notice("validating received data")
 	tUUU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All(), packets3C.All()))
 	tUDU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All(), packets3C.All()))
+	tUUU.Close()
+	tUDU.Close()
 
 	table.ShutdownOrFatal(t)
 }
 
 func benchmarkSendAndReceive(b *testing.B, dp *dummyPackets) {
-	logging.SetLevel(logging.NOTICE, "carbon-relay-ng")
 	tE := NewTestEndpoint(nil, ":2005")
 	na := tE.conditionNumAccepts(1)
 	table = NewTableOrFatal(b, "", "addRoute sendAllMatch test1  127.0.0.1:2005")
