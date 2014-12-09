@@ -127,8 +127,7 @@ func (route *Route) Snapshot() *Route {
 	dests := make([]*Destination, len(route.Dests))
 	defer route.Unlock()
 	for i, d := range route.Dests {
-		snap := d.Snapshot()
-		dests[i] = &snap
+		dests[i] = d.Snapshot()
 	}
 	return &Route{route.Type, route.Key, route.Matcher, dests, nil, sync.Mutex{}}
 }

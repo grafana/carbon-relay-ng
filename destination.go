@@ -84,8 +84,8 @@ func (dest *Destination) UpdateMatcher(matcher Matcher) {
 }
 
 // a "basic" static copy of the dest, not actually running
-func (dest *Destination) Snapshot() Destination {
-	return Destination{
+func (dest *Destination) Snapshot() *Destination {
+	return &Destination{
 		Matcher:   dest.Matcher,
 		Addr:      dest.Addr,
 		spoolDir:  dest.spoolDir,
