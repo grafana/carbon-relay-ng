@@ -80,10 +80,12 @@ func (table *Table) ShutdownOrFatal(t *testing.T) {
 func TestSinglePointSingleRoute(t *testing.T) {
 	tE := NewTestEndpoint(t, ":2005")
 	defer tE.Close()
+	na := tE.conditionNumAccepts(1)
+	ns := tE.conditionNumSeen(1)
 	table := NewTableOrFatal(t, "", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10")
-	tE.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, nil)
+	na.Allow(50 * time.Millisecond)
 	table.Dispatch(packets0A.Get(0))
-	tE.WaitNumSeenOrFatal(1, 500*time.Millisecond, nil)
+	ns.Allow(500 * time.Millisecond)
 	tE.SeenThisOrFatal(packets0A.All())
 	table.ShutdownOrFatal(t)
 	time.Sleep(100 * time.Millisecond) // not sure yet why, but for some reason there's annoying/confusing conn Close() logs still showing up
@@ -101,16 +103,21 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	// UDU -> up-down-up
 	tUUU := NewTestEndpoint(t, ":2005")
 	tUDU := NewTestEndpoint(t, ":2006")
+	naUUU := tUUU.conditionNumAccepts(1)
+	naUDU := tUDU.conditionNumAccepts(1)
+
 	// reconnect retry should be quick now, so we can proceed quicker
 	// also flushing freq is increased so we don't have to wait as long
 	table := NewTableOrFatal(t, "test_spool", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10  127.0.0.1:2006 spool=true reconn=20 flush=10")
 	fmt.Println(table.Print())
 	log.Notice("waiting for both connections to establish")
-	tEWaits.Add(2)
-	go tUUU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, &tEWaits)
-	go tUDU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, &tEWaits)
+	naUUU.AllowBG(50*time.Millisecond, &tEWaits)
+	naUDU.AllowBG(50*time.Millisecond, &tEWaits)
 	tEWaits.Wait()
 	log.Notice("sending first batch of metrics to table")
+	nsUUU := tUUU.conditionNumSeen(1000)
+	nsUDU := tUDU.conditionNumSeen(1000)
+
 	for i := 0; i < 1000; i++ {
 		table.Dispatch(packets3A.Get(i))
 		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
@@ -122,9 +129,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		time.Sleep(20 * time.Microsecond)
 	}
 	log.Notice("validating received data")
-	tEWaits.Add(2)
-	go tUUU.WaitNumSeenOrFatal(1000, 2*time.Second, &tEWaits)
-	go tUDU.WaitNumSeenOrFatal(1000, 2*time.Second, &tEWaits)
+	nsUUU.AllowBG(2*time.Second, &tEWaits)
+	nsUDU.AllowBG(2*time.Second, &tEWaits)
 	tEWaits.Wait()
 	tUUU.SeenThisOrFatal(packets3A.All())
 	tUDU.SeenThisOrFatal(packets3A.All())
@@ -134,6 +140,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	tUDU.Close()
 
 	log.Notice("sending second batch of metrics to table")
+	nsUUU = tUUU.conditionNumSeen(2000)
 	for i := 0; i < 1000; i++ {
 		table.Dispatch(packets3B.Get(i))
 		//checkerUUU <- metricBuf.Bytes()
@@ -143,37 +150,31 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	}
 
 	log.Notice("validating received data")
-	tUUU.WaitNumSeenOrFatal(2000, 2*time.Second, nil)
+	nsUUU.Allow(2 * time.Second)
 	tUUU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All()))
 
 	log.Notice("##### START STEP 3: bring tUDU back up, it should receive all data it missed thanks to the spooling. + send new data #####")
 	tUDU = NewTestEndpoint(t, ":2006")
+	na := tUDU.conditionNumAccepts(1)
 
 	log.Notice("waiting for reconnect")
-	tUDU.WaitNumAcceptsOrFatal(1, 50*time.Millisecond, nil)
+	na.Allow(150 * time.Millisecond)
 
 	log.Notice("sending third batch of metrics to table")
+	nsUUU = tUUU.conditionNumSeen(3000)
+	// in theory we only need 2000 points here, but because of the redo buffer it should have sent the first points as well
+	nsUDU = tUDU.conditionNumSeen(3000)
 	for i := 0; i < 1000; i++ {
 		table.Dispatch(packets3C.Get(i))
 		time.Sleep(50 * time.Microsecond) // see above
 	}
 
 	log.Notice("validating received data")
-	tEWaits.Add(2)
-	go tUUU.WaitNumSeenOrFatal(3000, 1*time.Second, &tEWaits)
-	// in theory we only need 2000 points here, but because of the redo buffer it should have sent the first points as well
-	// TODO: sorry, one packets gets lost and haven't figured out yet why/how
-	// with INFO logging enabled you can trace it to nonBlockingSend but then its gets lost without the destination or conn logging why :?
-	go tUDU.WaitNumSeenOrFatal(2999, 6*time.Second, &tEWaits)
+	nsUUU.PreferBG(1*time.Second, &tEWaits)
+	nsUDU.PreferBG(6*time.Second, &tEWaits)
 	tEWaits.Wait()
 	tUUU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All(), packets3C.All()))
-	// no further test of tUDU because the order of data may have changed. for now we assume the waitNumSeen check is sufficient..
-	//tUDU.WhatHaveISeen <- true
-	//tUDUSeen := <-tUDU.IHaveSeen
-	//fmt.Println("SEEN")
-	//for i, buf := range tUDUSeen {
-	//    fmt.Println(i, string(buf))
-	//}
+	tUDU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All(), packets3C.All()))
 
 	table.ShutdownOrFatal(t)
 }
@@ -181,14 +182,16 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 func benchmarkSendAndReceive(b *testing.B, dp *dummyPackets) {
 	logging.SetLevel(logging.NOTICE, "carbon-relay-ng")
 	tE := NewTestEndpoint(nil, ":2005")
+	na := tE.conditionNumAccepts(1)
 	table = NewTableOrFatal(b, "", "addRoute sendAllMatch test1  127.0.0.1:2005")
-	tE.WaitUntilNumAccepts(1)
+	na.Wait()
 	// reminder: go benchmark will invoke this with N = 0, then maybe N = 20, then maybe more
 	// and the time it prints is function run divided by N, which
 	// should be of a more or less stable time, which gets printed
 	fmt.Println()
 	for i := 0; i < b.N; i++ {
 		log.Notice("iteration %d: sending %d metrics", i, dp.amount)
+		ns := tE.conditionNumSeen(dp.amount * (i + 1))
 		for m := range dp.All() {
 			//fmt.Println("dispatching", m)
 			//fmt.Printf("dispatching '%s'\n", string(m))
@@ -196,7 +199,7 @@ func benchmarkSendAndReceive(b *testing.B, dp *dummyPackets) {
 			time.Sleep(10 * time.Microsecond) // see above
 		}
 		log.Notice("waiting until all %d messages received", dp.amount*(i+1))
-		tE.WaitUntilNumMsg(dp.amount * (i + 1))
+		ns.Wait()
 		log.Notice("iteration %d done. received %d metrics (%d total)", i, dp.amount, dp.amount*(i+1))
 	}
 	log.Notice("received all %d messages. wrapping up benchmark run", string(dp.amount*b.N))

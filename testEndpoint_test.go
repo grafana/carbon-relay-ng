@@ -2,32 +2,28 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
+	"github.com/Dieterbe/topic"
 	"net"
+	"sort"
 	"sync"
 	"testing"
 	"time"
 )
 
 type TestEndpoint struct {
-	t                       *testing.T
-	ln                      net.Listener
-	seen                    chan []byte
-	seenBufs                [][]byte
-	shutdown                chan bool
-	shutdownHandle          chan bool // to shut down 1 handler. if you start more handlers they'll keep running
-	WhatHaveISeen           chan bool
-	IHaveSeen               chan [][]byte
-	addr                    string
-	numSeen                 chan int
-	NumSeenReq              chan int
-	NumSeenResp             chan int
-	NumAcceptsReq           chan int
-	NumAcceptsResp          chan int
-	WaitUntilNumSeenReq     chan int
-	WaitUntilNumSeenResp    chan int
-	WaitUntilNumAcceptsReq  chan int
-	WaitUntilNumAcceptsResp chan int
-	accepts                 chan int
+	t              *testing.T
+	ln             net.Listener
+	seen           chan []byte
+	seenBufs       [][]byte
+	shutdown       chan bool
+	shutdownHandle chan bool // to shut down 1 handler. if you start more handlers they'll keep running
+	WhatHaveISeen  chan bool
+	IHaveSeen      chan [][]byte
+	addr           string
+	accepts        *topic.Topic
+	numSeen        *topic.Topic
 }
 
 func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
@@ -37,45 +33,22 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 	}
 	log.Notice("tE %s is now listening\n", addr)
 	// shutdown chan size 1 so that Close() doesn't have to wait on the write
-	// because the loops will typically be stuck in Accept ad Readline
+	// because the loops will typically be stuck in Accept and Readline
 	tE := &TestEndpoint{
-		t:                       t,
-		addr:                    addr,
-		ln:                      ln,
-		seen:                    make(chan []byte),
-		seenBufs:                make([][]byte, 0),
-		shutdown:                make(chan bool, 1),
-		shutdownHandle:          make(chan bool, 1),
-		WhatHaveISeen:           make(chan bool),
-		IHaveSeen:               make(chan [][]byte),
-		numSeen:                 make(chan int),
-		NumSeenReq:              make(chan int),
-		NumSeenResp:             make(chan int),
-		NumAcceptsReq:           make(chan int),
-		NumAcceptsResp:          make(chan int),
-		WaitUntilNumSeenReq:     make(chan int),
-		WaitUntilNumSeenResp:    make(chan int, 1), // don't block on other end reading.
-		WaitUntilNumAcceptsReq:  make(chan int),
-		WaitUntilNumAcceptsResp: make(chan int, 1), // don't block on other end reading
-		accepts:                 make(chan int),
+		t:              t,
+		addr:           addr,
+		ln:             ln,
+		seen:           make(chan []byte),
+		seenBufs:       make([][]byte, 0),
+		shutdown:       make(chan bool, 1),
+		shutdownHandle: make(chan bool, 1),
+		WhatHaveISeen:  make(chan bool),
+		IHaveSeen:      make(chan [][]byte),
+		accepts:        topic.New(),
+		numSeen:        topic.New(),
 	}
 	go func() {
-		waitUntilNumAccepts := -1
 		numAccepts := 0
-		for {
-			select {
-			case diff := <-tE.accepts:
-				numAccepts += diff
-			case waitUntilNumAccepts = <-tE.WaitUntilNumAcceptsReq:
-			case <-tE.NumAcceptsReq:
-				tE.NumAcceptsResp <- numAccepts
-			}
-			if numAccepts == waitUntilNumAccepts {
-				tE.WaitUntilNumAcceptsResp <- numAccepts
-			}
-		}
-	}()
-	go func() {
 		for {
 			select {
 			case <-tE.shutdown:
@@ -89,117 +62,220 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 				log.Debug("tE %s accept error: '%s' -> stopping tE\n", tE.addr, err)
 				return
 			}
-			tE.accepts <- 1
+			numAccepts += 1
+			tE.accepts.Broadcast <- numAccepts
 			log.Notice("tE %s accepted new conn\n", tE.addr)
 			go tE.handle(conn)
 			defer func() { log.Debug("tE %s closing conn.\n", tE.addr); conn.Close() }()
 		}
 	}()
 	go func() {
-		waitUntilNumSeen := -1
+		numSeen := 0
 		for {
-			select {
-			// always try this first to make sure it gets set when it can
-			case waitUntilNumSeen = <-tE.WaitUntilNumSeenReq:
-				if len(tE.seenBufs) == waitUntilNumSeen {
-					tE.WaitUntilNumSeenResp <- len(tE.seenBufs)
-				}
-			default:
-			}
 			select {
 			case buf := <-tE.seen:
 				tE.seenBufs = append(tE.seenBufs, buf)
-				if len(tE.seenBufs) == waitUntilNumSeen {
-					tE.WaitUntilNumSeenResp <- len(tE.seenBufs)
-				}
+				numSeen += 1
+				tE.numSeen.Broadcast <- numSeen
 			case <-tE.WhatHaveISeen:
 				var c [][]byte
 				c = append(c, tE.seenBufs...)
 				tE.IHaveSeen <- c
-			case <-tE.NumSeenReq:
-				tE.NumSeenResp <- len(tE.seenBufs)
-			case waitUntilNumSeen = <-tE.WaitUntilNumSeenReq:
-				if len(tE.seenBufs) == waitUntilNumSeen {
-					tE.WaitUntilNumSeenResp <- len(tE.seenBufs)
-				}
 			}
 		}
 	}()
 	return tE
 }
 
-func (tE *TestEndpoint) WaitNumSeenOrFatal(numSeen int, timeout time.Duration, wg *sync.WaitGroup) {
-	defer func() {
-		if wg != nil {
-			wg.Done()
-		}
-	}()
-	tE.WaitUntilNumSeenReq <- numSeen
+func (tE *TestEndpoint) String() string {
+	return fmt.Sprintf("testEndpoint %s", tE.addr)
+}
+
+// note: per conditionwatcher, only call Allow() or Wait(), once.
+// (because the result is in channel met and can only be consumed once)
+// feel free to make as many conditionWatcher's as you want.
+type conditionWatcher struct {
+	t             *testing.T
+	key           string
+	desiredStatus string
+	lastStatus    string
+	sync.Mutex    // to protect lastStatus
+	met           chan bool
+}
+
+func newConditionWatcher(tE *TestEndpoint, key, desiredStatus string) *conditionWatcher {
+	c := conditionWatcher{
+		t:             tE.t,
+		key:           key,
+		desiredStatus: desiredStatus,
+		met:           make(chan bool, 1),
+	}
+	return &c
+}
+
+func (c *conditionWatcher) AllowBG(timeout time.Duration, wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		c.Allow(timeout)
+		wg.Done()
+	}(wg)
+}
+
+func (c *conditionWatcher) PreferBG(timeout time.Duration, wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		c.Prefer(timeout)
+		wg.Done()
+	}(wg)
+}
+
+func (c *conditionWatcher) Prefer(timeout time.Duration) {
+	timeoutChan := time.After(timeout)
 	select {
-	case <-tE.WaitUntilNumSeenResp:
-	case <-time.After(timeout):
-		tE.NumSeenReq <- 0
-		currentNum := <-tE.NumSeenResp
-		tE.t.Fatalf("tE %s timed out after %s waiting for %d msg (only saw %d)", tE.addr, timeout, numSeen, currentNum)
+	case <-c.met:
+		return
+	case <-timeoutChan:
+		return
 	}
 }
 
-func (tE *TestEndpoint) WaitNumAcceptsOrFatal(numAccepts int, timeout time.Duration, wg *sync.WaitGroup) {
-	defer func() {
-		if wg != nil {
-			wg.Done()
-		}
-	}()
-
-	tE.WaitUntilNumAcceptsReq <- numAccepts
+func (c *conditionWatcher) Allow(timeout time.Duration) {
+	timeoutChan := time.After(timeout)
 	select {
-	case <-tE.WaitUntilNumAcceptsResp:
-	case <-time.After(timeout):
-		tE.NumAcceptsReq <- 0
-		currentNum := <-tE.NumAcceptsResp
-		tE.t.Fatalf("tE %s timed out after %s waiting for %d accepts (only saw %d)", tE.addr, timeout, numAccepts, currentNum)
+	case <-c.met:
+		return
+	case <-timeoutChan:
+		c.Lock()
+		c.t.Fatalf("%s timed out after %s of waiting for %s (%s)", c.key, timeout, c.desiredStatus, c.lastStatus)
+		c.Unlock()
 	}
 }
 
-// don't call this concurrently
-func (tE *TestEndpoint) WaitUntilNumAccepts(numAccept int) {
-	tE.WaitUntilNumAcceptsReq <- numAccept
-	<-tE.WaitUntilNumAcceptsResp
-	return
+// no timeout
+func (c *conditionWatcher) Wait() {
+	<-c.met
 }
 
-// don't call this concurrently
-func (tE *TestEndpoint) WaitUntilNumMsg(numMsg int) {
-	tE.WaitUntilNumSeenReq <- numMsg
-	<-tE.WaitUntilNumSeenResp
-	return
+func (tE *TestEndpoint) conditionNumAccepts(desired int) *conditionWatcher {
+	c := newConditionWatcher(tE, fmt.Sprintf("tE %s", tE.addr), fmt.Sprintf("%d accepts", desired))
+	// we want to make sure we can consume straight after registering
+	// (otherwise topic can kick us out)
+	// but also this function can only return when we're ready to catch appropriate
+	// events
+	ready := make(chan bool)
+
+	go func(ready chan bool) {
+		consumer := make(chan interface{})
+		tE.accepts.Register(consumer)
+		c.Lock()
+		c.lastStatus = fmt.Sprintf("saw 0")
+		c.Unlock()
+		ready <- true
+		for val := range consumer {
+			seen := val.(int)
+			if desired == seen {
+				c.met <- true
+				// the condition is no longer useful and can kill itself
+				// it's safer and simpler to just create new conditions for new checks
+				return
+			}
+			c.Lock()
+			c.lastStatus = fmt.Sprintf("saw %d", seen)
+			c.Unlock()
+		}
+	}(ready)
+	<-ready
+	return c
 }
 
+func (tE *TestEndpoint) conditionNumSeen(desired int) *conditionWatcher {
+	c := newConditionWatcher(tE, fmt.Sprintf("tE %s", tE.addr), fmt.Sprintf("%d packets seen", desired))
+	ready := make(chan bool)
+
+	go func(ready chan bool) {
+		consumer := make(chan interface{})
+		tE.numSeen.Register(consumer)
+		c.Lock()
+		c.lastStatus = fmt.Sprintf("saw 0")
+		c.Unlock()
+		ready <- true
+		for val := range consumer {
+			seen := val.(int)
+			if desired == seen {
+				c.met <- true
+				// the condition is no longer useful and can kill itself
+				// it's safer and simpler to just create new conditions for new checks
+				tE.numSeen.Unregister(consumer)
+				return
+			}
+			c.Lock()
+			c.lastStatus = fmt.Sprintf("saw %d", seen)
+			c.Unlock()
+		}
+	}(ready)
+	<-ready
+	return c
+}
+
+// arr implements sort.Interface for [][]byte
+type arr [][]byte
+
+func (data arr) Len() int {
+	return len(data)
+}
+func (data arr) Swap(i, j int) {
+	data[i], data[j] = data[j], data[i]
+}
+func (data arr) Less(i, j int) bool {
+	return bytes.Compare(data[i], data[j]) < 0
+}
+
+// assume that ref feeds in sorted order, because we rely on that!
 func (tE *TestEndpoint) SeenThisOrFatal(ref chan []byte) {
 	tE.WhatHaveISeen <- true
 	seen := <-tE.IHaveSeen
+	sort.Sort(arr(seen))
+	getRefBuf := func() []byte {
+		return <-ref
+	}
 	i := 0
-	ok := true
-	for buf := range ref {
+	getSeenBuf := func() []byte {
 		if len(seen) <= i {
-			tE.t.Errorf("not enough data seen (%d metrics seen, ref contains at least %d)", len(seen), i+1)
-			ok = false
-			break
+			return nil
 		}
-		if string(seen[i]) != string(buf) {
-			tE.t.Errorf("tE %s error at pos %d: expected '%s', received: '%s'. stopping comparison", tE.addr, i, buf, seen[i])
-			ok = false
-			break
+		i += 1
+		return seen[i-1]
+	}
+
+	ok := true
+	refBuf := getRefBuf()
+	seenBuf := getSeenBuf()
+	for refBuf != nil || seenBuf != nil {
+		cmp := bytes.Compare(seenBuf, refBuf)
+		if seenBuf == nil || refBuf == nil {
+			// if one of them is nil, we want it to be counted as "very high", because there's no more input
+			// so in that case, invert the rules
+			cmp *= -1
 		}
-		i++
-	}
-	// in case we broke out earlier, make sure we have the right number of entries in ref
-	for _ = range ref {
-		i++
-	}
-	if i != len(seen) {
-		tE.t.Errorf("seen extraneous data (%d metrics seen, ref contains %d)", len(seen), i)
-		ok = false
+		switch cmp {
+		case 0:
+			refBuf = getRefBuf()
+			seenBuf = getSeenBuf()
+		case 1: // seen bigger than refBuf, i.e. seen is missing a line
+			if ok {
+				tE.t.Error("diff <reference> <seen>")
+			}
+			ok = false
+			tE.t.Errorf("tE %s - %s", tE.addr, refBuf)
+			refBuf = getRefBuf()
+		case -1: // seen is smaller than refBuf, i.e. it has a line more than the ref has
+			if ok {
+				tE.t.Error("diff <reference> <seen>")
+			}
+			ok = false
+			tE.t.Errorf("tE %s + %s", tE.addr, seenBuf)
+			seenBuf = getSeenBuf()
+		}
 	}
 	if !ok {
 		tE.t.Fatal("bad data")
