@@ -77,41 +77,24 @@ func (s *Spool) Writer() {
 	// in some realtime traffic to be dropped, but that shouldn't be too much of an issue. experience will tell..
 	for {
 		select {
-		// it looks like this is never taken though, it's always RT 2 . oh well.
-		// because: first time we're here, there's probably nothing here, so it hangs in the default
-		// when it processed default:
-		// it just read from InRT: it's highly unlikely there's another msg ready, so we go to default again
-		// it just read from InBulk: *because* there was nothing on RT, so it's highly ulikely something will be there straight after, so default again
-		case buf := <-s.InRT:
+		case buf := <-s.InRT: // wish we could somehow prioritize this higher
 			s.numIncomingRT.Inc(1)
 			//pre = time.Now()
-			log.Debug("spool %v satisfying spool RT 1", s.key)
+			log.Debug("spool %v satisfying spool RT", s.key)
 			log.Info("spool %s %s Writer -> queue.Put\n", s.key, string(buf))
 			s.durationBuffer.Time(func() { s.queueBuffer <- buf })
 			s.numBuffered.Inc(1)
 			//post = time.Now()
-			//fmt.Println("queueBuffer duration RT 1:", post.Sub(pre).Nanoseconds())
-		default:
-			select {
-			case buf := <-s.InRT:
-				s.numIncomingRT.Inc(1)
-				//pre = time.Now()
-				log.Debug("spool %v satisfying spool RT 2", s.key)
-				log.Info("spool %s %s Writer -> queue.Put\n", s.key, string(buf))
-				s.durationBuffer.Time(func() { s.queueBuffer <- buf })
-				s.numBuffered.Inc(1)
-				//post = time.Now()
-				//fmt.Println("queueBuffer duration RT 2:", post.Sub(pre).Nanoseconds())
-			case buf := <-s.InBulk:
-				s.numIncomingBulk.Inc(1)
-				//pre = time.Now()
-				log.Debug("spool %v satisfying spool BULK", s.key)
-				log.Info("spool %s %s Writer -> queue.Put\n", s.key, string(buf))
-				s.durationBuffer.Time(func() { s.queueBuffer <- buf })
-				s.numBuffered.Inc(1)
-				//post = time.Now()
-				//fmt.Println("queueBuffer duration BULK:", post.Sub(pre).Nanoseconds())
-			}
+			//fmt.Println("queueBuffer duration RT:", post.Sub(pre).Nanoseconds())
+		case buf := <-s.InBulk:
+			s.numIncomingBulk.Inc(1)
+			//pre = time.Now()
+			log.Debug("spool %v satisfying spool BULK", s.key)
+			log.Info("spool %s %s Writer -> queue.Put\n", s.key, string(buf))
+			s.durationBuffer.Time(func() { s.queueBuffer <- buf })
+			s.numBuffered.Inc(1)
+			//post = time.Now()
+			//fmt.Println("queueBuffer duration BULK:", post.Sub(pre).Nanoseconds())
 		}
 	}
 }
