@@ -94,7 +94,18 @@ func TestSinglePointSingleRoute(t *testing.T) {
 }
 
 func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
-	logging.SetLevel(logging.NOTICE, "carbon-relay-ng")
+	test3RangesWith2EndpointAndSpoolInMiddle(t, 10, 10)
+	time.Sleep(100 * time.Millisecond)
+	test3RangesWith2EndpointAndSpoolInMiddle(t, 20, 10)
+	time.Sleep(100 * time.Millisecond)
+	test3RangesWith2EndpointAndSpoolInMiddle(t, 1000, 50)
+	time.Sleep(100 * time.Millisecond)
+	test3RangesWith2EndpointAndSpoolInMiddle(t, 50, 1000)
+	time.Sleep(100 * time.Millisecond)
+	test3RangesWith2EndpointAndSpoolInMiddle(t, 1000, 1000)
+}
+
+func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs int) {
 	os.RemoveAll("test_spool")
 	os.Mkdir("test_spool", os.ModePerm)
 	tEWaits := sync.WaitGroup{} // for when we want to wait on both tE's simultaneously
@@ -109,7 +120,8 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 
 	// reconnect retry should be quick now, so we can proceed quicker
 	// also flushing freq is increased so we don't have to wait as long
-	table := NewTableOrFatal(t, "test_spool", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10  127.0.0.1:2006 spool=true reconn=20 flush=10")
+	cmd := fmt.Sprintf("addRoute sendAllMatch test1  127.0.0.1:2005 flush=%d  127.0.0.1:2006 spool=true reconn=%d flush=%d", flushMs, reconnMs, flushMs)
+	table := NewTableOrFatal(t, "test_spool", cmd)
 	fmt.Println(table.Print())
 	log.Notice("waiting for both connections to establish")
 	naUUU.AllowBG(50*time.Millisecond, &tEWaits)
@@ -129,10 +141,11 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 		// the points in a different order.
 		time.Sleep(20 * time.Microsecond)
 	}
-	log.Notice("validating received data")
+	log.Notice("waiting for received data")
 	nsUUU.AllowBG(2*time.Second, &tEWaits)
 	nsUDU.AllowBG(2*time.Second, &tEWaits)
 	tEWaits.Wait()
+	log.Notice("validating received data")
 	tUUU.SeenThisOrFatal(packets3A.All())
 	tUDU.SeenThisOrFatal(packets3A.All())
 
@@ -159,7 +172,7 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 	na := tUDU.conditionNumAccepts(1)
 
 	log.Notice("waiting for reconnect")
-	na.Allow(150 * time.Millisecond)
+	na.Allow(time.Duration(reconnMs+50) * time.Millisecond)
 
 	log.Notice("sending third batch of metrics to table")
 	nsUUU = tUUU.conditionNumSeen(3000)
