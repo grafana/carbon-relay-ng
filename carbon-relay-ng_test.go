@@ -107,8 +107,9 @@ func Test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T) {
 }
 
 func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs int) {
-	os.RemoveAll("test_spool")
-	os.Mkdir("test_spool", os.ModePerm)
+	spoolDir := "test3RangesWith2EndpointAndSpoolInMiddle"
+	os.RemoveAll(spoolDir)
+	os.Mkdir(spoolDir, os.ModePerm)
 	tEWaits := sync.WaitGroup{} // for when we want to wait on both tE's simultaneously
 
 	log.Notice("##### START STEP 1: two endpoints, each get data #####")
@@ -124,7 +125,7 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 	// reconnect retry should be quick now, so we can proceed quicker
 	// also flushing freq is increased so we don't have to wait as long
 	cmd := fmt.Sprintf("addRoute sendAllMatch test1  127.0.0.1:2005 flush=%d  127.0.0.1:2006 spool=true reconn=%d flush=%d", flushMs, reconnMs, flushMs)
-	table := NewTableOrFatal(t, "test_spool", cmd)
+	table := NewTableOrFatal(t, spoolDir, cmd)
 	fmt.Println(table.Print())
 	log.Notice("waiting for both connections to establish")
 	naUUU.AllowBG(50*time.Millisecond, &tEWaits)
@@ -196,6 +197,87 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 	tUDU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All(), packets3C.All()))
 	tUUU.Close()
 	tUDU.Close()
+
+	table.ShutdownOrFatal(t)
+}
+
+func Test2EndpointsUp(t *testing.T) {
+	test2Endpoints(t, 10, 10, packets3A)
+	time.Sleep(100 * time.Millisecond)
+	test2Endpoints(t, 20, 10, packets3A)
+	time.Sleep(100 * time.Millisecond)
+	test2Endpoints(t, 1000, 50, packets3A)
+	time.Sleep(100 * time.Millisecond)
+	test2Endpoints(t, 50, 1000, packets3A)
+	time.Sleep(100 * time.Millisecond)
+	test2Endpoints(t, 1000, 1000, packets3A)
+	time.Sleep(100 * time.Millisecond)
+
+	test2Endpoints(t, 10, 10, packets6A)
+	time.Sleep(100 * time.Millisecond)
+	test2Endpoints(t, 20, 10, packets6A)
+	time.Sleep(100 * time.Millisecond)
+	test2Endpoints(t, 1000, 50, packets6A)
+	time.Sleep(100 * time.Millisecond)
+	test2Endpoints(t, 50, 1000, packets6A)
+	time.Sleep(100 * time.Millisecond)
+	test2Endpoints(t, 1000, 1000, packets6A)
+
+}
+
+func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
+	spoolDir := "test2endp"
+	os.RemoveAll(spoolDir)
+	os.Mkdir(spoolDir, os.ModePerm)
+	tEWaits := sync.WaitGroup{} // for when we want to wait on both tE's simultaneously
+
+	t1 := NewTestEndpoint(t, ":2005")
+	t2 := NewTestEndpoint(t, ":2006")
+	na1 := t1.conditionNumAccepts(1)
+	na2 := t2.conditionNumAccepts(1)
+	t1.Start()
+	t2.Start()
+
+	// reconnect retry should be quick now, so we can proceed quicker
+	// also flushing freq is increased so we don't have to wait as long
+	cmd := fmt.Sprintf("addRoute sendAllMatch test1  127.0.0.1:2005 flush=%d  127.0.0.1:2006 spool=true reconn=%d flush=%d", flushMs, reconnMs, flushMs)
+	table := NewTableOrFatal(t, spoolDir, cmd)
+	fmt.Println(table.Print())
+	log.Notice("waiting for both connections to establish")
+	na1.AllowBG(50*time.Millisecond, &tEWaits)
+	na2.AllowBG(50*time.Millisecond, &tEWaits)
+	tEWaits.Wait()
+	log.Notice("sending metrics to table")
+	ns1 := t1.conditionNumSeen(dp.amount)
+	ns2 := t2.conditionNumSeen(dp.amount)
+
+	for buf := range dp.All() {
+		table.Dispatch(buf)
+		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
+		// note i'm afraid this sleep masks another issue: data can get reordered.
+		// if you take this sleep away, and run like so:
+		// go test 2>&1 | egrep '(table sending to route|route.*receiving)' | grep -v 2006
+		// you should see that data goes through the table in the right order, but the route receives
+		// the points in a different order.
+		time.Sleep(100 * time.Nanosecond) // see above
+	}
+	log.Notice("waiting for received data")
+	var sleep time.Duration
+	switch dp.amount {
+	case 1000:
+		sleep = 1 * time.Second
+	case 1000000:
+		sleep = 20 * time.Second
+	}
+	ns1.AllowBG(sleep, &tEWaits)
+	ns2.AllowBG(sleep, &tEWaits)
+	tEWaits.Wait()
+	log.Notice("validating received data")
+	t1.SeenThisOrFatal(dp.All())
+	t2.SeenThisOrFatal(dp.All())
+
+	t1.Close()
+	t2.Close()
 
 	table.ShutdownOrFatal(t)
 }
