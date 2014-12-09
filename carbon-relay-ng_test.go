@@ -223,7 +223,7 @@ func benchmarkSendAndReceive(b *testing.B, dp *dummyPackets) {
 		ns.Wait()
 		log.Notice("iteration %d done. received %d metrics (%d total)", i, dp.amount, dp.amount*(i+1))
 	}
-	log.Notice("received all %d messages. wrapping up benchmark run", string(dp.amount*b.N))
+	log.Notice("received all %d messages. wrapping up benchmark run", dp.amount*b.N)
 	err := table.Shutdown()
 	if err != nil {
 		b.Fatal(err)
