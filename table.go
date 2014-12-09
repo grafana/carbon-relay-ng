@@ -79,7 +79,7 @@ func (table *Table) Dispatch(buf []byte) {
 
 // to view the state of the table/route at any point in time
 // we might add more functions to view specific entries if the need for that appears
-func (table *Table) Snapshot() Table {
+func (table *Table) Snapshot() *Table {
 
 	table.Lock()
 	defer table.Unlock()
@@ -94,7 +94,7 @@ func (table *Table) Snapshot() Table {
 		snap := r.Snapshot()
 		routes[i] = &snap
 	}
-	return Table{sync.Mutex{}, blacklist, routes, table.spoolDir, nil, nil}
+	return &Table{sync.Mutex{}, blacklist, routes, table.spoolDir, nil, nil}
 }
 
 func (table *Table) GetRoute(key string) *Route {
