@@ -2,9 +2,7 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"github.com/Dieterbe/go-metrics"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -41,7 +39,6 @@ type Destination struct {
 	numDropNoConnNoSpool metrics.Counter
 	numDropSlowSpool     metrics.Counter
 	numDropSlowConn      metrics.Counter
-	numDropBadPickle     metrics.Counter
 }
 
 // after creating, run Run()!
@@ -69,7 +66,6 @@ func (dest *Destination) setMetrics() {
 	dest.numDropNoConnNoSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
 	dest.numDropSlowSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
 	dest.numDropSlowConn = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
-	dest.numDropBadPickle = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle")
 }
 
 func (dest *Destination) Match(s []byte) bool {
@@ -129,7 +125,7 @@ func (dest *Destination) updateConn(addr string) {
 	log.Debug("dest %v (re)connecting to %v\n", dest.Addr, addr)
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
-	conn, err := NewConn(addr, dest, dest.periodFlush)
+	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle)
 	if err != nil {
 		log.Debug("dest %v: %v\n", dest.Addr, err.Error())
 		return
@@ -162,15 +158,6 @@ func (dest *Destination) relay() {
 	// try to send the data on the buffered tcp conn
 	// if that's slow or down, discard the data
 	nonBlockingSend := func(buf []byte) {
-		if dest.Pickle {
-			dp, err := parseDataPoint(buf)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				dest.numDropBadPickle.Inc(1)
-				return
-			}
-			buf = pickle(dp)
-		}
 		select {
 		// this op won't succeed as long as the conn is busy processing/flushing
 		case conn.In <- buf:

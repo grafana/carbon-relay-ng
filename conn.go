@@ -6,6 +6,7 @@ import (
 	"github.com/Dieterbe/go-metrics"
 	"io"
 	"net"
+	"os"
 	"time"
 )
 
@@ -20,6 +21,8 @@ var keepsafe_initial_cap = 100000 // not very important
 // (endpoint down, delayed timeout, etc), so it should be at least as long as the flush interval
 var keepsafe_keep_duration = time.Duration(10 * time.Second)
 
+var newLine = []byte{'\n'}
+
 type Conn struct {
 	conn        *net.TCPConn
 	buffered    *Writer
@@ -27,6 +30,7 @@ type Conn struct {
 	In          chan []byte
 	dest        *Destination // which dest do we correspond to
 	up          bool
+	pickle      bool
 	checkUp     chan bool
 	updateUp    chan bool
 	flush       chan bool
@@ -45,9 +49,10 @@ type Conn struct {
 	tickFlushSize     metrics.Histogram
 	manuFlushSize     metrics.Histogram
 	numBuffered       metrics.Counter
+	numDropBadPickle  metrics.Counter
 }
 
-func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, error) {
+func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle bool) (*Conn, error) {
 	raddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -65,6 +70,7 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 		In:                make(chan []byte, conn_in_buffer),
 		dest:              dest,
 		up:                true,
+		pickle:            pickle,
 		checkUp:           make(chan bool),
 		updateUp:          make(chan bool),
 		flush:             make(chan bool),
@@ -81,6 +87,7 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration) (*Conn, 
 		tickFlushSize:     Histogram("dest=" + cleanAddr + ".what=FlushSize.type=ticker"),
 		manuFlushSize:     Histogram("dest=" + cleanAddr + ".what=FlushSize.type=manual"),
 		numBuffered:       Counter("dest=" + cleanAddr + ".what=numBuffered"),
+		numDropBadPickle:  Counter("dest=" + cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle"),
 	}
 
 	go connObj.checkEOF()
@@ -155,7 +162,6 @@ func (c *Conn) HandleStatus() {
 func (c *Conn) HandleData() {
 	periodFlush := c.periodFlush
 	tickerFlush := time.NewTicker(periodFlush)
-	newLine := []byte{'\n'}
 	var now time.Time
 	var durationActive time.Duration
 	flushSize := int64(0)
@@ -174,22 +180,8 @@ func (c *Conn) HandleData() {
 			action = "write"
 			log.Info("conn %s HandleData: writing %s\n", c.dest.Addr, string(buf))
 			c.keepSafe.Add(buf)
-			size := len(buf)
 			n, err := c.Write(buf)
-			if err == nil && size == n {
-				n, err = c.Write(newLine)
-				size = 1
-			}
-			errBecauseTruncated := false
-			if err == nil && size != n {
-				errBecauseTruncated = true
-				c.numErrTruncated.Inc(1)
-				err = errors.New(fmt.Sprintf("truncated write: %s", string(buf)))
-			}
 			if err != nil {
-				if !errBecauseTruncated {
-					c.numErrWrite.Inc(1)
-				}
 				log.Warning("conn %s write error: %s\n", c.dest.Addr, err)
 				log.Debug("conn %s setting up=false\n", c.dest.Addr)
 				c.updateUp <- false // assure In won't receive more data because every loop that writes to In reads this out
@@ -198,7 +190,7 @@ func (c *Conn) HandleData() {
 				return
 			}
 			c.numOut.Inc(1)
-			flushSize += int64(len(buf) + 1)
+			flushSize += int64(n)
 			now = time.Now()
 			durationActive = now.Sub(active)
 			c.durationWrite.Update(durationActive)
@@ -248,8 +240,35 @@ func (c *Conn) HandleData() {
 	}
 }
 
+// returns a network/write error, so that it can be retried later
+// deals with pickle errors internally because retrying wouldn't help anyway
 func (c *Conn) Write(buf []byte) (int, error) {
-	return c.buffered.Write(buf)
+	if c.pickle {
+		dp, err := parseDataPoint(buf)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			c.numDropBadPickle.Inc(1)
+			return 0, nil
+		}
+		buf = pickle(dp)
+	}
+	written := 0
+	size := len(buf)
+	n, err := c.buffered.Write(buf)
+	written += n
+	if err == nil && size == n && !c.pickle {
+		size = 1
+		n, err = c.buffered.Write(newLine)
+		written += n
+	}
+	if err != nil {
+		c.numErrWrite.Inc(1)
+	}
+	if err == nil && size != n {
+		c.numErrTruncated.Inc(1)
+		err = errors.New(fmt.Sprintf("truncated write: %s", string(buf)))
+	}
+	return written, err
 }
 
 func (c *Conn) Flush() error {
