@@ -14,14 +14,16 @@ func addrToPath(s string) string {
 
 type Destination struct {
 	// basic properties in init and copy
-	Matcher      Matcher `json:"matcher"`
-	Addr         string  `json:"address"` // tcp dest
-	spoolDir     string  // where to store spool files (if enabled)
-	Spool        bool    `json:"spool"`        // spool metrics to disk while dest down?
-	Pickle       bool    `json:"pickle"`       // send in pickle format?
-	Online       bool    `json:"online"`       // state of connection online/offline.
-	SlowNow      bool    `json:"slowNow"`      // did we have to drop packets in current loop
-	SlowLastLoop bool    `json:"slowLastLoop"` // "" last loop
+	lockMatcher sync.Mutex
+	Matcher     Matcher `json:"matcher"`
+
+	Addr         string `json:"address"` // tcp dest
+	spoolDir     string // where to store spool files (if enabled)
+	Spool        bool   `json:"spool"`        // spool metrics to disk while dest down?
+	Pickle       bool   `json:"pickle"`       // send in pickle format?
+	Online       bool   `json:"online"`       // state of connection online/offline.
+	SlowNow      bool   `json:"slowNow"`      // did we have to drop packets in current loop
+	SlowLastLoop bool   `json:"slowLastLoop"` // "" last loop
 	cleanAddr    string
 	periodFlush  time.Duration
 	periodReConn time.Duration
@@ -69,20 +71,27 @@ func (dest *Destination) setMetrics() {
 }
 
 func (dest *Destination) Match(s []byte) bool {
+	dest.lockMatcher.Lock()
+	defer dest.lockMatcher.Unlock()
 	return dest.Matcher.Match(s)
 }
 
 func (dest *Destination) UpdateMatcher(matcher Matcher) {
-	// TODO: looks like we need lock here, not sure yet how to organize this
-	//dest.Lock()
-	//defer dest.Unlock()
+	dest.lockMatcher.Lock()
+	defer dest.lockMatcher.Unlock()
 	dest.Matcher = matcher
+}
+
+func (dest *Destination) GetMatcher() Matcher {
+	dest.lockMatcher.Lock()
+	defer dest.lockMatcher.Unlock()
+	return dest.Matcher
 }
 
 // a "basic" static copy of the dest, not actually running
 func (dest *Destination) Snapshot() *Destination {
 	return &Destination{
-		Matcher:   dest.Matcher,
+		Matcher:   dest.GetMatcher(),
 		Addr:      dest.Addr,
 		spoolDir:  dest.spoolDir,
 		Spool:     dest.Spool,
