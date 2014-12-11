@@ -148,6 +148,15 @@ func (route *Route) DelDestination(index int) error {
 	return nil
 }
 
+func (route *Route) UpdateDestination(index int, opts map[string]string) error {
+	route.Lock()
+	defer route.Unlock()
+	if index >= len(route.Dests) {
+		return errors.New(fmt.Sprintf("Invalid index %d", index))
+	}
+	return route.Dests[index].Update(opts)
+}
+
 func (route *Route) UpdateMatcher(matcher Matcher) {
 	route.Lock()
 	defer route.Unlock()

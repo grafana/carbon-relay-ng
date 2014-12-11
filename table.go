@@ -190,6 +190,14 @@ func (table *Table) DelDestination(key string, index int) error {
 	return route.DelDestination(index)
 }
 
+func (table *Table) UpdateDestination(key string, index int, opts map[string]string) error {
+	route := table.GetRoute(key)
+	if route == nil {
+		return errors.New(fmt.Sprintf("Invalid route for %v", key))
+	}
+	return route.UpdateDestination(index, opts)
+}
+
 func (table *Table) Print() (str string) {
 	// TODO also print route type, print blacklist
 	// we want to print things concisely (but no smaller than the defaults below)

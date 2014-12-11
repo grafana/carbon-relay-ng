@@ -16,6 +16,7 @@ const (
 	addRouteSendAllMatch
 	addRouteSendFirstMatch
 	addDest
+	modDest
 	opt
 	str
 	word
@@ -29,6 +30,7 @@ var tokenDefGlobal = []toki.Def{
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch [a-z-_]+"},
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch [a-z-_]+"},
 	{Token: addDest, Pattern: "addDest [a-z-_]+"},
+	{Token: modDest, Pattern: "modDest .*"},
 	{Token: opt, Pattern: "[a-z]+="},
 	{Token: str, Pattern: "\".*\""},
 	{Token: word, Pattern: "[^ ]+"},
@@ -204,6 +206,26 @@ func applyCommand(table *Table, cmd string) error {
 
 		fmt.Println("val", t.Value)
 		fmt.Println("inputs", inputs[0])
+	} else if t.Token == modDest {
+		split := strings.Split(string(t.Value), " ")
+		if len(split) < 4 {
+			return errors.New("need a key, index and at least one option")
+		}
+		key := split[1]
+		index, err := strconv.Atoi(split[2])
+		if err != nil {
+			return err
+		}
+		opts := make(map[string]string)
+		for _, str := range split[3:] {
+			opt := strings.Split(str, "=")
+			if len(opt) != 2 {
+				return errors.New("bad option format at " + str)
+			}
+			opts[opt[0]] = opt[1]
+		}
+
+		return table.UpdateDestination(key, index, opts)
 	} else {
 		return errors.New("unrecognized command '" + string(t.Value) + "'")
 	}

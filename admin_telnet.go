@@ -66,7 +66,13 @@ commands:
                    reconn=<int>                  reconnection interval in ms
                    pickle={true,false}           pickle output format instead of the default text protocol
                    spool={true,false}            enable spooling for this endpoint
-    addDest <routeKey> <dest>
+    addDest <routeKey> <dest>                    not implemented yet
+    modDest <routeKey> <dest> <opts>:            modify route by updating one or more space separated option strings
+                   addr=<addr>                   new tcp address
+                   prefix=<str>                  new matcher prefix
+                   sub=<str>                     new matcher substring
+                   regex=<regex>                 new matcher regex
+
 
 `
 	conn.Write([]byte(help))

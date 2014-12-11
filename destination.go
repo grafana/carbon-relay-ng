@@ -76,6 +76,45 @@ func (dest *Destination) Match(s []byte) bool {
 	return dest.Matcher.Match(s)
 }
 
+// can't be changed yet: pickle, spool, flush, reconn
+func (dest *Destination) Update(opts map[string]string) error {
+	matcher := dest.GetMatcher()
+	prefix := matcher.Prefix
+	sub := matcher.Sub
+	regex := matcher.Regex
+	updateMatcher := false
+	addr := ""
+
+	for name, val := range opts {
+		switch name {
+		case "addr":
+			addr = val
+		case "prefix":
+			prefix = val
+			updateMatcher = true
+		case "sub":
+			sub = val
+			updateMatcher = true
+		case "regex":
+			regex = val
+			updateMatcher = true
+		default:
+			return errors.New("no such option: " + name)
+		}
+	}
+	if addr != "" {
+		dest.updateConn(addr)
+	}
+	if updateMatcher {
+		matcher, err := NewMatcher(prefix, sub, regex)
+		if err != nil {
+			return err
+		}
+		dest.UpdateMatcher(*matcher)
+	}
+	return nil
+}
+
 func (dest *Destination) UpdateMatcher(matcher Matcher) {
 	dest.lockMatcher.Lock()
 	defer dest.lockMatcher.Unlock()
