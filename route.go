@@ -144,6 +144,7 @@ func (route *Route) DelDestination(index int) error {
 	if index >= len(route.Dests) {
 		return errors.New(fmt.Sprintf("Invalid index %d", index))
 	}
+	route.Dests[index].Shutdown()
 	route.Dests = append(route.Dests[:index], route.Dests[index+1:]...)
 	return nil
 }
