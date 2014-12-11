@@ -149,6 +149,39 @@ func (route *Route) DelDestination(index int) error {
 	return nil
 }
 
+func (route *Route) Update(opts map[string]string) error {
+	route.Lock()
+	defer route.Unlock()
+	matcher := route.Matcher
+	prefix := matcher.Prefix
+	sub := matcher.Sub
+	regex := matcher.Regex
+	updateMatcher := false
+
+	for name, val := range opts {
+		switch name {
+		case "prefix":
+			prefix = val
+			updateMatcher = true
+		case "sub":
+			sub = val
+			updateMatcher = true
+		case "regex":
+			regex = val
+			updateMatcher = true
+		default:
+			return errors.New("no such option: " + name)
+		}
+	}
+	if updateMatcher {
+		matcher, err := NewMatcher(prefix, sub, regex)
+		if err != nil {
+			return err
+		}
+		route.Matcher = *matcher
+	}
+	return nil
+}
 func (route *Route) UpdateDestination(index int, opts map[string]string) error {
 	route.Lock()
 	defer route.Unlock()

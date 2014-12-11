@@ -48,6 +48,7 @@ commands:
     help                                         show this menu
     view                                         view full current routing table
     addBlack <substring>                         blacklist (drops the metric matching this as soon as it is received)
+
     addRoute <type> <key> [opts]   <dest>  [<dest>[...]] add a new route. note 2 spaces to separate destinations
              <type>:
                sendAllMatch                      send metrics in the route to all destinations
@@ -66,9 +67,16 @@ commands:
                    reconn=<int>                  reconnection interval in ms
                    pickle={true,false}           pickle output format instead of the default text protocol
                    spool={true,false}            enable spooling for this endpoint
+
     addDest <routeKey> <dest>                    not implemented yet
-    modDest <routeKey> <dest> <opts>:            modify route by updating one or more space separated option strings
+
+    modDest <routeKey> <dest> <opts>:            modify dest by updating one or more space separated option strings
                    addr=<addr>                   new tcp address
+                   prefix=<str>                  new matcher prefix
+                   sub=<str>                     new matcher substring
+                   regex=<regex>                 new matcher regex
+
+    modRoute <routeKey> <opts>:                  modify route by updating one or more space separated option strings
                    prefix=<str>                  new matcher prefix
                    sub=<str>                     new matcher substring
                    regex=<regex>                 new matcher regex
