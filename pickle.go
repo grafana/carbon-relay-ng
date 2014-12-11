@@ -15,7 +15,7 @@ func pickle(dp *Datapoint) []byte {
 	list := []interface{}{point}
 	pickler.Encode(list)
 	messageBuf := &bytes.Buffer{}
-	err := binary.Write(messageBuf, binary.BigEndian, uint64(dataBuf.Len()))
+	err := binary.Write(messageBuf, binary.BigEndian, uint32(dataBuf.Len()))
 	if err != nil {
 		log.Fatal(err.Error())
 	}
