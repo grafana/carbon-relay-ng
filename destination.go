@@ -211,7 +211,7 @@ func (dest *Destination) relay() {
 		case conn.In <- buf:
 			conn.numBuffered.Inc(1)
 		default:
-			log.Warning("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Addr, string(buf))
+			log.Info("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Addr, string(buf))
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
@@ -227,7 +227,7 @@ func (dest *Destination) relay() {
 		case dest.spool.InRT <- buf:
 			log.Info("dest %s %s nonBlockingSpool -> added to spool\n", dest.Addr, string(buf))
 		default:
-			log.Warning("dest %s %s nonBlockingSpool -> dropping due to slow spool\n", dest.Addr, string(buf))
+			log.Info("dest %s %s nonBlockingSpool -> dropping due to slow spool\n", dest.Addr, string(buf))
 			dest.numDropSlowSpool.Inc(1)
 		}
 	}

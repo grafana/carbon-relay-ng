@@ -116,7 +116,7 @@ func (c *Conn) checkEOF() {
 		}
 		// just in case i misunderstand something or the remote behaves badly
 		if num != 0 {
-			log.Error("conn %s .conn.Read data? did not expect that.  data: %s\n", c.dest.Addr, b[:num])
+			log.Debug("conn %s .conn.Read data? did not expect that.  data: %s\n", c.dest.Addr, b[:num])
 		}
 		if err != io.EOF {
 			log.Error("conn %s checkEOF .conn.Read returned err != EOF, which is unexpected.  closing conn. error: %s\n", c.dest.Addr, err)
