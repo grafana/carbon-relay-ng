@@ -15,6 +15,7 @@ import (
 	"github.com/rcrowley/goagain"
 	"io"
 	"net"
+	_ "net/http/pprof"
 	"os"
 	"runtime/pprof"
 	"strings"
