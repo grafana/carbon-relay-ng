@@ -6,14 +6,18 @@ import (
 	"strings"
 )
 
+// note in metrics2.0 counter is a type of gauge that only increases
+// in go-metrics a counter can also decrease (!) -> so just don't do this.
+// and can't be set to a value -> you can clear + inc(val))
+
 func Counter(key string) metrics.Counter {
 	c := metrics.NewCounter()
-	return metrics.GetOrRegister(expandKey(key), c).(metrics.Counter)
+	return metrics.GetOrRegister(expandKey("target_type=counter."+key), c).(metrics.Counter)
 }
 
 func Gauge(key string) metrics.Gauge {
 	g := metrics.NewGauge()
-	return metrics.GetOrRegister(expandKey(key), g).(metrics.Gauge)
+	return metrics.GetOrRegister(expandKey("target_type=gauge."+key), g).(metrics.Gauge)
 }
 
 func Timer(key string) metrics.Timer {
@@ -23,12 +27,12 @@ func Timer(key string) metrics.Timer {
 	histogram := metrics.NewHistogram(metrics.NewWindowSample())
 	meter := metrics.NewMeter()
 	t := metrics.NewCustomTimer(histogram, meter)
-	return metrics.GetOrRegister(expandKey(key), t).(metrics.Timer)
+	return metrics.GetOrRegister(expandKey("target_type=gauge.unit=ns."+key), t).(metrics.Timer)
 }
 
 func Histogram(key string) metrics.Histogram {
 	h := metrics.NewHistogram(metrics.NewWindowSample())
-	return metrics.GetOrRegister(expandKey(key), h).(metrics.Histogram)
+	return metrics.GetOrRegister(expandKey("target_type=gauge."+key), h).(metrics.Histogram)
 }
 
 func expandKey(key string) string {

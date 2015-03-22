@@ -69,7 +69,7 @@
           },
           "targets": [
             {
-              "target": "aliasByNode(derivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_count.unit_is_Metric.*.count), 4)"
+              "target": "aliasByNode(nonNegativeDerivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.unit_is_Metric.*), 4)"
             }
           ],
           "aliasColors": {
@@ -136,11 +136,11 @@
           },
           "targets": [
             {
-              "target": "alias(derivative(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.target_type_is_count.unit_is_Metric.direction_is_out.count), 'to tcp')",
+              "target": "alias(nonNegativeDerivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Metric.direction_is_out), 'to tcp')",
               "hide": false
             },
             {
-              "target": "alias(derivative(service_is_carbon-relay-ng.instance_is_$instance.spool_is_$dest.target_type_is_count.unit_is_Metric.status_is_incomingRT.count), 'to spool')",
+              "target": "alias(nonNegativeDerivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.spool_is_$dest.unit_is_Metric.status_is_incomingRT), 'to spool')",
               "hide": false
             }
           ],
@@ -201,7 +201,7 @@
             "alignAsTable": true,
             "sortDesc": true
           },
-          "nullPointMode": "connected",
+          "nullPointMode": "null",
           "steppedLine": false,
           "tooltip": {
             "value_type": "cumulative",
@@ -209,7 +209,7 @@
           },
           "targets": [
             {
-              "target": "aliasByNode(derivative(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.target_type_is_count.unit_is_Metric.action_is_drop.*.*),6)"
+              "target": "aliasByNode(derivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Metric.action_is_drop.*),6)"
             }
           ],
           "aliasColors": {
@@ -274,7 +274,7 @@
           },
           "targets": [
             {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.target_type_is_count.unit_is_Err.*.count, 5)"
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Err.*, 5)"
             }
           ],
           "aliasColors": {
@@ -345,31 +345,31 @@
           },
           "targets": [
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_FlushSize.type_is_ticker.max, 'ticker max')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_ticker.stat_is_max, 'ticker max')"
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_FlushSize.type_is_ticker.99-percentile, 'ticker 99')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_ticker.stat_is_max_99, 'ticker 99')"
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_FlushSize.type_is_ticker.mean, 'ticker mean')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_ticker.stat_is_mean,'ticker mean')"
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_FlushSize.type_is_manual.max, 'manual max')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_manual.stat_is_max, 'manual max')"
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_FlushSize.type_is_manual.99-percentile, 'manual 99')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_manual.stat_is_max_99, 'manual 99')"
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_FlushSize.type_is_manual.mean, 'manual mean')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_manual.stat_is_mean, 'manual mean')"
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_FlushSize.type_is_overflow.select metric,'overflow max')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_overflow.stat_is_max,'overflow max')"
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_FlushSize.type_is_overflow.select metric, 'overflow 99')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_overflow.stat_is_max99, 'overflow 99')"
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_FlushSize.type_is_overflow.select metric,\"overflow mean\")"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_overflow.mean,\"overflow mean\")"
             }
           ],
           "aliasColors": {},
@@ -377,7 +377,7 @@
           "links": []
         },
         {
-          "title": "conn metrics buffer",
+          "title": "conn metrics in buffer",
           "error": false,
           "span": 4,
           "editable": true,
@@ -429,7 +429,7 @@
           },
           "targets": [
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_numBuffered.count, 'numBuffered')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_Metric.what_is_numBuffered, 'numBuffered')"
             }
           ],
           "aliasColors": {
@@ -490,19 +490,19 @@
           },
           "targets": [
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_durationFlush.type_is_ticker.max, '\"ticker max\"')",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_ticker.stat_is_max, '\"ticker max\"')",
               "hide": false
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_durationFlush.type_is_ticker.mean, '\"ticker mean\"')",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_ticker.stat_is_mean, '\"ticker mean\"')",
               "hide": false
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_durationFlush.type_is_overflow.max, '\"overflow max\"')",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_overflow.stat_is_max, '\"overflow max\"')",
               "hide": false
             },
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.what_is_durationFlush.type_is_overflow.mean, '\"overflow mean\"')",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_overflow.stat_is_mean, '\"overflow mean\"')",
               "hide": false
             }
           ],
@@ -573,7 +573,7 @@
           },
           "targets": [
             {
-              "target": "aliasByNode(derivative(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.spool_is_$dest.target_type_is_count.unit_is_Metric.*.count), 5)"
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_counter.spool_is_$dest.unit_is_Metric.*, 5)"
             },
             {
               "target": ""
@@ -587,7 +587,7 @@
           "links": []
         },
         {
-          "title": "spool buffer",
+          "title": "spool metrics in buffer",
           "error": false,
           "span": 4,
           "editable": true,
@@ -638,7 +638,7 @@
           },
           "targets": [
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.spool_is_$dest.unit_is_Metric.status_is_buffered.count, 'buffered')",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.spool_is_$dest.unit_is_Metric.status_is_buffered, 'buffered')",
               "hide": false
             }
           ],
@@ -699,91 +699,16 @@
           },
           "targets": [
             {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.spool_is_$dest.unit_is_ns.operation_is*.50-percentile, 4, 5)"
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max_50, 5, 6)"
             },
             {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.spool_is_$dest.unit_is_ns.operation_is*.95-percentile, 4, 5)"
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max_95, 5, 6)"
             },
             {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.spool_is_$dest.unit_is_ns.operation_is*.max, 4, 5)"
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max, 5, 6)"
             },
             {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.spool_is_$dest.unit_is_ns.operation_is*.mean, 4, 5)"
-            }
-          ],
-          "aliasColors": {},
-          "seriesOverrides": [],
-          "links": []
-        }
-      ]
-    },
-    {
-      "title": "New row",
-      "height": "250px",
-      "editable": true,
-      "collapse": false,
-      "panels": []
-    },
-    {
-      "title": "New row",
-      "height": "250px",
-      "editable": true,
-      "collapse": false,
-      "panels": [
-        {
-          "title": "$instance destination $dest count of reported durations",
-          "error": false,
-          "span": 12,
-          "editable": true,
-          "type": "graph",
-          "id": 7,
-          "datasource": null,
-          "renderer": "flot",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "none",
-            "short"
-          ],
-          "grid": {
-            "leftMax": null,
-            "rightMax": null,
-            "leftMin": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold2": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "lines": true,
-          "fill": 0,
-          "linewidth": 1,
-          "points": false,
-          "pointradius": 1,
-          "bars": false,
-          "stack": false,
-          "percentage": false,
-          "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
-            "avg": false,
-            "alignAsTable": true,
-            "rightSide": true
-          },
-          "nullPointMode": "null",
-          "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false
-          },
-          "targets": [
-            {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.dest_is_$dest.*duration*.count, 3)",
-              "hide": false
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_mean, 5, 6)"
             }
           ],
           "aliasColors": {},

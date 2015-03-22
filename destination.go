@@ -65,9 +65,9 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 }
 
 func (dest *Destination) setMetrics() {
-	dest.numDropNoConnNoSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=conn_down_no_spool")
-	dest.numDropSlowSpool = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_spool")
-	dest.numDropSlowConn = Counter("dest=" + dest.cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=slow_conn")
+	dest.numDropNoConnNoSpool = Counter("dest=" + dest.cleanAddr + ".unit=Metric.action=drop.reason=conn_down_no_spool")
+	dest.numDropSlowSpool = Counter("dest=" + dest.cleanAddr + ".unit=Metric.action=drop.reason=slow_spool")
+	dest.numDropSlowConn = Counter("dest=" + dest.cleanAddr + ".unit=Metric.action=drop.reason=slow_conn")
 }
 
 func (dest *Destination) Match(s []byte) bool {

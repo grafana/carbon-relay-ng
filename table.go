@@ -24,8 +24,8 @@ func NewTable(spoolDir string) *Table {
 		blacklist,
 		routes,
 		spoolDir,
-		Counter("target_type=count.unit=Metric.direction=blacklist"),
-		Counter("target_type=count.unit=Metric.direction=unroutable"),
+		Counter("unit=Metric.direction=blacklist"),
+		Counter("unit=Metric.direction=unroutable"),
 	}
 	t.Run()
 	return t

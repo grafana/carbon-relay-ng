@@ -22,7 +22,7 @@ type Spool struct {
 
 	durationWrite  metrics.Timer
 	durationBuffer metrics.Timer
-	numBuffered    metrics.Counter // track watermark on read and write
+	numBuffered    metrics.Gauge // track watermark on read and write
 	// metrics we could do but i don't think that useful: diskqueue depth, amount going in/out diskqueue
 	numIncomingBulk metrics.Counter // sync channel, no need to track watermark, instead we track number seen on read
 	numIncomingRT   metrics.Counter // more or less sync (small buff). we track number of drops in dest so no need for watermark, instead we track num seen on read
@@ -57,11 +57,11 @@ func NewSpool(key, spoolDir string) *Spool {
 		unspoolSleep:    unspoolSleep,
 		queue:           queue,
 		queueBuffer:     make(chan []byte, queueBuffer),
-		durationWrite:   Timer("spool=" + key + ".unit=ns.operation=write"),
-		durationBuffer:  Timer("spool=" + key + ".unit=ns.operation=buffer"),
-		numBuffered:     Counter("spool=" + key + ".unit=Metric.status=buffered"),
-		numIncomingRT:   Counter("spool=" + key + ".target_type=count.unit=Metric.status=incomingRT"),
-		numIncomingBulk: Counter("spool=" + key + ".target_type=count.unit=Metric.status=incomingBulk"),
+		durationWrite:   Timer("spool=" + key + ".operation=write"),
+		durationBuffer:  Timer("spool=" + key + ".operation=buffer"),
+		numBuffered:     Gauge("spool=" + key + ".unit=Metric.status=buffered"),
+		numIncomingRT:   Counter("spool=" + key + ".unit=Metric.status=incomingRT"),
+		numIncomingBulk: Counter("spool=" + key + ".unit=Metric.status=incomingBulk"),
 		shutdownWriter:  make(chan bool),
 		shutdownBuffer:  make(chan bool),
 	}

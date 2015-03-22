@@ -153,7 +153,7 @@ func main() {
 
 	log.Notice("===== carbon-relay-ng instance '%s' starting. =====\n", instance)
 
-	numIn = Counter("target_type=count.unit=Metric.direction=in")
+	numIn = Counter("unit=Metric.direction=in")
 	if config.Instrumentation.Graphite_addr != "" {
 		addr, err := net.ResolveTCPAddr("tcp", config.Instrumentation.Graphite_addr)
 		if err != nil {

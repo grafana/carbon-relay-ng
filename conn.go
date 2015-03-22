@@ -48,7 +48,7 @@ type Conn struct {
 	durationManuFlush metrics.Timer
 	tickFlushSize     metrics.Histogram
 	manuFlushSize     metrics.Histogram
-	numBuffered       metrics.Counter
+	numBuffered       metrics.Gauge
 	numDropBadPickle  metrics.Counter
 }
 
@@ -77,17 +77,17 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle b
 		flushErr:          make(chan error),
 		periodFlush:       periodFlush,
 		keepSafe:          NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
-		numErrTruncated:   Counter("dest=" + cleanAddr + ".target_type=count.unit=Err.type=truncated"),
-		numErrWrite:       Counter("dest=" + cleanAddr + ".target_type=count.unit=Err.type=write"),
-		numErrFlush:       Counter("dest=" + cleanAddr + ".target_type=count.unit=Err.type=flush"),
-		numOut:            Counter("dest=" + cleanAddr + ".target_type=count.unit=Metric.direction=out"),
+		numErrTruncated:   Counter("dest=" + cleanAddr + ".unit=Err.type=truncated"),
+		numErrWrite:       Counter("dest=" + cleanAddr + ".unit=Err.type=write"),
+		numErrFlush:       Counter("dest=" + cleanAddr + ".unit=Err.type=flush"),
+		numOut:            Counter("dest=" + cleanAddr + ".unit=Metric.direction=out"),
 		durationWrite:     Timer("dest=" + cleanAddr + ".what=durationWrite"),
 		durationTickFlush: Timer("dest=" + cleanAddr + ".what=durationFlush.type=ticker"),
 		durationManuFlush: Timer("dest=" + cleanAddr + ".what=durationFlush.type=manual"),
-		tickFlushSize:     Histogram("dest=" + cleanAddr + ".what=FlushSize.type=ticker"),
-		manuFlushSize:     Histogram("dest=" + cleanAddr + ".what=FlushSize.type=manual"),
-		numBuffered:       Counter("dest=" + cleanAddr + ".what=numBuffered"),
-		numDropBadPickle:  Counter("dest=" + cleanAddr + ".target_type=count.unit=Metric.action=drop.reason=bad_pickle"),
+		tickFlushSize:     Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=ticker"),
+		manuFlushSize:     Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=manual"),
+		numBuffered:       Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
+		numDropBadPickle:  Counter("dest=" + cleanAddr + ".unit=Metric.action=drop.reason=bad_pickle"),
 	}
 
 	go connObj.checkEOF()
