@@ -5,12 +5,15 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"expvar"
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/go-metrics"
 	"github.com/Dieterbe/go-metrics/exp"
+	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
+	m20 "github.com/metrics20/go-metrics20"
 	logging "github.com/op/go-logging"
 	"github.com/rcrowley/goagain"
 	"io"
@@ -23,16 +26,17 @@ import (
 )
 
 type Config struct {
-	Listen_addr     string
-	Admin_addr      string
-	Http_addr       string
-	Spool_dir       string
-	First_only      bool
-	Routes          []*Route
-	Init            []string
-	Instance        string
-	Log_level       string
-	Instrumentation instrumentation
+	Listen_addr         string
+	Admin_addr          string
+	Http_addr           string
+	Spool_dir           string
+	First_only          bool
+	Routes              []*Route
+	Init                []string
+	Instance            string
+	Log_level           string
+	Instrumentation     instrumentation
+	Bad_metrics_max_age string
 }
 
 type instrumentation struct {
@@ -49,6 +53,8 @@ var (
 	table       *Table
 	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file")
 	numIn       metrics.Counter
+	numInvalid  metrics.Counter
+	badMetrics  *badmetrics.BadMetrics
 )
 
 var log = logging.MustGetLogger("carbon-relay-ng")
@@ -74,23 +80,45 @@ func accept(l *net.TCPListener, config Config) {
 	}
 }
 
+var emptyByteStr = []byte("")
+
 func handle(c *net.TCPConn, config Config) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
 	for {
+
+		// Note that everything in this loop should proceed as fast as it can
+		// so we're not blocked and can keep processing
+		// so the validation, the pipeline initiated via table.Dispatch(), etc
+		// must never block.
+
 		// note that we don't support lines longer than 4096B. that seems very reasonable..
 		buf, _, err := r.ReadLine()
+
 		if nil != err {
 			if io.EOF != err {
 				log.Error(err.Error())
 			}
 			break
 		}
+
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
 		numIn.Inc(1)
-		// table should handle this as fast as it can
+
+		err = m20.ValidatePacket(buf)
+		if err != nil {
+			fields := bytes.Fields(buf)
+			if len(fields) != 0 {
+				badMetrics.Add(fields[0], buf, err)
+			} else {
+				badMetrics.Add(emptyByteStr, buf, err)
+			}
+			numInvalid.Inc(1)
+			continue
+		}
+
 		table.Dispatch(buf_copy)
 	}
 }
@@ -154,6 +182,7 @@ func main() {
 	log.Notice("===== carbon-relay-ng instance '%s' starting. =====\n", instance)
 
 	numIn = Counter("unit=Metric.direction=in")
+	numInvalid = Counter("unit=Err.type=invalid")
 	if config.Instrumentation.Graphite_addr != "" {
 		addr, err := net.ResolveTCPAddr("tcp", config.Instrumentation.Graphite_addr)
 		if err != nil {
@@ -163,9 +192,15 @@ func main() {
 	}
 
 	log.Notice("creating routing table...")
+	maxAge, err := time.ParseDuration(config.Bad_metrics_max_age)
+	if err != nil {
+		log.Error("could not parse badMetrics max age")
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+	badMetrics = badmetrics.New(maxAge)
 	table = NewTable(config.Spool_dir)
 	log.Notice("initializing routing table...")
-	var err error
 	for i, cmd := range config.Init {
 		log.Notice("applying: %s", cmd)
 		err = applyCommand(table, cmd)

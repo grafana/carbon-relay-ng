@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 // error response contains everything we need to use http.Error
@@ -55,6 +56,17 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func listTable(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	t := table.Snapshot()
 	return t, nil
+}
+
+func badMetricsHandler(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+	timespec := mux.Vars(r)["timespec"]
+	duration, err := time.ParseDuration(timespec)
+	if err != nil {
+		return nil, &handlerError{err, "Could not parse timespec", http.StatusBadRequest}
+	}
+
+	records := badMetrics.Get(duration)
+	return records, nil
 }
 
 func removeBlacklist(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
@@ -163,6 +175,8 @@ func HttpListener(addr string, t *Table) {
 
 	// setup routes
 	router := mux.NewRouter()
+	// bad metrics
+	router.Handle("/badMetrics/{timespec}.json", handler(badMetricsHandler)).Methods("GET")
 	// table
 	router.Handle("/table", handler(listTable)).Methods("GET")
 	// blacklist
