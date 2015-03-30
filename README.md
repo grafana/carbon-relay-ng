@@ -5,9 +5,9 @@ A relay for carbon streams, in go.
 Like carbon-relay from the graphite project, except it:
 
 
- * should perform better (some optimization work still todo. benchmark currently reports 50k metrics/s through a table with 1 endpoint)
- * you can adjust the routing table at runtime, in real time using the web or telnet interface.
- * can be restarted without dropping packets
+ * should perform better (benchmark currently reports 50k metrics/s through a table with 1 endpoint. in prod i see 20k metrics/s before maxing out a single core.  still much room for optimization)
+ * you can adjust the routing table at runtime, in real time using the web or telnet interface (needs more work)
+ * can be restarted without dropping packets (needs testing)
  * supports a per-route spooling policy.
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
  * you can choose between plaintext or pickle output, per route.
@@ -32,14 +32,13 @@ Future work aka what's missing
 Releases & versions
 -------------------
 
-* master (work in progress): refactored version with non-blocking operations, extensive internal stats and a more extensive routing system (which can support round robin & hashing) (see #23)
-  note: *the http admin interface in the current master branch does not work*, the TCP interface does work but only for adding new routes, for now.
-* v0.5 extended version with config file, http and telnet interfaces, statsd for internal instrumentation, disk spooling support, but still blocking operations
-* v0.1 initial, simple version that used commandline args to configure. no admin interfaces. blocking sends
+* master (work in progress): refactored version with non-blocking operations, extensive internal stats and a more extensive routing system (which can support round robin & hashing) (see #23).  the admin interfaces need more work.
+* v0.5 extended version with config file, http and telnet interfaces, statsd for internal instrumentation, disk spooling support, but still blocking sends. (no longer supported)
+* v0.1 initial, simple version that used commandline args to configure. no admin interfaces. blocking sends (1 endpoint down blocks the program)(no longer supported)
 
 
-Instrumentation (post v0.5)
-------------------------
+Instrumentation
+---------------
 
 * All performance variables are available in json at http://localhost:8081/debug/vars2 (update port if you change it in config)
 * You can also send metrics to graphite (or feed back into the relay), see config.
@@ -56,7 +55,7 @@ Building
     go get -d github.com/graphite-ng/carbon-relay-ng
     go get github.com/jteeuwen/go-bindata/...
     cd "$GOPATH/src/github.com/graphite-ng/carbon-relay-ng"
-    git checkout v0.5
+    # optional: check out an older version: git checkout v0.5
     make
 
 
@@ -71,7 +70,7 @@ Usage
 <pre><code>carbon-relay-ng [-cpuprofile <em>cpuprofile-file</em>] <em>config-file</em></code></pre>
 
 
-Concepts (master branch)
+Concepts
 --------
 
 You have 1 master routing table.  This table contains 0-N routes.  Each route can contain 0-M destinations (tcp endpoints)
@@ -79,7 +78,7 @@ You have 1 master routing table.  This table contains 0-N routes.  Each route ca
 First: "matching": you can match metrics on one or more of: prefix, substring, or regex.  All 3 default to "" (empty string, i.e. allow all).
 The conditions are AND-ed.  Regexes are more resource intensive and hence should, and often can be avoided.
 
-* All incoming matrics get filtered through the blacklist and then go into the table.
+* All incoming matrics are validated, filtered through the blacklist and then go into the table.
 * The table sends the metric to any routes that matches
 * The route can have different behaviors, based on its type:
 
@@ -97,7 +96,7 @@ if connection is down and spooling disabled -> drop the data
 
 
 
-Configuration (master branch)
+Configuration
 -------------
 
 
@@ -107,34 +106,8 @@ This mechanism is choosen so we can reuse the code, instead of doing much config
 a declarative specification.  We can just use the same imperative commands since we just set up the initial state here.
 
 
-Web interface (v0.5)
+TCP interface
 -------------
-
-Allows you to inspect and change routing table.
-(except for spooling settings).
-Also you can't adjust global configuration this way.
-
-
-TCP interface (v0.5)
---------------------
-
-Allows you to inspect and change routing table.
-(except for spooling settings and remote addr).
-Also you can't adjust global configuration this way.
-
-
-    telnet <host> <port>
-    
-commands:
-
-    help                             show this menu
-    route list                       list routes
-    route add <key> [pattern] <addr> add the route. (empty pattern allows all)
-    route del <key>                  delete the matching route
-    route patt <key> [pattern]       update pattern for given route key.  (empty pattern allows all)
-
-TCP interface (master)
-----------------------
 
 commands:
 
