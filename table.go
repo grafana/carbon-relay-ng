@@ -27,24 +27,10 @@ func NewTable(spoolDir string) *Table {
 		Counter("unit=Metric.direction=blacklist"),
 		Counter("unit=Metric.direction=unroutable"),
 	}
-	t.Run()
 	return t
 }
 
 // not thread safe, run this once only
-func (table *Table) Run() error {
-
-	table.Lock()
-	defer table.Unlock()
-
-	for _, route := range table.Routes {
-		err := route.Run()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
@@ -107,6 +93,8 @@ func (table *Table) GetRoute(key string) *Route {
 	return nil
 }
 
+// AddRoute adds a route to the table.
+// The Route must be running already
 func (table *Table) AddRoute(route *Route) {
 	table.Lock()
 	defer table.Unlock()

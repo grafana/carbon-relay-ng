@@ -12,6 +12,7 @@ type Route struct {
 	Matcher Matcher        `json:"matcher"`
 	Dests   []*Destination `json:"destination"`
 	in      chan []byte    // incoming metrics
+	running bool
 	sync.Mutex
 }
 
@@ -19,25 +20,27 @@ type RouteType int
 type sendAllMatch RouteType
 type sendFirstMatch RouteType
 
-func NewRoute(routeType interface{}, key, prefix, sub, regex string) (*Route, error) {
+// NewRoute creates a route.
+// We will automatically run the route and the given destinations
+func NewRoute(routeType interface{}, key, prefix, sub, regex string, destinations []*Destination) (*Route, error) {
 	m, err := NewMatcher(prefix, sub, regex)
 	if err != nil {
 		return nil, err
 	}
-	r := &Route{routeType, key, *m, make([]*Destination, 0), make(chan []byte), sync.Mutex{}}
-	r.Run()
+	r := &Route{routeType, key, *m, destinations, make(chan []byte), false, sync.Mutex{}}
+	r.run()
 	return r, nil
 }
 
-func (route *Route) Run() error {
+func (route *Route) run() {
 	route.Lock()
 	defer route.Unlock()
+	if route.running {
+		panic(fmt.Sprintf("route.Run() called on already running route '%s'", route.Key))
+	}
 
 	for _, dest := range route.Dests {
-		err := dest.Run()
-		if err != nil {
-			return err
-		}
+		dest.Run()
 	}
 	// this probably can be cleaner if we make Route an interface.
 	switch route.Type.(type) {
@@ -46,7 +49,7 @@ func (route *Route) Run() error {
 	case sendFirstMatch:
 		go route.RelaySendFirstMatch()
 	}
-	return nil
+	route.running = true
 }
 
 func (route *Route) RelaySendAllMatch() {
@@ -129,12 +132,15 @@ func (route *Route) Snapshot() *Route {
 	for i, d := range route.Dests {
 		dests[i] = d.Snapshot()
 	}
-	return &Route{route.Type, route.Key, route.Matcher, dests, nil, sync.Mutex{}}
+	return &Route{route.Type, route.Key, route.Matcher, dests, nil, route.running, sync.Mutex{}}
 }
 
+// Add adds a new Destination to the Route and automatically runs it for you.
+// The destination must not be running already!
 func (route *Route) Add(dest *Destination) {
 	route.Lock()
 	defer route.Unlock()
+	dest.Run()
 	route.Dests = append(route.Dests, dest)
 }
 

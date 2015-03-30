@@ -215,11 +215,6 @@ func main() {
 	for _, line := range strings.Split(tablePrinted, "\n") {
 		log.Notice(line)
 	}
-	err = table.Run()
-	if err != nil {
-		log.Error(err.Error())
-		os.Exit(1)
-	}
 
 	// Follow the goagain protocol, <https://github.com/rcrowley/goagain>.
 	l, ppid, err := goagain.GetEnvs()

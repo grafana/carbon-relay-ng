@@ -175,11 +175,10 @@ func applyCommand(table *Table, cmd string) error {
 		if err != nil {
 			return err
 		}
-		route, err := NewRoute(sendAllMatch(1), key, prefix, sub, regex)
+		route, err := NewRoute(sendAllMatch(1), key, prefix, sub, regex, destinations)
 		if err != nil {
 			return err
 		}
-		route.Dests = destinations
 		table.AddRoute(route)
 	} else if t.Token == addRouteSendFirstMatch {
 		split := strings.Split(string(t.Value), " ")
@@ -196,11 +195,10 @@ func applyCommand(table *Table, cmd string) error {
 		if err != nil {
 			return err
 		}
-		route, err := NewRoute(sendFirstMatch(2), key, prefix, sub, regex)
+		route, err := NewRoute(sendFirstMatch(2), key, prefix, sub, regex, destinations)
 		if err != nil {
 			return err
 		}
-		route.Dests = destinations
 		table.AddRoute(route)
 	} else if t.Token == addDest {
 		//split := strings.Split(string(t.Value), " ")

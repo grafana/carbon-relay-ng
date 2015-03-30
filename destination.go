@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/Dieterbe/go-metrics"
 	"strings"
 	"sync"
@@ -43,7 +44,7 @@ type Destination struct {
 	numDropSlowConn      metrics.Counter
 }
 
-// after creating, run Run()!
+// NewDestination creates a destination object. Note that it still needs to be told to run via Run().
 func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration) (*Destination, error) {
 	m, err := NewMatcher(prefix, sub, regex)
 	if err != nil {
@@ -140,7 +141,10 @@ func (dest *Destination) Snapshot() *Destination {
 	}
 }
 
-func (dest *Destination) Run() (err error) {
+func (dest *Destination) Run() {
+	if dest.in != nil {
+		panic(fmt.Sprintf("Run() called on already running dest '%s'", dest.Addr))
+	}
 	dest.in = make(chan []byte)
 	dest.shutdown = make(chan bool)
 	dest.connUpdates = make(chan *Conn)
@@ -152,7 +156,6 @@ func (dest *Destination) Run() (err error) {
 	}
 	dest.tasks = sync.WaitGroup{}
 	go dest.relay()
-	return err
 }
 
 func (dest *Destination) Flush() error {
