@@ -47,6 +47,8 @@
   </div>
 
   <div class="container" role="main" ng-controller="MainCtl">
+    <p>Please note: the form is broken for now. though the delete buttons should work.
+    <br/>for creating new things on the fly, use the telnet interface (please help me make this better!)</p>
     <div>
       <div class="row" ng-cloak>
         <alert ng-repeat="alert in alerts">{{alert.msg}}</alert>
@@ -67,9 +69,68 @@
                     <td>{{b.prefix}}</td>
                     <td>{{b.substring}}</td>
                     <td>{{b.regex}}</td>
-                    <td><a ng-click="removeBlacklist($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
+                    <td class="text-center"><a ng-click="removeBlacklist($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
                 </tr>
               </tbody>
+            </table>
+            <h1>Aggregators</h1>
+<form name="form" class="form-add form-group has-feedback" role="form" ng-submit="addAggregator()" novalidate>
+            <table class="table table-condensed">
+              <thead>
+                <tr>
+                  <th>Function</th>
+                  <th>Regex</th>
+                  <th>Output format</th>
+                  <th>Interval (sec)</th>
+                  <th>Wait (sec)</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody ng-repeat="a in table.aggregators">
+                <tr>
+                    <td>{{a.fun}}</td>
+                    <td>{{a.regex}}</td>
+                    <td>{{a.OutFmt}}</td>
+                    <td>{{a.Interval}}</td>
+                    <td>{{a.Wait}}</td>
+                    <td class="text-center"><a ng-click="removeAggregator($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
+
+                </tr>
+                </tbody>
+                <tbody>
+                <tr>
+                    <td class="form-group has-feedback">
+                        <input ng-model="newAgg.Fun" name="fun" class="form-control" placeholder="Function" required ng-pattern="validAggFunc">
+                        <div ng-show="form.fun.$invalid">
+                            <span ng-show="form.fun.$error.pattern">Expected aggregation function: sum or avg</span>
+                        </div>
+                    </td>
+                    <td class="form-group has-feedback">
+                        <input ng-model="newAgg.Regex" name="regex" class="form-control" placeholder="regex" ng-pattern="validRegex">
+                        <div ng-show="form.regex.$invalid">
+                            <span ng-show="form.regex.$error.pattern">Expected valid regular expression</span>
+                        </div>
+                    </td>
+                    <td class="form-group has-feedback">
+                        <input ng-model="newAgg.OutFmt" name="outfmt" class="form-control" placeholder="out" required>
+                    </td>
+                    <td class="form-group has-feedback">
+                        <input ng-model="newAgg.Interval" name="interval" class="form-control" placeholder="60" ng-pattern="/^[0-9]+$/">
+                        <div ng-show="form.interval.$invalid">
+                            <span ng-show="form.interval.$error.pattern">Expected a number (in seconds) to denote quantizing interval</span>
+                        </div>
+                    </td>
+                    <td class="form-group has-feedback">
+                        <input ng-model="newAgg.Wait" name="wait" class="form-control" placeholder="120" ng-pattern="/^[0-9]+$/">
+                        <div ng-show="form.wait.$invalid">
+                            <span ng-show="form.wait.$error.pattern">Expected a number (in seconds) to denote max wait</span>
+                        </div>
+                    </td>
+                    <td>
+                    <button class="btn btn-sm btn-primary btn-block" type="submit" ng-disabled="form.$invalid">Add</button>
+                    </td>
+                </tr>
+                </tbody>
             </table>
             <h1>Routing</h1>
             <table class="table table-condensed">
@@ -140,7 +201,7 @@
       <div class="modal-body">
         <div class="form-group">
           <label for="patt">Pattern</label>
-          <input ng-model="route.Patt" name="patt" class="form-control" placeholder="Pattern" ng-pattern="validPattern">
+          <input ng-model="route.Patt" name="patt" class="form-control" placeholder="Pattern" ng-pattern="validRegex">
           <div ng-show="form.patt.$invalid">
             <span ng-show="form.patt.$error.pattern">Expected valid expression</span>
           </div>

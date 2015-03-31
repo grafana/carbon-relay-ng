@@ -4,12 +4,13 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   $scope.alerts = [];
   var Table = $resource("/table/");
   var Blacklist = $resource("/blacklists/:index");
+  var Aggregator = $resource("/aggregators/:index");
   var Route = $resource("/routes/:key", {key: '@key'}, {});
   var Destination = $resource("/routes/:key/destinations/:index");
   
 
   $scope.validAddress = /^[^:]+\:[0-9]+$/;
-  $scope.validPattern = (function() {
+  $scope.validRegex = (function() {
       return {
           test: function(value) {
               var isValid = true;
@@ -19,6 +20,20 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
                 isValid = false;
               }
               return isValid;
+          }
+      };
+  })();
+
+  $scope.validAggFunc = (function() {
+      return {
+          test: function(value) {
+              if (value == "sum") {
+                  return true;
+              }
+              if (value == "avg") {
+                  return true;
+              }
+              return false;
           }
       };
   })();
@@ -44,8 +59,21 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   };
 
   $scope.removeBlacklist = function(idx){
-    if (confirm('Are you sure?')) {
+    if (confirm('Are you sure you want to delete blacklist entry no. ' + idx)) {
       Blacklist.delete({'index':idx});
+      $scope.list();
+    }
+  };
+
+  $scope.addAggregator = function() {
+    $scope.alerts = [];
+    Aggregator.save({key:null}, $scope.newAggregator, function() { $scope.newAggregator = {}; $scope.list(); },
+     function(err) { $scope.alerts = [{msg: err.data.error}]; });
+  };
+
+  $scope.removeAggregator = function(idx){
+    if (confirm('Are you sure you want to delete aggregator entry no. ' + idx)) {
+      Aggregator.delete({'index':idx});
       $scope.list();
     }
   };
@@ -64,7 +92,7 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
     }
   };
 
-  $scope.open = function (idx) {
+  $scope.openRoute = function (idx) {
     var modalInstance = $modal.open({
       templateUrl: 'updateRouteModal.html',
       keyboard: false,

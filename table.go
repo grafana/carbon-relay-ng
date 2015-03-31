@@ -9,28 +9,36 @@ import (
 
 type Table struct {
 	sync.Mutex
-	Blacklist     []*Matcher `json:"blacklist"`
-	Routes        []*Route   `json:"routes"`
+	Blacklist     []*Matcher    `json:"blacklist"`
+	Routes        []*Route      `json:"routes"`
+	Aggregators   []*Aggregator `json:"aggregators"`
 	spoolDir      string
 	numBlacklist  metrics.Counter
 	numUnroutable metrics.Counter
+	In            chan []byte `json:"-"` // channel api to trade in some performance for encapsulation
 }
 
 func NewTable(spoolDir string) *Table {
 	routes := make([]*Route, 0)
+	aggregators := make([]*Aggregator, 0)
 	blacklist := make([]*Matcher, 0)
 	t := &Table{
 		sync.Mutex{},
 		blacklist,
 		routes,
+		aggregators,
 		spoolDir,
 		Counter("unit=Metric.direction=blacklist"),
 		Counter("unit=Metric.direction=unroutable"),
+		make(chan []byte),
 	}
+	go func() {
+		for buf := range t.In {
+			t.Dispatch(buf)
+		}
+	}()
 	return t
 }
-
-// not thread safe, run this once only
 
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
@@ -42,6 +50,10 @@ func (table *Table) Dispatch(buf []byte) {
 			table.numBlacklist.Inc(1)
 			return
 		}
+	}
+
+	for _, aggregator := range table.Aggregators {
+		aggregator.in <- buf
 	}
 
 	routed := false
@@ -79,7 +91,12 @@ func (table *Table) Snapshot() *Table {
 	for i, r := range table.Routes {
 		routes[i] = r.Snapshot()
 	}
-	return &Table{sync.Mutex{}, blacklist, routes, table.spoolDir, nil, nil}
+
+	aggs := make([]*Aggregator, len(table.Aggregators))
+	for i, a := range table.Aggregators {
+		aggs[i] = a.Snapshot()
+	}
+	return &Table{sync.Mutex{}, blacklist, routes, aggs, table.spoolDir, nil, nil, nil}
 }
 
 func (table *Table) GetRoute(key string) *Route {
@@ -105,6 +122,29 @@ func (table *Table) AddBlacklist(matcher *Matcher) {
 	table.Lock()
 	defer table.Unlock()
 	table.Blacklist = append(table.Blacklist, matcher)
+}
+
+func (table *Table) AddAggregator(agg *Aggregator) {
+	table.Lock()
+	defer table.Unlock()
+	table.Aggregators = append(table.Aggregators, agg)
+}
+
+func (table *Table) DelAggregator(id int) error {
+	table.Lock()
+	defer table.Unlock()
+	fmt.Println("deleting", id)
+
+	if id >= len(table.Aggregators) {
+		return errors.New("Not found")
+	}
+
+	agg := table.Aggregators[id]
+	fmt.Println("len", len(table.Aggregators))
+	table.Aggregators = append(table.Aggregators[:id], table.Aggregators[id+1:]...)
+	fmt.Println("len", len(table.Aggregators))
+	agg.Shutdown()
+	return nil
 }
 
 func (table *Table) Flush() error {
@@ -200,10 +240,15 @@ func (table *Table) Print() (str string) {
 	// so we have to figure out the max lengths of everything first
 	// the default values can be arbitrary (bot not smaller than the column titles),
 	// i figured multiples of 4 should look good
-	// 'R' stands for Route, 'D' for dest, 'B' blacklist
+	// 'R' stands for Route, 'D' for dest, 'B' blacklist, 'A" for aggregation
 	maxBPrefix := 4
 	maxBSub := 4
 	maxBRegex := 4
+	maxAFunc := 4
+	maxARegex := 8
+	maxAOutFmt := 8
+	maxAInterval := 4
+	maxAwait := 4
 	maxRKey := 8
 	maxRPrefix := 4
 	maxRSub := 4
@@ -220,6 +265,13 @@ func (table *Table) Print() (str string) {
 		maxBSub = max(maxBSub, len(black.Sub))
 		maxBRegex = max(maxBRegex, len(black.Regex))
 	}
+	for _, agg := range t.Aggregators {
+		maxAFunc = max(maxAFunc, len(agg.Fun))
+		maxARegex = max(maxARegex, len(agg.Regex))
+		maxAOutFmt = max(maxAOutFmt, len(agg.OutFmt))
+		maxAInterval = max(maxAInterval, len(fmt.Sprintf("%d", agg.Interval)))
+		maxAwait = max(maxAwait, len(fmt.Sprintf("%d", agg.Wait)))
+	}
 	for _, route := range t.Routes {
 		maxRKey = max(maxRKey, len(route.Key))
 		maxRPrefix = max(maxRPrefix, len(route.Matcher.Prefix))
@@ -233,25 +285,41 @@ func (table *Table) Print() (str string) {
 			maxDSpoolDir = max(maxDSpoolDir, len(dest.spoolDir))
 		}
 	}
-	heaFmtB := fmt.Sprintf("Blacklist: %%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
-	rowFmtB := fmt.Sprintf("           %%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
-	heaFmtR := fmt.Sprintf("Routes: %%%ds %%%ds %%%ds %%%ds\n", maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
-	rowFmtR := fmt.Sprintf(">       %%%ds %%%ds %%%ds %%%ds\n", maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
-	heaFmtD := fmt.Sprintf("              %%%ds %%%ds %%%ds %%%ds %%%ds %%6s %%6s %%6s\n", maxDPrefix+1, maxDSub+1, maxDRegex+1, maxDAddr+1, maxDSpoolDir+1)
+	heaFmtB := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
+	rowFmtB := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
+	heaFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%%ds %%%ds\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
+	rowFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%%dd %%%dd\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
+	heaFmtR := fmt.Sprintf("  %%%ds %%%ds %%%ds %%%ds\n", maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
+	rowFmtR := fmt.Sprintf("> %%%ds %%%ds %%%ds %%%ds\n", maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
+	heaFmtD := fmt.Sprintf("        %%%ds %%%ds %%%ds %%%ds %%%ds %%6s %%6s %%6s\n", maxDPrefix+1, maxDSub+1, maxDRegex+1, maxDAddr+1, maxDSpoolDir+1)
 	rowFmtD := fmt.Sprintf("                %%%ds %%%ds %%%ds %%%ds %%%ds %%6t %%6t %%6t\n", maxDPrefix+1, maxDSub+1, maxDRegex+1, maxDAddr+1, maxDSpoolDir+1)
 
-	str += fmt.Sprintf(heaFmtB, "prefix", "substr", "regex")
+	underscore := func(amount int) string {
+		str := ""
+		for i := 1; i < amount; i++ {
+			str += "="
+		}
+		str += "\n"
+		return str
+	}
+
+	str += "\n## Blacklist:\n"
+	cols := fmt.Sprintf(heaFmtB, "prefix", "substr", "regex")
+	str += cols + underscore(len(cols))
 	for _, black := range t.Blacklist {
 		str += fmt.Sprintf(rowFmtB, black.Prefix, black.Sub, black.Regex)
 	}
-	str += "\n"
 
-	str += fmt.Sprintf(heaFmtR, "key", "prefix", "substr", "regex")
-	str += "==========="
-	for i := 1; i < maxRKey+maxRPrefix+maxRSub+maxRRegex+7; i++ {
-		str += "="
+	str += "\n## Aggregations:\n"
+	cols = fmt.Sprintf(heaFmtA, "func", "regex", "outFmt", "interval", "wait")
+	str += cols + underscore(len(cols))
+	for _, agg := range t.Aggregators {
+		str += fmt.Sprintf(rowFmtA, agg.Fun, agg.Regex, agg.OutFmt, agg.Interval, agg.Wait)
 	}
-	str += "\n"
+
+	str += "\n## Routes:\n"
+	cols = fmt.Sprintf(heaFmtR, "key", "prefix", "substr", "regex")
+	str += cols + underscore(len(cols))
 
 	for _, route := range t.Routes {
 		m := route.Matcher

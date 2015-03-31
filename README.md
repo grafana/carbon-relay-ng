@@ -6,11 +6,12 @@ Like carbon-relay from the graphite project, except it:
 
 
  * should perform better (benchmark currently reports 50k metrics/s through a table with 1 endpoint. in prod i see 20k metrics/s before maxing out a single core.  still much room for optimization)
- * you can adjust the routing table at runtime, in real time using the web or telnet interface (needs more work)
- * can be restarted without dropping packets (needs testing)
+ * you can adjust the routing table at runtime, in real time using the web or telnet interface (interfaces need more work)
+ * has aggregator functionality built-in
  * supports a per-route spooling policy.
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
  * you can choose between plaintext or pickle output, per route.
+ * can be restarted without dropping packets (needs testing)
  
 
 This makes it easy to fanout to other tools that feed in on the metrics.
@@ -79,7 +80,9 @@ First: "matching": you can match metrics on one or more of: prefix, substring, o
 The conditions are AND-ed.  Regexes are more resource intensive and hence should, and often can be avoided.
 
 * All incoming matrics are validated, filtered through the blacklist and then go into the table.
-* The table sends the metric to any routes that matches
+* The table sends the metric to:
+  * the aggregators, who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below.
+  * any routes that matches
 * The route can have different behaviors, based on its type:
 
   * sendAllMatch: send all metrics to all the defined endpoints (possibly, and commonly only 1 endpoint).
@@ -94,6 +97,21 @@ if connection is up but slow, we drop the data
 if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data
 if connection is down and spooling disabled -> drop the data
 
+
+
+Aggregation
+-----------
+
+As discussed in concepts above, we can combine, at each point in time, the points of multiple series into a new series.
+Note:
+* The interval parameter let's you quantize ("fix") timestamps, with an interval of 60 seconds, if you have incoming metrics for times that differ from each other, but all fall within the same minute, they will be counted together.
+* The wait parameter allows up to the specified amount of seconds to wait for values, With a wait of 120, metrics can come 2 minutes late and still be included in the aggregation results.
+* aggregation output goes back into the table so you can route it however you want.
+* since the output metrics go back into the table, this means you can create new rules that leverage results from other rules.
+  (this is probably not useful and will probably be changed). Either way, make sure you don't accidentally match your own output.
+* use $1, $2 to refer to groups in the regex
+* functions currently available: avg and sum
+* see the included ini for examples
 
 
 Configuration

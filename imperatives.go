@@ -13,6 +13,7 @@ import (
 
 const (
 	addBlack toki.Token = iota
+	addAgg
 	addRouteSendAllMatch
 	addRouteSendFirstMatch
 	addDest
@@ -28,6 +29,7 @@ const (
 
 var tokenDefGlobal = []toki.Def{
 	{Token: addBlack, Pattern: "addBlack [^ ]+"},
+	{Token: addAgg, Pattern: "addAgg .*"},
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch [a-z-_]+"},
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch [a-z-_]+"},
 	{Token: addDest, Pattern: "addDest [a-z-_]+"},
@@ -160,6 +162,27 @@ func applyCommand(table *Table, cmd string) error {
 			return err
 		}
 		table.AddBlacklist(m)
+	} else if t.Token == addAgg {
+		inputs = strings.Fields(cmd)
+		if len(inputs) != 6 {
+			return errors.New("addAgg <func> <match> <key> <interval> <wait>")
+		}
+		fun := inputs[1]
+		regex := inputs[2]
+		outFmt := inputs[3]
+		interval, err := strconv.Atoi(inputs[4])
+		if err != nil {
+			return err
+		}
+		wait, err := strconv.Atoi(inputs[5])
+		if err != nil {
+			return err
+		}
+		agg, err := NewAggregator(fun, regex, outFmt, uint(interval), uint(wait), table.In)
+		if err != nil {
+			return err
+		}
+		table.AddAggregator(agg)
 	} else if t.Token == addRouteSendAllMatch {
 		split := strings.Split(string(t.Value), " ")
 		key := split[2]

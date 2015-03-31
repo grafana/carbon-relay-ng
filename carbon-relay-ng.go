@@ -205,13 +205,15 @@ func main() {
 		log.Notice("applying: %s", cmd)
 		err = applyCommand(table, cmd)
 		if err != nil {
-			log.Error("could not apply init cmd #", i+1)
+			log.Error("could not apply init cmd #%d", i+1)
 			log.Error(err.Error())
 			os.Exit(1)
 		}
 	}
 	tablePrinted := table.Print()
-	log.Notice("TABLE:")
+	log.Notice("===========================")
+	log.Notice("========== TABLE ==========")
+	log.Notice("===========================")
 	for _, line := range strings.Split(tablePrinted, "\n") {
 		log.Notice(line)
 	}

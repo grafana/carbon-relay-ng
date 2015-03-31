@@ -79,6 +79,16 @@ func removeBlacklist(w http.ResponseWriter, r *http.Request) (interface{}, *hand
 	return make(map[string]string), nil
 }
 
+func removeAggregator(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+	index := mux.Vars(r)["index"]
+	idx, _ := strconv.Atoi(index)
+	err := table.DelAggregator(idx)
+	if err != nil {
+		return nil, &handlerError{nil, err.Error(), http.StatusNotFound}
+	}
+	return make(map[string]string), nil
+}
+
 func removeDestination(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	key := mux.Vars(r)["key"]
 	index := mux.Vars(r)["index"]
@@ -181,6 +191,8 @@ func HttpListener(addr string, t *Table) {
 	router.Handle("/table", handler(listTable)).Methods("GET")
 	// blacklist
 	router.Handle("/blacklists/{index}", handler(removeBlacklist)).Methods("DELETE")
+	// aggregator
+	router.Handle("/aggregators/{index}", handler(removeAggregator)).Methods("DELETE")
 	// routes
 	router.Handle("/routes", handler(listRoutes)).Methods("GET")
 	//router.Handle("/routes", handler(addRoute)).Methods("POST")
