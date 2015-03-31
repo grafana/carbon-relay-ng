@@ -44,7 +44,7 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// turn the response into JSON
 	bytes, e := json.Marshal(response)
 	if e != nil {
-		http.Error(w, "Error marshalling JSON", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error marshalling JSON:'%s'", e), http.StatusInternalServerError)
 		return
 	}
 
