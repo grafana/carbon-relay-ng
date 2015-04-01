@@ -47,7 +47,18 @@ func writeHelp(conn net.Conn, write_first []byte) { // bytes.Buffer
 commands:
     help                                         show this menu
     view                                         view full current routing table
+
     addBlack <substring>                         blacklist (drops the metric matching this as soon as it is received)
+
+    addAgg <func> <regex> <fmt> <interval> <wait>  add a new aggregation rule.
+             <func>:                             aggregation function to use
+               sum
+               avg
+             <regex>                             regex to match incoming metrics. supports groups (numbered, see fmt)
+             <fmt>                               format of output metric. you can use $1, $2, etc to refer to numbered groups
+             <interval>                          align odd timestamps of metrics into buckets by this interval in seconds.
+             <wait>                              amount of seconds to wait for "late" metric messages before computing and flushing final result.
+
 
     addRoute <type> <key> [opts]   <dest>  [<dest>[...]] add a new route. note 2 spaces to separate destinations
              <type>:
