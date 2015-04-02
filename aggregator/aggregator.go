@@ -1,4 +1,4 @@
-package main
+package aggregator
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-type AggregatorFunc func(in []float64) float64
+type Func func(in []float64) float64
 
 func Sum(in []float64) float64 {
 	sum := float64(0)
@@ -25,10 +25,15 @@ func Avg(in []float64) float64 {
 	return Sum(in) / float64(len(in))
 }
 
+var Funcs = map[string]Func{
+	"sum": Sum,
+	"avg": Avg,
+}
+
 type Aggregator struct {
 	Fun          string `json:"fun"`
-	fn           AggregatorFunc
-	in           chan []byte    // incoming metrics
+	fn           Func
+	In           chan []byte    // incoming metrics
 	out          chan []byte    // outgoing metrics
 	Regex        string         `json:"regex,omitempty"`
 	regex        *regexp.Regexp // compiled version of Regex
@@ -42,17 +47,13 @@ type Aggregator struct {
 	shutdown     chan bool        // chan used internally to shut down
 }
 
-// NewAggregator creates an aggregator
-func NewAggregator(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggregator, error) {
+// New creates an aggregator
+func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggregator, error) {
 	regexObj, err := regexp.Compile(regex)
 	if err != nil {
 		return nil, err
 	}
-	funcs := map[string]AggregatorFunc{
-		"sum": Sum,
-		"avg": Avg,
-	}
-	fn, ok := funcs[fun]
+	fn, ok := Funcs[fun]
 	if !ok {
 		return nil, fmt.Errorf("no such aggregation function '%s'", fun)
 	}
@@ -121,8 +122,8 @@ func (agg *Aggregator) run() {
 	ticker := getAlignedTicker(interval)
 	for {
 		select {
-		case buf := <-agg.in:
-			log.Info("agg %s receiving %s", agg.Regex, buf)
+		case buf := <-agg.In:
+			//log.Info("agg %s receiving %s", agg.Regex, buf)
 			fields := bytes.Fields(buf)
 			// note, we rely here on the fact that the packet has already been validated
 			key := fields[0]

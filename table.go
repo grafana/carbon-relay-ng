@@ -4,14 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Dieterbe/go-metrics"
+	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"sync"
 )
 
 type Table struct {
 	sync.Mutex
-	Blacklist     []*Matcher    `json:"blacklist"`
-	Routes        []*Route      `json:"routes"`
-	Aggregators   []*Aggregator `json:"aggregators"`
+	Blacklist     []*Matcher               `json:"blacklist"`
+	Routes        []*Route                 `json:"routes"`
+	Aggregators   []*aggregator.Aggregator `json:"aggregators"`
 	spoolDir      string
 	numBlacklist  metrics.Counter
 	numUnroutable metrics.Counter
@@ -20,7 +21,7 @@ type Table struct {
 
 func NewTable(spoolDir string) *Table {
 	routes := make([]*Route, 0)
-	aggregators := make([]*Aggregator, 0)
+	aggregators := make([]*aggregator.Aggregator, 0)
 	blacklist := make([]*Matcher, 0)
 	t := &Table{
 		sync.Mutex{},
@@ -53,7 +54,7 @@ func (table *Table) Dispatch(buf []byte) {
 	}
 
 	for _, aggregator := range table.Aggregators {
-		aggregator.in <- buf
+		aggregator.In <- buf
 	}
 
 	routed := false
@@ -92,7 +93,7 @@ func (table *Table) Snapshot() *Table {
 		routes[i] = r.Snapshot()
 	}
 
-	aggs := make([]*Aggregator, len(table.Aggregators))
+	aggs := make([]*aggregator.Aggregator, len(table.Aggregators))
 	for i, a := range table.Aggregators {
 		aggs[i] = a.Snapshot()
 	}
@@ -124,7 +125,7 @@ func (table *Table) AddBlacklist(matcher *Matcher) {
 	table.Blacklist = append(table.Blacklist, matcher)
 }
 
-func (table *Table) AddAggregator(agg *Aggregator) {
+func (table *Table) AddAggregator(agg *aggregator.Aggregator) {
 	table.Lock()
 	defer table.Unlock()
 	table.Aggregators = append(table.Aggregators, agg)

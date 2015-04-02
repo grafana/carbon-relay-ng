@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/taylorchu/toki"
 	"strconv"
 	"strings"
@@ -178,7 +179,7 @@ func applyCommand(table *Table, cmd string) error {
 		if err != nil {
 			return err
 		}
-		agg, err := NewAggregator(fun, regex, outFmt, uint(interval), uint(wait), table.In)
+		agg, err := aggregator.New(fun, regex, outFmt, uint(interval), uint(wait), table.In)
 		if err != nil {
 			return err
 		}
