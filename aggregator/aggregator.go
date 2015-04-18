@@ -33,7 +33,7 @@ var Funcs = map[string]Func{
 type Aggregator struct {
 	Fun          string `json:"fun"`
 	fn           Func
-	In           chan []byte    // incoming metrics
+	In           chan []byte    `json:"-"` // incoming metrics
 	out          chan []byte    // outgoing metrics
 	Regex        string         `json:"regex,omitempty"`
 	regex        *regexp.Regexp // compiled version of Regex
