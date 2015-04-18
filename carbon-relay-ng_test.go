@@ -28,6 +28,8 @@ var packets6A *dummyPackets
 var packets6B *dummyPackets
 var packets6C *dummyPackets
 
+var metric70 []byte
+
 func init() {
 	instance = "test"
 	packets0A = NewDummyPackets("0A", 1)
@@ -43,6 +45,7 @@ func init() {
 	//packets6B = NewDummyPackets("6B", 1000000)
 	//packets6C = NewDummyPackets("6C", 1000000)
 	logging.SetLevel(logging.NOTICE, "carbon-relay-ng")
+	metric70 = []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // key = 48, val = 10, ts = 10 -> 70
 }
 
 func NewTableOrFatal(tb interface{}, spool_dir, cmd string) *Table {
@@ -280,7 +283,11 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 	table.ShutdownOrFatal(t)
 }
 
+// i thought conn will drop messages because the tE tcp handler can't keep up.
+// but looks like that's not true (anymore?), it just works without having to sleep after dispatch
+// also note the dummyPackets uses a channel api which probably causes most of the slowdown
 func benchmarkSendAndReceive(b *testing.B, dp *dummyPackets) {
+	logging.SetLevel(logging.ERROR, "carbon-relay-ng") // testendpoint sends a warning because it does something bad with conn at end but it's harmless
 	tE := NewTestEndpoint(nil, ":2005")
 	na := tE.conditionNumAccepts(1)
 	tE.Start()
@@ -297,7 +304,6 @@ func benchmarkSendAndReceive(b *testing.B, dp *dummyPackets) {
 			//fmt.Println("dispatching", m)
 			//fmt.Printf("dispatching '%s'\n", string(m))
 			table.Dispatch(m)
-			time.Sleep(100 * time.Nanosecond) // see above
 		}
 		log.Notice("waiting until all %d messages received", dp.amount*(i+1))
 		ns.Wait()
@@ -324,13 +330,53 @@ func BenchmarkSendAndReceiveMillion(b *testing.B) {
 	benchmarkSendAndReceive(b, packets6A)
 }
 
+// just dispatch (coming into table), no matching or sending to route
 func BenchmarkTableDispatchMillion(b *testing.B) {
-	m := []byte("foo.bar.baz.aoeuhs',.aoeusthsh 12345 1234567890")
-	table = NewTableOrFatal(b, "", "")
 	logging.SetLevel(logging.WARNING, "carbon-relay-ng") // don't care about unroutable notices
+	table = NewTableOrFatal(b, "", "")
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 1000000; j++ {
-			table.Dispatch(m)
+			table.Dispatch(metric70)
+		}
+	}
+}
+
+func BenchmarkMatchPrefixMillion(b *testing.B) {
+	matcher, _ := NewMatcher("abcde_fghij.klmnopqrst", "", "")
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 1000000; j++ {
+			matcher.Match(metric70)
+		}
+	}
+}
+
+func BenchmarkMatchSubstrMillion(b *testing.B) {
+	matcher, _ := NewMatcher("", "1234567890abc", "")
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 1000000; j++ {
+			matcher.Match(metric70)
+		}
+	}
+}
+
+func BenchmarkMatchRegexMillion(b *testing.B) {
+	matcher, _ := NewMatcher("", "", "abcde_(fghij|foo).[^\\.]+.\\.*.\\.*")
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 1000000; j++ {
+			matcher.Match(metric70)
+		}
+	}
+}
+
+// just sending into route, no matching or sending to dest
+func BenchmarkRouteSendMillion(b *testing.B) {
+	route, err := NewRoute(sendAllMatch(1), "", "", "", "", make([]*Destination, 0))
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 1000000; j++ {
+			route.in <- metric70
 		}
 	}
 }
