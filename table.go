@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
@@ -66,8 +67,11 @@ func (table *Table) Dispatch(buf []byte) {
 		}
 	}
 
-	for _, aggregator := range conf.aggregators {
-		aggregator.In <- buf
+	if len(conf.aggregators) > 0 {
+		fields := bytes.Fields(buf)
+		for _, aggregator := range conf.aggregators {
+			aggregator.In <- fields
+		}
 	}
 
 	routed := false

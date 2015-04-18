@@ -1,7 +1,6 @@
 package aggregator
 
 import (
-	"bytes"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -33,7 +32,7 @@ var Funcs = map[string]Func{
 type Aggregator struct {
 	Fun          string `json:"fun"`
 	fn           Func
-	In           chan []byte    `json:"-"` // incoming metrics
+	In           chan [][]byte  `json:"-"` // incoming metrics, already split in 3 fields
 	out          chan []byte    // outgoing metrics
 	Regex        string         `json:"regex,omitempty"`
 	regex        *regexp.Regexp // compiled version of Regex
@@ -61,7 +60,7 @@ func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggr
 		fun,
 		fn,
 		// i think it's possible in theory if this chan fills up, a deadlock to occur between table and this, but seems unlikely
-		make(chan []byte, 2000),
+		make(chan [][]byte, 2000),
 		out,
 		regex,
 		regexObj,
@@ -122,9 +121,7 @@ func (agg *Aggregator) run() {
 	ticker := getAlignedTicker(interval)
 	for {
 		select {
-		case buf := <-agg.In:
-			//log.Info("agg %s receiving %s", agg.Regex, buf)
-			fields := bytes.Fields(buf)
+		case fields := <-agg.In:
 			// note, we rely here on the fact that the packet has already been validated
 			key := fields[0]
 
