@@ -55,9 +55,11 @@ func NewTableOrFatal(tb interface{}, spool_dir, cmd string) *Table {
 			tb.(*testing.B).Fatal(err)
 		}
 	}
-	err := applyCommand(table, cmd)
-	if err != nil {
-		fatal(err)
+	if cmd != "" {
+		err := applyCommand(table, cmd)
+		if err != nil {
+			fatal(err)
+		}
 	}
 	return table
 }
@@ -320,4 +322,15 @@ func BenchmarkSendAndReceiveHundredThousand(b *testing.B) {
 }
 func BenchmarkSendAndReceiveMillion(b *testing.B) {
 	benchmarkSendAndReceive(b, packets6A)
+}
+
+func BenchmarkTableDispatchMillion(b *testing.B) {
+	m := []byte("foo.bar.baz.aoeuhs',.aoeusthsh 12345 1234567890")
+	table = NewTableOrFatal(b, "", "")
+	logging.SetLevel(logging.WARNING, "carbon-relay-ng") // don't care about unroutable notices
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 1000000; j++ {
+			table.Dispatch(m)
+		}
+	}
 }
