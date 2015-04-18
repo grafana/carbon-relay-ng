@@ -51,6 +51,8 @@ Instrumentation
 Building
 --------
 
+we use https://github.com/mjibson/party to manage vendoring 3rd party libraries
+
     export GOPATH=/some/path/
     export PATH="$PATH:$GOPATH/bin"
     go get -d github.com/graphite-ng/carbon-relay-ng

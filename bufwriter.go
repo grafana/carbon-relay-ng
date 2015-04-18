@@ -7,8 +7,8 @@ package main
 
 import (
 	"bytes"
-	"github.com/Dieterbe/go-metrics"
-	"github.com/op/go-logging"
+	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
+	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/op/go-logging"
 	"io"
 	"time"
 )

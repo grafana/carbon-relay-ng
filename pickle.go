@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/kisielk/og-rek"
+	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/kisielk/og-rek"
 )
 
 func pickle(dp *Datapoint) []byte {
