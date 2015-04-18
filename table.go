@@ -6,33 +6,47 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"sync"
+	"sync/atomic"
 )
 
+type TableConfig struct {
+	aggregators []*aggregator.Aggregator
+	blacklist   []*Matcher
+	routes      []*Route
+}
+
 type Table struct {
-	sync.Mutex
-	Blacklist     []*Matcher               `json:"blacklist"`
-	Routes        []*Route                 `json:"routes"`
-	Aggregators   []*aggregator.Aggregator `json:"aggregators"`
+	sync.Mutex                 // only needed for the multiple writers
+	config        atomic.Value // for reading and writing
 	spoolDir      string
 	numBlacklist  metrics.Counter
 	numUnroutable metrics.Counter
 	In            chan []byte `json:"-"` // channel api to trade in some performance for encapsulation
 }
 
+type TableSnapshot struct {
+	Aggregators []*aggregator.Aggregator `json:"aggregators"`
+	Blacklist   []*Matcher               `json:"blacklist"`
+	Routes      []*Route                 `json:"routes"`
+	spoolDir    string
+}
+
 func NewTable(spoolDir string) *Table {
-	routes := make([]*Route, 0)
-	aggregators := make([]*aggregator.Aggregator, 0)
-	blacklist := make([]*Matcher, 0)
 	t := &Table{
 		sync.Mutex{},
-		blacklist,
-		routes,
-		aggregators,
+		atomic.Value{},
 		spoolDir,
 		Counter("unit=Metric.direction=blacklist"),
 		Counter("unit=Metric.direction=unroutable"),
 		make(chan []byte),
 	}
+
+	t.config.Store(TableConfig{
+		make([]*aggregator.Aggregator, 0),
+		make([]*Matcher, 0),
+		make([]*Route, 0),
+	})
+
 	go func() {
 		for buf := range t.In {
 			t.Dispatch(buf)
@@ -43,23 +57,22 @@ func NewTable(spoolDir string) *Table {
 
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
-	table.Lock()
-	defer table.Unlock()
+	conf := table.config.Load().(TableConfig)
 
-	for _, matcher := range table.Blacklist {
+	for _, matcher := range conf.blacklist {
 		if matcher.Match(buf) {
 			table.numBlacklist.Inc(1)
 			return
 		}
 	}
 
-	for _, aggregator := range table.Aggregators {
+	for _, aggregator := range conf.aggregators {
 		aggregator.In <- buf
 	}
 
 	routed := false
 
-	for _, route := range table.Routes {
+	for _, route := range conf.routes {
 		if route.Match(buf) {
 			routed = true
 			//fmt.Println("routing to " + dest.Key)
@@ -78,32 +91,29 @@ func (table *Table) Dispatch(buf []byte) {
 
 // to view the state of the table/route at any point in time
 // we might add more functions to view specific entries if the need for that appears
-func (table *Table) Snapshot() *Table {
+func (table *Table) Snapshot() TableSnapshot {
+	conf := table.config.Load().(TableConfig)
 
-	table.Lock()
-	defer table.Unlock()
-
-	blacklist := make([]*Matcher, len(table.Blacklist))
-	for i, p := range table.Blacklist {
+	blacklist := make([]*Matcher, len(conf.blacklist))
+	for i, p := range conf.blacklist {
 		blacklist[i] = p
 	}
 
-	routes := make([]*Route, len(table.Routes))
-	for i, r := range table.Routes {
+	routes := make([]*Route, len(conf.routes))
+	for i, r := range conf.routes {
 		routes[i] = r.Snapshot()
 	}
 
-	aggs := make([]*aggregator.Aggregator, len(table.Aggregators))
-	for i, a := range table.Aggregators {
+	aggs := make([]*aggregator.Aggregator, len(conf.aggregators))
+	for i, a := range conf.aggregators {
 		aggs[i] = a.Snapshot()
 	}
-	return &Table{sync.Mutex{}, blacklist, routes, aggs, table.spoolDir, nil, nil, nil}
+	return TableSnapshot{aggs, blacklist, routes, table.spoolDir}
 }
 
 func (table *Table) GetRoute(key string) *Route {
-	table.Lock()
-	defer table.Unlock()
-	for _, r := range table.Routes {
+	conf := table.config.Load().(TableConfig)
+	for _, r := range conf.routes {
 		if r.Key == key {
 			return r
 		}
@@ -116,42 +126,49 @@ func (table *Table) GetRoute(key string) *Route {
 func (table *Table) AddRoute(route *Route) {
 	table.Lock()
 	defer table.Unlock()
-	table.Routes = append(table.Routes, route)
+	conf := table.config.Load().(TableConfig)
+	conf.routes = append(conf.routes, route)
+	table.config.Store(conf)
 }
 
 func (table *Table) AddBlacklist(matcher *Matcher) {
 	table.Lock()
 	defer table.Unlock()
-	table.Blacklist = append(table.Blacklist, matcher)
+	conf := table.config.Load().(TableConfig)
+	conf.blacklist = append(conf.blacklist, matcher)
+	table.config.Store(conf)
 }
 
 func (table *Table) AddAggregator(agg *aggregator.Aggregator) {
 	table.Lock()
 	defer table.Unlock()
-	table.Aggregators = append(table.Aggregators, agg)
+	conf := table.config.Load().(TableConfig)
+	conf.aggregators = append(conf.aggregators, agg)
+	table.config.Store(conf)
 }
 
 func (table *Table) DelAggregator(id int) error {
 	table.Lock()
 	defer table.Unlock()
-	fmt.Println("deleting", id)
 
-	if id >= len(table.Aggregators) {
+	conf := table.config.Load().(TableConfig)
+
+	if id >= len(conf.aggregators) {
 		return errors.New("Not found")
 	}
 
-	agg := table.Aggregators[id]
-	fmt.Println("len", len(table.Aggregators))
-	table.Aggregators = append(table.Aggregators[:id], table.Aggregators[id+1:]...)
-	fmt.Println("len", len(table.Aggregators))
+	agg := conf.aggregators[id]
+	fmt.Println("len", len(conf.aggregators))
+	conf.aggregators = append(conf.aggregators[:id], conf.aggregators[id+1:]...)
+	fmt.Println("len", len(conf.aggregators))
 	agg.Shutdown()
+	table.config.Store(conf)
 	return nil
 }
 
 func (table *Table) Flush() error {
-	table.Lock()
-	defer table.Unlock()
-	for _, route := range table.Routes {
+	conf := table.config.Load().(TableConfig)
+	for _, route := range conf.routes {
 		err := route.Flush()
 		if err != nil {
 			return err
@@ -163,13 +180,15 @@ func (table *Table) Flush() error {
 func (table *Table) Shutdown() error {
 	table.Lock()
 	defer table.Unlock()
-	for _, route := range table.Routes {
+	conf := table.config.Load().(TableConfig)
+	for _, route := range conf.routes {
 		err := route.Shutdown()
 		if err != nil {
 			return err
 		}
 	}
-	table.Routes = make([]*Route, 0)
+	conf.routes = make([]*Route, 0)
+	table.config.Store(conf)
 	return nil
 }
 
@@ -177,10 +196,11 @@ func (table *Table) Shutdown() error {
 func (table *Table) DelRoute(key string) error {
 	table.Lock()
 	defer table.Unlock()
+	conf := table.config.Load().(TableConfig)
 	toDelete := -1
 	var i int
 	var route *Route
-	for i, route = range table.Routes {
+	for i, route = range conf.routes {
 		if route.Key == key {
 			toDelete = i
 			break
@@ -190,7 +210,8 @@ func (table *Table) DelRoute(key string) error {
 		return nil
 	}
 
-	table.Routes = append(table.Routes[:toDelete], table.Routes[toDelete+1:]...)
+	conf.routes = append(conf.routes[:toDelete], conf.routes[toDelete+1:]...)
+	table.config.Store(conf)
 
 	err := route.Shutdown()
 	if err != nil {
@@ -204,10 +225,12 @@ func (table *Table) DelRoute(key string) error {
 func (table *Table) DelBlacklist(index int) error {
 	table.Lock()
 	defer table.Unlock()
-	if index >= len(table.Blacklist) {
+	conf := table.config.Load().(TableConfig)
+	if index >= len(conf.blacklist) {
 		return errors.New(fmt.Sprintf("Invalid index %d", index))
 	}
-	table.Blacklist = append(table.Blacklist[:index], table.Blacklist[index+1:]...)
+	conf.blacklist = append(conf.blacklist[:index], conf.blacklist[index+1:]...)
+	table.config.Store(conf)
 	return nil
 }
 
