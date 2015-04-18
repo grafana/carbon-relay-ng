@@ -59,10 +59,6 @@ func NewTableOrFatal(tb interface{}, spool_dir, cmd string) *Table {
 	if err != nil {
 		fatal(err)
 	}
-	err = table.Run()
-	if err != nil {
-		fatal(err)
-	}
 	return table
 }
 
