@@ -21,6 +21,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"runtime/pprof"
+	//"runtime"
 	"strings"
 	"time"
 )
@@ -147,6 +148,9 @@ func main() {
 		usage()
 		return
 	}
+
+	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
+
 	levels := map[string]logging.Level{
 		"critical": logging.CRITICAL,
 		"error":    logging.ERROR,
