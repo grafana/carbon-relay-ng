@@ -305,7 +305,7 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 			log.Warning("tE %s read error: %s. closing handler\n", tE.addr, err)
 			return
 		}
-		log.Info("tE %s %s read\n", tE.addr, string(buf))
+		log.Info("tE %s %s read\n", tE.addr, buf)
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
 		tE.seen <- buf_copy

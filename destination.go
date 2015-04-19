@@ -214,7 +214,7 @@ func (dest *Destination) relay() {
 		case conn.In <- buf:
 			conn.numBuffered.Inc(1)
 		default:
-			log.Info("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Addr, string(buf))
+			log.Info("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Addr, buf)
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
@@ -228,9 +228,9 @@ func (dest *Destination) relay() {
 	nonBlockingSpool := func(buf []byte) {
 		select {
 		case dest.spool.InRT <- buf:
-			log.Info("dest %s %s nonBlockingSpool -> added to spool\n", dest.Addr, string(buf))
+			log.Info("dest %s %s nonBlockingSpool -> added to spool\n", dest.Addr, buf)
 		default:
-			log.Info("dest %s %s nonBlockingSpool -> dropping due to slow spool\n", dest.Addr, string(buf))
+			log.Info("dest %s %s nonBlockingSpool -> dropping due to slow spool\n", dest.Addr, buf)
 			dest.numDropSlowSpool.Inc(1)
 		}
 	}
@@ -295,17 +295,17 @@ func (dest *Destination) relay() {
 			return
 		case buf := <-toUnspool:
 			// we know that conn != nil here because toUnspool is set above
-			log.Info("dest %v %s received from spool -> nonBlockingSend\n", dest.Addr, string(buf))
+			log.Info("dest %v %s received from spool -> nonBlockingSend\n", dest.Addr, buf)
 			nonBlockingSend(buf)
 		case buf := <-dest.in:
 			if conn != nil {
-				log.Info("dest %v %s received from In -> nonBlockingSend\n", dest.Addr, string(buf))
+				log.Info("dest %v %s received from In -> nonBlockingSend\n", dest.Addr, buf)
 				nonBlockingSend(buf)
 			} else if dest.Spool {
-				log.Info("dest %v %s received from In -> nonBlockingSpool\n", dest.Addr, string(buf))
+				log.Info("dest %v %s received from In -> nonBlockingSpool\n", dest.Addr, buf)
 				nonBlockingSpool(buf)
 			} else {
-				log.Info("dest %v %s received from In -> no conn no spool -> drop\n", dest.Addr, string(buf))
+				log.Info("dest %v %s received from In -> no conn no spool -> drop\n", dest.Addr, buf)
 				dest.numDropNoConnNoSpool.Inc(1)
 			}
 		}

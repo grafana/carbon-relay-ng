@@ -178,7 +178,7 @@ func (c *Conn) HandleData() {
 			active = time.Now()
 			c.numBuffered.Dec(1)
 			action = "write"
-			log.Info("conn %s HandleData: writing %s\n", c.dest.Addr, string(buf))
+			log.Info("conn %s HandleData: writing %s\n", c.dest.Addr, buf)
 			c.keepSafe.Add(buf)
 			n, err := c.Write(buf)
 			if err != nil {
@@ -266,7 +266,7 @@ func (c *Conn) Write(buf []byte) (int, error) {
 	}
 	if err == nil && size != n {
 		c.numErrTruncated.Inc(1)
-		err = errors.New(fmt.Sprintf("truncated write: %s", string(buf)))
+		err = errors.New(fmt.Sprintf("truncated write: %s", buf))
 	}
 	return written, err
 }
