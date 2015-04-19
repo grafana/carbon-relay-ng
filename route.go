@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 )
@@ -120,7 +119,7 @@ func (route *Route) Shutdown() error {
 	for _, e := range destErrs {
 		errStr += "   " + e.Error()
 	}
-	return errors.New("one or more destinations failed to shutdown:" + errStr)
+	return fmt.Errorf("one or more destinations failed to shutdown: %s", errStr)
 }
 
 // to view the state of the table/route at any point in time
@@ -148,7 +147,7 @@ func (route *Route) DelDestination(index int) error {
 	route.Lock()
 	defer route.Unlock()
 	if index >= len(route.Dests) {
-		return errors.New(fmt.Sprintf("Invalid index %d", index))
+		return fmt.Errorf("Invalid index %d", index)
 	}
 	route.Dests[index].Shutdown()
 	route.Dests = append(route.Dests[:index], route.Dests[index+1:]...)
@@ -176,7 +175,7 @@ func (route *Route) Update(opts map[string]string) error {
 			regex = val
 			updateMatcher = true
 		default:
-			return errors.New("no such option: " + name)
+			return fmt.Errorf("no such option '%s'", name)
 		}
 	}
 	if updateMatcher {
@@ -192,7 +191,7 @@ func (route *Route) UpdateDestination(index int, opts map[string]string) error {
 	route.Lock()
 	defer route.Unlock()
 	if index >= len(route.Dests) {
-		return errors.New(fmt.Sprintf("Invalid index %d", index))
+		return fmt.Errorf("Invalid index %d", index)
 	}
 	return route.Dests[index].Update(opts)
 }

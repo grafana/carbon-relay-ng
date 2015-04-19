@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
 	"io"
@@ -266,7 +265,7 @@ func (c *Conn) Write(buf []byte) (int, error) {
 	}
 	if err == nil && size != n {
 		c.numErrTruncated.Inc(1)
-		err = errors.New(fmt.Sprintf("truncated write: %s", buf))
+		err = fmt.Errorf("truncated write: %s", buf)
 	}
 	return written, err
 }

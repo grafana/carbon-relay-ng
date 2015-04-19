@@ -63,13 +63,13 @@ func readDestinations(specs []string, table *Table) (destinations []*Destination
 		t := s.Next()
 		//fmt.Println("thisisit")
 		if len(t.Value) == 0 {
-			return destinations, errors.New(fmt.Sprintf("addr not set for endpoint"))
+			return destinations, errors.New("addr not set for endpoint")
 		}
 		addr = string(t.Value)
 		//fmt.Println(t.Token, word)
 		if t.Token != word {
 			//fmt.Println("wtf", t.Token, word)
-			return destinations, errors.New(fmt.Sprintf("expected destination endpoint spec, not '%s'", t.Value))
+			return destinations, fmt.Errorf("expected destination endpoint spec, not '%s'", t.Value)
 		}
 		for {
 			t := s.Next()
@@ -107,7 +107,7 @@ func readDestinations(specs []string, table *Table) (destinations []*Destination
 						pickle = true
 					} else if val == "false" {
 					} else {
-						return destinations, errors.New("unrecognized pickle value '" + val + "'")
+						return destinations, fmt.Errorf("unrecognized pickle value '%s'", val)
 					}
 				case "spool=":
 					t := s.Next()
@@ -115,10 +115,10 @@ func readDestinations(specs []string, table *Table) (destinations []*Destination
 					if val == "true" {
 						spool = true
 					} else if val != "false" {
-						return destinations, errors.New("unrecognized spool value '" + val + "'")
+						return destinations, fmt.Errorf("unrecognized spool value '%s'", val)
 					}
 				default:
-					return destinations, errors.New("unrecognized option '" + val + "'")
+					return destinations, fmt.Errorf("unrecognized option '%s'", val)
 				}
 			} else {
 				break
@@ -154,7 +154,7 @@ func applyCommand(table *Table, cmd string) error {
 	if t.Token == addBlack {
 		split := bytes.Split(t.Value, []byte(" "))
 		if t = s.Next(); t.Token != toki.EOF {
-			return errors.New(fmt.Sprintf("extraneous input '%s'", string(t.Value)))
+			return fmt.Errorf("extraneous input '%s'", t.Value)
 		}
 		patt := string(split[1])
 		//fmt.Println(patt)
@@ -188,7 +188,7 @@ func applyCommand(table *Table, cmd string) error {
 		split := strings.Split(string(t.Value), " ")
 		key := split[2]
 		if len(inputs) < 2 {
-			return errors.New("must get at least 1 destination for route " + key)
+			return fmt.Errorf("must get at least 1 destination for route '%s'", key)
 		}
 
 		prefix, sub, regex, err := readRouteOpts(s)
@@ -208,7 +208,7 @@ func applyCommand(table *Table, cmd string) error {
 		split := strings.Split(string(t.Value), " ")
 		key := split[2]
 		if len(inputs) < 2 {
-			return errors.New("must get at least 1 destination for route " + key)
+			return fmt.Errorf("must get at least 1 destination for route '%s'", key)
 		}
 
 		prefix, sub, regex, err := readRouteOpts(s)
@@ -244,7 +244,7 @@ func applyCommand(table *Table, cmd string) error {
 		for _, str := range split[3:] {
 			opt := strings.Split(str, "=")
 			if len(opt) != 2 {
-				return errors.New("bad option format at " + str)
+				return fmt.Errorf("bad option format at '%s'", str)
 			}
 			opts[opt[0]] = opt[1]
 		}
@@ -260,18 +260,18 @@ func applyCommand(table *Table, cmd string) error {
 		for _, str := range split[2:] {
 			opt := strings.Split(str, "=")
 			if len(opt) != 2 {
-				return errors.New("bad option format at " + str)
+				return fmt.Errorf("bad option format at '%s'", str)
 			}
 			opts[opt[0]] = opt[1]
 		}
 
 		return table.UpdateRoute(key, opts)
 	} else {
-		return errors.New("unrecognized command '" + string(t.Value) + "'")
+		return fmt.Errorf("unrecognized command '%s'", t.Value)
 	}
 	if t = s.Next(); t.Token != toki.EOF {
 		//fmt.Println("h")
-		return errors.New("extraneous input '" + string(t.Value) + "'")
+		return fmt.Errorf("extraneous input '%s'", t.Value)
 	}
 	return nil
 }
@@ -300,7 +300,7 @@ func readRouteOpts(s *toki.Scanner) (prefix, sub, regex string, err error) {
 				val := s.Next()
 				regex = string(val.Value)
 			default:
-				return "", "", "", errors.New("unrecognized option '" + string(t.Value) + "'")
+				return "", "", "", fmt.Errorf("unrecognized option '%s'", t.Value)
 			}
 		}
 	}

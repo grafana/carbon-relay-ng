@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
@@ -158,7 +157,7 @@ func (table *Table) DelAggregator(id int) error {
 	conf := table.config.Load().(TableConfig)
 
 	if id >= len(conf.aggregators) {
-		return errors.New("Not found")
+		return fmt.Errorf("Invalid index %d", id)
 	}
 
 	agg := conf.aggregators[id]
@@ -231,7 +230,7 @@ func (table *Table) DelBlacklist(index int) error {
 	defer table.Unlock()
 	conf := table.config.Load().(TableConfig)
 	if index >= len(conf.blacklist) {
-		return errors.New(fmt.Sprintf("Invalid index %d", index))
+		return fmt.Errorf("Invalid index %d", index)
 	}
 	conf.blacklist = append(conf.blacklist[:index], conf.blacklist[index+1:]...)
 	table.config.Store(conf)
@@ -241,7 +240,7 @@ func (table *Table) DelBlacklist(index int) error {
 func (table *Table) DelDestination(key string, index int) error {
 	route := table.GetRoute(key)
 	if route == nil {
-		return errors.New(fmt.Sprintf("Invalid route for %v", key))
+		return fmt.Errorf("Invalid route for %v", key)
 	}
 	return route.DelDestination(index)
 }
@@ -249,7 +248,7 @@ func (table *Table) DelDestination(key string, index int) error {
 func (table *Table) UpdateDestination(key string, index int, opts map[string]string) error {
 	route := table.GetRoute(key)
 	if route == nil {
-		return errors.New(fmt.Sprintf("Invalid route for %v", key))
+		return fmt.Errorf("Invalid route for %v", key)
 	}
 	return route.UpdateDestination(index, opts)
 }
@@ -257,7 +256,7 @@ func (table *Table) UpdateDestination(key string, index int, opts map[string]str
 func (table *Table) UpdateRoute(key string, opts map[string]string) error {
 	route := table.GetRoute(key)
 	if route == nil {
-		return errors.New(fmt.Sprintf("Invalid route for %v", key))
+		return fmt.Errorf("Invalid route for %v", key)
 	}
 	return route.Update(opts)
 }
