@@ -5,13 +5,14 @@ A relay for carbon streams, in go.
 Like carbon-relay from the graphite project, except it:
 
 
- * should perform better (benchmark currently reports 50k metrics/s through a table with 1 endpoint. in prod i see 20k metrics/s before maxing out a single core.  still much room for optimization)
+ * performs better: should be able to do about 100k ~ 1M million metrics per second depending on configuration
  * you can adjust the routing table at runtime, in real time using the web or telnet interface (interfaces need more work)
  * has aggregator functionality built-in
  * supports a per-route spooling policy.
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
  * you can choose between plaintext or pickle output, per route.
  * can be restarted without dropping packets (needs testing)
+ * performs validation on all incoming metrics (see below)
  
 
 This makes it easy to fanout to other tools that feed in on the metrics.
@@ -41,7 +42,7 @@ Releases & versions
 Instrumentation
 ---------------
 
-* All performance variables are available in json at http://localhost:8081/debug/vars2 (update port if you change it in config)
+* Extensive performance variables are available in json at http://localhost:8081/debug/vars2 (update port if you change it in config)
 * You can also send metrics to graphite (or feed back into the relay), see config.
 * Comes with a [grafana dashboard template](https://github.com/graphite-ng/carbon-relay-ng/blob/master/grafana-dashboard.json) so you get up and running in no time.
 
@@ -99,6 +100,22 @@ if connection is up but slow, we drop the data
 if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data
 if connection is down and spooling disabled -> drop the data
 
+
+Validation
+==========
+
+All incoming metrics undergo some basic sanity checks before the metrics go into the routing table.  We check that the metric:
+
+* has 3 fields
+* the key has no characters beside `a-z A-Z _ - . =` (fairly strict but graphite causes problems with various other characters)
+* the value parses to an int or float
+* the timestamp is a unix timestamp
+* has no empty node (like field1.field2..field4)
+
+If we detect the metric is in metrics2.0 format we also check proper formatting, and unit and target_type are set.
+
+Invalid metrics are dropped and can be seen at /badMetrics/timespec.json where timespec is something like 30s, 10m, 24h, etc.
+(the counters are also exported.  See instrumentation section)
 
 
 Aggregation
