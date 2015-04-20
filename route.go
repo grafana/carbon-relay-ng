@@ -3,94 +3,119 @@ package main
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 )
 
-type Route struct {
-	Type    interface{}    `json:"type"` // actually RouteType, can we do this better?
-	Key     string         `json:"key"`
-	Matcher Matcher        `json:"matcher"`
-	Dests   []*Destination `json:"destination"`
-	in      chan []byte    // incoming metrics
-	running bool
-	sync.Mutex
+type RouteConfig struct {
+	Matcher Matcher
+	Dests   []*Destination
 }
 
-type RouteType int
-type sendAllMatch RouteType
-type sendFirstMatch RouteType
+type Route interface {
+	Dispatch(buf []byte)
+	Match(s []byte) bool
+	Snapshot() RouteSnapshot
+	Key() string
+	Flush() error
+	Shutdown() error
+	DelDestination(index int) error
+	UpdateDestination(index int, opts map[string]string) error
+	Update(opts map[string]string) error
+}
 
-// NewRoute creates a route.
+type RouteSnapshot struct {
+	Matcher Matcher        `json:"matcher"`
+	Dests   []*Destination `json:"destination"`
+	Type    string         `json:"type"`
+	Key     string         `json:"key"`
+}
+
+type baseRoute struct {
+	sync.Mutex              // only needed for the multiple writers
+	config     atomic.Value // for reading and writing
+
+	key string
+}
+
+type RouteSendAllMatch struct {
+	baseRoute
+}
+
+type RouteSendFirstMatch struct {
+	baseRoute
+}
+
+// NewRouteSendAllMatch creates a sendAllMatch route.
 // We will automatically run the route and the given destinations
-func NewRoute(routeType interface{}, key, prefix, sub, regex string, destinations []*Destination) (*Route, error) {
+func NewRouteSendAllMatch(key, prefix, sub, regex string, destinations []*Destination) (Route, error) {
 	m, err := NewMatcher(prefix, sub, regex)
 	if err != nil {
 		return nil, err
 	}
-	r := &Route{routeType, key, *m, destinations, make(chan []byte), false, sync.Mutex{}}
+	r := &RouteSendAllMatch{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
+	r.config.Store(RouteConfig{*m, destinations})
 	r.run()
 	return r, nil
 }
 
-func (route *Route) run() {
-	route.Lock()
-	defer route.Unlock()
-	if route.running {
-		panic(fmt.Sprintf("route.Run() called on already running route '%s'", route.Key))
+// NewRouteSendFirstMatch creates a sendFirstMatch route.
+// We will automatically run the route and the given destinations
+func NewRouteSendFirstMatch(key, prefix, sub, regex string, destinations []*Destination) (Route, error) {
+	m, err := NewMatcher(prefix, sub, regex)
+	if err != nil {
+		return nil, err
 	}
+	r := &RouteSendFirstMatch{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
+	r.config.Store(RouteConfig{*m, destinations})
+	r.run()
+	return r, nil
+}
 
-	for _, dest := range route.Dests {
+func (route *baseRoute) run() {
+	conf := route.config.Load().(RouteConfig)
+	for _, dest := range conf.Dests {
 		dest.Run()
 	}
-	// this probably can be cleaner if we make Route an interface.
-	switch route.Type.(type) {
-	case sendAllMatch:
-		go route.RelaySendAllMatch()
-	case sendFirstMatch:
-		go route.RelaySendFirstMatch()
-	}
-	route.running = true
 }
 
-func (route *Route) RelaySendAllMatch() {
-	for buf := range route.in {
-		log.Info("route %s receiving %s", route.Key, buf)
-		route.Lock()
-		for _, dest := range route.Dests {
-			if dest.Match(buf) {
-				// dest should handle this as quickly as it can
-				log.Info("route %s sending to dest %s: %s", route.Key, dest.Addr, buf)
-				dest.in <- buf
-			}
+func (route *RouteSendAllMatch) Dispatch(buf []byte) {
+	conf := route.config.Load().(RouteConfig)
+
+	for _, dest := range conf.Dests {
+		if dest.Match(buf) {
+			// dest should handle this as quickly as it can
+			log.Info("route %s sending to dest %s: %s", route.key, dest.Addr, buf)
+			dest.in <- buf
 		}
-		route.Unlock()
 	}
 }
 
-func (route *Route) RelaySendFirstMatch() {
-	for buf := range route.in {
-		route.Lock()
-		for _, dest := range route.Dests {
-			if dest.Match(buf) {
-				// dest should handle this as quickly as it can
-				dest.in <- buf
-				break
-			}
+func (route *RouteSendFirstMatch) Dispatch(buf []byte) {
+	conf := route.config.Load().(RouteConfig)
+
+	for _, dest := range conf.Dests {
+		if dest.Match(buf) {
+			// dest should handle this as quickly as it can
+			log.Info("route %s sending to dest %s: %s", route.key, dest.Addr, buf)
+			dest.in <- buf
+			break
 		}
-		route.Unlock()
 	}
 }
 
-func (route *Route) Match(s []byte) bool {
-	route.Lock()
-	defer route.Unlock()
-	return route.Matcher.Match(s)
+func (route *baseRoute) Key() string {
+	return route.key
 }
 
-func (route *Route) Flush() error {
-	route.Lock()
-	defer route.Unlock()
+func (route *baseRoute) Match(s []byte) bool {
+	conf := route.config.Load().(RouteConfig)
+	return conf.Matcher.Match(s)
+}
 
-	for _, d := range route.Dests {
+func (route *baseRoute) Flush() error {
+	conf := route.config.Load().(RouteConfig)
+
+	for _, d := range conf.Dests {
 		err := d.Flush()
 		if err != nil {
 			return err
@@ -99,13 +124,12 @@ func (route *Route) Flush() error {
 	return nil
 }
 
-func (route *Route) Shutdown() error {
-	route.Lock()
-	defer route.Unlock()
+func (route *baseRoute) Shutdown() error {
+	conf := route.config.Load().(RouteConfig)
 
 	destErrs := make([]error, 0)
 
-	for _, d := range route.Dests {
+	for _, d := range conf.Dests {
 		err := d.Shutdown()
 		if err != nil {
 			destErrs = append(destErrs, err)
@@ -119,45 +143,57 @@ func (route *Route) Shutdown() error {
 	for _, e := range destErrs {
 		errStr += "   " + e.Error()
 	}
-	return fmt.Errorf("one or more destinations failed to shutdown: %s", errStr)
+	return fmt.Errorf("one or more destinations failed to shutdown:" + errStr)
 }
 
 // to view the state of the table/route at any point in time
-// we might add more functions to view specific entries if the need for that appears
-func (route *Route) Snapshot() *Route {
-	route.Lock()
-	dests := make([]*Destination, len(route.Dests))
-	defer route.Unlock()
-	for i, d := range route.Dests {
+func (route *RouteSendAllMatch) Snapshot() RouteSnapshot {
+	conf := route.config.Load().(RouteConfig)
+	dests := make([]*Destination, len(conf.Dests))
+	for i, d := range conf.Dests {
 		dests[i] = d.Snapshot()
 	}
-	return &Route{route.Type, route.Key, route.Matcher, dests, nil, route.running, sync.Mutex{}}
+	return RouteSnapshot{conf.Matcher, dests, "sendAllMatch", route.key}
+}
+
+func (route *RouteSendFirstMatch) Snapshot() RouteSnapshot {
+	conf := route.config.Load().(RouteConfig)
+	dests := make([]*Destination, len(conf.Dests))
+	for i, d := range conf.Dests {
+		dests[i] = d.Snapshot()
+	}
+	return RouteSnapshot{conf.Matcher, dests, "sendFirstMatch", route.key}
 }
 
 // Add adds a new Destination to the Route and automatically runs it for you.
 // The destination must not be running already!
-func (route *Route) Add(dest *Destination) {
+func (route *baseRoute) Add(dest *Destination) {
 	route.Lock()
 	defer route.Unlock()
+	conf := route.config.Load().(RouteConfig)
 	dest.Run()
-	route.Dests = append(route.Dests, dest)
+	conf.Dests = append(conf.Dests, dest)
+	route.config.Store(conf)
 }
 
-func (route *Route) DelDestination(index int) error {
+func (route *baseRoute) DelDestination(index int) error {
 	route.Lock()
 	defer route.Unlock()
-	if index >= len(route.Dests) {
+	conf := route.config.Load().(RouteConfig)
+	if index >= len(conf.Dests) {
 		return fmt.Errorf("Invalid index %d", index)
 	}
-	route.Dests[index].Shutdown()
-	route.Dests = append(route.Dests[:index], route.Dests[index+1:]...)
+	conf.Dests[index].Shutdown()
+	conf.Dests = append(conf.Dests[:index], conf.Dests[index+1:]...)
+	route.config.Store(conf)
 	return nil
 }
 
-func (route *Route) Update(opts map[string]string) error {
+func (route *baseRoute) Update(opts map[string]string) error {
 	route.Lock()
 	defer route.Unlock()
-	matcher := route.Matcher
+	conf := route.config.Load().(RouteConfig)
+	matcher := conf.Matcher
 	prefix := matcher.Prefix
 	sub := matcher.Sub
 	regex := matcher.Regex
@@ -183,21 +219,23 @@ func (route *Route) Update(opts map[string]string) error {
 		if err != nil {
 			return err
 		}
-		route.Matcher = *matcher
+		conf.Matcher = *matcher
 	}
+	route.config.Store(conf)
 	return nil
 }
-func (route *Route) UpdateDestination(index int, opts map[string]string) error {
-	route.Lock()
-	defer route.Unlock()
-	if index >= len(route.Dests) {
+func (route *baseRoute) UpdateDestination(index int, opts map[string]string) error {
+	conf := route.config.Load().(RouteConfig)
+	if index >= len(conf.Dests) {
 		return fmt.Errorf("Invalid index %d", index)
 	}
-	return route.Dests[index].Update(opts)
+	return conf.Dests[index].Update(opts)
 }
 
-func (route *Route) UpdateMatcher(matcher Matcher) {
+func (route *baseRoute) UpdateMatcher(matcher Matcher) {
 	route.Lock()
 	defer route.Unlock()
-	route.Matcher = matcher
+	conf := route.config.Load().(RouteConfig)
+	conf.Matcher = matcher
+	route.config.Store(conf)
 }

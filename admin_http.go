@@ -5,7 +5,7 @@ import (
 	"fmt"
 	assetfs "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/elazarl/go-bindata-assetfs"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/gorilla/mux"
-	"io/ioutil"
+	//	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -123,6 +123,7 @@ func removeRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerE
 	return make(map[string]string), nil
 }
 
+/*
 func parseRouteRequest(r *http.Request) (*Route, *handlerError) {
 	data, e := ioutil.ReadAll(r.Body)
 	if e != nil {
@@ -136,6 +137,7 @@ func parseRouteRequest(r *http.Request) (*Route, *handlerError) {
 	}
 	return &payload, nil
 }
+*/
 
 /* needs updating, but using what api?
 func updateRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {

@@ -199,7 +199,7 @@ func applyCommand(table *Table, cmd string) error {
 		if err != nil {
 			return err
 		}
-		route, err := NewRoute(sendAllMatch(1), key, prefix, sub, regex, destinations)
+		route, err := NewRouteSendAllMatch(key, prefix, sub, regex, destinations)
 		if err != nil {
 			return err
 		}
@@ -219,7 +219,7 @@ func applyCommand(table *Table, cmd string) error {
 		if err != nil {
 			return err
 		}
-		route, err := NewRoute(sendFirstMatch(2), key, prefix, sub, regex, destinations)
+		route, err := NewRouteSendFirstMatch(key, prefix, sub, regex, destinations)
 		if err != nil {
 			return err
 		}

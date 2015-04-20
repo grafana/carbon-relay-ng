@@ -12,7 +12,7 @@ import (
 type TableConfig struct {
 	aggregators []*aggregator.Aggregator
 	blacklist   []*Matcher
-	routes      []*Route
+	routes      []Route
 }
 
 type Table struct {
@@ -27,7 +27,7 @@ type Table struct {
 type TableSnapshot struct {
 	Aggregators []*aggregator.Aggregator `json:"aggregators"`
 	Blacklist   []*Matcher               `json:"blacklist"`
-	Routes      []*Route                 `json:"routes"`
+	Routes      []RouteSnapshot          `json:"routes"`
 	spoolDir    string
 }
 
@@ -44,7 +44,7 @@ func NewTable(spoolDir string) *Table {
 	t.config.Store(TableConfig{
 		make([]*aggregator.Aggregator, 0),
 		make([]*Matcher, 0),
-		make([]*Route, 0),
+		make([]Route, 0),
 	})
 
 	go func() {
@@ -81,7 +81,7 @@ func (table *Table) Dispatch(buf []byte) {
 			//fmt.Println("routing to " + dest.Key)
 			// routes should take this in as fast as they can
 			log.Info("table sending to route: %s", buf)
-			route.in <- buf
+			route.Dispatch(buf)
 		}
 	}
 
@@ -102,7 +102,7 @@ func (table *Table) Snapshot() TableSnapshot {
 		blacklist[i] = p
 	}
 
-	routes := make([]*Route, len(conf.routes))
+	routes := make([]RouteSnapshot, len(conf.routes))
 	for i, r := range conf.routes {
 		routes[i] = r.Snapshot()
 	}
@@ -114,10 +114,10 @@ func (table *Table) Snapshot() TableSnapshot {
 	return TableSnapshot{aggs, blacklist, routes, table.spoolDir}
 }
 
-func (table *Table) GetRoute(key string) *Route {
+func (table *Table) GetRoute(key string) Route {
 	conf := table.config.Load().(TableConfig)
 	for _, r := range conf.routes {
-		if r.Key == key {
+		if r.Key() == key {
 			return r
 		}
 	}
@@ -126,7 +126,7 @@ func (table *Table) GetRoute(key string) *Route {
 
 // AddRoute adds a route to the table.
 // The Route must be running already
-func (table *Table) AddRoute(route *Route) {
+func (table *Table) AddRoute(route Route) {
 	table.Lock()
 	defer table.Unlock()
 	conf := table.config.Load().(TableConfig)
@@ -190,7 +190,7 @@ func (table *Table) Shutdown() error {
 			return err
 		}
 	}
-	conf.routes = make([]*Route, 0)
+	conf.routes = make([]Route, 0)
 	table.config.Store(conf)
 	return nil
 }
@@ -202,9 +202,9 @@ func (table *Table) DelRoute(key string) error {
 	conf := table.config.Load().(TableConfig)
 	toDelete := -1
 	var i int
-	var route *Route
+	var route Route
 	for i, route = range conf.routes {
-		if route.Key == key {
+		if route.Key() == key {
 			toDelete = i
 			break
 		}
