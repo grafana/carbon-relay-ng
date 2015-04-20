@@ -276,6 +276,7 @@ func (table *Table) Print() (str string) {
 	maxAOutFmt := 8
 	maxAInterval := 4
 	maxAwait := 4
+	maxRType := 8
 	maxRKey := 8
 	maxRPrefix := 4
 	maxRSub := 4
@@ -300,6 +301,7 @@ func (table *Table) Print() (str string) {
 		maxAwait = max(maxAwait, len(fmt.Sprintf("%d", agg.Wait)))
 	}
 	for _, route := range t.Routes {
+		maxRType = max(maxRType, len(route.Type))
 		maxRKey = max(maxRKey, len(route.Key))
 		maxRPrefix = max(maxRPrefix, len(route.Matcher.Prefix))
 		maxRSub = max(maxRSub, len(route.Matcher.Sub))
@@ -316,8 +318,8 @@ func (table *Table) Print() (str string) {
 	rowFmtB := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
 	heaFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%%ds %%%ds\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
 	rowFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%%dd %%%dd\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
-	heaFmtR := fmt.Sprintf("  %%%ds %%%ds %%%ds %%%ds\n", maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
-	rowFmtR := fmt.Sprintf("> %%%ds %%%ds %%%ds %%%ds\n", maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
+	heaFmtR := fmt.Sprintf("  %%%ds %%%ds %%%ds %%%ds %%%ds\n", maxRType+1, maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
+	rowFmtR := fmt.Sprintf("> %%%ds %%%ds %%%ds %%%ds %%%ds\n", maxRType+1, maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
 	heaFmtD := fmt.Sprintf("        %%%ds %%%ds %%%ds %%%ds %%%ds %%6s %%6s %%6s\n", maxDPrefix+1, maxDSub+1, maxDRegex+1, maxDAddr+1, maxDSpoolDir+1)
 	rowFmtD := fmt.Sprintf("                %%%ds %%%ds %%%ds %%%ds %%%ds %%6t %%6t %%6t\n", maxDPrefix+1, maxDSub+1, maxDRegex+1, maxDAddr+1, maxDSpoolDir+1)
 
@@ -345,12 +347,12 @@ func (table *Table) Print() (str string) {
 	}
 
 	str += "\n## Routes:\n"
-	cols = fmt.Sprintf(heaFmtR, "key", "prefix", "substr", "regex")
+	cols = fmt.Sprintf(heaFmtR, "type", "key", "prefix", "substr", "regex")
 	str += cols + underscore(len(cols))
 
 	for _, route := range t.Routes {
 		m := route.Matcher
-		str += fmt.Sprintf(rowFmtR, route.Key, m.Prefix, m.Sub, m.Regex)
+		str += fmt.Sprintf(rowFmtR, route.Type, route.Key, m.Prefix, m.Sub, m.Regex)
 		str += fmt.Sprintf(heaFmtD, "prefix", "substr", "regex", "addr", "spoolDir", "spool", "pickle", "online")
 		str += "              "
 		for i := 1; i < maxDPrefix+maxDSub+maxDRegex+maxDAddr+maxDSpoolDir+5+3*6+10; i++ {
