@@ -1,6 +1,7 @@
 package aggregator
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -36,6 +37,7 @@ type Aggregator struct {
 	out          chan []byte    // outgoing metrics
 	Regex        string         `json:"regex,omitempty"`
 	regex        *regexp.Regexp // compiled version of Regex
+	prefix       []byte         // automatically generated based on regex, for fast preMatch
 	OutFmt       string
 	outFmt       []byte
 	Interval     uint             // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
@@ -44,6 +46,34 @@ type Aggregator struct {
 	snapReq      chan bool        // chan to issue snapshot requests on
 	snapResp     chan *Aggregator // chan on which snapshot response gets sent
 	shutdown     chan bool        // chan used internally to shut down
+}
+
+// regexToPrefix inspects the regex and returns the longest static prefix part of the regex
+// all inputs for which the regex match, must have this prefix
+func regexToPrefix(regex string) []byte {
+	substr := ""
+	for i := 0; i < len(regex); i++ {
+		ch := regex[i]
+		if i == 0 {
+			if ch == '^' {
+				continue // good we need this
+			} else {
+				break // can't deduce any substring here
+			}
+		}
+		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' {
+			substr += string(ch)
+			// "\." means a dot character
+		} else if ch == 92 && i+1 < len(regex) && regex[i+1] == '.' {
+			substr += "."
+			i += 1
+		} else {
+			//fmt.Println("don't know what to do with", string(ch))
+			// anything more advanced should be regex syntax that is more permissive and hence not a static substring.
+			break
+		}
+	}
+	return []byte(substr)
 }
 
 // New creates an aggregator
@@ -64,6 +94,7 @@ func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggr
 		out,
 		regex,
 		regexObj,
+		regexToPrefix(regex),
 		outFmt,
 		[]byte(outFmt),
 		interval,
@@ -116,6 +147,13 @@ func (agg *Aggregator) Shutdown() {
 	return
 }
 
+//PreMatch checks if the specified metric might match the regex
+//by comparing it to the prefix derived from the regex
+//if this returns false, the metric will definitely not match the regex and be ignored.
+func (agg *Aggregator) PreMatch(buf []byte) bool {
+	return bytes.HasPrefix(buf, agg.prefix)
+}
+
 func (agg *Aggregator) run() {
 	interval := time.Duration(agg.Interval) * time.Second
 	ticker := getAlignedTicker(interval)
@@ -151,6 +189,7 @@ func (agg *Aggregator) run() {
 				nil,
 				agg.Regex,
 				nil,
+				agg.prefix,
 				agg.OutFmt,
 				nil,
 				agg.Interval,

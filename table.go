@@ -69,7 +69,10 @@ func (table *Table) Dispatch(buf []byte) {
 	if len(conf.aggregators) > 0 {
 		fields := bytes.Fields(buf)
 		for _, aggregator := range conf.aggregators {
-			aggregator.In <- fields
+			// we rely on incoming metrics already having been validated
+			if aggregator.PreMatch(fields[0]) {
+				aggregator.In <- fields
+			}
 		}
 	}
 
