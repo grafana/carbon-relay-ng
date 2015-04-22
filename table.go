@@ -21,7 +21,7 @@ type Table struct {
 	spoolDir      string
 	numBlacklist  metrics.Counter
 	numUnroutable metrics.Counter
-	In            chan []byte `json:"-"` // channel api to trade in some performance for encapsulation
+	In            chan []byte `json:"-"` // channel api to trade in some performance for encapsulation, for aggregators
 }
 
 type TableSnapshot struct {
@@ -49,12 +49,14 @@ func NewTable(spoolDir string) *Table {
 
 	go func() {
 		for buf := range t.In {
-			t.Dispatch(buf)
+			t.DispatchAggregate(buf)
 		}
 	}()
 	return t
 }
 
+// Dispatch dispatches incoming metrics into matching aggregators and routes,
+// after checking against the blacklist
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
 	conf := table.config.Load().(TableConfig)
@@ -81,8 +83,27 @@ func (table *Table) Dispatch(buf []byte) {
 	for _, route := range conf.routes {
 		if route.Match(buf) {
 			routed = true
-			//fmt.Println("routing to " + dest.Key)
-			// routes should take this in as fast as they can
+			log.Info("table sending to route: %s", buf)
+			route.Dispatch(buf)
+		}
+	}
+
+	if !routed {
+		table.numUnroutable.Inc(1)
+		log.Notice("unrouteable: %s\n", buf)
+	}
+
+}
+
+// DispatchAggregate routes aggregation output metrics into the matching routes.
+// buf is assumed to have no whitespace at the end
+func (table *Table) DispatchAggregate(buf []byte) {
+	conf := table.config.Load().(TableConfig)
+	routed := false
+
+	for _, route := range conf.routes {
+		if route.Match(buf) {
+			routed = true
 			log.Info("table sending to route: %s", buf)
 			route.Dispatch(buf)
 		}

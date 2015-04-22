@@ -89,7 +89,6 @@ func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggr
 	agg := &Aggregator{
 		fun,
 		fn,
-		// i think it's possible in theory if this chan fills up, a deadlock to occur between table and this, but seems unlikely
 		make(chan [][]byte, 2000),
 		out,
 		regex,

@@ -84,7 +84,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
 
 * All incoming matrics are validated, filtered through the blacklist and then go into the table.
 * The table sends the metric to:
-  * the aggregators, who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below.
+  * the aggregators, who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below for details.
   * any routes that matches
 * The route can have different behaviors, based on its type:
 
@@ -125,7 +125,7 @@ As discussed in concepts above, we can combine, at each point in time, the point
 Note:
 * The interval parameter let's you quantize ("fix") timestamps, for example with an interval of 60 seconds, if you have incoming metrics for times that differ from each other, but all fall within the same minute, they will be counted together.
 * The wait parameter allows up to the specified amount of seconds to wait for values, With a wait of 120, metrics can come 2 minutes late and still be included in the aggregation results.
-* The fmt parameter dictates what the metric key of the aggregated metric will be.  use $1, $2 to refer to groups in the regex
+* The fmt parameter dictates what the metric key of the aggregated metric will be.  use $1, $2, etc to refer to groups in the regex
 * Note that we direct incoming values to an aggregation bucket based on the interval the timestamp is in, and the output key it generates.
   This means that you can have 3 aggregation cases, based on how you set your regex, interval and fmt string.
   - aggregation of points with different metric keys, but with the same, or similar timestamps) into one outgoing value (~ carbon-aggregator).
@@ -133,9 +133,7 @@ Note:
   - aggregation of individual metrics, i.e. packets for the same key, with different timestamps.  For example if you receive values for the same key every second, you can aggregate into minutely buckets by setting interval to 60, and have the fmt yield a unique key for every input metric key.  (~ graphite rollups)
   - the combination: compute aggregates from values seen with different keys, and at multiple points in time.
 * functions currently available: avg and sum
-* aggregation output goes back into the table so you can route it however you want.
-* since the output metrics go back into the table, this means you can create new rules that leverage results from other rules.
-  (this is probably not useful and will probably be changed). Either way, make sure you don't accidentally match your own output.
+* aggregation output is routed via the routing table just like all other metrics.  Note that aggregation output will never go back into aggregators (to prevent loops) and also bypasses the validation and blacklist.
 * see the included ini for examples
 
 
