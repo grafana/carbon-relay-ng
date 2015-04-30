@@ -10,6 +10,7 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   
 
   $scope.validAddress = /^[^:]+\:[0-9]+$/;
+  $scope.validRouteType = /^send(All|First)Match/
   $scope.validRegex = (function() {
       return {
           test: function(value) {
@@ -46,12 +47,39 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
 
   $scope.list();
 
-  $scope.add = function() {
+  $scope.newAgg = new Aggregator({Type: "agg", Interval:60, Wait: 120});
+  $scope.addAggregator = function() {
     $scope.alerts = [];
-    Route.save({key:null}, $scope.newRoute, function() { $scope.newRoute = {}; $scope.list(); },
-     function(err) { $scope.alerts = [{msg: err.data.error}]; });
+    $scope.newAgg.$save().then(function(resp) {
+      $scope.newAdd = new Aggregator({Type: "agg", Interval:60, Wait: 120});
+      $scope.list();
+    },function(err) {
+      $scope.alerts = [{msg: err.data.error}];
+    });
+  };
+  $scope.removeAggregator = function(idx){
+    if (confirm('Are you sure you want to delete aggregator entry no. ' + idx)) {
+      Aggregator.delete({'index':idx});
+      $scope.list();
+    }
   };
 
+  $scope.newRoute = new Route({Pickle: false, Spool: true, Pickle: false, Type: "sendAllMatch"});
+  $scope.addRoute = function() {
+    $scope.alerts = [];
+    $scope.newRoute.$save().then(function(resp) {
+      $scope.newRoute = new Route({Pickle: false, Spool: true, Pickle: false, Type: "sendAllMatch"});
+      $scope.list();
+    },function(err) {
+      $scope.alerts = [{msg: err.data.error}];
+    });
+  };
+  $scope.removeAggregator = function(idx){
+    if (confirm('Are you sure you want to delete aggregator entry no. ' + idx)) {
+      Aggregator.delete({'index':idx});
+      $scope.list();
+    }
+  };
   $scope.save = function(route) {
     $scope.alerts = [];
     Route.save({}, route, function() {$scope.list(); },
@@ -61,19 +89,6 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   $scope.removeBlacklist = function(idx){
     if (confirm('Are you sure you want to delete blacklist entry no. ' + idx)) {
       Blacklist.delete({'index':idx});
-      $scope.list();
-    }
-  };
-
-  $scope.addAggregator = function() {
-    $scope.alerts = [];
-    Aggregator.save({key:null}, $scope.newAggregator, function() { $scope.newAggregator = {}; $scope.list(); },
-     function(err) { $scope.alerts = [{msg: err.data.error}]; });
-  };
-
-  $scope.removeAggregator = function(idx){
-    if (confirm('Are you sure you want to delete aggregator entry no. ' + idx)) {
-      Aggregator.delete({'index':idx});
       $scope.list();
     }
   };

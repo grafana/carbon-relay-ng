@@ -5,7 +5,7 @@ import (
 	"fmt"
 	assetfs "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/elazarl/go-bindata-assetfs"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/gorilla/mux"
-	//	"io/ioutil"
+	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"net/http"
 	"os"
 	"strconv"
@@ -32,7 +32,7 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// check for errors
 	if err != nil {
 		//log.Printf("ERROR: %v\n", err.Error)
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Message), err.Code)
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Message+": "+err.Error.Error()), err.Code)
 		return
 	}
 	if response == nil {
@@ -122,22 +122,54 @@ func removeRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerE
 	}
 	return make(map[string]string), nil
 }
-
-/*
-func parseRouteRequest(r *http.Request) (*Route, *handlerError) {
-	data, e := ioutil.ReadAll(r.Body)
-	if e != nil {
-		return &Route{}, &handlerError{e, "Could not read request", http.StatusBadRequest}
+func parseRouteRequest(r *http.Request) (Route, *handlerError) {
+	var request struct {
+		Address   string
+		Key       string
+		Pickle    bool
+		Spool     bool
+		Type      string
+		Substring string
+		Prefix    string
+		Regex     string
 	}
-
-	var payload Route
-	e = json.Unmarshal(data, &payload)
-	if e != nil {
-		return &Route{}, &handlerError{e, "Could not parse JSON", http.StatusBadRequest}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
 	}
-	return &payload, nil
+	// use hard coded defaults for flush and reconn as specified in
+	// readDestinations
+	dest, err := NewDestination(request.Key, request.Substring, request.Regex, request.Address, table.spoolDir, request.Spool, request.Pickle, 1000, 1000)
+	if err != nil {
+		return nil, &handlerError{err, "unable to create destination", http.StatusBadRequest}
+	}
+	var route Route
+	switch request.Type {
+	case "sendAllMatch":
+		route, err = NewRouteSendAllMatch(request.Key, request.Prefix, request.Substring, request.Regex, []*Destination{dest})
+	case "sendFirstMatch":
+		route, err = NewRouteSendFirstMatch(request.Key, request.Prefix, request.Substring, request.Regex, []*Destination{dest})
+	default:
+		return nil, &handlerError{nil, "unknown route type: " + request.Type, http.StatusBadRequest}
+	}
+	return route, nil
 }
-*/
+func parseAggregateRequest(r *http.Request) (*aggregator.Aggregator, *handlerError) {
+	var request struct {
+		Fun      string
+		OutFmt   string
+		Interval uint
+		Wait     uint
+		Regex    string
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
+	}
+	aggregate, err := aggregator.New(request.Fun, request.Regex, request.OutFmt, request.Interval, request.Wait, table.In)
+	if err != nil {
+		return nil, &handlerError{err, "Couldn't create aggregator", http.StatusBadRequest}
+	}
+	return aggregate, nil
+}
 
 /* needs updating, but using what api?
 func updateRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
@@ -154,33 +186,25 @@ func updateRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerE
 }
 
 */
-/* needs updating. not sure what's the best way to get the route from the http data
-func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
-	payload, err := parseRouteRequest(r)
+func addAggregate(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+	aggregate, err := parseAggregateRequest(r)
 	if err != nil {
 		return nil, err
 	}
-    var t interface{}
 
-	if payload.Type == "sendAllMatch" {
-		t = sendAllMatch(1)
-	} else if payload.Type == "sendFirstMatch" {
-		t = sendFirstMatch(1)
-	} else {
-		return nil, &handlerError{errors.New("unknown route type"), fmt.Sprintf("unknown route type '%v'", payload.Type), http.StatusBadRequest}
-	}
-
-	route, err := NewRoute(t, payload.Key, payload.Matcher.Prefix, payload.Matcher.Sub, payload.Matcher.Regex)
-	if err != nil {
-		return nil, &handlerError{err, "Could not create route (" + err.Error() + ")", http.StatusBadRequest}
-	}
-	err = table.AddRoute(route)
-	if err != nil {
-		return nil, &handlerError{err, "Could not add route to table (" + err.Error() + ")", http.StatusInternalServerError}
-	}
-	return routes.Map[payload.Key], nil
+	table.AddAggregator(aggregate)
+	return map[string]string{"Message": "aggregate added"}, nil
 }
-*/
+
+func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+	route, err := parseRouteRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	table.AddRoute(route)
+	return map[string]string{"Message": "route added"}, nil
+}
 
 func HttpListener(addr string, t *Table) {
 	table = t
@@ -195,9 +219,10 @@ func HttpListener(addr string, t *Table) {
 	router.Handle("/blacklists/{index}", handler(removeBlacklist)).Methods("DELETE")
 	// aggregator
 	router.Handle("/aggregators/{index}", handler(removeAggregator)).Methods("DELETE")
+	router.Handle("/aggregators", handler(addAggregate)).Methods("POST")
 	// routes
 	router.Handle("/routes", handler(listRoutes)).Methods("GET")
-	//router.Handle("/routes", handler(addRoute)).Methods("POST")
+	router.Handle("/routes", handler(addRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(getRoute)).Methods("GET")
 	//router.Handle("/routes/{key}", handler(updateRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(removeRoute)).Methods("DELETE")
