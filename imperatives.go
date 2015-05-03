@@ -156,7 +156,7 @@ func applyCommand(table *Table, cmd string) error {
 		prefix_pat := ""
 		sub_pat := ""
 		regex_pat := ""
-		
+
 		if len(inputs) == 2 {
 			// The fallback case to support the default substring method
 			sub_pat = inputs[1]
