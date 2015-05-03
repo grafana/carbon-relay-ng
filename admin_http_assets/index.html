@@ -162,17 +162,17 @@
                     <td><!--<span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>--></td>
                     <td></td>
                     <td></td>
-                    <td ng-class="{'danger': !d.online }">{{d.matcher.prefix}}</td>
-                    <td ng-class="{'danger': !d.online }">{{d.matcher.substring}}</td>
-                    <td ng-class="{'danger': !d.online }">{{d.matcher.regex}}</td>
-                    <td ng-class="{'danger': !d.online }">{{d.address}}</td>
-                    <td ng-class="{'danger': !d.online }" class="text-center">
+                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.prefix}}</td>
+                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.substring}}</td>
+                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.regex}}</td>
+                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.address}}</td>
+                    <td ng-class="{'danger': !d.online, 'info': d.online}" class="text-center">
                     <icon ng-show="d.spool" class="glyphicon glyphicon-hdd"/>
                   </td>
-                  <td ng-class="{ 'danger' : !d.online }" class="text-center">
+                  <td ng-class="{ 'danger' : !d.online, 'info': d.online}" class="text-center">
                     <icon ng-show="d.pickle" class="glyphicon glyphicon-ok-sign"/>
                   </td>
-                  <td ng-class="{ 'danger' : !d.online }" colspan="2"><a ng-click="removeDestination(r.key,$index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
+                  <td ng-class="{ 'danger' : !d.online, 'info': d.online}" colspan="2"><a ng-click="removeDestination(r.key,$index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
                 </tr>
               </tbody>
               <tbody>
