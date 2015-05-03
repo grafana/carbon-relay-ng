@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/taylorchu/toki"
@@ -29,7 +28,7 @@ const (
 // we should never half apply the change if one of them fails.
 
 var tokenDefGlobal = []toki.Def{
-	{Token: addBlack, Pattern: "addBlack [^ ]+"},
+	{Token: addBlack, Pattern: "addBlack .*"},
 	{Token: addAgg, Pattern: "addAgg .*"},
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch [a-z-_]+"},
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch [a-z-_]+"},
@@ -138,7 +137,7 @@ func readDestinations(specs []string, table *Table) (destinations []*Destination
 }
 
 // note the two spaces between a route and endpoints
-//"addBlack filter-out-all-metrics-matching-this-substring",
+//"addBlack [prefix|sub|regex] filter-out-all-metrics-matching-this-substring",
 //"addRoute sendAllMatch carbon-default  127.0.0.1:2005 spool=false pickle=false",
 //"addRoute sendFirstMatch demo sub=foo prefix=foo re=foo  127.0.0.1:12345 spool=true"
 //addBlack string-without-spaces
@@ -152,17 +151,39 @@ func applyCommand(table *Table, cmd string) error {
 	s.SetInput(inputs[0])
 	t := s.Next()
 	if t.Token == addBlack {
-		split := bytes.Split(t.Value, []byte(" "))
-		if t = s.Next(); t.Token != toki.EOF {
-			return fmt.Errorf("extraneous input '%s'", t.Value)
+		inputs = strings.Fields(cmd)
+
+		prefix_pat := ""
+		sub_pat := ""
+		regex_pat := ""
+		
+		if len(inputs) == 2 {
+			// The fallback case to support the default substring method
+			sub_pat = inputs[1]
+		} else if len(inputs) == 3 {
+			// New case supporting prefix, sub and regex patterns
+			match_method := inputs[1]
+			pattern := inputs[2]
+
+			if match_method == "prefix" {
+				prefix_pat = pattern
+			} else if match_method == "sub" {
+				sub_pat = pattern
+			} else if match_method == "regex" {
+				regex_pat = pattern
+			} else {
+				return errors.New("addBlack [prefix|sub|regex] <pattern> (invalid match type)")
+			}
+		} else {
+			return errors.New("addBlack [prefix|sub|regex] <pattern>")
 		}
-		patt := string(split[1])
-		//fmt.Println(patt)
-		m, err := NewMatcher("", patt, "")
+
+		m, err := NewMatcher(prefix_pat, sub_pat, regex_pat)
 		if err != nil {
 			return err
 		}
 		table.AddBlacklist(m)
+
 	} else if t.Token == addAgg {
 		inputs = strings.Fields(cmd)
 		if len(inputs) != 6 {
