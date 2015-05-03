@@ -153,7 +153,7 @@ commands:
     help                                         show this menu
     view                                         view full current routing table
 
-    addBlack <substring>                         blacklist (drops the metric matching this as soon as it is received)
+    addBlack <prefix|sub|regex> <substring>      blacklist (drops matching metrics as soon as they are received)
 
     addAgg <func> <regex> <fmt> <interval> <wait>  add a new aggregation rule.
              <func>:                             aggregation function to use
