@@ -95,7 +95,7 @@ func (table *Table) Dispatch(buf []byte) {
 
 }
 
-// DispatchAggregate routes aggregation output metrics into the matching routes.
+// DispatchAggregate dispatches aggregation output by routing metrics into the matching routes.
 // buf is assumed to have no whitespace at the end
 func (table *Table) DispatchAggregate(buf []byte) {
 	conf := table.config.Load().(TableConfig)

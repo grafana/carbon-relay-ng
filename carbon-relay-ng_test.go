@@ -369,7 +369,7 @@ func BenchmarkMatchRegexMillion(b *testing.B) {
 }
 
 // just sending into route, no matching or sending to dest
-func BenchmarkRouteSendMillion(b *testing.B) {
+func BenchmarkRouteDispatchMillion(b *testing.B) {
 	route, err := NewRouteSendAllMatch("", "", "", "", make([]*Destination, 0))
 	if err != nil {
 		b.Fatal(err)
