@@ -34,9 +34,7 @@ Future work aka what's missing
 Releases & versions
 -------------------
 
-* master (work in progress): refactored version with non-blocking operations, extensive internal stats and a more extensive routing system (which can support round robin & hashing) (see #23).  the admin interfaces need more work.
-* v0.5 extended version with config file, http and telnet interfaces, statsd for internal instrumentation, disk spooling support, but still blocking sends. (no longer supported)
-* v0.1 initial, simple version that used commandline args to configure. no admin interfaces. blocking sends (1 endpoint down blocks the program)(no longer supported)
+see [https://github.com/graphite-ng/carbon-relay-ng/releases](https://github.com/graphite-ng/carbon-relay-ng/releases)
 
 
 Instrumentation
