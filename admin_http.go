@@ -138,7 +138,9 @@ func parseRouteRequest(r *http.Request) (Route, *handlerError) {
 	}
 	// use hard coded defaults for flush and reconn as specified in
 	// readDestinations
-	dest, err := NewDestination(request.Key, request.Substring, request.Regex, request.Address, table.spoolDir, request.Spool, request.Pickle, 1000, 1000)
+	periodFlush := time.Duration(1000) * time.Millisecond
+	periodReconn := time.Duration(10000) * time.Millisecond
+	dest, err := NewDestination("", "", "", request.Address, table.spoolDir, request.Spool, request.Pickle, periodFlush, periodReconn)
 	if err != nil {
 		return nil, &handlerError{err, "unable to create destination", http.StatusBadRequest}
 	}
