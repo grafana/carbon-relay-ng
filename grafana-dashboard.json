@@ -779,7 +779,7 @@
         "includeAll": true,
         "allFormat": "glob",
         "refresh": true,
-        "query": "service_is_carbon-relay-ng.instance_is_$instance.dest_is_*",
+        "query": "service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_*",
         "current": {},
         "regex": "/dest_is_(.*)/"
       }
