@@ -50,6 +50,7 @@ Instrumentation
 Building
 --------
 
+Requires Go 1.4 or higher.
 we use https://github.com/mjibson/party to manage vendoring 3rd party libraries
 
     export GOPATH=/some/path/
