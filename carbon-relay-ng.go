@@ -9,6 +9,12 @@ import (
 	"expvar"
 	"flag"
 	"fmt"
+	"io"
+	"net"
+	_ "net/http/pprof"
+	"os"
+	"runtime/pprof"
+
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/BurntSushi/toml"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics/exp"
@@ -16,13 +22,9 @@ import (
 	logging "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/op/go-logging"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/rcrowley/goagain"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
-	"io"
-	"net"
-	_ "net/http/pprof"
-	"os"
-	"runtime/pprof"
 	//"runtime"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -244,6 +246,13 @@ func main() {
 		if err := goagain.KillParent(ppid); nil != err {
 			log.Error(err.Error())
 			os.Exit(1)
+		}
+		for {
+			err := syscall.Kill(ppid, 0)
+			if err != nil {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 
