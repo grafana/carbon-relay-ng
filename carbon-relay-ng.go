@@ -23,7 +23,6 @@ import (
 	logging "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/op/go-logging"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/rcrowley/goagain"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
-	//"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -34,7 +33,7 @@ type Config struct {
 	Admin_addr          string
 	Http_addr           string
 	Spool_dir           string
-    Maxprocs            string
+    Maxprocs            int
 	First_only          bool
 	Routes              []*Route
 	Init                []string
@@ -182,13 +181,7 @@ func main() {
 		os.Exit(1)
 	}
 
-    if config.Maxprocs != "" {
-        runtime.GOMAXPROCS = int(config.Maxprocs)
-    //}
-    //else {
-        //default to double the number of CPUs to get hyperthreading
-    //    runtime.GOMAXPROCS = runtime.NumCPU() * 2
-    //}
+    runtime.GOMAXPROCS(config.Maxprocs)
 
 	instance = config.Instance
 	expvar.NewString("instance").Set(instance)
