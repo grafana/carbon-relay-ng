@@ -13,7 +13,7 @@ import (
 	"net"
 	_ "net/http/pprof"
 	"os"
-    "runtime"
+	"runtime"
 	"runtime/pprof"
 
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/BurntSushi/toml"
@@ -33,7 +33,7 @@ type Config struct {
 	Admin_addr          string
 	Http_addr           string
 	Spool_dir           string
-    Maxprocs            int
+	max_procs           int
 	First_only          bool
 	Routes              []*Route
 	Init                []string
@@ -181,7 +181,7 @@ func main() {
 		os.Exit(1)
 	}
 
-    runtime.GOMAXPROCS(config.Maxprocs)
+	runtime.GOMAXPROCS(config.max_procs)
 
 	instance = config.Instance
 	expvar.NewString("instance").Set(instance)
