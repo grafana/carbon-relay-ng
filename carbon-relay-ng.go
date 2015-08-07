@@ -13,6 +13,7 @@ import (
 	"net"
 	_ "net/http/pprof"
 	"os"
+	"runtime"
 	"runtime/pprof"
 
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/BurntSushi/toml"
@@ -22,7 +23,6 @@ import (
 	logging "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/op/go-logging"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/rcrowley/goagain"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
-	//"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -33,6 +33,7 @@ type Config struct {
 	Admin_addr          string
 	Http_addr           string
 	Spool_dir           string
+	max_procs           int
 	First_only          bool
 	Routes              []*Route
 	Init                []string
@@ -150,7 +151,6 @@ func main() {
 		usage()
 		return
 	}
-
 	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
 
 	levels := map[string]logging.Level{
@@ -180,6 +180,8 @@ func main() {
 		log.Error("instance identifier cannot be empty")
 		os.Exit(1)
 	}
+
+	runtime.GOMAXPROCS(config.max_procs)
 
 	instance = config.Instance
 	expvar.NewString("instance").Set(instance)
