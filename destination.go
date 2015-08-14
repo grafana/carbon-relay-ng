@@ -13,12 +13,24 @@ func addrToPath(s string) string {
 	return strings.Replace(strings.Replace(s, ".", "_", -1), ":", "_", -1)
 }
 
+func addrInstanceSplit(addr string) (string, string) {
+	var instance string
+	// The address may be specified as server:port or server:port:instance.
+	addrComponents := strings.Split(addr, ":")
+	if len(addrComponents) == 3 {
+		instance = addrComponents[2]
+	}
+	addr = strings.Join(addrComponents[0:2], ":")
+	return addr, instance
+}
+
 type Destination struct {
 	// basic properties in init and copy
 	lockMatcher sync.Mutex
 	Matcher     Matcher `json:"matcher"`
 
-	Addr         string `json:"address"` // tcp dest
+	Addr         string `json:"address"`  // tcp dest
+	Instance     string `json:"instance"` // Optional carbon instance name, useful only with consistent hashing
 	spoolDir     string // where to store spool files (if enabled)
 	Spool        bool   `json:"spool"`        // spool metrics to disk while dest down?
 	Pickle       bool   `json:"pickle"`       // send in pickle format?
@@ -50,10 +62,12 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 	if err != nil {
 		return nil, err
 	}
+	addr, instance := addrInstanceSplit(addr)
 	cleanAddr := addrToPath(addr)
 	dest := &Destination{
 		Matcher:      *m,
 		Addr:         addr,
+		Instance:     instance,
 		spoolDir:     spoolDir,
 		Spool:        spool,
 		Pickle:       pickle,
@@ -176,6 +190,7 @@ func (dest *Destination) updateConn(addr string) {
 	log.Debug("dest %v (re)connecting to %v\n", dest.Addr, addr)
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
+	addr, instance := addrInstanceSplit(addr)
 	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle)
 	if err != nil {
 		log.Debug("dest %v: %v\n", dest.Addr, err.Error())
@@ -185,6 +200,7 @@ func (dest *Destination) updateConn(addr string) {
 	if addr != dest.Addr {
 		log.Notice("dest %v update address to %v)\n", dest.Addr, addr)
 		dest.Addr = addr
+		dest.Instance = instance
 		dest.cleanAddr = addrToPath(addr)
 		dest.setMetrics()
 	}

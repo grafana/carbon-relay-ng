@@ -13,7 +13,7 @@ Like carbon-relay from the graphite project, except it:
  * you can choose between plaintext or pickle output, per route.
  * can be restarted without dropping packets (needs testing)
  * performs validation on all incoming metrics (see below)
- 
+
 
 This makes it easy to fanout to other tools that feed in on the metrics.
 Or balance/split load, or provide redundancy, or partition the data, etc.
@@ -170,6 +170,7 @@ commands:
              <type>:
                sendAllMatch                      send metrics in the route to all destinations
                sendFirstMatch                    send metrics in the route to the first one that matches it
+               consistentHashing                 distribute metrics between destinations using a hash algorithm
              <opts>:
                prefix=<str>                      only take in metrics that have this prefix
                sub=<str>                         only take in metrics that match this substring

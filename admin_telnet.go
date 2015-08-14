@@ -64,6 +64,7 @@ commands:
              <type>:
                sendAllMatch                      send metrics in the route to all destinations
                sendFirstMatch                    send metrics in the route to the first one that matches it
+               consistentHashing                 distribute metrics between destinations using a hash algorithm
              <opts>:
                prefix=<str>                      only take in metrics that have this prefix
                sub=<str>                         only take in metrics that match this substring
