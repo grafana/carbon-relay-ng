@@ -16,6 +16,7 @@ const (
 	addAgg
 	addRouteSendAllMatch
 	addRouteSendFirstMatch
+	addRouteConsistentHashing
 	addDest
 	modDest
 	modRoute
@@ -32,6 +33,7 @@ var tokenDefGlobal = []toki.Def{
 	{Token: addAgg, Pattern: "addAgg .*"},
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch [a-z-_]+"},
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch [a-z-_]+"},
+	{Token: addRouteConsistentHashing, Pattern: "addRoute consistentHashing [a-z-_]+"},
 	{Token: addDest, Pattern: "addDest [a-z-_]+"},
 	{Token: modDest, Pattern: "modDest .*"},
 	{Token: modRoute, Pattern: "modRoute .*"},
@@ -49,7 +51,7 @@ var tokenDefDest = []toki.Def{
 // we should read and apply all destinations at once,
 // or at least make sure we apply them to the global datastruct at once,
 // otherwise we can destabilize things / send wrong traffic, etc
-func readDestinations(specs []string, table *Table) (destinations []*Destination, err error) {
+func readDestinations(specs []string, table *Table, allowMatcher bool) (destinations []*Destination, err error) {
 	s := toki.NewScanner(tokenDefDest)
 	for _, spec := range specs {
 		//fmt.Println("spec" + spec)
@@ -127,6 +129,9 @@ func readDestinations(specs []string, table *Table) (destinations []*Destination
 
 		periodFlush := time.Duration(flush) * time.Millisecond
 		periodReConn := time.Duration(reconn) * time.Millisecond
+		if !allowMatcher && (prefix != "" || sub != "" || regex != "") {
+			return destinations, fmt.Errorf("matching options (prefix, sub, and regex) not allowed for this route type")
+		}
 		dest, err := NewDestination(prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn)
 		if err != nil {
 			return destinations, err
@@ -216,7 +221,7 @@ func applyCommand(table *Table, cmd string) error {
 		if err != nil {
 			return err
 		}
-		destinations, err := readDestinations(inputs[1:], table)
+		destinations, err := readDestinations(inputs[1:], table, true)
 		if err != nil {
 			return err
 		}
@@ -236,11 +241,31 @@ func applyCommand(table *Table, cmd string) error {
 		if err != nil {
 			return err
 		}
-		destinations, err := readDestinations(inputs[1:], table)
+		destinations, err := readDestinations(inputs[1:], table, true)
 		if err != nil {
 			return err
 		}
 		route, err := NewRouteSendFirstMatch(key, prefix, sub, regex, destinations)
+		if err != nil {
+			return err
+		}
+		table.AddRoute(route)
+	} else if t.Token == addRouteConsistentHashing {
+		split := strings.Split(string(t.Value), " ")
+		key := split[2]
+		if len(inputs) < 3 {
+			return fmt.Errorf("must get at least 2 destinations for consistent hashing route '%s'", key)
+		}
+
+		prefix, sub, regex, err := readRouteOpts(s)
+		if err != nil {
+			return err
+		}
+		destinations, err := readDestinations(inputs[1:], table, false)
+		if err != nil {
+			return err
+		}
+		route, err := NewRouteConsistentHashing(key, prefix, sub, regex, destinations)
 		if err != nil {
 			return err
 		}

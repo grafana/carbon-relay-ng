@@ -7,15 +7,15 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   var Aggregator = $resource("/aggregators/:index");
   var Route = $resource("/routes/:key", {key: '@key'}, {});
   var Destination = $resource("/routes/:key/destinations/:index");
-  
 
-  $scope.validAddress = /^[^:]+\:[0-9]+$/;
-  $scope.validRouteType = /^send(All|First)Match/
+
+  $scope.validAddress = /^[^:]+\:[0-9]+(:[^:]+)?$/;
+  $scope.validRouteType = /^(send(All|First)Match)|(consistentHashing)/
   $scope.validRegex = (function() {
       return {
           test: function(value) {
               var isValid = true;
-              try { 
+              try {
                 new RegExp(value);
               } catch(e) {
                 isValid = false;

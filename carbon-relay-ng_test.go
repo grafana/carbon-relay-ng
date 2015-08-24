@@ -129,9 +129,12 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 	table := NewTableOrFatal(t, spoolDir, cmd)
 	fmt.Println(table.Print())
 	log.Notice("waiting for both connections to establish")
-	naUUU.AllowBG(50*time.Millisecond, &tEWaits)
-	naUDU.AllowBG(50*time.Millisecond, &tEWaits)
+	naUUU.AllowBG(100*time.Millisecond, &tEWaits)
+	naUDU.AllowBG(100*time.Millisecond, &tEWaits)
 	tEWaits.Wait()
+	// Give some time for unspooled destination to be marked online.
+	// Otherwise, the first metric is sometimes dropped.
+	time.Sleep(5 * time.Millisecond)
 	log.Notice("sending first batch of metrics to table")
 	nsUUU := tUUU.conditionNumSeen(1000)
 	nsUDU := tUDU.conditionNumSeen(1000)
@@ -245,9 +248,12 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 	table := NewTableOrFatal(t, spoolDir, cmd)
 	fmt.Println(table.Print())
 	log.Notice("waiting for both connections to establish")
-	na1.AllowBG(50*time.Millisecond, &tEWaits)
-	na2.AllowBG(50*time.Millisecond, &tEWaits)
+	na1.AllowBG(100*time.Millisecond, &tEWaits)
+	na2.AllowBG(100*time.Millisecond, &tEWaits)
 	tEWaits.Wait()
+	// Give some time for unspooled destination to be marked online.
+	// Otherwise, the first metric is sometimes dropped.
+	time.Sleep(5 * time.Millisecond)
 	log.Notice("sending metrics to table")
 	ns1 := t1.conditionNumSeen(dp.amount)
 	ns2 := t2.conditionNumSeen(dp.amount)
@@ -281,6 +287,114 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 	t2.Close()
 
 	table.ShutdownOrFatal(t)
+}
+
+func TestConsistentHashing(t *testing.T) {
+	log.Notice("##### START STEP 1: three endpoints")
+	ports := []string{
+		":2005",
+		":2006",
+		":2007",
+	}
+	testConsistentHashing(t, ports, func() *Table {
+		cmd := "addRoute consistentHashing test  127.0.0.1:2005  127.0.0.1:2006  127.0.0.1:2007"
+		return NewTableOrFatal(t, "", cmd)
+	})
+
+	// Wait for listen ports to become available again
+	time.Sleep(1 * time.Second)
+
+	log.Notice("##### START STEP 2: start with three endpoints and delete one")
+	ports = []string{
+		":2005",
+		":2006",
+	}
+	testConsistentHashing(t, ports, func() *Table {
+		cmd := "addRoute consistentHashing test  127.0.0.1:2005  127.0.0.1:2006  127.0.0.1:2007"
+		table := NewTableOrFatal(t, "", cmd)
+		table.DelDestination("test", 2)
+		return table
+	})
+
+	// Wait for listen ports to become available again
+	time.Sleep(1 * time.Second)
+
+	log.Notice("##### START STEP 3: start with two destinations and change one")
+	ports = []string{
+		":2007",
+		":2006",
+	}
+	testConsistentHashing(t, ports, func() *Table {
+		cmd := "addRoute consistentHashing test  127.0.0.1:2005  127.0.0.1:2006"
+		table := NewTableOrFatal(t, "", cmd)
+		applyCommand(table, "modDest test 0 addr=127.0.0.1:2007")
+		return table
+	})
+
+	table.ShutdownOrFatal(t)
+}
+
+func getHasherFromFirstRoute(table *Table) *ConsistentHasher {
+	return table.config.Load().(TableConfig).routes[0].(*RouteConsistentHashing).config.Load().(consistentHashingRouteConfig).Hasher
+}
+
+func testConsistentHashing(t *testing.T, endpointPorts []string, initTable func() *Table) {
+	tEWaits := sync.WaitGroup{} // for when we want to wait on multiple tE's simultaneously
+	// The order of endpointPorts is expected to correspond to the order
+	// of the destinations in the table returned by initTable.
+	endpoints := make([]*TestEndpoint, len(endpointPorts))
+	for i := range endpoints {
+		endpoints[i] = NewTestEndpoint(t, endpointPorts[i])
+		na := endpoints[i].conditionNumAccepts(1)
+		endpoints[i].Start()
+		na.AllowBG(100*time.Millisecond, &tEWaits)
+	}
+	// Lazily instantiate the table here to ensure that endpoints are up
+	// before the table destinations start trying to connect.
+	table := initTable()
+	fmt.Println(table.Print())
+	log.Notice("waiting for connections to establish")
+	tEWaits.Wait()
+	// Give some time for unspooled destination to be marked online.
+	// Otherwise, the first metric is sometimes dropped.
+	time.Sleep(5 * time.Millisecond)
+
+	log.Notice("sending metrics to table")
+	packets := packets3A
+	endpointCount := make([]int, len(endpoints))
+	endpointChannels := make([]chan []byte, len(endpoints))
+	for i := range endpointChannels {
+		endpointChannels[i] = make(chan []byte, packets.amount)
+	}
+	hasher := getHasherFromFirstRoute(table)
+
+	for buf := range packets.All() {
+		table.Dispatch(buf)
+		idx := hasher.GetDestinationIndex(buf)
+		endpointCount[idx]++
+		endpointChannels[idx] <- buf
+		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
+		// note i'm afraid this sleep masks another issue: data can get reordered.
+		// if you take this sleep away, and run like so:
+		// go test 2>&1 | egrep '(table sending to route|route.*receiving)' | grep -v 2006
+		// you should see that data goes through the table in the right order, but the route receives
+		// the points in a different order.
+		time.Sleep(100 * time.Nanosecond) // see above
+	}
+	for i := range endpointChannels {
+		close(endpointChannels[i])
+	}
+	log.Notice("waiting for received data")
+	for i, endpoint := range endpoints {
+		ns := endpoint.conditionNumSeen(endpointCount[i])
+		ns.AllowBG(1*time.Second, &tEWaits)
+	}
+	tEWaits.Wait()
+	log.Notice("validating received data")
+	for i, endpoint := range endpoints {
+		endpoint.SeenThisOrFatal(endpointChannels[i])
+		endpoint.Close()
+	}
 }
 
 // i thought conn will drop messages because the tE tcp handler can't keep up.
