@@ -15,12 +15,12 @@ func addrToPath(s string) string {
 
 func addrInstanceSplit(addr string) (string, string) {
 	var instance string
-	// The address may be specified as server:port or server:port:instance.
-	addrComponents := strings.Split(addr, ":")
-	if len(addrComponents) == 3 {
+	// The address may be specified as server, server:port or server:port:instance.
+	if strings.Count(addr, ":") == 3 {
+		addrComponents := strings.Split(addr, ":")
+		addr = strings.Join(addrComponents[0:2], ":")
 		instance = addrComponents[2]
 	}
-	addr = strings.Join(addrComponents[0:2], ":")
 	return addr, instance
 }
 

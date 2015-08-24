@@ -28,7 +28,6 @@ Future work aka what's missing
 
 * multi-node clustered high availability (open for discussion whether it's worth it)
 * pub-sub interface, maybe
-* consistent hashing across different endpoints, if it can be implemented in an elegant way.  (note that this would still be a hack and mostly aimed for legacy setups, [decent storage has redundancy and distribution built in properly ](http://dieter.plaetinck.be/on-graphite-whisper-and-influxdb.html).
 
 
 Releases & versions
@@ -89,7 +88,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
 
   * sendAllMatch: send all metrics to all the defined endpoints (possibly, and commonly only 1 endpoint).
   * sendFirstMatch: send the metrics to the first endpoint that matches it.
-  * consistent hashing: the route is a CH pool (not implemented)
+  * consistentHashing: the algorithm is the same as Carbon's consistent hashing.
   * round robin: the route is a RR pool (not implemented)
 
 
@@ -177,6 +176,9 @@ commands:
                regex=<regex>                     only take in metrics that match this regex (expensive!)
              <dest>: <addr> <opts>
                <addr>                            a tcp endpoint. i.e. ip:port or hostname:port
+                                                 for consistentHashing routes, an instance identifier can also be present:
+                                                 hostname:port:instance
+                                                 The instance is used to disambiguate multiple endpoints on the same host, as the Carbon-compatible consistent hashing algorithm does not take the port into account.
                <opts>:
                    prefix=<str>                  only take in metrics that have this prefix
                    sub=<str>                     only take in metrics that match this substring
