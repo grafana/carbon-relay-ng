@@ -129,9 +129,12 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 	table := NewTableOrFatal(t, spoolDir, cmd)
 	fmt.Println(table.Print())
 	log.Notice("waiting for both connections to establish")
-	naUUU.AllowBG(50*time.Millisecond, &tEWaits)
-	naUDU.AllowBG(50*time.Millisecond, &tEWaits)
+	naUUU.AllowBG(100*time.Millisecond, &tEWaits)
+	naUDU.AllowBG(100*time.Millisecond, &tEWaits)
 	tEWaits.Wait()
+	// Give some time for unspooled destination to be marked online.
+	// Otherwise, the first metric is sometimes dropped.
+	time.Sleep(5 * time.Millisecond)
 	log.Notice("sending first batch of metrics to table")
 	nsUUU := tUUU.conditionNumSeen(1000)
 	nsUDU := tUDU.conditionNumSeen(1000)
@@ -245,9 +248,12 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 	table := NewTableOrFatal(t, spoolDir, cmd)
 	fmt.Println(table.Print())
 	log.Notice("waiting for both connections to establish")
-	na1.AllowBG(50*time.Millisecond, &tEWaits)
-	na2.AllowBG(50*time.Millisecond, &tEWaits)
+	na1.AllowBG(100*time.Millisecond, &tEWaits)
+	na2.AllowBG(100*time.Millisecond, &tEWaits)
 	tEWaits.Wait()
+	// Give some time for unspooled destination to be marked online.
+	// Otherwise, the first metric is sometimes dropped.
+	time.Sleep(5 * time.Millisecond)
 	log.Notice("sending metrics to table")
 	ns1 := t1.conditionNumSeen(dp.amount)
 	ns2 := t2.conditionNumSeen(dp.amount)
