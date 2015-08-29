@@ -238,6 +238,23 @@ func (d Decoder) Decode() (interface{}, error) {
 	return d.pop(), nil
 }
 
+func (d *Decoder) readLine() ([]byte, error) {
+	var (
+		line     []byte
+		data     []byte
+		isPrefix = true
+		err      error
+	)
+	for isPrefix {
+		data, isPrefix, err = d.r.ReadLine()
+		if err != nil {
+			return line, err
+		}
+		line = append(line, data...)
+	}
+	return line, nil
+}
+
 // Push a marker
 func (d *Decoder) mark() {
 	d.push(mark{})
@@ -280,7 +297,7 @@ func (d *Decoder) dup() {
 
 // Push a float
 func (d *Decoder) loadFloat() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -294,7 +311,7 @@ func (d *Decoder) loadFloat() error {
 
 // Push an int
 func (d *Decoder) loadInt() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -342,7 +359,7 @@ func (d *Decoder) loadBinInt1() error {
 
 // Push a long
 func (d *Decoder) loadLong() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -422,7 +439,7 @@ func decodeStringEscape(b []byte) string {
 
 // Push a string
 func (d *Decoder) loadString() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -477,7 +494,8 @@ func (d *Decoder) loadShortBinString() error {
 }
 
 func (d *Decoder) loadUnicode() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
+
 	if err != nil {
 		return err
 	}
@@ -485,9 +503,16 @@ func (d *Decoder) loadUnicode() error {
 
 	buf := bytes.Buffer{}
 
-	for len(sline) >= 6 {
+	for len(sline) > 0 {
 		var r rune
 		var err error
+		for len(sline) > 0 && sline[0] == '\'' {
+			buf.WriteByte(sline[0])
+			sline = sline[1:]
+		}
+		if len(sline) == 0 {
+			break
+		}
 		r, _, sline, err = strconv.UnquoteChar(sline, '\'')
 		if err != nil {
 			return err
@@ -548,11 +573,11 @@ type Class struct {
 }
 
 func (d *Decoder) global() error {
-	module, _, err := d.r.ReadLine()
+	module, err := d.readLine()
 	if err != nil {
 		return err
 	}
-	name, _, err := d.r.ReadLine()
+	name, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -602,7 +627,7 @@ func (d *Decoder) loadAppends() error {
 }
 
 func (d *Decoder) get() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
@@ -688,7 +713,7 @@ func (d *Decoder) obj() error {
 }
 
 func (d *Decoder) loadPut() error {
-	line, _, err := d.r.ReadLine()
+	line, err := d.readLine()
 	if err != nil {
 		return err
 	}
