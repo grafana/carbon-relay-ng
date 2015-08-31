@@ -23,6 +23,8 @@ import (
 	logging "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/op/go-logging"
 	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/rcrowley/goagain"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
+	//"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -41,6 +43,7 @@ type Config struct {
 	Log_level           string
 	Instrumentation     instrumentation
 	Bad_metrics_max_age string
+	Pid_file            string
 }
 
 type instrumentation struct {
@@ -256,6 +259,20 @@ func main() {
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
+	}
+
+	if config.Pid_file != "" {
+		f, err := os.Create(config.Pid_file)
+		if err != nil {
+			fmt.Println("error creating pidfile:", err.Error())
+			os.Exit(1)
+		}
+		_, err = f.Write([]byte(strconv.Itoa(os.Getpid())))
+		if err != nil {
+			fmt.Println("error writing to pidfile:", err.Error())
+			os.Exit(1)
+		}
+		f.Close()
 	}
 
 	if config.Admin_addr != "" {
