@@ -3,10 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
 )
 
 func addrToPath(s string) string {
@@ -16,7 +17,7 @@ func addrToPath(s string) string {
 func addrInstanceSplit(addr string) (string, string) {
 	var instance string
 	// The address may be specified as server, server:port or server:port:instance.
-	if strings.Count(addr, ":") == 3 {
+	if strings.Count(addr, ":") == 2 {
 		addrComponents := strings.Split(addr, ":")
 		addr = strings.Join(addrComponents[0:2], ":")
 		instance = addrComponents[2]
