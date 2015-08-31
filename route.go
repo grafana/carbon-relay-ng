@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -140,10 +141,15 @@ func (route *RouteSendFirstMatch) Dispatch(buf []byte) {
 
 func (route *RouteConsistentHashing) Dispatch(buf []byte) {
 	conf := route.config.Load().(consistentHashingRouteConfig)
-	dest := conf.Dests()[conf.Hasher.GetDestinationIndex(buf)]
-	// dest should handle this as quickly as it can
-	log.Info("route %s sending to dest %s: %s", route.key, dest.Addr, buf)
-	dest.in <- buf
+	if pos := bytes.IndexByte(buf, ' '); pos > 0 {
+		name := buf[0:pos]
+		dest := conf.Dests()[conf.Hasher.GetDestinationIndex(name)]
+		// dest should handle this as quickly as it can
+		log.Info("route %s sending to dest %s: %s", route.key, dest.Addr, name)
+		dest.in <- buf
+	} else {
+		log.Error("could not parse %s\n", buf)
+	}
 }
 
 func (route *baseRoute) Key() string {
