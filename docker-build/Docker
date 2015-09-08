@@ -1,0 +1,5 @@
+FROM gliderlabs/alpine
+
+ADD carbon-relay-ng /bin/
+
+ENTRYPOINT /bin/carbon-relay-ng
