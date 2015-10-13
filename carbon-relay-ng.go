@@ -89,7 +89,7 @@ func accept(l *net.TCPListener, config Config) {
 
 var emptyByteStr = []byte("")
 
-func handle(c *net.TCPConn, config Config) {
+func handle(c net.Conn, config Config) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
@@ -243,10 +243,10 @@ func main() {
 
 			os.Exit(1)
 		}
-		log.Notice("listening on %v", laddr)
+		log.Notice("listening on %v/tcp", laddr)
 		go accept(l.(*net.TCPListener), config)
 	} else {
-		log.Notice("resuming listening on %v", l.Addr())
+		log.Notice("resuming listening on %v/tcp", l.Addr())
 		go accept(l.(*net.TCPListener), config)
 		if err := goagain.KillParent(ppid); nil != err {
 			log.Error(err.Error())
@@ -260,6 +260,19 @@ func main() {
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
+
+	udp_addr, err := net.ResolveUDPAddr("udp", config.Listen_addr)
+	if nil != err {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+	udp_conn, err := net.ListenUDP("udp", udp_addr)
+	if nil != err {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+	log.Notice("listening on %v/udp", udp_addr)
+	go handle(udp_conn, config)
 
 	if config.Pid_file != "" {
 		f, err := os.Create(config.Pid_file)
