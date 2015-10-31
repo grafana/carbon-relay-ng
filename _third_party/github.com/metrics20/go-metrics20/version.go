@@ -16,6 +16,15 @@ const (
 	M20NoEquals                      // foo_is_bar.unit_is_B
 )
 
+// LegacyMetricValidation indicates the level of validation to undertake for legacy metrics
+type LegacyMetricValidation int
+
+const (
+	Strict LegacyMetricValidation = iota // Sensible character validation and no consecutive dots
+	Medium                               // Ensure characters are 8-bit clean and not NULL
+	None                                 // No validation
+)
+
 func (version metricVersion) TagDelimiter() string {
 	if version == M20 {
 		return "="
@@ -77,6 +86,20 @@ func ValidateSensibleCharsB(metric_id []byte) error {
 	return nil
 }
 
+// validateNotNullAsciiChars returns true if all bytes in metric_id are 8-bit
+// clean and no byte is a NULL byte. Otherwise, it returns false.
+func validateNotNullAsciiChars(metric_id []byte) error {
+	for i, ch := range metric_id {
+		if ch == 0 {
+			return fmt.Errorf("metric '%s' has an embedded NULL byte at position %d", i)
+		}
+		if ch&0x80 != 0 {
+			return fmt.Errorf("metric '%s' contains non-ASCII byte '%q'", string(metric_id), ch)
+		}
+	}
+	return nil
+}
+
 // InitialValidation checks the basic form of metric keys
 func InitialValidation(metric_id string, version metricVersion) error {
 	if version == Legacy {
@@ -132,36 +155,41 @@ var (
 )
 
 // InitialValidationB is like InitialValidation but for byte array inputs.
-func InitialValidationB(metric_id []byte, version metricVersion) error {
+func InitialValidationB(metric_id []byte, version metricVersion, legacyValidation LegacyMetricValidation) error {
 	if version == Legacy {
-		if bytes.Contains(metric_id, doubleDot) {
-			return fmt.Errorf("metric '%s' has an empty node", metric_id)
+		if legacyValidation == Strict {
+			if bytes.Contains(metric_id, doubleDot) {
+				return fmt.Errorf("metric '%s' has an empty node", metric_id)
+			}
+			return ValidateSensibleCharsB(metric_id)
+		} else if legacyValidation == Medium {
+			return validateNotNullAsciiChars(metric_id)
 		}
-		return ValidateSensibleCharsB(metric_id)
-	}
-	if version == M20 {
-		if bytes.Contains(metric_id, m20Is) {
-			return fmt.Errorf("metric '%s' has both = and _is_", metric_id)
+	} else {
+		if version == M20 {
+			if bytes.Contains(metric_id, m20Is) {
+				return fmt.Errorf("metric '%s' has both = and _is_", metric_id)
+			}
+			if !bytes.HasPrefix(metric_id, m20UnitPre) && !bytes.Contains(metric_id, m20UnitMid) {
+				return fmt.Errorf("metric '%s' has no unit tag", metric_id)
+			}
+			if !bytes.HasPrefix(metric_id, m20TTPre) && !bytes.Contains(metric_id, m20TTMid) {
+				return fmt.Errorf("metric '%s' has no target_type tag", metric_id)
+			}
+		} else { //version == M20NoEquals
+			if bytes.Contains(metric_id, m20NEIS) {
+				return fmt.Errorf("metric '%s' has both = and _is_", metric_id)
+			}
+			if !bytes.HasPrefix(metric_id, m20NEUnitPre) && !bytes.Contains(metric_id, m20NEUnitMid) {
+				return fmt.Errorf("metric '%s' has no unit tag", metric_id)
+			}
+			if !bytes.HasPrefix(metric_id, m20NETTPre) && !bytes.Contains(metric_id, m20NETTMid) {
+				return fmt.Errorf("metric '%s' has no target_type tag", metric_id)
+			}
 		}
-		if !bytes.HasPrefix(metric_id, m20UnitPre) && !bytes.Contains(metric_id, m20UnitMid) {
-			return fmt.Errorf("metric '%s' has no unit tag", metric_id)
+		if bytes.Count(metric_id, dot) < 2 {
+			return fmt.Errorf("metric '%s': must have at least one tag_k/tag_v pair beyond unit and target_type", metric_id)
 		}
-		if !bytes.HasPrefix(metric_id, m20TTPre) && !bytes.Contains(metric_id, m20TTMid) {
-			return fmt.Errorf("metric '%s' has no target_type tag", metric_id)
-		}
-	} else { //version == M20NoEquals
-		if bytes.Contains(metric_id, m20NEIS) {
-			return fmt.Errorf("metric '%s' has both = and _is_", metric_id)
-		}
-		if !bytes.HasPrefix(metric_id, m20NEUnitPre) && !bytes.Contains(metric_id, m20NEUnitMid) {
-			return fmt.Errorf("metric '%s' has no unit tag", metric_id)
-		}
-		if !bytes.HasPrefix(metric_id, m20NETTPre) && !bytes.Contains(metric_id, m20NETTMid) {
-			return fmt.Errorf("metric '%s' has no target_type tag", metric_id)
-		}
-	}
-	if bytes.Count(metric_id, dot) < 2 {
-		return fmt.Errorf("metric '%s': must have at least one tag_k/tag_v pair beyond unit and target_type", metric_id)
 	}
 	return nil
 }
@@ -169,7 +197,7 @@ func InitialValidationB(metric_id []byte, version metricVersion) error {
 var space = []byte(" ")
 
 // ValidatePacket validates a carbon message.
-func ValidatePacket(buf []byte) error {
+func ValidatePacket(buf []byte, legacyValidation LegacyMetricValidation) error {
 	fields := bytes.Fields(buf)
 	if len(fields) != 3 {
 		return errors.New("packet must consist of 3 fields")
@@ -177,7 +205,7 @@ func ValidatePacket(buf []byte) error {
 	}
 
 	version := GetVersionB(fields[0])
-	err := InitialValidationB(fields[0], version)
+	err := InitialValidationB(fields[0], version, legacyValidation)
 	if err != nil {
 		return err
 	}
