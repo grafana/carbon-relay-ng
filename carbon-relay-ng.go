@@ -30,20 +30,40 @@ import (
 	"time"
 )
 
+type MetricValidationLevel struct {
+	Level m20.LegacyMetricValidation
+}
+
+func (l *MetricValidationLevel) UnmarshalText(text []byte) error {
+	validationLevels := map[string]m20.LegacyMetricValidation{
+		"strict": m20.Strict,
+		"medium": m20.Medium,
+		"none":   m20.None,
+	}
+	var err error
+	var ok bool
+	l.Level, ok = validationLevels[string(text)]
+	if !ok {
+		err = fmt.Errorf("Invalid validation level '%s'. Valid validation levels are 'strict', 'medium', and 'none'.", string(text))
+	}
+	return err
+}
+
 type Config struct {
-	Listen_addr         string
-	Admin_addr          string
-	Http_addr           string
-	Spool_dir           string
-	max_procs           int
-	First_only          bool
-	Routes              []*Route
-	Init                []string
-	Instance            string
-	Log_level           string
-	Instrumentation     instrumentation
-	Bad_metrics_max_age string
-	Pid_file            string
+	Listen_addr              string
+	Admin_addr               string
+	Http_addr                string
+	Spool_dir                string
+	max_procs                int
+	First_only               bool
+	Routes                   []*Route
+	Init                     []string
+	Instance                 string
+	Log_level                string
+	Instrumentation          instrumentation
+	Bad_metrics_max_age      string
+	Pid_file                 string
+	Legacy_metric_validation MetricValidationLevel
 }
 
 type instrumentation struct {
@@ -114,7 +134,7 @@ func handle(c net.Conn, config Config) {
 		copy(buf_copy, buf)
 		numIn.Inc(1)
 
-		err = m20.ValidatePacket(buf)
+		err = m20.ValidatePacket(buf, config.Legacy_metric_validation.Level)
 		if err != nil {
 			fields := bytes.Fields(buf)
 			if len(fields) != 0 {
@@ -142,6 +162,9 @@ func main() {
 
 	flag.Usage = usage
 	flag.Parse()
+
+	// Default to strict validation
+	config.Legacy_metric_validation.Level = m20.Strict
 
 	config_file = "/etc/carbon-relay-ng.ini"
 	if 1 == flag.NArg() {
