@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	assetfs "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/elazarl/go-bindata-assetfs"
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/gorilla/mux"
+	assetfs "github.com/elazarl/go-bindata-assetfs"
+	"github.com/gorilla/mux"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"net/http"
 	"os"

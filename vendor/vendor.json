@@ -1,0 +1,97 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "UJTpOZ5IuuyoWFrS42uw/167mn0=",
+			"path": "github.com/BurntSushi/toml",
+			"revision": "f0aeabca5a127c4078abb8c8d64298b147264b55",
+			"revisionTime": "2016-04-26T10:16:13Z"
+		},
+		{
+			"checksumSHA1": "Z+h1GQvf0C/z1gC022UsEcscJYE=",
+			"path": "github.com/Dieterbe/go-metrics",
+			"revision": "7d6437cde7ef13b2fa468a5b159f9bdffc4db473",
+			"revisionTime": "2015-03-22T19:34:54Z"
+		},
+		{
+			"checksumSHA1": "e7DBfCBg1D0CuE3SUrIpTxknmC4=",
+			"path": "github.com/Dieterbe/go-metrics/exp",
+			"revision": "7d6437cde7ef13b2fa468a5b159f9bdffc4db473",
+			"revisionTime": "2015-03-22T19:34:54Z"
+		},
+		{
+			"checksumSHA1": "WuzPBA7NVqi+surrOImgHExd/vI=",
+			"path": "github.com/Dieterbe/topic",
+			"revision": "1850ffda9965e5174c6bdada0db130e122a214f1",
+			"revisionTime": "2014-12-09T01:45:55Z"
+		},
+		{
+			"checksumSHA1": "zUyQXVCSaV97bbiVZbX1qn8UWm4=",
+			"path": "github.com/bmizerany/assert",
+			"revision": "e17e99893cb6509f428e1728281c2ad60a6b31e3",
+			"revisionTime": "2012-07-16T20:56:30Z"
+		},
+		{
+			"checksumSHA1": "5ftkjfUwI9A6xCQ1PwIAd5+qlo0=",
+			"path": "github.com/elazarl/go-bindata-assetfs",
+			"revision": "57eb5e1fc594ad4b0b1dbea7b286d299e0cb43c2",
+			"revisionTime": "2015-12-24T04:54:52Z"
+		},
+		{
+			"checksumSHA1": "iIUYZyoanCQQTUaWsu8b+iOSPt4=",
+			"path": "github.com/gorilla/context",
+			"revision": "215affda49addc4c8ef7e2534915df2c8c35c6cd",
+			"revisionTime": "2014-12-17T16:02:51Z"
+		},
+		{
+			"checksumSHA1": "oKhpvaXBVmGKk8dvCXXzUtPqyMM=",
+			"path": "github.com/gorilla/mux",
+			"revision": "14cafe28513321476c73967a5a4f3454b6129c46",
+			"revisionTime": "2014-06-24T18:46:26Z"
+		},
+		{
+			"checksumSHA1": "hDmcdHpn6TCHXhoHudl1yJYmv+4=",
+			"path": "github.com/kisielk/og-rek",
+			"revision": "3185aa3bc5a7e1be57fed2e5175b593a02d47fba",
+			"revisionTime": "2015-06-23T18:05:40Z"
+		},
+		{
+			"checksumSHA1": "HIsIO4+e5awXjNSj/UJzbSePEZQ=",
+			"path": "github.com/kr/pretty",
+			"revision": "add1dbc86daf0f983cd4a48ceb39deb95c729b67",
+			"revisionTime": "2016-03-25T21:56:24Z"
+		},
+		{
+			"checksumSHA1": "uulQHQ7IsRKqDudBC8Go9J0gtAc=",
+			"path": "github.com/kr/text",
+			"revision": "bb797dc4fb8320488f47bf11de07a733d7233e1f",
+			"revisionTime": "2015-09-05T22:45:08Z"
+		},
+		{
+			"checksumSHA1": "i7twU5fu9NPWGU8yugfrddEh32Q=",
+			"path": "github.com/metrics20/go-metrics20",
+			"revision": "d9bd23f111823ff3f17fa7613f7f3fc81b757226",
+			"revisionTime": "2016-04-26T17:59:48Z"
+		},
+		{
+			"checksumSHA1": "zYFzQ2uU+r6juBQ/pa+byRlfCqg=",
+			"path": "github.com/op/go-logging",
+			"revision": "e5fb9bb8a3a168cc269b38f092b65d2e18cebb9a",
+			"revisionTime": "2015-03-12T12:33:22Z"
+		},
+		{
+			"checksumSHA1": "cDUeMY/U6zcLSSQEp4Yw26M4mLA=",
+			"path": "github.com/rcrowley/goagain",
+			"revision": "d591a7f5c6f5ad8ee6dfe8800696648eaa6d7116",
+			"revisionTime": "2014-01-28T19:57:44Z"
+		},
+		{
+			"checksumSHA1": "T8pFSFym6hKWcK3riWpyhWCxTls=",
+			"path": "github.com/taylorchu/toki",
+			"revision": "20e86122596c457c2d8a0bcd7af3158fbc7dd79e",
+			"revisionTime": "2014-10-19T16:32:04Z"
+		}
+	],
+	"rootPath": "github.com/graphite-ng/carbon-relay-ng"
+}

@@ -16,13 +16,13 @@ import (
 	"runtime"
 	"runtime/pprof"
 
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/BurntSushi/toml"
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics/exp"
-	m20 "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/metrics20/go-metrics20"
-	logging "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/op/go-logging"
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/rcrowley/goagain"
+	"github.com/BurntSushi/toml"
+	"github.com/Dieterbe/go-metrics"
+	"github.com/Dieterbe/go-metrics/exp"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
+	m20 "github.com/metrics20/go-metrics20"
+	logging "github.com/op/go-logging"
+	"github.com/rcrowley/goagain"
 	"strings"
 	"syscall"
 	"time"
@@ -111,7 +111,7 @@ func handle(c *net.TCPConn, config Config) {
 		copy(buf_copy, buf)
 		numIn.Inc(1)
 
-		err = m20.ValidatePacket(buf)
+		err = m20.ValidatePacket(buf, m20.Strict)
 		if err != nil {
 			fields := bytes.Fields(buf)
 			if len(fields) != 0 {
