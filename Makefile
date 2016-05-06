@@ -19,8 +19,8 @@ deb: build
 		-n carbon-relay-ng \
 		-v $(VERSION)-$(BUILD) \
 		-a amd64 \
-		-m "Richard Crowley <r@rcrowley.org>" \
-		--description "Route traffic to Graphite's carbon-cache.py." \
+		-m "Dieter Plaetinck <dieter@plaetinck.be>" \
+		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/rcrowley/carbon-relay-ng \
 		-C debian .
@@ -38,16 +38,12 @@ rpm: build
 		-v $(VERSION) \
 		--epoch $(BUILD) \
 		-a amd64 \
-		-m "Richard Crowley <r@rcrowley.org>" \
-		--description "Route traffic to Graphite's carbon-cache.py." \
+		-m "Dieter Plaetinck <dieter@plaetinck.be>" \
+		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/rcrowley/carbon-relay-ng \
 		-C redhat .
 	rm -rf redhat	
-
-deploy:
-	scp carbon-relay-ng_$(VERSION)-$(BUILD)_amd64.deb freight@packages.rcrowley.org:
-	ssh -t freight@packages.rcrowley.org "freight add carbon-relay-ng_$(VERSION)-$(BUILD)_amd64.deb apt/precise && rm carbon-relay-ng_$(VERSION)-$(BUILD)_amd64.deb && freight cache apt/precise"
 
 gh-pages: man
 	mkdir -p gh-pages

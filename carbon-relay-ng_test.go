@@ -5,11 +5,12 @@ package main
 
 import (
 	"fmt"
-	logging "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/op/go-logging"
 	"os"
 	"sync"
 	"testing"
 	"time"
+
+	logging "github.com/op/go-logging"
 )
 
 var packets0A *dummyPackets

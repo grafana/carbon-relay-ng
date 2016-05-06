@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
+	"github.com/Dieterbe/go-metrics"
 )
 
 func addrToPath(s string) string {
