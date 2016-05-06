@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	assetfs "github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/elazarl/go-bindata-assetfs"
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/gorilla/mux"
+	assetfs "github.com/elazarl/go-bindata-assetfs"
+	"github.com/gorilla/mux"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"net/http"
 	"os"
@@ -231,7 +231,7 @@ func HttpListener(addr string, t *Table) {
 	// destinations
 	router.Handle("/routes/{key}/destinations/{index}", handler(removeDestination)).Methods("DELETE")
 
-	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, Prefix: "admin_http_assets/"}))
+	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo, Prefix: "admin_http_assets/"}))
 	http.Handle("/", router)
 
 	log.Notice("admin HTTP listener starting on %v", addr)

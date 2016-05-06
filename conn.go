@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/go-metrics"
+	"github.com/Dieterbe/go-metrics"
 	"io"
 	"net"
 	"os"

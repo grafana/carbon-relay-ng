@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/bmizerany/assert"
+	"github.com/bmizerany/assert"
 )
 
 func TestConsistentHashingComputeRingPosition(t *testing.T) {

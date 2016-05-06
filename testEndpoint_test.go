@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/Dieterbe/topic"
+	"github.com/Dieterbe/topic"
 	"net"
 	"sort"
 	"sync"

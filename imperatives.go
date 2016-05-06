@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/graphite-ng/carbon-relay-ng/_third_party/github.com/taylorchu/toki"
+	"github.com/taylorchu/toki"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"strconv"
 	"strings"
