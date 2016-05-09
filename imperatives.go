@@ -103,10 +103,10 @@ func applyCommand(table *Table, cmd string) error {
 	case modRoute:
 		return readModRoute(s, table)
 	default:
-		return fmt.Errorf("unrecognized command '%s'", t.Value)
+		return fmt.Errorf("unrecognized command %q", t.Value)
 	}
 	if t = s.Next(); t.Token != toki.EOF {
-		return fmt.Errorf("extraneous input '%s'", t.Value)
+		return fmt.Errorf("extraneous input %q", t.Value)
 	}
 	return nil
 }
