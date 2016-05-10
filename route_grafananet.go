@@ -57,6 +57,7 @@ func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile strin
 		// but we definitely need to always be able to determine which interval to use
 		return nil, fmt.Errorf("storage-conf does not have a default '.*' pattern")
 	}
+	// this line takes about 228.88MB on 64bit system
 	r := &RouteGrafanaNet{baseRoute{sync.Mutex{}, atomic.Value{}, key}, addr, apiKey, make(chan []byte, bufSize), schemas}
 	r.config.Store(baseRouteConfig{*m, make([]*Destination, 0)})
 	go r.run()
