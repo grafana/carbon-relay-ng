@@ -67,7 +67,9 @@ func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile strin
 func (route *RouteGrafanaNet) run() {
 	metrics := make([]*schema.MetricData, 0, flushMaxNum)
 	ticker := time.NewTicker(flushMaxWait)
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: time.Duration(2 * time.Second),
+	}
 
 	b := &backoff.Backoff{
 		Min:    100 * time.Millisecond,
@@ -81,6 +83,7 @@ func (route *RouteGrafanaNet) run() {
 			return
 		}
 		for {
+			pre := time.Now()
 			mda := schema.MetricDataArray(metrics)
 			data, err := msg.CreateMsg(mda, 0, msg.FormatMetricDataArrayMsgp)
 			if err != nil {
@@ -94,20 +97,21 @@ func (route *RouteGrafanaNet) run() {
 			req.Header.Add("Authorization", "Bearer "+route.apiKey)
 			req.Header.Add("Content-Type", "rt-metric-binary")
 			resp, err := client.Do(req)
+			diff := time.Since(pre)
 			if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				b.Reset()
-				log.Info("GrafanaNet sent %d metrics", len(metrics))
+				log.Info("GrafanaNet sent %d metrics in %s", len(metrics), diff)
 				metrics = metrics[:0]
 				resp.Body.Close()
 				break
 			}
 			dur := b.Duration()
 			if err != nil {
-				log.Warning("GrafanaNet failed to submit data: %s will try again in %s", err, dur)
+				log.Warning("GrafanaNet failed to submit data: %s will try again in %s (this attempt took %s)", err, dur, diff)
 			} else {
 				buf := make([]byte, 300)
 				n, _ := resp.Body.Read(buf)
-				log.Warning("GrafanaNet failed to submit data: http %s - %s will try again in %s", dur, resp.StatusCode, buf[:n])
+				log.Warning("GrafanaNet failed to submit data: http %d - %s will try again in %s (this attempt took %s)", resp.StatusCode, buf[:n], dur, diff)
 				resp.Body.Close()
 			}
 
