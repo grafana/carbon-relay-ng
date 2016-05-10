@@ -72,16 +72,18 @@ type instrumentation struct {
 }
 
 var (
-	instance    string
-	service     = "carbon-relay-ng"
-	config_file string
-	config      Config
-	to_dispatch = make(chan []byte)
-	table       *Table
-	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file")
-	numIn       metrics.Counter
-	numInvalid  metrics.Counter
-	badMetrics  *badmetrics.BadMetrics
+	instance         string
+	service          = "carbon-relay-ng"
+	config_file      string
+	config           Config
+	to_dispatch      = make(chan []byte)
+	table            *Table
+	cpuprofile       = flag.String("cpuprofile", "", "write cpu profile to file")
+	blockProfileRate = flag.Int("block-profile-rate", 0, "see https://golang.org/pkg/runtime/#SetBlockProfileRate")
+	memProfileRate   = flag.Int("mem-profile-rate", 512*1024, "0 to disable. 1 for max precision (expensive!) see https://golang.org/pkg/runtime/#pkg-variables")
+	numIn            metrics.Counter
+	numInvalid       metrics.Counter
+	badMetrics       *badmetrics.BadMetrics
 )
 
 var log = logging.MustGetLogger("carbon-relay-ng")
@@ -162,6 +164,8 @@ func main() {
 
 	flag.Usage = usage
 	flag.Parse()
+	runtime.SetBlockProfileRate(*blockProfileRate)
+	runtime.MemProfileRate = *memProfileRate
 
 	// Default to strict validation
 	config.Legacy_metric_validation.Level = m20.Strict
