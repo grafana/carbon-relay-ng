@@ -40,3 +40,22 @@ init = [
 graphite_addr = "localhost:2003"
 graphite_interval = 1000  # in ms
 ```
+
+## performance tuning
+
+You can tune the flushing behavior.
+Default values:
+* bufSize: 1e7 (10 million)
+* flushMaxNum: 10k
+* flushMaxWait: 500 (milliseconds)
+
+You want to have it flush "early" so your data shows up quickly, but since currently there's only one worker
+you have to check the carbon-relay-ng dashboard (or the log) to make sure flushes don't last so long that the buffer fills up.
+In that case, increase the flush values, so that we can flush more data per flush than what comes in.
+
+You can pass extra space-separated arguments (after the storage-schemas.conf path)  like so:
+```
+bufSize=37 flushMaxNum=123 flushMaxWait=888
+```
+
+

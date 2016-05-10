@@ -35,6 +35,9 @@ const (
 	optSpool
 	optTrue
 	optFalse
+	optBufSize
+	optFlushMaxNum
+	optFlushMaxWait
 	word
 )
 
@@ -61,6 +64,9 @@ var tokens = []toki.Def{
 	{Token: optSpool, Pattern: "spool="},
 	{Token: optTrue, Pattern: "true"},
 	{Token: optFalse, Pattern: "false"},
+	{Token: optBufSize, Pattern: "bufSize="},
+	{Token: optFlushMaxNum, Pattern: "flushMaxNum="},
+	{Token: optFlushMaxWait, Pattern: "flushMaxWait="},
 	{Token: str, Pattern: "\".*\""},
 	{Token: sep, Pattern: "##"},
 	{Token: sumFn, Pattern: "sum"},
@@ -74,7 +80,7 @@ var tokens = []toki.Def{
 var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
 var errFmtAddAgg = errors.New("addAgg <sum|avg> <regex> <fmt> <interval> <wait>")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
-var errFmtAddRouteGrafanaNet = errors.New("addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false]")
+var errFmtAddRouteGrafanaNet = errors.New("addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false bufSize=int flushMaxNum=int flushMaxWait=int]")
 var errFmtAddDest = errors.New("addDest <routeKey> <dest>")                          // not implemented yet
 var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex=>") // one or more can be specified at once
 var errFmtModRoute = errors.New("modRoute <routeKey> <prefix/sub/regex=>")           // one or more can be specified at once
@@ -273,28 +279,62 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table *Table) error {
 		return errFmtAddRouteGrafanaNet
 	}
 	schemasFile := string(t.Value)
+	t = s.Next()
 
 	var spool bool
+	var bufSize = int(1e7)  // since a message is typically around 100B this is 1GB
+	var flushMaxNum = 10000 // number of metrics
+	var flushMaxWait = 500  // in ms
 
-	t = s.Next()
-	switch t.Token {
-	case toki.EOF:
-		break
-	case optSpool:
-		t = s.Next()
-		if t.Token == optTrue || t.Token == optFalse {
-			spool, err = strconv.ParseBool(string(t.Value))
-			if err != nil {
-				return err
+	for ; t.Token != toki.EOF; t = s.Next() {
+		switch t.Token {
+		case optSpool:
+			t = s.Next()
+			if t.Token == optTrue || t.Token == optFalse {
+				spool, err = strconv.ParseBool(string(t.Value))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
 			}
-		} else {
-			return errFmtAddRouteGrafanaNet
+		case optBufSize:
+			t = s.Next()
+			if t.Token == num {
+				bufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optFlushMaxNum:
+			t = s.Next()
+			if t.Token == num {
+				flushMaxNum, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optFlushMaxWait:
+			t = s.Next()
+			if t.Token == num {
+				flushMaxWait, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+
+		default:
+			return fmt.Errorf("unexpected token %s %q", t.Token, t.Value)
 		}
-	default:
-		return errFmtAddRouteGrafanaNet
 	}
 
-	route, err := NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile, spool)
+	route, err := NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile, spool, bufSize, flushMaxNum, flushMaxWait)
 	if err != nil {
 		return err
 	}

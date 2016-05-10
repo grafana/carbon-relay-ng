@@ -17,19 +17,16 @@ import (
 	"github.com/raintank/raintank-metric/schema"
 )
 
-// amount of messages we can buffer up before providing backpressure
-// since a message is typically around 100B this is 1GB
-const bufSize = 1e7
-
-const flushMaxNum = 200 // number of metrics
-var flushMaxWait = 100 * time.Millisecond
-
 type RouteGrafanaNet struct {
 	baseRoute
 	addr    string
 	apiKey  string
 	buf     chan []byte
 	schemas persister.WhisperSchemas
+
+	bufSize      int // amount of messages we can buffer up before providing backpressure. each message is about 100B. so 1e7 is about 1GB.
+	flushMaxNum  int
+	flushMaxWait time.Duration
 
 	numErrFlush       metrics.Counter
 	numOut            metrics.Counter   // metrics successfully written to our buffered conn (no flushing yet)
@@ -43,7 +40,7 @@ type RouteGrafanaNet struct {
 // NewRouteGrafanaNet creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
 // ignores spool for now
-func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool bool) (Route, error) {
+func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool bool, bufSize, flushMaxNum, flushMaxWait int) (Route, error) {
 	m, err := NewMatcher(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -76,6 +73,10 @@ func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile strin
 		buf:       make(chan []byte, bufSize), // takes about 228MB on 64bit
 		schemas:   schemas,
 
+		bufSize:      bufSize,
+		flushMaxNum:  flushMaxNum,
+		flushMaxWait: time.Duration(flushMaxWait) * time.Millisecond,
+
 		numErrFlush:       Counter("dest=" + cleanAddr + ".unit=Err.type=flush"),
 		numOut:            Counter("dest=" + cleanAddr + ".unit=Metric.direction=out"),
 		durationTickFlush: Timer("dest=" + cleanAddr + ".what=durationFlush.type=ticker"),
@@ -91,8 +92,8 @@ func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile strin
 }
 
 func (route *RouteGrafanaNet) run() {
-	metrics := make([]*schema.MetricData, 0, flushMaxNum)
-	ticker := time.NewTicker(flushMaxWait)
+	metrics := make([]*schema.MetricData, 0, route.flushMaxNum)
+	ticker := time.NewTicker(route.flushMaxWait)
 	client := &http.Client{
 		Timeout: time.Duration(2 * time.Second),
 	}
@@ -158,7 +159,7 @@ func (route *RouteGrafanaNet) run() {
 			}
 			md.SetId()
 			metrics = append(metrics, md)
-			if len(metrics) == flushMaxNum {
+			if len(metrics) == route.flushMaxNum {
 				flush()
 			}
 		case <-ticker.C:
