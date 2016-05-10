@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/Dieterbe/go-metrics"
 	"github.com/jpillora/backoff"
 	"net/http"
 	"strconv"
@@ -29,6 +30,14 @@ type RouteGrafanaNet struct {
 	apiKey  string
 	buf     chan []byte
 	schemas persister.WhisperSchemas
+
+	numErrFlush       metrics.Counter
+	numOut            metrics.Counter   // metrics successfully written to our buffered conn (no flushing yet)
+	durationTickFlush metrics.Timer     // only updated after successfull flush
+	durationManuFlush metrics.Timer     // only updated after successfull flush. not implemented yet
+	tickFlushSize     metrics.Histogram // only updated after successfull flush
+	manuFlushSize     metrics.Histogram // only updated after successfull flush. not implemented yet
+	numBuffered       metrics.Gauge
 }
 
 // NewRouteGrafanaNet creates a special route that writes to a grafana.net datastore
@@ -57,8 +66,25 @@ func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile strin
 		// but we definitely need to always be able to determine which interval to use
 		return nil, fmt.Errorf("storage-conf does not have a default '.*' pattern")
 	}
-	// this line takes about 228.88MB on 64bit system
-	r := &RouteGrafanaNet{baseRoute{sync.Mutex{}, atomic.Value{}, key}, addr, apiKey, make(chan []byte, bufSize), schemas}
+
+	cleanAddr := addrToPath(addr)
+
+	r := &RouteGrafanaNet{
+		baseRoute: baseRoute{sync.Mutex{}, atomic.Value{}, key},
+		addr:      addr,
+		apiKey:    apiKey,
+		buf:       make(chan []byte, bufSize), // takes about 228MB on 64bit
+		schemas:   schemas,
+
+		numErrFlush:       Counter("dest=" + cleanAddr + ".unit=Err.type=flush"),
+		numOut:            Counter("dest=" + cleanAddr + ".unit=Metric.direction=out"),
+		durationTickFlush: Timer("dest=" + cleanAddr + ".what=durationFlush.type=ticker"),
+		durationManuFlush: Timer("dest=" + cleanAddr + ".what=durationFlush.type=manual"),
+		tickFlushSize:     Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=ticker"),
+		manuFlushSize:     Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=manual"),
+		numBuffered:       Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
+	}
+
 	r.config.Store(baseRouteConfig{*m, make([]*Destination, 0)})
 	go r.run()
 	return r, nil
@@ -100,11 +126,15 @@ func (route *RouteGrafanaNet) run() {
 			diff := time.Since(pre)
 			if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				b.Reset()
-				log.Info("GrafanaNet sent %d metrics in %s", len(metrics), diff)
+				log.Notice("GrafanaNet sent %d metrics in %s -msg size %d", len(metrics), diff, len(data))
+				route.numOut.Inc(int64(len(metrics)))
+				route.tickFlushSize.Update(int64(len(data)))
+				route.durationTickFlush.Update(diff)
 				metrics = metrics[:0]
 				resp.Body.Close()
 				break
 			}
+			route.numErrFlush.Inc(1)
 			dur := b.Duration()
 			if err != nil {
 				log.Warning("GrafanaNet failed to submit data: %s will try again in %s (this attempt took %s)", err, dur, diff)
@@ -121,6 +151,7 @@ func (route *RouteGrafanaNet) run() {
 	for {
 		select {
 		case buf := <-route.buf:
+			route.numBuffered.Dec(1)
 			md := parseMetric(buf, route.schemas)
 			if md == nil {
 				continue
@@ -177,6 +208,7 @@ func (route *RouteGrafanaNet) Dispatch(buf []byte) {
 	//conf := route.config.Load().(RouteConfig)
 	// should return as quickly as possible
 	log.Info("route %s sending to dest %s: %s", route.key, route.addr, buf)
+	route.numBuffered.Inc(1)
 	route.buf <- buf
 }
 

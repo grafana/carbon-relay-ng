@@ -45,8 +45,8 @@ type Conn struct {
 	durationWrite     metrics.Timer
 	durationTickFlush metrics.Timer     // only updated after successfull flush
 	durationManuFlush metrics.Timer     // only updated after successfull flush
-	tickFlushSize     metrics.Histogram // only updated after successfull flush
-	manuFlushSize     metrics.Histogram // only updated after successfull flush
+	tickFlushSize     metrics.Histogram // only updated after successfull flush. in bytes
+	manuFlushSize     metrics.Histogram // only updated after successfull flush. in bytes
 	numBuffered       metrics.Gauge
 	numDropBadPickle  metrics.Counter
 }
