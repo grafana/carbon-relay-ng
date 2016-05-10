@@ -93,14 +93,24 @@ func (route *RouteGrafanaNet) run() {
 			req.Header.Add("Authorization", "Bearer "+route.apiKey)
 			req.Header.Add("Content-Type", "rt-metric-binary")
 			resp, err := client.Do(req)
-			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				b.Reset()
 				log.Info("GrafanaNet sent %d metrics", len(metrics))
 				metrics = metrics[:0]
+				resp.Body.Close()
 				break
 			}
-			log.Warning("GrafanaNet failed to submit data.. will try again.")
-			time.Sleep(b.Duration())
+			dur := b.Duration()
+			if err != nil {
+				log.Warning("GrafanaNet failed to submit data: %s will try again in %s", err, dur)
+			} else {
+				buf := make([]byte, 300)
+				n, _ := resp.Body.Read(buf)
+				log.Warning("GrafanaNet failed to submit data: http %s - %s will try again in %s", dur, resp.StatusCode, buf[:n])
+				resp.Body.Close()
+			}
+
+			time.Sleep(dur)
 		}
 	}
 	for {
