@@ -39,6 +39,10 @@ func TestScanner(t *testing.T) {
 			"addRoute sendFirstMatch analytics regex=(Err/s|wait_time|logger)  graphite.prod:2003 prefix=prod. spool=true pickle=true  graphite.staging:2003 prefix=staging. spool=true pickle=true",
 			[]toki.Token{addRouteSendFirstMatch, word, optRegex, word, sep, word, optPrefix, word, optSpool, optTrue, optPickle, optTrue, sep, word, optPrefix, word, optSpool, optTrue, optPickle, optTrue},
 		},
+		//{ disabled cause tries to read the schemas.conf file
+		//	"addRoute grafanaNet grafanaNet  http://localhost:8081/metrics your-grafana.net-api-key /path/to/storage-schemas.conf",
+		//	[]toki.Token{addRouteGrafanaNet, word, sep, word, word},
+		//},
 	}
 	for i, c := range cases {
 		s := toki.NewScanner(tokens)

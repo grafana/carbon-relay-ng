@@ -16,6 +16,7 @@ const (
 	addRouteSendAllMatch
 	addRouteSendFirstMatch
 	addRouteConsistentHashing
+	addRouteGrafanaNet
 	addDest
 	modDest
 	modRoute
@@ -34,6 +35,9 @@ const (
 	optSpool
 	optTrue
 	optFalse
+	optBufSize
+	optFlushMaxNum
+	optFlushMaxWait
 	word
 )
 
@@ -46,6 +50,7 @@ var tokens = []toki.Def{
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch"},
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch"},
 	{Token: addRouteConsistentHashing, Pattern: "addRoute consistentHashing"},
+	{Token: addRouteGrafanaNet, Pattern: "addRoute grafanaNet"},
 	{Token: addDest, Pattern: "addDest"},
 	{Token: modDest, Pattern: "modDest"},
 	{Token: modRoute, Pattern: "modRoute"},
@@ -59,6 +64,9 @@ var tokens = []toki.Def{
 	{Token: optSpool, Pattern: "spool="},
 	{Token: optTrue, Pattern: "true"},
 	{Token: optFalse, Pattern: "false"},
+	{Token: optBufSize, Pattern: "bufSize="},
+	{Token: optFlushMaxNum, Pattern: "flushMaxNum="},
+	{Token: optFlushMaxWait, Pattern: "flushMaxWait="},
 	{Token: str, Pattern: "\".*\""},
 	{Token: sep, Pattern: "##"},
 	{Token: sumFn, Pattern: "sum"},
@@ -72,9 +80,10 @@ var tokens = []toki.Def{
 var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
 var errFmtAddAgg = errors.New("addAgg <sum|avg> <regex> <fmt> <interval> <wait>")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
-var errFmtAddDest = errors.New("addDest <routeKey> <dest>")                                                                                                                    // not implemented yet
-var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex=>")                                                                                           // one or more can be specified at once
-var errFmtModRoute = errors.New("modRoute <routeKey> <prefix/sub/regex=>")                                                                                                     // one or more can be specified at once
+var errFmtAddRouteGrafanaNet = errors.New("addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false bufSize=int flushMaxNum=int flushMaxWait=int]")
+var errFmtAddDest = errors.New("addDest <routeKey> <dest>")                          // not implemented yet
+var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex=>") // one or more can be specified at once
+var errFmtModRoute = errors.New("modRoute <routeKey> <prefix/sub/regex=>")           // one or more can be specified at once
 
 func applyCommand(table *Table, cmd string) error {
 	s := toki.NewScanner(tokens)
@@ -93,15 +102,17 @@ func applyCommand(table *Table, cmd string) error {
 		return readAddRoute(s, table, NewRouteSendFirstMatch)
 	case addRouteConsistentHashing:
 		return readAddRouteConsistentHashing(s, table)
+	case addRouteGrafanaNet:
+		return readAddRouteGrafanaNet(s, table)
 	case modDest:
 		return readModDest(s, table)
 	case modRoute:
 		return readModRoute(s, table)
 	default:
-		return fmt.Errorf("unrecognized command '%s'", t.Value)
+		return fmt.Errorf("unrecognized command %q", t.Value)
 	}
 	if t = s.Next(); t.Token != toki.EOF {
-		return fmt.Errorf("extraneous input '%s'", t.Value)
+		return fmt.Errorf("extraneous input %q", t.Value)
 	}
 	return nil
 }
@@ -233,6 +244,97 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table *Table) error {
 	}
 
 	route, err := NewRouteConsistentHashing(key, prefix, sub, regex, destinations)
+	if err != nil {
+		return err
+	}
+	table.AddRoute(route)
+	return nil
+}
+func readAddRouteGrafanaNet(s *toki.Scanner, table *Table) error {
+	t := s.Next()
+	if t.Token != word {
+		return errFmtAddRouteGrafanaNet
+	}
+	key := string(t.Value)
+
+	prefix, sub, regex, err := readRouteOpts(s)
+	if err != nil {
+		return err
+	}
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRouteGrafanaNet
+	}
+	addr := string(t.Value)
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRouteGrafanaNet
+	}
+	apiKey := string(t.Value)
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRouteGrafanaNet
+	}
+	schemasFile := string(t.Value)
+	t = s.Next()
+
+	var spool bool
+	var bufSize = int(1e7)  // since a message is typically around 100B this is 1GB
+	var flushMaxNum = 10000 // number of metrics
+	var flushMaxWait = 500  // in ms
+
+	for ; t.Token != toki.EOF; t = s.Next() {
+		switch t.Token {
+		case optSpool:
+			t = s.Next()
+			if t.Token == optTrue || t.Token == optFalse {
+				spool, err = strconv.ParseBool(string(t.Value))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optBufSize:
+			t = s.Next()
+			if t.Token == num {
+				bufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optFlushMaxNum:
+			t = s.Next()
+			if t.Token == num {
+				flushMaxNum, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optFlushMaxWait:
+			t = s.Next()
+			if t.Token == num {
+				flushMaxWait, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+
+		default:
+			return fmt.Errorf("unexpected token %s %q", t.Token, t.Value)
+		}
+	}
+
+	route, err := NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile, spool, bufSize, flushMaxNum, flushMaxWait)
 	if err != nil {
 		return err
 	}
