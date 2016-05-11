@@ -127,7 +127,7 @@ func (route *RouteGrafanaNet) run() {
 			diff := time.Since(pre)
 			if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				b.Reset()
-				log.Notice("GrafanaNet sent %d metrics in %s -msg size %d", len(metrics), diff, len(data))
+				log.Info("GrafanaNet sent %d metrics in %s -msg size %d", len(metrics), diff, len(data))
 				route.numOut.Inc(int64(len(metrics)))
 				route.tickFlushSize.Update(int64(len(data)))
 				route.durationTickFlush.Update(diff)
