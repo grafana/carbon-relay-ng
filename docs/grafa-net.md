@@ -55,7 +55,7 @@ In that case, increase the flush values, so that we can flush more data per flus
 
 You can pass extra space-separated arguments (after the storage-schemas.conf path)  like so:
 ```
-bufSize=37 flushMaxNum=123 flushMaxWait=888
+bufSize=1000000 flushMaxNum=5000 flushMaxWait=1000
 ```
 
 
