@@ -60,12 +60,12 @@
           },
           "targets": [
             {
-              "target": "aliasByNode(nonNegativeDerivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.unit_is_Metric.*), 4)",
+              "target": "aliasByNode(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.unit_is_Metric.*), 4)",
               "refId": "A"
             },
             {
               "refId": "B",
-              "target": "alias(nonNegativeDerivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.unit_is_Err.type_is_invalid), 'invalid')",
+              "target": "alias(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.unit_is_Err.type_is_invalid), 'invalid')",
               "hide": false
             }
           ],
@@ -143,12 +143,12 @@
           },
           "targets": [
             {
-              "target": "alias(nonNegativeDerivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Metric.direction_is_out), 'to tcp')",
+              "target": "alias(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Metric.direction_is_out), 'to tcp')",
               "hide": false,
               "refId": "A"
             },
             {
-              "target": "alias(nonNegativeDerivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.spool_is_$dest.unit_is_Metric.status_is_incomingRT), 'to spool')",
+              "target": "alias(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.spool_is_$dest.unit_is_Metric.status_is_incomingRT), 'to spool')",
               "hide": false,
               "refId": "B"
             }
