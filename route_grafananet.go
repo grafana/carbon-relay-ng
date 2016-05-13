@@ -27,6 +27,7 @@ type RouteGrafanaNet struct {
 	bufSize      int // amount of messages we can buffer up before providing backpressure. each message is about 100B. so 1e7 is about 1GB.
 	flushMaxNum  int
 	flushMaxWait time.Duration
+	timeout      time.Duration
 
 	numErrFlush       metrics.Counter
 	numOut            metrics.Counter   // metrics successfully written to our buffered conn (no flushing yet)
@@ -40,7 +41,7 @@ type RouteGrafanaNet struct {
 // NewRouteGrafanaNet creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
 // ignores spool for now
-func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool bool, bufSize, flushMaxNum, flushMaxWait int) (Route, error) {
+func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool bool, bufSize, flushMaxNum, flushMaxWait, timeout int) (Route, error) {
 	m, err := NewMatcher(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -76,6 +77,7 @@ func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile strin
 		bufSize:      bufSize,
 		flushMaxNum:  flushMaxNum,
 		flushMaxWait: time.Duration(flushMaxWait) * time.Millisecond,
+		timeout:      time.Duration(timeout) * time.Millisecond,
 
 		numErrFlush:       Counter("dest=" + cleanAddr + ".unit=Err.type=flush"),
 		numOut:            Counter("dest=" + cleanAddr + ".unit=Metric.direction=out"),
@@ -95,7 +97,7 @@ func (route *RouteGrafanaNet) run() {
 	metrics := make([]*schema.MetricData, 0, route.flushMaxNum)
 	ticker := time.NewTicker(route.flushMaxWait)
 	client := &http.Client{
-		Timeout: time.Duration(2 * time.Second),
+		Timeout: route.timeout,
 	}
 
 	b := &backoff.Backoff{
