@@ -10,15 +10,43 @@ note:
   (if you send at odd intervals, or an interval that doesn't match your storage-schemas.conf, that's how we will store it)
 * any metric messages that don't validate are filtered out. see the admin ui to troubleshoot if needed.
 
+## syntax
 
-You can use a configuration like the one below:
-(note the double space to separate the route definiton from the endpoint properties)
+notes:
+* the double space to separate the route definiton from the endpoint properties
+* by specifying a prefix, sub or regex you can only send a subset of your metrics to grafana.net hosted metrics
+
+```
+addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
+```
+
+
+### options
+
+options can appear after the schemasFile, space-separated.
+
+* for schemasFile, see [storage-schemas.conf documentation](http://graphite.readthedocs.io/en/latest/config-carbon.html#storage-schemas-conf)
+* bufSize: 1e7 (10 million)
+* flushMaxNum: after this many metrics have queued up, trigger a flush (default 10k)
+* flushMaxWait: after this many milliseconds, trigger a flush (default 500)
+* timeout: after how many milliseconds to consider a request to the hosted metrics to timeout, so that it will retry later (default 2000)
+
+Note that there's only 1 flush worker so you have to check the carbon-relay-ng dashboard (or the log)
+to make sure flushes don't last so long that the buffer fills up.
+In that case, increase the flush values, so that we can flush more data per flush.
+
+## example configuration file
+
+notes:
+* the double space to separate the route definiton from the endpoint properties
+* the instrumentation section sets up the relay to send its own performance metrics into itself. You can provide any graphite addr or an empty address to disable.
+
 ```
 instance = "proxy"
 
 max_procs = 2
 
-listen_addr = "0.0.0.0:2013"
+listen_addr = "0.0.0.0:2003"
 admin_addr = "0.0.0.0:2004"
 http_addr = "0.0.0.0:8083"
 spool_dir = "/var/spool/carbon-relay-ng"
@@ -40,22 +68,3 @@ init = [
 graphite_addr = "localhost:2003"
 graphite_interval = 1000  # in ms
 ```
-
-## performance tuning
-
-You can tune the flushing behavior.
-Default values:
-* bufSize: 1e7 (10 million)
-* flushMaxNum: 10k
-* flushMaxWait: 500 (milliseconds)
-
-You want to have it flush "early" so your data shows up quickly, but since currently there's only one worker
-you have to check the carbon-relay-ng dashboard (or the log) to make sure flushes don't last so long that the buffer fills up.
-In that case, increase the flush values, so that we can flush more data per flush than what comes in.
-
-You can pass extra space-separated arguments (after the storage-schemas.conf path)  like so:
-```
-bufSize=1000000 flushMaxNum=5000 flushMaxWait=1000
-```
-
-
