@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strings"
@@ -36,6 +37,8 @@ type Destination struct {
 
 	Addr         string `json:"address"`  // tcp dest
 	Instance     string `json:"instance"` // Optional carbon instance name, useful only with consistent hashing
+	Prepend      string `json:"prepend"`  // a string to prepend to each metric name
+	Append       string `json:"append"`   // a string to append to each metric name
 	spoolDir     string // where to store spool files (if enabled)
 	Spool        bool   `json:"spool"`        // spool metrics to disk while dest down?
 	Pickle       bool   `json:"pickle"`       // send in pickle format?
@@ -62,7 +65,7 @@ type Destination struct {
 }
 
 // NewDestination creates a destination object. Note that it still needs to be told to run via Run().
-func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration) (*Destination, error) {
+func NewDestination(prefix, sub, regex, addr, spoolDir, prepend, appendopt string, spool, pickle bool, periodFlush, periodReConn time.Duration) (*Destination, error) {
 	m, err := NewMatcher(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -76,6 +79,8 @@ func NewDestination(prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 		spoolDir:     spoolDir,
 		Spool:        spool,
 		Pickle:       pickle,
+		Prepend:      prepend,
+		Append:       appendopt,
 		cleanAddr:    cleanAddr,
 		periodFlush:  periodFlush,
 		periodReConn: periodReConn,
@@ -226,6 +231,11 @@ func (dest *Destination) relay() {
 	ticker := time.NewTicker(dest.periodReConn)
 	var toUnspool chan []byte
 	var conn *Conn
+	var prependTmp = []byte{}
+	var appendTmp = []byte{}
+	if len(dest.Prepend) != 0 {
+		prependTmp = append(prependTmp, []byte(dest.Prepend)...)
+	}
 
 	// try to send the data on the buffered tcp conn
 	// if that's slow or down, discard the data
@@ -319,6 +329,25 @@ func (dest *Destination) relay() {
 			log.Info("dest %v %s received from spool -> nonBlockingSend\n", dest.Addr, buf)
 			nonBlockingSend(buf)
 		case buf := <-dest.in:
+			if dest.Prepend != "" {
+				prependTmp = prependTmp[0:len(dest.Prepend)]
+				prependTmp = append(prependTmp, buf...)
+				buf = prependTmp
+			}
+
+			if dest.Append != "" {
+				sp := bytes.IndexByte([]byte(buf), byte(' '))
+				if sp < 0 {
+					// Didn't find a space, should probably error
+				} else {
+					appendTmp = appendTmp[:0]
+					appendTmp = append(appendTmp, buf[0:sp]...)
+					appendTmp = append(appendTmp, []byte(dest.Append)...)
+					appendTmp = append(appendTmp, buf[sp:len(buf)]...)
+					buf = appendTmp
+				}
+			}
+
 			if conn != nil {
 				log.Info("dest %v %s received from In -> nonBlockingSend\n", dest.Addr, buf)
 				nonBlockingSend(buf)

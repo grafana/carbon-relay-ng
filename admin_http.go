@@ -3,13 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	assetfs "github.com/elazarl/go-bindata-assetfs"
-	"github.com/gorilla/mux"
-	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	assetfs "github.com/elazarl/go-bindata-assetfs"
+	"github.com/gorilla/mux"
+	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 )
 
 // error response contains everything we need to use http.Error
@@ -132,6 +133,8 @@ func parseRouteRequest(r *http.Request) (Route, *handlerError) {
 		Substring string
 		Prefix    string
 		Regex     string
+		Prepend   string
+		Append    string
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
@@ -140,7 +143,7 @@ func parseRouteRequest(r *http.Request) (Route, *handlerError) {
 	// readDestinations
 	periodFlush := time.Duration(1000) * time.Millisecond
 	periodReconn := time.Duration(10000) * time.Millisecond
-	dest, err := NewDestination("", "", "", request.Address, table.spoolDir, request.Spool, request.Pickle, periodFlush, periodReconn)
+	dest, err := NewDestination("", "", "", request.Address, table.spoolDir, request.Prepend, request.Append, request.Spool, request.Pickle, periodFlush, periodReconn)
 	if err != nil {
 		return nil, &handlerError{err, "unable to create destination", http.StatusBadRequest}
 	}

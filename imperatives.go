@@ -3,11 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/graphite-ng/carbon-relay-ng/aggregator"
-	"github.com/taylorchu/toki"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/graphite-ng/carbon-relay-ng/aggregator"
+	"github.com/taylorchu/toki"
 )
 
 const (
@@ -39,6 +40,8 @@ const (
 	optFlushMaxNum
 	optFlushMaxWait
 	optTimeout
+	optAppend
+	optPrepend
 	word
 )
 
@@ -63,6 +66,8 @@ var tokens = []toki.Def{
 	{Token: optReconn, Pattern: "reconn="},
 	{Token: optPickle, Pattern: "pickle="},
 	{Token: optSpool, Pattern: "spool="},
+	{Token: optPrepend, Pattern: "prepend="},
+	{Token: optAppend, Pattern: "append="},
 	{Token: optTrue, Pattern: "true"},
 	{Token: optFalse, Pattern: "false"},
 	{Token: optBufSize, Pattern: "bufSize="},
@@ -455,7 +460,7 @@ func readDestinations(s *toki.Scanner, table *Table, allowMatcher bool) (destina
 		if t.Token == sep {
 			t = s.Next()
 		}
-		var prefix, sub, regex, addr, spoolDir string
+		var prefix, sub, regex, addr, spoolDir, prepend, appendopt string
 		var spool, pickle bool
 		flush := 1000
 		reconn := 10000
@@ -516,6 +521,16 @@ func readDestinations(s *toki.Scanner, table *Table, allowMatcher bool) (destina
 				if err != nil {
 					return destinations, fmt.Errorf("unrecognized spool value '%s'", t)
 				}
+			case optPrepend:
+				if t = s.Next(); t.Token != word {
+					return destinations, errFmtAddRoute
+				}
+				prepend = string(t.Value)
+			case optAppend:
+				if t = s.Next(); t.Token != word {
+					return destinations, errFmtAddRoute
+				}
+				appendopt = string(t.Value)
 			case toki.EOF:
 			case sep:
 				break
@@ -529,7 +544,7 @@ func readDestinations(s *toki.Scanner, table *Table, allowMatcher bool) (destina
 		if !allowMatcher && (prefix != "" || sub != "" || regex != "") {
 			return destinations, fmt.Errorf("matching options (prefix, sub, and regex) not allowed for this route type")
 		}
-		dest, err := NewDestination(prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn)
+		dest, err := NewDestination(prefix, sub, regex, addr, spoolDir, prepend, appendopt, spool, pickle, periodFlush, periodReConn)
 		if err != nil {
 			return destinations, err
 		}
