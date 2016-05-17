@@ -18,7 +18,7 @@ notes:
 * by specifying a prefix, sub or regex you can only send a subset of your metrics to grafana.net hosted metrics
 
 ```
-addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
+addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
 ```
 
 
@@ -31,6 +31,7 @@ options can appear after the schemasFile, space-separated.
 * flushMaxNum: after this many metrics have queued up, trigger a flush (default 10k)
 * flushMaxWait: after this many milliseconds, trigger a flush (default 500)
 * timeout: after how many milliseconds to consider a request to the hosted metrics to timeout, so that it will retry later (default 2000)
+* sslverify: disables ssl verifications, useful for test/POC setups with self signed ssl certificates (default true)
 
 Note that there's only 1 flush worker so you have to check the carbon-relay-ng dashboard (or the log)
 to make sure flushes don't last so long that the buffer fills up.
@@ -61,7 +62,7 @@ bad_metrics_max_age = "24h"
 # here's some examples:
 init = [
      'addRoute sendAllMatch carbon-default  your-actual-graphite-server:2003 spool=true pickle=false',
-     'addRoute grafanaNet grafanaNet  http://localhost:8081/metrics your-grafana.net-api-key /path/to/storage-schemas.conf',
+     'addRoute grafanaNet grafanaNet  http://localhost:8081/metrics your-grafana.net-api-key /path/to/storage-schemas.conf sslverify=false',
 ]
 
 [instrumentation]

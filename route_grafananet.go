@@ -2,15 +2,18 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
-	"github.com/Dieterbe/go-metrics"
-	"github.com/jpillora/backoff"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/Dieterbe/go-metrics"
+	"github.com/jpillora/backoff"
 
 	"github.com/lomik/go-carbon/persister"
 	"github.com/raintank/raintank-metric/msg"
@@ -28,6 +31,7 @@ type RouteGrafanaNet struct {
 	flushMaxNum  int
 	flushMaxWait time.Duration
 	timeout      time.Duration
+	sslVerify    bool
 
 	numErrFlush       metrics.Counter
 	numOut            metrics.Counter   // metrics successfully written to our buffered conn (no flushing yet)
@@ -41,7 +45,7 @@ type RouteGrafanaNet struct {
 // NewRouteGrafanaNet creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
 // ignores spool for now
-func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool bool, bufSize, flushMaxNum, flushMaxWait, timeout int) (Route, error) {
+func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool, sslVerify bool, bufSize, flushMaxNum, flushMaxWait, timeout int) (Route, error) {
 	m, err := NewMatcher(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -78,6 +82,7 @@ func NewRouteGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile strin
 		flushMaxNum:  flushMaxNum,
 		flushMaxWait: time.Duration(flushMaxWait) * time.Millisecond,
 		timeout:      time.Duration(timeout) * time.Millisecond,
+		sslVerify:    sslVerify,
 
 		numErrFlush:       Counter("dest=" + cleanAddr + ".unit=Err.type=flush"),
 		numOut:            Counter("dest=" + cleanAddr + ".unit=Metric.direction=out"),
@@ -98,6 +103,22 @@ func (route *RouteGrafanaNet) run() {
 	ticker := time.NewTicker(route.flushMaxWait)
 	client := &http.Client{
 		Timeout: route.timeout,
+	}
+	if !route.sslVerify {
+		// this transport should be the equivalent of Go's DefaultTransport
+		client.Transport = &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			// except for this
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
 	}
 
 	b := &backoff.Backoff{
