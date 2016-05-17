@@ -5,6 +5,7 @@ It converts graphite (carbon) input into metrics2.0 form and submits it to a rai
 
 note:
 * it requires a grafana.net api key and a url to the hosted store
+* api key should have editor or admin role. (viewer works for now, but will be blocked in the future)
 * it needs to read your graphite storage-schemas.conf to determine which intervals to use
 * but will send your metrics the way you send them.
   (if you send at odd intervals, or an interval that doesn't match your storage-schemas.conf, that's how we will store it)

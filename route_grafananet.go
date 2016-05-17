@@ -203,6 +203,7 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas) *schema.MetricDat
 		Time:       int64(timestamp),
 		TargetType: "gauge",
 		Tags:       []string{},
+		OrgId:      1, // the hosted tsdb service will adjust to the correct OrgId if using a regular key.  orgid 1 is only retained with admin key.
 	}
 	return &md
 }
