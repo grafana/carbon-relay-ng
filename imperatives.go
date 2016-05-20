@@ -18,6 +18,7 @@ const (
 	addRouteConsistentHashing
 	addRouteGrafanaNet
 	addDest
+	delRoute
 	modDest
 	modRoute
 	str
@@ -54,6 +55,7 @@ var tokens = []toki.Def{
 	{Token: addRouteConsistentHashing, Pattern: "addRoute consistentHashing"},
 	{Token: addRouteGrafanaNet, Pattern: "addRoute grafanaNet"},
 	{Token: addDest, Pattern: "addDest"},
+	{Token: delRoute, Pattern: "delRoute"},
 	{Token: modDest, Pattern: "modDest"},
 	{Token: modRoute, Pattern: "modRoute"},
 	{Token: optPrefix, Pattern: "prefix="},
@@ -108,6 +110,8 @@ func applyCommand(table *Table, cmd string) error {
 		return readAddRouteConsistentHashing(s, table)
 	case addRouteGrafanaNet:
 		return readAddRouteGrafanaNet(s, table)
+	case delRoute:
+		return readDelRoute(s, table)
 	case modDest:
 		return readModDest(s, table)
 	case modRoute:
@@ -366,6 +370,15 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table *Table) error {
 	}
 	table.AddRoute(route)
 	return nil
+}
+
+func readDelRoute(s *toki.Scanner, table *Table) error {
+	t := s.Next()
+	if t.Token != word {
+		return errors.New("need route key")
+	}
+	key := string(t.Value)
+	return table.DelRoute(key)
 }
 
 func readModDest(s *toki.Scanner, table *Table) error {

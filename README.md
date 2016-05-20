@@ -211,3 +211,4 @@ commands:
                    sub=<str>                     new matcher substring
                    regex=<regex>                 new matcher regex
 
+    delRoute <routeKey>                          delete given route
