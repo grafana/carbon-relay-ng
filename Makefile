@@ -1,5 +1,4 @@
-VERSION=0.0.0
-BUILD=1
+VERSION=$(shell git describe --tags)
 
 
 build:
@@ -17,12 +16,12 @@ deb: build
 		-s dir \
 		-t deb \
 		-n carbon-relay-ng \
-		-v $(VERSION)-$(BUILD) \
+		-v $(VERSION)-1 \
 		-a amd64 \
-		-m "Dieter Plaetinck <dieter@plaetinck.be>" \
+		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
-		--url https://github.com/rcrowley/carbon-relay-ng \
+		--url https://github.com/graphite-ng/carbon-relay-ng \
 		-C debian .
 	rm -rf debian
 
@@ -36,12 +35,12 @@ rpm: build
 		-t rpm \
 		-n carbon-relay-ng \
 		-v $(VERSION) \
-		--epoch $(BUILD) \
+		--epoch 1 \
 		-a amd64 \
-		-m "Dieter Plaetinck <dieter@plaetinck.be>" \
+		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
-		--url https://github.com/rcrowley/carbon-relay-ng \
+		--url https://github.com/graphite-ng/carbon-relay-ng \
 		-C redhat .
 	rm -rf redhat	
 
