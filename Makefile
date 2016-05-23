@@ -18,6 +18,7 @@ deb: build
 		-n carbon-relay-ng \
 		-v $(VERSION)-1 \
 		-a amd64 \
+		--deb-upstart examples/carbon-relay-ng.upstart \
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
