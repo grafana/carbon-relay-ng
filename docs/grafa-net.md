@@ -22,9 +22,20 @@ addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/
 ```
 
 
-### options
+### matching options
 
-options can appear after the schemasFile, space-separated.
+substring match: `addRoute grafanaNet grafanaNet sub=<substring here>  addr...`
+regex match: `addRoute grafanaNet grafanaNet regex=your-regex-here  addr...`
+prefix match: `addRoute grafanaNet grafanaNet prefix=prefix-match-here  addr...`
+
+the options can also be combined (space separated). note two spaces before the address!
+
+note that the matching is applied to the entire metric line (including key, value and timestamp)
+
+
+### other options
+
+other options can appear after the schemasFile, space-separated.
 
 * for schemasFile, see [storage-schemas.conf documentation](http://graphite.readthedocs.io/en/latest/config-carbon.html#storage-schemas-conf)
 * bufSize: 1e7 (10 million)
