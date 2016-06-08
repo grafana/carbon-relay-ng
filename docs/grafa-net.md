@@ -70,6 +70,7 @@ log_level = "notice"
 bad_metrics_max_age = "24h"
 
 # put init commands here, in the same format as you'd use for the telnet interface
+# note the two spaces after the route key.
 # here's some examples:
 init = [
      'addRoute sendAllMatch carbon-default  your-actual-graphite-server:2003 spool=true pickle=false',
