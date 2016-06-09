@@ -132,14 +132,15 @@ func (route *RouteGrafanaNet) run() {
 		if len(metrics) == 0 {
 			return
 		}
+
+		mda := schema.MetricDataArray(metrics)
+		data, err := msg.CreateMsg(mda, 0, msg.FormatMetricDataArrayMsgp)
+		if err != nil {
+			panic(err)
+		}
+
 		for {
 			pre := time.Now()
-			mda := schema.MetricDataArray(metrics)
-			data, err := msg.CreateMsg(mda, 0, msg.FormatMetricDataArrayMsgp)
-			if err != nil {
-				panic(err)
-			}
-
 			req, err := http.NewRequest("POST", route.addr, bytes.NewBuffer(data))
 			if err != nil {
 				panic(err)
