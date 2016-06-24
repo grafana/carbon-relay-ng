@@ -14,8 +14,8 @@ type BadMetrics struct {
 }
 
 type Record struct {
-	Metric   string
-	LastMsg  string
+	Metric   string // the key parsed, or "" if parse failure
+	LastMsg  string // metric line read
 	LastErr  string
 	LastSeen time.Time
 }
@@ -66,9 +66,9 @@ func (b *BadMetrics) manage() {
 		case in := <-b.In:
 			b.seen[in.Metric] = in
 		case <-clean.C:
-			now := time.Now()
+			cutoff := time.Now().Add(-b.maxAge)
 			for metric, record := range b.seen {
-				if record.LastSeen.Before(now) {
+				if record.LastSeen.Before(cutoff) {
 					delete(b.seen, metric)
 				}
 			}
