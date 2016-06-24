@@ -20,7 +20,7 @@ Or balance/split load, or provide redundancy, or partition the data, etc.
 This pattern allows alerting and event processing systems to act on the data as it is received (which is much better than repeated reading from your storage)
 
 
-![screenshot](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/screenshot.png)
+![screenshot](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/screenshots/screenshot.png)
 
 
 Future work aka what's missing
@@ -43,7 +43,7 @@ Instrumentation
 * You can also send metrics to graphite (or feed back into the relay), see config.
 * Comes with a [grafana dashboard template](https://github.com/graphite-ng/carbon-relay-ng/blob/master/grafana-dashboard.json) so you get up and running in no time.
 
-![grafana dashboard](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/grafana-screenshot.png)
+![grafana dashboard](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/screenshots/grafana-screenshot.png)
 
 
 Building
