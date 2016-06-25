@@ -5,7 +5,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"expvar"
 	"flag"
 	"fmt"
@@ -109,8 +108,6 @@ func accept(l *net.TCPListener, config Config) {
 	}
 }
 
-var emptyByteStr = []byte("")
-
 func handle(c net.Conn, config Config) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
@@ -136,14 +133,9 @@ func handle(c net.Conn, config Config) {
 		copy(buf_copy, buf)
 		numIn.Inc(1)
 
-		err = m20.ValidatePacket(buf, config.Legacy_metric_validation.Level)
+		key, _, ts, err := m20.ValidatePacket(buf, config.Legacy_metric_validation.Level)
 		if err != nil {
-			fields := bytes.Fields(buf)
-			if len(fields) != 0 {
-				badMetrics.Add(fields[0], buf, err)
-			} else {
-				badMetrics.Add(emptyByteStr, buf, err)
-			}
+			badMetrics.Add(key, buf, err)
 			numInvalid.Inc(1)
 			continue
 		}
