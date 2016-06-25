@@ -221,7 +221,7 @@ func ValidatePacket(buf []byte, legacyValidation LegacyMetricValidation) ([]byte
 		return empty, 0, 0, errors.New("timestamp field is not a unix timestamp")
 	}
 
-	return fields[1], val, uint32(ts), nil
+	return fields[0], val, uint32(ts), nil
 }
 
 type MetricSpec struct {

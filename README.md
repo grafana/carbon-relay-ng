@@ -126,6 +126,8 @@ If we detect the metric is in metrics2.0 format we also check proper formatting,
 Invalid metrics are dropped and can be seen at /badMetrics/timespec.json where timespec is something like 30s, 10m, 24h, etc.
 (the counters are also exported.  See instrumentation section)
 
+You can also validate that for each series, each point is older than the previous. using the validate_order option.  This is helpful for some backends like grafana.net
+
 
 Aggregation
 -----------

@@ -19,6 +19,7 @@ import (
 	"github.com/Dieterbe/go-metrics"
 	"github.com/Dieterbe/go-metrics/exp"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
+	"github.com/graphite-ng/carbon-relay-ng/validate"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
 	logging "github.com/op/go-logging"
 	"github.com/rcrowley/goagain"
@@ -63,6 +64,7 @@ type Config struct {
 	Bad_metrics_max_age      string
 	Pid_file                 string
 	Legacy_metric_validation MetricValidationLevel
+	Validate_order           bool
 }
 
 type instrumentation struct {
@@ -82,6 +84,7 @@ var (
 	memProfileRate   = flag.Int("mem-profile-rate", 512*1024, "0 to disable. 1 for max precision (expensive!) see https://golang.org/pkg/runtime/#pkg-variables")
 	numIn            metrics.Counter
 	numInvalid       metrics.Counter
+	numOutOfOrder    metrics.Counter
 	badMetrics       *badmetrics.BadMetrics
 )
 
@@ -138,6 +141,15 @@ func handle(c net.Conn, config Config) {
 			badMetrics.Add(key, buf, err)
 			numInvalid.Inc(1)
 			continue
+		}
+
+		if config.Validate_order {
+			err = validate.Ordered(key, ts)
+			if err != nil {
+				badMetrics.Add(key, buf, err)
+				numOutOfOrder.Inc(1)
+				continue
+			}
 		}
 
 		table.Dispatch(buf_copy)
@@ -213,6 +225,7 @@ func main() {
 
 	numIn = Counter("unit=Metric.direction=in")
 	numInvalid = Counter("unit=Err.type=invalid")
+	numOutOfOrder = Counter("unit=Err.type=out_of_order")
 	if config.Instrumentation.Graphite_addr != "" {
 		addr, err := net.ResolveTCPAddr("tcp", config.Instrumentation.Graphite_addr)
 		if err != nil {
