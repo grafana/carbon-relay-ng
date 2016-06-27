@@ -16,7 +16,7 @@ func parseDataPoint(buf []byte) (*Datapoint, error) {
 	str := strings.TrimSpace(string(buf))
 	elements := strings.Fields(str)
 	if len(elements) != 3 {
-		return nil, fmt.Errorf("'%s' doesn't have three fields", str)
+		return nil, fmt.Errorf("%q doesn't have three fields", str)
 	}
 	name := elements[0]
 	val, err := strconv.ParseFloat(elements[1], 64)

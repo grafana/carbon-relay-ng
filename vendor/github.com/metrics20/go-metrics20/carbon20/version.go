@@ -45,16 +45,18 @@ func GetVersion(metric_in string) metricVersion {
 	return Legacy
 }
 
-var byteEquals = []byte("=")
-var byteIs = []byte("_is_")
-
 // getVersionB is like getVersion but for byte array input.
 func GetVersionB(metric_in []byte) metricVersion {
-	if bytes.Contains(metric_in, byteEquals) {
-		return M20
-	}
-	if bytes.Contains(metric_in, byteIs) {
-		return M20NoEquals
+	for i, c := range metric_in {
+		if c == 61 { // =
+			return M20
+		} else if c == 95 { // _ -> look for _is_
+			if len(metric_in) > i+3 && metric_in[i+1] == 105 && metric_in[i+2] == 115 && metric_in[i+3] == 95 {
+				return M20NoEquals
+			}
+		} else if c == 46 { // .
+			return Legacy
+		}
 	}
 	return Legacy
 }
@@ -195,32 +197,32 @@ func InitialValidationB(metric_id []byte, version metricVersion, legacyValidatio
 }
 
 var space = []byte(" ")
+var empty = []byte("")
 
-// ValidatePacket validates a carbon message.
-func ValidatePacket(buf []byte, legacyValidation LegacyMetricValidation) error {
+// ValidatePacket validates a carbon message and returns useful pieces of it
+func ValidatePacket(buf []byte, legacyValidation LegacyMetricValidation) ([]byte, float64, uint32, error) {
 	fields := bytes.Fields(buf)
 	if len(fields) != 3 {
-		return errors.New("packet must consist of 3 fields")
-
+		return empty, 0, 0, errors.New("packet must consist of 3 fields")
 	}
 
 	version := GetVersionB(fields[0])
 	err := InitialValidationB(fields[0], version, legacyValidation)
 	if err != nil {
-		return err
+		return empty, 0, 0, err
 	}
 
-	_, err = strconv.ParseFloat(string(fields[1]), 32)
+	val, err := strconv.ParseFloat(string(fields[1]), 32)
 	if err != nil {
-		return errors.New("value field is not a float or int")
+		return empty, 0, 0, errors.New("value field is not a float or int")
 	}
 
-	_, err = strconv.ParseUint(string(fields[2]), 10, 0)
+	ts, err := strconv.ParseUint(string(fields[2]), 10, 0)
 	if err != nil {
-		return errors.New("timestamp field is not a unix timestamp")
+		return empty, 0, 0, errors.New("timestamp field is not a unix timestamp")
 	}
 
-	return nil
+	return fields[0], val, uint32(ts), nil
 }
 
 type MetricSpec struct {
