@@ -123,10 +123,11 @@
 			"revisionTime": "2016-05-05T07:06:08Z"
 		},
 		{
-			"checksumSHA1": "7/+oZBY9xW8oWEN+yNzp8/NS7HE=",
+			"checksumSHA1": "HO38bi3StCXTiH6W9hr/Lt6QPMM=",
+			"origin": "github.com/graphite-ng/carbon-relay-ng/vendor/github.com/metrics20/go-metrics20/carbon20",
 			"path": "github.com/metrics20/go-metrics20/carbon20",
-			"revision": "54e0842d7eb1e68e992391e834a7cf08e0b1cff9",
-			"revisionTime": "2016-05-05T23:36:10Z"
+			"revision": "03a5d05c63ff7acbf523af6becff9226536d4723",
+			"revisionTime": "2016-06-27T00:09:49Z"
 		},
 		{
 			"checksumSHA1": "zYFzQ2uU+r6juBQ/pa+byRlfCqg=",

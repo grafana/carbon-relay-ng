@@ -45,16 +45,18 @@ func GetVersion(metric_in string) metricVersion {
 	return Legacy
 }
 
-var byteEquals = []byte("=")
-var byteIs = []byte("_is_")
-
 // getVersionB is like getVersion but for byte array input.
 func GetVersionB(metric_in []byte) metricVersion {
-	if bytes.Contains(metric_in, byteEquals) {
-		return M20
-	}
-	if bytes.Contains(metric_in, byteIs) {
-		return M20NoEquals
+	for i, c := range metric_in {
+		if c == 61 { // =
+			return M20
+		} else if c == 95 { // _ -> look for _is_
+			if len(metric_in) > i+3 && metric_in[i+1] == 105 && metric_in[i+2] == 115 && metric_in[i+3] == 95 {
+				return M20NoEquals
+			}
+		} else if c == 46 { // .
+			return Legacy
+		}
 	}
 	return Legacy
 }
@@ -197,12 +199,11 @@ func InitialValidationB(metric_id []byte, version metricVersion, legacyValidatio
 var space = []byte(" ")
 var empty = []byte("")
 
-// ValidatePacket validates a carbon message.
+// ValidatePacket validates a carbon message and returns useful pieces of it
 func ValidatePacket(buf []byte, legacyValidation LegacyMetricValidation) ([]byte, float64, uint32, error) {
 	fields := bytes.Fields(buf)
 	if len(fields) != 3 {
 		return empty, 0, 0, errors.New("packet must consist of 3 fields")
-
 	}
 
 	version := GetVersionB(fields[0])
