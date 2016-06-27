@@ -12,862 +12,857 @@
   "sharedCrosshair": false,
   "rows": [
     {
-      "title": "Row1",
-      "height": "150px",
-      "editable": true,
       "collapse": false,
+      "editable": true,
+      "height": "150px",
       "panels": [
         {
-          "title": "$instance incoming",
-          "error": false,
-          "span": 6,
-          "editable": true,
-          "type": "graph",
-          "id": 1,
+          "aliasColors": {
+            "blacklist": "#E24D42",
+            "direction_is_blacklist": "#E0752D",
+            "direction_is_in": "#3F6833",
+            "direction_is_unroutable": "#890F02",
+            "in": "#3F6833",
+            "unroutable": "#890F02"
+          },
+          "bars": false,
           "datasource": "graphite",
-          "renderer": "flot",
+          "editable": true,
+          "error": false,
+          "fill": 0,
           "grid": {
             "threshold1": null,
-            "threshold2": null,
             "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "lines": true,
-          "fill": 0,
-          "linewidth": 1,
-          "points": false,
-          "pointradius": 5,
-          "bars": false,
-          "stack": false,
-          "percentage": false,
+          "id": 1,
           "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
-            "avg": false,
             "alignAsTable": true,
-            "rightSide": true
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "total": false,
+            "values": false
           },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
           "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 6,
+          "stack": false,
           "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false,
-            "msResolution": false
-          },
           "targets": [
             {
-              "target": "aliasByNode(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.unit_is_Metric.*), 4)",
-              "refId": "A"
+              "refId": "A",
+              "target": "aliasByNode(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.unit_is_Metric.*), 4)"
             },
             {
+              "hide": false,
               "refId": "B",
-              "target": "alias(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.unit_is_Err.type_is_invalid), 'invalid')",
-              "hide": false
-            }
-          ],
-          "aliasColors": {
-            "unroutable": "#890F02",
-            "blacklist": "#E24D42",
-            "in": "#3F6833",
-            "direction_is_unroutable": "#890F02",
-            "direction_is_in": "#3F6833",
-            "direction_is_blacklist": "#E0752D"
-          },
-          "seriesOverrides": [],
-          "links": [],
-          "yaxes": [
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
+              "target": "alias(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.unit_is_Err.type_is_invalid), 'invalid')"
             },
             {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
+              "hide": false,
+              "refId": "C",
+              "target": "alias(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.unit_is_Err.type_is_out_of_order), 'out-of-order')"
             }
           ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "$instance incoming",
+          "tooltip": {
+            "msResolution": false,
+            "shared": false,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
           "xaxis": {
             "show": true
           },
-          "timeFrom": null,
-          "timeShift": null
+          "yaxes": [
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
         },
         {
-          "title": "dest metric directions",
-          "error": false,
-          "span": 6,
-          "editable": true,
-          "type": "graph",
-          "id": 4,
+          "aliasColors": {},
+          "bars": false,
           "datasource": "graphite",
-          "renderer": "flot",
+          "editable": true,
+          "error": false,
+          "fill": 0,
           "grid": {
             "threshold1": null,
-            "threshold2": null,
             "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "lines": true,
-          "fill": 0,
-          "linewidth": 1,
-          "points": false,
-          "pointradius": 5,
-          "bars": false,
-          "stack": false,
-          "percentage": false,
+          "id": 4,
           "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
-            "avg": false,
             "alignAsTable": true,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
             "rightSide": true,
-            "sortDesc": true
+            "show": true,
+            "sortDesc": true,
+            "total": false,
+            "values": false
           },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
           "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 6,
+          "stack": false,
           "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false,
-            "msResolution": false
-          },
           "targets": [
             {
-              "target": "alias(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Metric.direction_is_out), 'to tcp')",
               "hide": false,
-              "refId": "A"
+              "refId": "A",
+              "target": "alias(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Metric.direction_is_out), 'to tcp')"
             },
             {
-              "target": "alias(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.spool_is_$dest.unit_is_Metric.status_is_incomingRT), 'to spool')",
               "hide": false,
-              "refId": "B"
+              "refId": "B",
+              "target": "alias(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.spool_is_$dest.unit_is_Metric.status_is_incomingRT), 'to spool')"
             }
           ],
-          "aliasColors": {},
-          "seriesOverrides": [],
-          "links": [],
-          "yaxes": [
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            },
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            }
-          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "dest metric directions",
+          "tooltip": {
+            "msResolution": false,
+            "shared": false,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
           "xaxis": {
             "show": true
           },
-          "timeFrom": null,
-          "timeShift": null
+          "yaxes": [
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
         }
-      ]
+      ],
+      "title": "Row1"
     },
     {
-      "title": "New row",
-      "height": "150px",
-      "editable": true,
       "collapse": false,
+      "editable": true,
+      "height": "150px",
       "panels": [
         {
-          "title": "dest metric drops",
-          "error": false,
-          "span": 6,
-          "editable": true,
-          "type": "graph",
-          "id": 3,
-          "datasource": "graphite",
-          "renderer": "flot",
-          "grid": {
-            "threshold1": null,
-            "threshold2": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "lines": true,
-          "fill": 0,
-          "linewidth": 1,
-          "points": false,
-          "pointradius": 5,
-          "bars": false,
-          "stack": false,
-          "percentage": false,
-          "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
-            "avg": false,
-            "rightSide": true,
-            "alignAsTable": true,
-            "sortDesc": true
-          },
-          "nullPointMode": "null",
-          "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false,
-            "msResolution": false
-          },
-          "targets": [
-            {
-              "target": "aliasByNode(derivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Metric.action_is_drop.*),6)",
-              "refId": "A"
-            }
-          ],
           "aliasColors": {
             "reason_is_bad_pickle": "#CCA300",
             "reason_is_conn_down_no_spool": "#962D82",
             "reason_is_slow_conn": "#E0752D",
             "reason_is_slow_spool": "#BF1B00"
           },
-          "seriesOverrides": [],
+          "bars": false,
+          "datasource": "graphite",
+          "editable": true,
+          "error": false,
+          "fill": 0,
+          "grid": {
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 3,
+          "legend": {
+            "alignAsTable": true,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "sortDesc": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
           "links": [],
-          "yaxes": [
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 6,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
             {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            },
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
+              "refId": "A",
+              "target": "aliasByNode(derivative(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Metric.action_is_drop.*),6)"
             }
           ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "dest metric drops",
+          "tooltip": {
+            "msResolution": false,
+            "shared": false,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
           "xaxis": {
             "show": true
           },
-          "timeFrom": null,
-          "timeShift": null
+          "yaxes": [
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
         },
         {
-          "title": "dest Errors",
-          "error": false,
-          "span": 6,
-          "editable": true,
-          "type": "graph",
-          "id": 2,
-          "datasource": "graphite",
-          "renderer": "flot",
-          "grid": {
-            "threshold1": null,
-            "threshold2": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "lines": true,
-          "fill": 0,
-          "linewidth": 1,
-          "points": false,
-          "pointradius": 5,
-          "bars": false,
-          "stack": false,
-          "percentage": false,
-          "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
-            "avg": false,
-            "alignAsTable": true,
-            "rightSide": true,
-            "sortDesc": true
-          },
-          "nullPointMode": "connected",
-          "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false,
-            "msResolution": false
-          },
-          "targets": [
-            {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Err.*, 5)",
-              "refId": "A"
-            }
-          ],
           "aliasColors": {
             "type_is_truncated": "#890F02",
             "type_is_write": "#C15C17"
           },
-          "seriesOverrides": [],
-          "links": [],
-          "yaxes": [
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            },
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            }
-          ],
-          "xaxis": {
-            "show": true
-          },
-          "timeFrom": null,
-          "timeShift": null
-        }
-      ]
-    },
-    {
-      "title": "New row",
-      "height": "250px",
-      "editable": true,
-      "collapse": false,
-      "panels": [
-        {
-          "title": "conn Flush size",
-          "error": false,
-          "span": 4,
-          "editable": true,
-          "type": "graph",
-          "id": 8,
+          "bars": false,
           "datasource": "graphite",
-          "renderer": "flot",
+          "editable": true,
+          "error": false,
+          "fill": 0,
           "grid": {
             "threshold1": null,
-            "threshold2": null,
             "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "lines": true,
-          "fill": 0,
-          "linewidth": 1,
-          "points": false,
-          "pointradius": 5,
-          "bars": false,
-          "stack": false,
-          "percentage": false,
+          "id": 2,
           "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
-            "avg": false,
             "alignAsTable": true,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
             "rightSide": true,
-            "sortDesc": true
+            "show": true,
+            "sortDesc": true,
+            "total": false,
+            "values": false
           },
-          "nullPointMode": "null",
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 6,
+          "stack": false,
           "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false,
-            "msResolution": false
-          },
           "targets": [
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_ticker.stat_is_max, 'ticker max')",
-              "refId": "A"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_ticker.stat_is_max_99, 'ticker 99')",
-              "refId": "B"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_ticker.stat_is_mean,'ticker mean')",
-              "refId": "C"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_manual.stat_is_max, 'manual max')",
-              "refId": "D"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_manual.stat_is_max_99, 'manual 99')",
-              "refId": "E"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_manual.stat_is_mean, 'manual mean')",
-              "refId": "F"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_overflow.stat_is_max,'overflow max')",
-              "refId": "G"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_overflow.stat_is_max99, 'overflow 99')",
-              "refId": "H"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_overflow.mean,\"overflow mean\")",
-              "refId": "I"
+              "refId": "A",
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Err.*, 5)"
             }
           ],
-          "aliasColors": {},
-          "seriesOverrides": [],
-          "links": [],
-          "yaxes": [
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "bytes"
-            },
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            }
-          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "dest Errors",
+          "tooltip": {
+            "msResolution": false,
+            "shared": false,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
           "xaxis": {
             "show": true
           },
-          "timeFrom": null,
-          "timeShift": null
-        },
+          "yaxes": [
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        }
+      ],
+      "title": "New row"
+    },
+    {
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [
         {
-          "title": "conn metrics in buffer",
-          "error": false,
-          "span": 4,
-          "editable": true,
-          "type": "graph",
-          "id": 6,
+          "aliasColors": {},
+          "bars": false,
           "datasource": "graphite",
-          "renderer": "flot",
+          "editable": true,
+          "error": false,
+          "fill": 0,
           "grid": {
             "threshold1": null,
-            "threshold2": null,
             "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2Color": "rgba(234, 112, 112, 0.22)",
-            "thresholdLine": false
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 8,
+          "legend": {
+            "alignAsTable": true,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "sortDesc": true,
+            "total": false,
+            "values": false
           },
           "lines": true,
-          "fill": 3,
           "linewidth": 1,
-          "points": false,
-          "pointradius": 5,
-          "bars": false,
-          "stack": false,
+          "links": [],
+          "nullPointMode": "null",
           "percentage": false,
-          "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
-            "avg": false,
-            "alignAsTable": true,
-            "rightSide": true
-          },
-          "nullPointMode": "connected",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 4,
+          "stack": false,
           "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false,
-            "msResolution": false
-          },
           "targets": [
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_Metric.what_is_numBuffered, 'numBuffered')",
-              "refId": "A"
+              "refId": "A",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_ticker.stat_is_max, 'ticker max')"
+            },
+            {
+              "refId": "B",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_ticker.stat_is_max_99, 'ticker 99')"
+            },
+            {
+              "refId": "C",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_ticker.stat_is_mean,'ticker mean')"
+            },
+            {
+              "refId": "D",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_manual.stat_is_max, 'manual max')"
+            },
+            {
+              "refId": "E",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_manual.stat_is_max_99, 'manual 99')"
+            },
+            {
+              "refId": "F",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_manual.stat_is_mean, 'manual mean')"
+            },
+            {
+              "refId": "G",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_overflow.stat_is_max,'overflow max')"
+            },
+            {
+              "refId": "H",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_overflow.stat_is_max99, 'overflow 99')"
+            },
+            {
+              "refId": "I",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_B.what_is_FlushSize.type_is_overflow.mean,\"overflow mean\")"
             }
           ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "conn Flush size",
+          "tooltip": {
+            "msResolution": false,
+            "shared": false,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "bytes",
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
           "aliasColors": {
             "metrics-buffered": "#E0752D"
           },
-          "seriesOverrides": [],
-          "links": [],
-          "yaxes": [
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            },
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            }
-          ],
-          "xaxis": {
-            "show": true
-          },
-          "timeFrom": null,
-          "timeShift": null
-        },
-        {
-          "title": "conn flush durations",
-          "error": false,
-          "span": 4,
-          "editable": true,
-          "type": "graph",
-          "id": 5,
+          "bars": false,
           "datasource": "graphite",
-          "renderer": "flot",
+          "editable": true,
+          "error": false,
+          "fill": 3,
           "grid": {
             "threshold1": null,
-            "threshold2": null,
             "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)",
+            "thresholdLine": false
+          },
+          "id": 6,
+          "legend": {
+            "alignAsTable": true,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "total": false,
+            "values": false
           },
           "lines": true,
-          "fill": 0,
           "linewidth": 1,
-          "points": false,
-          "pointradius": 1,
-          "bars": false,
-          "stack": false,
+          "links": [],
+          "nullPointMode": "connected",
           "percentage": false,
-          "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
-            "avg": false,
-            "alignAsTable": true,
-            "rightSide": true
-          },
-          "nullPointMode": "null",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 4,
+          "stack": false,
           "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false,
-            "msResolution": false
-          },
           "targets": [
             {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_ticker.stat_is_max, '\"ticker max\"')",
-              "hide": false,
-              "refId": "A"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_ticker.stat_is_mean, '\"ticker mean\"')",
-              "hide": false,
-              "refId": "B"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_overflow.stat_is_max, '\"overflow max\"')",
-              "hide": false,
-              "refId": "C"
-            },
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_overflow.stat_is_mean, '\"overflow mean\"')",
-              "hide": false,
-              "refId": "D"
+              "refId": "A",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.dest_is_$dest.unit_is_Metric.what_is_numBuffered, 'numBuffered')"
             }
           ],
-          "aliasColors": {
-            "\"ticker max\"": "#6ED0E0",
-            "\"ticker mean\"": "#0A50A1",
-            "\"overflow max\"": "#EF843C",
-            "\"overflow mean\"": "#58140C"
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "conn metrics in buffer",
+          "tooltip": {
+            "msResolution": false,
+            "shared": false,
+            "value_type": "cumulative"
           },
-          "seriesOverrides": [],
-          "links": [],
-          "yaxes": [
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "ns"
-            },
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            }
-          ],
+          "type": "graph",
           "xaxis": {
             "show": true
           },
+          "yaxes": [
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {
+            "\"overflow max\"": "#EF843C",
+            "\"overflow mean\"": "#58140C",
+            "\"ticker max\"": "#6ED0E0",
+            "\"ticker mean\"": "#0A50A1"
+          },
+          "bars": false,
+          "datasource": "graphite",
+          "editable": true,
+          "error": false,
+          "fill": 0,
+          "grid": {
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 5,
+          "legend": {
+            "alignAsTable": true,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 1,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "hide": false,
+              "refId": "A",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_ticker.stat_is_max, '\"ticker max\"')"
+            },
+            {
+              "hide": false,
+              "refId": "B",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_ticker.stat_is_mean, '\"ticker mean\"')"
+            },
+            {
+              "hide": false,
+              "refId": "C",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_overflow.stat_is_max, '\"overflow max\"')"
+            },
+            {
+              "hide": false,
+              "refId": "D",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.dest_is_$dest.what_is_durationFlush.type_is_overflow.stat_is_mean, '\"overflow mean\"')"
+            }
+          ],
           "timeFrom": null,
-          "timeShift": null
+          "timeShift": null,
+          "title": "conn flush durations",
+          "tooltip": {
+            "msResolution": false,
+            "shared": false,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "ns",
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
         }
-      ]
+      ],
+      "title": "New row"
     },
     {
-      "title": "New row",
-      "height": "150px",
-      "editable": true,
       "collapse": false,
+      "editable": true,
+      "height": "150px",
       "panels": [
         {
-          "title": "spool inputs",
-          "error": false,
-          "span": 4,
-          "editable": true,
-          "type": "graph",
-          "id": 10,
-          "datasource": "graphite",
-          "renderer": "flot",
-          "grid": {
-            "threshold1": null,
-            "threshold2": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "lines": true,
-          "fill": 0,
-          "linewidth": 1,
-          "points": false,
-          "pointradius": 5,
-          "bars": false,
-          "stack": false,
-          "percentage": false,
-          "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
-            "avg": false
-          },
-          "nullPointMode": "connected",
-          "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false,
-            "msResolution": false
-          },
-          "targets": [
-            {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_counter.spool_is_$dest.unit_is_Metric.*, 5)",
-              "refId": "A"
-            },
-            {
-              "target": "",
-              "refId": "B"
-            }
-          ],
           "aliasColors": {
-            "status_is_incomingRT": "#0A50A1",
-            "status_is_incomingBulk": "#3F2B5B"
+            "status_is_incomingBulk": "#3F2B5B",
+            "status_is_incomingRT": "#0A50A1"
           },
-          "seriesOverrides": [],
-          "links": [],
-          "yaxes": [
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            },
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            }
-          ],
-          "xaxis": {
-            "show": true
-          },
-          "timeFrom": null,
-          "timeShift": null
-        },
-        {
-          "title": "spool metrics in buffer",
-          "error": false,
-          "span": 4,
-          "editable": true,
-          "type": "graph",
-          "id": 9,
-          "datasource": "graphite",
-          "renderer": "flot",
-          "grid": {
-            "threshold1": null,
-            "threshold2": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "lines": true,
-          "fill": 10,
-          "linewidth": 1,
-          "points": false,
-          "pointradius": 5,
           "bars": false,
-          "stack": false,
-          "percentage": false,
-          "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
-            "avg": false,
-            "alignAsTable": false,
-            "rightSide": false
-          },
-          "nullPointMode": "connected",
-          "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false,
-            "msResolution": false
-          },
-          "targets": [
-            {
-              "target": "alias(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.spool_is_$dest.unit_is_Metric.status_is_buffered, 'buffered')",
-              "hide": false,
-              "refId": "A"
-            }
-          ],
-          "aliasColors": {},
-          "seriesOverrides": [],
-          "links": [],
-          "yaxes": [
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "none",
-              "label": ""
-            },
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            }
-          ],
-          "xaxis": {
-            "show": true
-          },
-          "timeFrom": null,
-          "timeShift": null
-        },
-        {
-          "title": "spool durations",
-          "error": false,
-          "span": 4,
-          "editable": true,
-          "type": "graph",
-          "id": 11,
           "datasource": "graphite",
-          "renderer": "flot",
-          "grid": {
-            "threshold1": null,
-            "threshold2": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "lines": true,
+          "editable": true,
+          "error": false,
           "fill": 0,
-          "linewidth": 1,
-          "points": false,
-          "pointradius": 5,
-          "bars": false,
-          "stack": false,
-          "percentage": false,
+          "grid": {
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 10,
           "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
-            "current": false,
-            "total": false,
             "avg": false,
-            "alignAsTable": true,
-            "rightSide": true
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
           },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
           "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 4,
+          "stack": false,
           "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": false,
-            "msResolution": false
-          },
           "targets": [
             {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max_50, 5, 6)",
-              "refId": "A"
+              "refId": "A",
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_counter.spool_is_$dest.unit_is_Metric.*, 5)"
             },
             {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max_95, 5, 6)",
-              "refId": "B"
-            },
-            {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max, 5, 6)",
-              "refId": "C"
-            },
-            {
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_mean, 5, 6)",
-              "refId": "D"
+              "refId": "B",
+              "target": ""
             }
           ],
-          "aliasColors": {},
-          "seriesOverrides": [],
-          "links": [],
-          "yaxes": [
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "ns"
-            },
-            {
-              "show": true,
-              "min": null,
-              "max": null,
-              "format": "short"
-            }
-          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "spool inputs",
+          "tooltip": {
+            "msResolution": false,
+            "shared": false,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
           "xaxis": {
             "show": true
           },
+          "yaxes": [
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "datasource": "graphite",
+          "editable": true,
+          "error": false,
+          "fill": 10,
+          "grid": {
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 9,
+          "legend": {
+            "alignAsTable": false,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "hide": false,
+              "refId": "A",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.spool_is_$dest.unit_is_Metric.status_is_buffered, 'buffered')"
+            }
+          ],
           "timeFrom": null,
-          "timeShift": null
+          "timeShift": null,
+          "title": "spool metrics in buffer",
+          "tooltip": {
+            "msResolution": false,
+            "shared": false,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "none",
+              "label": "",
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "datasource": "graphite",
+          "editable": true,
+          "error": false,
+          "fill": 0,
+          "grid": {
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 11,
+          "legend": {
+            "alignAsTable": true,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "refId": "A",
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max_50, 5, 6)"
+            },
+            {
+              "refId": "B",
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max_95, 5, 6)"
+            },
+            {
+              "refId": "C",
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max, 5, 6)"
+            },
+            {
+              "refId": "D",
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_mean, 5, 6)"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "spool durations",
+          "tooltip": {
+            "msResolution": false,
+            "shared": false,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "ns",
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
         }
-      ]
+      ],
+      "title": "New row"
     }
   ],
   "time": {
-    "from": "now-30m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {
-    "type": "timepicker",
+    "collapse": false,
     "enable": true,
-    "status": "Stable",
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "2d",
-      "7d",
-      "30d"
-    ],
+    "notice": false,
+    "now": true,
     "refresh_intervals": [
       "5s",
       "10s",
@@ -880,16 +875,32 @@
       "2h",
       "1d"
     ],
-    "now": true,
-    "collapse": false,
-    "notice": false
+    "status": "Stable",
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ],
+    "type": "timepicker"
   },
   "templating": {
+    "enable": true,
     "list": [
       {
-        "type": "query",
+        "allFormat": "glob",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": "graphite",
-        "refresh_on_load": true,
+        "hide": 0,
+        "includeAll": true,
         "name": "instance",
         "options": [
           {
@@ -903,21 +914,22 @@
             "selected": false
           }
         ],
-        "includeAll": true,
-        "allFormat": "glob",
         "query": "service_is_carbon-relay-ng.instance_is_*",
         "refresh": 1,
+        "refresh_on_load": true,
         "regex": "/instance_is_(.*)/",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "hide": 0
+        "type": "query"
       },
       {
-        "type": "query",
+        "allFormat": "glob",
+        "current": {
+          "text": "All",
+          "value": "$__all",
+          "tags": []
+        },
         "datasource": "graphite",
-        "refresh_on_load": true,
+        "hide": 0,
+        "includeAll": true,
         "name": "dest",
         "options": [
           {
@@ -929,28 +941,27 @@
             "text": "graphitemon_2003",
             "value": "graphitemon_2003",
             "selected": false
+          },
+          {
+            "text": "http_tsdb_80metrics",
+            "value": "http_tsdb_80metrics",
+            "selected": false
           }
         ],
-        "includeAll": true,
-        "allFormat": "glob",
-        "refresh": 1,
         "query": "service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_*",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
+        "refresh": 1,
+        "refresh_on_load": true,
         "regex": "/dest_is_(.*)/",
-        "hide": 0
+        "type": "query"
       }
-    ],
-    "enable": true
+    ]
   },
   "annotations": {
-    "list": [],
-    "enable": true
+    "enable": true,
+    "list": []
   },
   "refresh": false,
   "schemaVersion": 12,
-  "version": 6,
+  "version": 1,
   "links": []
 }
