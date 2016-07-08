@@ -112,9 +112,9 @@ func (route *RouteGrafanaNet) run() {
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
 			}).Dial,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			// except for this
+			TLSHandshakeTimeout: 10 * time.Second,
+			// except we removed ExpectContinueTimeout cause it doesn't seem very useful, requires go 1.6, and prevents using http2.
+			// and except for this
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
