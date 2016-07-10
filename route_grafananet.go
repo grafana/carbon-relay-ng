@@ -221,7 +221,7 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas) *schema.MetricDat
 		Name:       name,
 		Interval:   s.Retentions[0].SecondsPerPoint(),
 		Value:      val,
-		Unit:       "",
+		Unit:       "unknown",
 		Time:       int64(timestamp),
 		TargetType: "gauge",
 		Tags:       []string{},
