@@ -1,0 +1,18 @@
+[Unit]
+Description=Starts and stops carbon-relay-ng on this system
+Documentation=https://github.com/graphite-ng/carbon-relay-ng/tree/master/docs
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+Restart=on-failure
+WorkingDirectory=/var/run/carbon-relay-ng
+ExecStart=/usr/bin/carbon-relay-ng /etc/carbon-relay-ng/carbon-relay-ng.conf
+LimitNOFILE=102400
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

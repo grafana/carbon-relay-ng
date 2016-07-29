@@ -8,8 +8,11 @@ build:
 all:
 
 deb: build
-	install -d debian/usr/bin debian/usr/share/man/man1
+	mkdir -p build/deb-systemd
+	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng debian/lib/systemd/system debian/var/run/carbon-relay-ng
 	install carbon-relay-ng debian/usr/bin
+	install examples/carbon-relay-ng.ini debian/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install examples/carbon-relay-ng.service debian/lib/systemd/system
 	install man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
 	gzip debian/usr/share/man/man1/carbon-relay-ng.1
 	fpm \
@@ -17,7 +20,29 @@ deb: build
 		-t deb \
 		-n carbon-relay-ng \
 		-v $(VERSION)-1 \
-		-a amd64 \
+		-a native \
+		-p build/deb-systemd/carbon-relay-ng-VERSION_ARCH.deb \
+		-m "Dieter Plaetinck <dieter@raintank.io>" \
+		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
+		--license BSD \
+		--url https://github.com/graphite-ng/carbon-relay-ng \
+		-C debian .
+	rm -rf debian
+
+deb-upstart: build
+	mkdir build/deb-upstart
+	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng
+	install carbon-relay-ng debian/usr/bin
+	install examples/carbon-relay-ng.ini debian/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
+	gzip debian/usr/share/man/man1/carbon-relay-ng.1
+	fpm \
+		-s dir \
+		-t deb \
+		-n carbon-relay-ng \
+		-v $(VERSION)-1 \
+		-a native \
+		-p build/deb-upstart/carbon-relay-ng-VERSION_ARCH.deb \
 		--deb-upstart examples/carbon-relay-ng.upstart \
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
@@ -27,9 +52,12 @@ deb: build
 	rm -rf debian
 
 rpm: build
-	install -d redhat/usr/bin redhat/usr/share/man/man1
+	mkdir -p build/centos-7
+	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/lib/systemd/system redhat/var/run/carbon-relay-ng
 	install carbon-relay-ng redhat/usr/bin
 	install man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
+	install examples/carbon-relay-ng.ini redhat/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install examples/carbon-relay-ng.service redhat/lib/systemd/system
 	gzip redhat/usr/share/man/man1/carbon-relay-ng.1
 	fpm \
 		-s dir \
@@ -37,13 +65,39 @@ rpm: build
 		-n carbon-relay-ng \
 		-v $(VERSION) \
 		--epoch 1 \
-		-a amd64 \
+		-a native \
+		-p build/centos-7/carbon-relay-ng-VERSION.el7.ARCH.rpm \
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/graphite-ng/carbon-relay-ng \
 		-C redhat .
 	rm -rf redhat	
+
+rpm-centos6: build
+	mkdir build/centos-6
+	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/etc/init
+	install carbon-relay-ng redhat/usr/bin
+	install man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
+	install examples/carbon-relay-ng.ini redhat/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install examples/carbon-relay-ng.upstart-0.6.5 redhat/etc/init/carbon-relay-ng.conf
+	gzip redhat/usr/share/man/man1/carbon-relay-ng.1
+	fpm \
+		-s dir \
+		-t rpm \
+		-n carbon-relay-ng \
+		-v $(VERSION) \
+		--epoch 1 \
+		-a native \
+		-p build/centos-6/carbon-relay-ng-VERSION.el6.ARCH.rpm \
+		-m "Dieter Plaetinck <dieter@raintank.io>" \
+		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
+		--license BSD \
+		--url https://github.com/graphite-ng/carbon-relay-ng \
+		-C redhat .
+	rm -rf redhat
+
+packages: deb deb-upstart rpm rpm-centos6
 
 gh-pages: man
 	mkdir -p gh-pages
