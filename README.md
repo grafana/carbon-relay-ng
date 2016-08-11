@@ -79,9 +79,10 @@ You have 1 master routing table.  This table contains 0-N routes.  Each route ca
 
 First: "matching": you can match metrics on one or more of: prefix, substring, or regex.  All 3 default to "" (empty string, i.e. allow all).
 Note that the matching is applied to the entire metric line (including key, value and timestamp).
-The conditions are AND-ed.  Regexes are more resource intensive and hence should, and often can be avoided.
+The conditions are AND-ed.  Regexes are more resource intensive and hence should - and often can be - avoided.
 
-* All incoming matrics are validated, filtered through the blacklist and then go into the table.
+* All incoming matrics are validated and go into the table when valid.
+* The table will then check metrics against the blacklist and discard when appropriate.
 * The table sends the metric to:
   * the aggregators, who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below for details.
   * any routes that matches
