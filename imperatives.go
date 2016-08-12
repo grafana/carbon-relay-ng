@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
+	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/taylorchu/toki"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ const (
 	addRouteConsistentHashing
 	addRouteGrafanaNet
 	addDest
+	addRewriter
 	delRoute
 	modDest
 	modRoute
@@ -55,6 +57,7 @@ var tokens = []toki.Def{
 	{Token: addRouteConsistentHashing, Pattern: "addRoute consistentHashing"},
 	{Token: addRouteGrafanaNet, Pattern: "addRoute grafanaNet"},
 	{Token: addDest, Pattern: "addDest"},
+	{Token: addRewriter, Pattern: "addRewriter"},
 	{Token: delRoute, Pattern: "delRoute"},
 	{Token: modDest, Pattern: "modDest"},
 	{Token: modRoute, Pattern: "modRoute"},
@@ -87,7 +90,8 @@ var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
 var errFmtAddAgg = errors.New("addAgg <sum|avg> <regex> <fmt> <interval> <wait>")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
 var errFmtAddRouteGrafanaNet = errors.New("addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
-var errFmtAddDest = errors.New("addDest <routeKey> <dest>")                          // not implemented yet
+var errFmtAddDest = errors.New("addDest <routeKey> <dest>") // not implemented yet
+var errFmtAddRewriter = errors.New("addRewriter <old> <new> <max>")
 var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex=>") // one or more can be specified at once
 var errFmtModRoute = errors.New("modRoute <routeKey> <prefix/sub/regex=>")           // one or more can be specified at once
 
@@ -110,6 +114,8 @@ func applyCommand(table *Table, cmd string) error {
 		return readAddRouteConsistentHashing(s, table)
 	case addRouteGrafanaNet:
 		return readAddRouteGrafanaNet(s, table)
+	case addRewriter:
+		return readAddRewriter(s, table)
 	case delRoute:
 		return readDelRoute(s, table)
 	case modDest:
@@ -369,6 +375,35 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table *Table) error {
 		return err
 	}
 	table.AddRoute(route)
+	return nil
+}
+
+func readAddRewriter(s *toki.Scanner, table *Table) error {
+	var t *toki.Result
+	if t = s.Next(); t.Token != word {
+		return errFmtAddRewriter
+	}
+	old := t.Value
+	if t = s.Next(); t.Token != word {
+		return errFmtAddRewriter
+	}
+	new := t.Value
+
+	// token can be a word if it's a negative number. we should probably not have a separate number token, since numbers could be in so many formats
+	// and we try out Atoi (or whatever fits) anyway.
+	if t = s.Next(); t.Token != num && t.Token != word {
+		return errFmtAddRewriter
+	}
+	max, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+	if err != nil {
+		return errFmtAddRewriter
+	}
+
+	rw, err := rewriter.NewFromByte(old, new, max)
+	if err != nil {
+		return err
+	}
+	table.AddRewriter(rw)
 	return nil
 }
 

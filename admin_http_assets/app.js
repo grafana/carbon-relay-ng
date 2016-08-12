@@ -4,6 +4,7 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   $scope.alerts = [];
   var Config = $resource("/config/");
   var Table = $resource("/table/");
+  var Rewriter = $resource("/rewriters/:index");
   var Blacklist = $resource("/blacklists/:index");
   var Aggregator = $resource("/aggregators/:index");
   var Route = $resource("/routes/:key", {key: '@key'}, {});
@@ -51,6 +52,22 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
     $scope.config = cfg;
   });
 
+  $scope.newRewriter = new Rewriter();
+  $scope.addRewriter = function() {
+    $scope.alerts = [];
+    $scope.newRewriter.$save().then(function(resp) {
+      $scope.newRewriter = new Rewriter();
+      $scope.list();
+    },function(err) {
+      $scope.alerts = [{msg: err.data.error}];
+    });
+  };
+  $scope.removeRewriter = function(idx){
+    if (confirm('Are you sure you want to delete rewriter entry no. ' + idx)) {
+      Rewriter.delete({'index':idx});
+      $scope.list();
+    }
+  };
 
   $scope.newAgg = new Aggregator({Type: "agg", Interval:60, Wait: 120});
   $scope.addAggregator = function() {
@@ -79,12 +96,7 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
       $scope.alerts = [{msg: err.data.error}];
     });
   };
-  $scope.removeAggregator = function(idx){
-    if (confirm('Are you sure you want to delete aggregator entry no. ' + idx)) {
-      Aggregator.delete({'index':idx});
-      $scope.list();
-    }
-  };
+
   $scope.save = function(route) {
     $scope.alerts = [];
     Route.save({}, route, function() {$scope.list(); },

@@ -87,6 +87,49 @@
                 </tr>
               </tbody>
             </table>
+            <h2>Rewriters</h2>
+            <form name="rewriterForm" class="form-add form-group has-feedback" role="form" ng-submit="addRewriter()" novalidate>
+            <table class="table table-condensed">
+              <thead>
+                <tr>
+                  <th>Old</th>
+                  <th>New</th>
+                  <th>Max</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody ng-repeat="r in table.rewriters">
+                <tr>
+                    <td>{{r.old}}</td>
+                    <td>{{r.new}}</td>
+                    <td>{{r.max}}</td>
+                    <td class="text-center"><a ng-click="removeRewriter($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
+                </tr>
+              </tbody>
+                <tbody>
+                <tr>
+                    <td class="form-group has-feedback">
+                        <input ng-model="newRewriter.Old" name="old" class="form-control" placeholder="old" required>
+                        <div ng-show="rewriterForm.old.$invalid">
+                            <span ng-show="rewriterForm.old.$error.pattern">Expected non-empty string</span>
+                        </div>
+                    </td>
+                    <td class="form-group has-feedback">
+                        <input ng-model="newRewriter.New" name="new" class="form-control" placeholder="new">
+                    </td>
+                    <td class="form-group has-feedback">
+                        <input type="number" ng-model="newRewriter.Max" name="max" class="form-control" required>
+                        <div ng-show="rewriterForm.max.$invalid">
+                            <span ng-show="rewriterForm.max.$error.pattern">Expected a number to denote max replacements (a positive number, or -1 for no limit)</span>
+                        </div>
+                    </td>
+                    <td>
+                    <button class="btn btn-sm btn-primary btn-block" type="submit" ng-disabled="rewriterForm.$invalid">Add</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            </form>
             <h2>Aggregators</h2>
             <form name="aggForm" class="form-add form-group has-feedback" role="form" ng-submit="addAggregator()" novalidate>
             <table class="table table-condensed">

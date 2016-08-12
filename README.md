@@ -83,6 +83,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
 
 * All incoming matrics are validated and go into the table when valid.
 * The table will then check metrics against the blacklist and discard when appropriate.
+* Then metrics pass through the rewriters and are modified if applicable.
 * The table sends the metric to:
   * the aggregators, who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below for details.
   * any routes that matches

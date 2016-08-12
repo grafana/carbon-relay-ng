@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
+	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"sync"
 	"sync/atomic"
 )
 
 type TableConfig struct {
+	rewriters   []rewriter.RW
 	aggregators []*aggregator.Aggregator
 	blacklist   []*Matcher
 	routes      []Route
@@ -25,6 +27,7 @@ type Table struct {
 }
 
 type TableSnapshot struct {
+	Rewriters   []rewriter.RW            `json:"rewriters"`
 	Aggregators []*aggregator.Aggregator `json:"aggregators"`
 	Blacklist   []*Matcher               `json:"blacklist"`
 	Routes      []RouteSnapshot          `json:"routes"`
@@ -42,6 +45,7 @@ func NewTable(spoolDir string) *Table {
 	}
 
 	t.config.Store(TableConfig{
+		make([]rewriter.RW, 0),
 		make([]*aggregator.Aggregator, 0),
 		make([]*Matcher, 0),
 		make([]Route, 0),
@@ -76,6 +80,10 @@ func (table *Table) Dispatch(buf []byte) {
 				aggregator.In <- fields
 			}
 		}
+	}
+
+	for _, rw := range conf.rewriters {
+		buf = rw.Do(buf)
 	}
 
 	routed := false
@@ -121,6 +129,11 @@ func (table *Table) DispatchAggregate(buf []byte) {
 func (table *Table) Snapshot() TableSnapshot {
 	conf := table.config.Load().(TableConfig)
 
+	rewriters := make([]rewriter.RW, len(conf.rewriters))
+	for i, r := range conf.rewriters {
+		rewriters[i] = r
+	}
+
 	blacklist := make([]*Matcher, len(conf.blacklist))
 	for i, p := range conf.blacklist {
 		blacklist[i] = p
@@ -135,7 +148,7 @@ func (table *Table) Snapshot() TableSnapshot {
 	for i, a := range conf.aggregators {
 		aggs[i] = a.Snapshot()
 	}
-	return TableSnapshot{aggs, blacklist, routes, table.spoolDir}
+	return TableSnapshot{rewriters, aggs, blacklist, routes, table.spoolDir}
 }
 
 func (table *Table) GetRoute(key string) Route {
@@ -174,23 +187,12 @@ func (table *Table) AddAggregator(agg *aggregator.Aggregator) {
 	table.config.Store(conf)
 }
 
-func (table *Table) DelAggregator(id int) error {
+func (table *Table) AddRewriter(rw rewriter.RW) {
 	table.Lock()
 	defer table.Unlock()
-
 	conf := table.config.Load().(TableConfig)
-
-	if id >= len(conf.aggregators) {
-		return fmt.Errorf("Invalid index %d", id)
-	}
-
-	agg := conf.aggregators[id]
-	fmt.Println("len", len(conf.aggregators))
-	conf.aggregators = append(conf.aggregators[:id], conf.aggregators[id+1:]...)
-	fmt.Println("len", len(conf.aggregators))
-	agg.Shutdown()
+	conf.rewriters = append(conf.rewriters, rw)
 	table.config.Store(conf)
-	return nil
 }
 
 func (table *Table) Flush() error {
@@ -215,6 +217,60 @@ func (table *Table) Shutdown() error {
 		}
 	}
 	conf.routes = make([]Route, 0)
+	table.config.Store(conf)
+	return nil
+}
+
+func (table *Table) DelAggregator(id int) error {
+	table.Lock()
+	defer table.Unlock()
+
+	conf := table.config.Load().(TableConfig)
+
+	if id >= len(conf.aggregators) {
+		return fmt.Errorf("Invalid index %d", id)
+	}
+
+	agg := conf.aggregators[id]
+	fmt.Println("len", len(conf.aggregators))
+	conf.aggregators = append(conf.aggregators[:id], conf.aggregators[id+1:]...)
+	fmt.Println("len", len(conf.aggregators))
+	agg.Shutdown()
+	table.config.Store(conf)
+	return nil
+}
+
+func (table *Table) DelBlacklist(index int) error {
+	table.Lock()
+	defer table.Unlock()
+	conf := table.config.Load().(TableConfig)
+	if index >= len(conf.blacklist) {
+		return fmt.Errorf("Invalid index %d", index)
+	}
+	conf.blacklist = append(conf.blacklist[:index], conf.blacklist[index+1:]...)
+	table.config.Store(conf)
+	return nil
+}
+
+func (table *Table) DelDestination(key string, index int) error {
+	route := table.GetRoute(key)
+	if route == nil {
+		return fmt.Errorf("Invalid route for %v", key)
+	}
+	return route.DelDestination(index)
+}
+
+func (table *Table) DelRewriter(id int) error {
+	table.Lock()
+	defer table.Unlock()
+
+	conf := table.config.Load().(TableConfig)
+
+	if id >= len(conf.rewriters) {
+		return fmt.Errorf("Invalid index %d", id)
+	}
+
+	conf.rewriters = append(conf.rewriters[:id], conf.rewriters[id+1:]...)
 	table.config.Store(conf)
 	return nil
 }
@@ -249,26 +305,6 @@ func (table *Table) DelRoute(key string) error {
 	return nil
 }
 
-func (table *Table) DelBlacklist(index int) error {
-	table.Lock()
-	defer table.Unlock()
-	conf := table.config.Load().(TableConfig)
-	if index >= len(conf.blacklist) {
-		return fmt.Errorf("Invalid index %d", index)
-	}
-	conf.blacklist = append(conf.blacklist[:index], conf.blacklist[index+1:]...)
-	table.config.Store(conf)
-	return nil
-}
-
-func (table *Table) DelDestination(key string, index int) error {
-	route := table.GetRoute(key)
-	if route == nil {
-		return fmt.Errorf("Invalid route for %v", key)
-	}
-	return route.DelDestination(index)
-}
-
 func (table *Table) UpdateDestination(key string, index int, opts map[string]string) error {
 	route := table.GetRoute(key)
 	if route == nil {
@@ -291,7 +327,7 @@ func (table *Table) Print() (str string) {
 	// so we have to figure out the max lengths of everything first
 	// the default values can be arbitrary (bot not smaller than the column titles),
 	// i figured multiples of 4 should look good
-	// 'R' stands for Route, 'D' for dest, 'B' blacklist, 'A" for aggregation
+	// 'R' stands for Route, 'D' for dest, 'B' blacklist, 'A" for aggregation, 'RW' for rewriter
 	maxBPrefix := 4
 	maxBSub := 4
 	maxBRegex := 4
@@ -311,7 +347,16 @@ func (table *Table) Print() (str string) {
 	maxDAddr := 16
 	maxDSpoolDir := 16
 
+	maxRWOld := 4
+	maxRWNew := 4
+	maxRWMax := 4
+
 	t := table.Snapshot()
+	for _, rw := range t.Rewriters {
+		maxRWOld = max(maxRWOld, len(rw.Old))
+		maxRWNew = max(maxRWNew, len(rw.New))
+		maxRWMax = max(maxRWMax, len(fmt.Sprintf("%d", rw.Max)))
+	}
 	for _, black := range t.Blacklist {
 		maxBPrefix = max(maxBRegex, len(black.Prefix))
 		maxBSub = max(maxBSub, len(black.Sub))
@@ -338,6 +383,8 @@ func (table *Table) Print() (str string) {
 			maxDSpoolDir = max(maxDSpoolDir, len(dest.spoolDir))
 		}
 	}
+	heaFmtRW := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxRWOld+1, maxRWNew+1, maxRWMax+1)
+	rowFmtRW := fmt.Sprintf("%%%ds %%%ds %%%dd\n", maxRWOld+1, maxRWNew+1, maxRWMax+1)
 	heaFmtB := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
 	rowFmtB := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
 	heaFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%%ds %%%ds\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
@@ -356,8 +403,15 @@ func (table *Table) Print() (str string) {
 		return str
 	}
 
+	str += "\n## Rewriters:\n"
+	cols := fmt.Sprintf(heaFmtRW, "old", "new", "max")
+	str += cols + underscore(len(cols))
+	for _, rw := range t.Rewriters {
+		str += fmt.Sprintf(rowFmtRW, rw.Old, rw.New, rw.Max)
+	}
+
 	str += "\n## Blacklist:\n"
-	cols := fmt.Sprintf(heaFmtB, "prefix", "substr", "regex")
+	cols = fmt.Sprintf(heaFmtB, "prefix", "substr", "regex")
 	str += cols + underscore(len(cols))
 	for _, black := range t.Blacklist {
 		str += fmt.Sprintf(rowFmtB, black.Prefix, black.Sub, black.Regex)

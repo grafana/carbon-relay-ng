@@ -6,6 +6,7 @@ import (
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
+	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"net/http"
 	"os"
 	"strconv"
@@ -71,6 +72,16 @@ func badMetricsHandler(w http.ResponseWriter, r *http.Request) (interface{}, *ha
 
 	records := badMetrics.Get(duration)
 	return records, nil
+}
+
+func removeRewriter(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+	index := mux.Vars(r)["index"]
+	idx, _ := strconv.Atoi(index)
+	err := table.DelRewriter(idx)
+	if err != nil {
+		return nil, &handlerError{nil, "Could not find entry " + index, http.StatusNotFound}
+	}
+	return make(map[string]string), nil
 }
 
 func removeBlacklist(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
@@ -176,6 +187,21 @@ func parseAggregateRequest(r *http.Request) (*aggregator.Aggregator, *handlerErr
 	}
 	return aggregate, nil
 }
+func parseRewriterRequest(r *http.Request) (rewriter.RW, *handlerError) {
+	var request struct {
+		Old string
+		New string
+		Max int
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return rewriter.RW{}, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
+	}
+	rw, err := rewriter.New(request.Old, request.New, request.Max)
+	if err != nil {
+		return rewriter.RW{}, &handlerError{err, "Couldn't create rewriter", http.StatusBadRequest}
+	}
+	return rw, nil
+}
 
 /* needs updating, but using what api?
 func updateRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
@@ -202,6 +228,16 @@ func addAggregate(w http.ResponseWriter, r *http.Request) (interface{}, *handler
 	return map[string]string{"Message": "aggregate added"}, nil
 }
 
+func addRewrite(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+	rw, err := parseRewriterRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	table.AddRewriter(rw)
+	return map[string]string{"Message": "rewriter added"}, nil
+}
+
 func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	route, err := parseRouteRequest(r)
 	if err != nil {
@@ -215,26 +251,20 @@ func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 func HttpListener(addr string, t *Table) {
 	table = t
 
-	// setup routes
 	router := mux.NewRouter()
-	// bad metrics
 	router.Handle("/badMetrics/{timespec}.json", handler(badMetricsHandler)).Methods("GET")
-	// config
 	router.Handle("/config", handler(showConfig)).Methods("GET")
-	// table
 	router.Handle("/table", handler(listTable)).Methods("GET")
-	// blacklist
 	router.Handle("/blacklists/{index}", handler(removeBlacklist)).Methods("DELETE")
-	// aggregator
+	router.Handle("/rewriters/{index}", handler(removeRewriter)).Methods("DELETE")
+	router.Handle("/rewriters", handler(addRewrite)).Methods("POST")
 	router.Handle("/aggregators/{index}", handler(removeAggregator)).Methods("DELETE")
 	router.Handle("/aggregators", handler(addAggregate)).Methods("POST")
-	// routes
 	router.Handle("/routes", handler(listRoutes)).Methods("GET")
 	router.Handle("/routes", handler(addRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(getRoute)).Methods("GET")
 	//router.Handle("/routes/{key}", handler(updateRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(removeRoute)).Methods("DELETE")
-	// destinations
 	router.Handle("/routes/{key}/destinations/{index}", handler(removeDestination)).Methods("DELETE")
 
 	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo, Prefix: "admin_http_assets/"}))

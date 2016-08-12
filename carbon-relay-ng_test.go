@@ -400,6 +400,12 @@ func testConsistentHashing(t *testing.T, endpointPorts []string, initTable func(
 	}
 }
 
+func TestAddRewrite(t *testing.T) {
+	cmd := "addRewriter = _is -1"
+	table := NewTableOrFatal(t, "", cmd)
+	table.ShutdownOrFatal(t)
+}
+
 // i thought conn will drop messages because the tE tcp handler can't keep up.
 // but looks like that's not true (anymore?), it just works without having to sleep after dispatch
 // also note the dummyPackets uses a channel api which probably causes most of the slowdown
