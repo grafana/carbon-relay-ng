@@ -53,6 +53,10 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(bytes)
 }
 
+func showConfig(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+	return config, nil
+}
+
 func listTable(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	t := table.Snapshot()
 	return t, nil
@@ -215,6 +219,8 @@ func HttpListener(addr string, t *Table) {
 	router := mux.NewRouter()
 	// bad metrics
 	router.Handle("/badMetrics/{timespec}.json", handler(badMetricsHandler)).Methods("GET")
+	// config
+	router.Handle("/config", handler(showConfig)).Methods("GET")
 	// table
 	router.Handle("/table", handler(listTable)).Methods("GET")
 	// blacklist

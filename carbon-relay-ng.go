@@ -5,6 +5,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"expvar"
 	"flag"
 	"fmt"
@@ -32,6 +33,10 @@ import (
 
 type MetricValidationLevel struct {
 	Level m20.LegacyMetricValidation
+}
+
+func (m MetricValidationLevel) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.Level.String())
 }
 
 func (l *MetricValidationLevel) UnmarshalText(text []byte) error {

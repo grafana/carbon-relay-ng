@@ -2,6 +2,7 @@ var app = new angular.module("carbon-relay-ng", ["ngResource", "ui.bootstrap"]);
 
 app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $resource, $modal){
   $scope.alerts = [];
+  var Config = $resource("/config/");
   var Table = $resource("/table/");
   var Blacklist = $resource("/blacklists/:index");
   var Aggregator = $resource("/aggregators/:index");
@@ -46,6 +47,10 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   };
 
   $scope.list();
+  Config.get(function(cfg) {
+    $scope.config = cfg;
+  });
+
 
   $scope.newAgg = new Aggregator({Type: "agg", Interval:60, Wait: 120});
   $scope.addAggregator = function() {

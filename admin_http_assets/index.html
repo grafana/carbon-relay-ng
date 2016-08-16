@@ -51,6 +51,23 @@
       <div class="row" ng-cloak>
         <alert ng-repeat="alert in alerts">{{alert.msg}}</alert>
         <div class="col-md-12">
+          <h2>Validation</h2>
+            <table class="table table-condensed">
+              <thead>
+                <tr>
+                  <th>Validation</th>
+                  <th>Validate order</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{{config.Legacy_metric_validation}}</td>
+                  <td>{{config.Validate_order}}</td>
+                </tr>
+              </tbody>
+          </table>
+        </div>
+        <div class="col-md-12">
             <h2>Blacklist</h2>
             <table class="table table-condensed">
               <thead>
