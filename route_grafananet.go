@@ -16,8 +16,8 @@ import (
 	"github.com/jpillora/backoff"
 
 	"github.com/lomik/go-carbon/persister"
-	"github.com/raintank/raintank-metric/msg"
-	"github.com/raintank/raintank-metric/schema"
+	"gopkg.in/raintank/schema.v1"
+	"gopkg.in/raintank/schema.v1/msg"
 )
 
 type RouteGrafanaNet struct {
@@ -218,14 +218,15 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas) *schema.MetricDat
 	}
 
 	md := schema.MetricData{
-		Name:       name,
-		Interval:   s.Retentions[0].SecondsPerPoint(),
-		Value:      val,
-		Unit:       "unknown",
-		Time:       int64(timestamp),
-		TargetType: "gauge",
-		Tags:       []string{},
-		OrgId:      1, // the hosted tsdb service will adjust to the correct OrgId if using a regular key.  orgid 1 is only retained with admin key.
+		Name:     name,
+		Metric:   name,
+		Interval: s.Retentions[0].SecondsPerPoint(),
+		Value:    val,
+		Unit:     "unknown",
+		Time:     int64(timestamp),
+		Mtype:    "gauge",
+		Tags:     []string{},
+		OrgId:    1, // the hosted tsdb service will adjust to the correct OrgId if using a regular key.  orgid 1 is only retained with admin key.
 	}
 	return &md
 }

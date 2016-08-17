@@ -142,18 +142,6 @@
 			"revisionTime": "2015-11-20T02:40:02Z"
 		},
 		{
-			"checksumSHA1": "4qsnQol2J5uCX/omSuUNF1MfPXM=",
-			"path": "github.com/raintank/raintank-metric/msg",
-			"revision": "dc320b83f384a730142ac99577a742b13944aa51",
-			"revisionTime": "2016-05-03T15:08:27Z"
-		},
-		{
-			"checksumSHA1": "7Tb1l8rBdpD+TodtSHRTyd+TpGA=",
-			"path": "github.com/raintank/raintank-metric/schema",
-			"revision": "dc320b83f384a730142ac99577a742b13944aa51",
-			"revisionTime": "2016-05-03T15:08:27Z"
-		},
-		{
 			"checksumSHA1": "cDUeMY/U6zcLSSQEp4Yw26M4mLA=",
 			"path": "github.com/rcrowley/goagain",
 			"revision": "d591a7f5c6f5ad8ee6dfe8800696648eaa6d7116",
@@ -170,6 +158,18 @@
 			"path": "github.com/tinylib/msgp/msgp",
 			"revision": "0cea1fa86e8403be1284013014f87ab942056de8",
 			"revisionTime": "2015-10-23T22:38:53Z"
+		},
+		{
+			"checksumSHA1": "Fv3Cdgosf28iev/JTFWO6nsPFCA=",
+			"path": "gopkg.in/raintank/schema.v1",
+			"revision": "a2ba0a7af66d6cc470d93bb5725f22f4b3c1ea79",
+			"revisionTime": "2016-07-20T14:31:18Z"
+		},
+		{
+			"checksumSHA1": "MjwLYwIckCtBwXhQMt5ji/L5lJA=",
+			"path": "gopkg.in/raintank/schema.v1/msg",
+			"revision": "a2ba0a7af66d6cc470d93bb5725f22f4b3c1ea79",
+			"revisionTime": "2016-07-20T14:31:18Z"
 		}
 	],
 	"rootPath": "github.com/graphite-ng/carbon-relay-ng"
