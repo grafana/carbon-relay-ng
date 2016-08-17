@@ -1,7 +1,36 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_GRAPHITE",
+      "label": "graphite",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "graphite",
+      "pluginName": "Graphite"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "panel",
+      "id": "graph",
+      "name": "Graph",
+      "version": ""
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "3.1.1"
+    },
+    {
+      "type": "datasource",
+      "id": "graphite",
+      "name": "Graphite",
+      "version": "1.0.0"
+    }
+  ],
   "id": null,
   "title": "Carbon-relay-ng",
-  "originalTitle": "Carbon-relay-ng",
   "tags": [
     "telemetry"
   ],
@@ -26,7 +55,7 @@
             "unroutable": "#890F02"
           },
           "bars": false,
-          "datasource": "graphite",
+          "datasource": "${DS_GRAPHITE}",
           "editable": true,
           "error": false,
           "fill": 0,
@@ -82,7 +111,8 @@
           "tooltip": {
             "msResolution": false,
             "shared": false,
-            "value_type": "cumulative"
+            "value_type": "cumulative",
+            "sort": 0
           },
           "type": "graph",
           "xaxis": {
@@ -106,7 +136,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "graphite",
+          "datasource": "${DS_GRAPHITE}",
           "editable": true,
           "error": false,
           "fill": 0,
@@ -159,7 +189,8 @@
           "tooltip": {
             "msResolution": false,
             "shared": false,
-            "value_type": "cumulative"
+            "value_type": "cumulative",
+            "sort": 0
           },
           "type": "graph",
           "xaxis": {
@@ -196,7 +227,7 @@
             "reason_is_slow_spool": "#BF1B00"
           },
           "bars": false,
-          "datasource": "graphite",
+          "datasource": "${DS_GRAPHITE}",
           "editable": true,
           "error": false,
           "fill": 0,
@@ -243,7 +274,8 @@
           "tooltip": {
             "msResolution": false,
             "shared": false,
-            "value_type": "cumulative"
+            "value_type": "cumulative",
+            "sort": 0
           },
           "type": "graph",
           "xaxis": {
@@ -270,7 +302,7 @@
             "type_is_write": "#C15C17"
           },
           "bars": false,
-          "datasource": "graphite",
+          "datasource": "${DS_GRAPHITE}",
           "editable": true,
           "error": false,
           "fill": 0,
@@ -308,7 +340,7 @@
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Err.*, 5)"
+              "target": "aliasByNode(perSecond(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_$dest.unit_is_Err.*), 5)"
             }
           ],
           "timeFrom": null,
@@ -317,7 +349,8 @@
           "tooltip": {
             "msResolution": false,
             "shared": false,
-            "value_type": "cumulative"
+            "value_type": "cumulative",
+            "sort": 0
           },
           "type": "graph",
           "xaxis": {
@@ -349,7 +382,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "graphite",
+          "datasource": "${DS_GRAPHITE}",
           "editable": true,
           "error": false,
           "fill": 0,
@@ -428,7 +461,8 @@
           "tooltip": {
             "msResolution": false,
             "shared": false,
-            "value_type": "cumulative"
+            "value_type": "cumulative",
+            "sort": 0
           },
           "type": "graph",
           "xaxis": {
@@ -454,7 +488,7 @@
             "metrics-buffered": "#E0752D"
           },
           "bars": false,
-          "datasource": "graphite",
+          "datasource": "${DS_GRAPHITE}",
           "editable": true,
           "error": false,
           "fill": 3,
@@ -501,7 +535,8 @@
           "tooltip": {
             "msResolution": false,
             "shared": false,
-            "value_type": "cumulative"
+            "value_type": "cumulative",
+            "sort": 0
           },
           "type": "graph",
           "xaxis": {
@@ -530,7 +565,7 @@
             "\"ticker mean\"": "#0A50A1"
           },
           "bars": false,
-          "datasource": "graphite",
+          "datasource": "${DS_GRAPHITE}",
           "editable": true,
           "error": false,
           "fill": 0,
@@ -592,7 +627,8 @@
           "tooltip": {
             "msResolution": false,
             "shared": false,
-            "value_type": "cumulative"
+            "value_type": "cumulative",
+            "sort": 0
           },
           "type": "graph",
           "xaxis": {
@@ -627,7 +663,7 @@
             "status_is_incomingRT": "#0A50A1"
           },
           "bars": false,
-          "datasource": "graphite",
+          "datasource": "${DS_GRAPHITE}",
           "editable": true,
           "error": false,
           "fill": 0,
@@ -675,7 +711,8 @@
           "tooltip": {
             "msResolution": false,
             "shared": false,
-            "value_type": "cumulative"
+            "value_type": "cumulative",
+            "sort": 0
           },
           "type": "graph",
           "xaxis": {
@@ -699,7 +736,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "graphite",
+          "datasource": "${DS_GRAPHITE}",
           "editable": true,
           "error": false,
           "fill": 10,
@@ -746,7 +783,8 @@
           "tooltip": {
             "msResolution": false,
             "shared": false,
-            "value_type": "cumulative"
+            "value_type": "cumulative",
+            "sort": 0
           },
           "type": "graph",
           "xaxis": {
@@ -771,7 +809,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "graphite",
+          "datasource": "${DS_GRAPHITE}",
           "editable": true,
           "error": false,
           "fill": 0,
@@ -829,7 +867,8 @@
           "tooltip": {
             "msResolution": false,
             "shared": false,
-            "value_type": "cumulative"
+            "value_type": "cumulative",
+            "sort": 0
           },
           "type": "graph",
           "xaxis": {
@@ -894,26 +933,12 @@
     "list": [
       {
         "allFormat": "glob",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": "graphite",
+        "current": {},
+        "datasource": "${DS_GRAPHITE}",
         "hide": 0,
         "includeAll": true,
         "name": "instance",
-        "options": [
-          {
-            "text": "All",
-            "value": "$__all",
-            "selected": true
-          },
-          {
-            "text": "proxy",
-            "value": "proxy",
-            "selected": false
-          }
-        ],
+        "options": [],
         "query": "service_is_carbon-relay-ng.instance_is_*",
         "refresh": 1,
         "refresh_on_load": true,
@@ -922,32 +947,12 @@
       },
       {
         "allFormat": "glob",
-        "current": {
-          "text": "All",
-          "value": "$__all",
-          "tags": []
-        },
-        "datasource": "graphite",
+        "current": {},
+        "datasource": "${DS_GRAPHITE}",
         "hide": 0,
         "includeAll": true,
         "name": "dest",
-        "options": [
-          {
-            "text": "All",
-            "value": "$__all",
-            "selected": true
-          },
-          {
-            "text": "graphitemon_2003",
-            "value": "graphitemon_2003",
-            "selected": false
-          },
-          {
-            "text": "http_tsdb_80metrics",
-            "value": "http_tsdb_80metrics",
-            "selected": false
-          }
-        ],
+        "options": [],
         "query": "service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.dest_is_*",
         "refresh": 1,
         "refresh_on_load": true,
@@ -962,6 +967,7 @@
   },
   "refresh": false,
   "schemaVersion": 12,
-  "version": 1,
-  "links": []
+  "version": 2,
+  "links": [],
+  "gnetId": null
 }
