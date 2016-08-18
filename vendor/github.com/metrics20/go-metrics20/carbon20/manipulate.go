@@ -18,8 +18,8 @@ func DeriveCount(metric_in, m1Prefix string, m1Legacy bool) (metric_out string) 
 			}
 		}
 		metric_out = strings.Join(parts, ".")
-		metric_out = strings.Replace(metric_out, "target_type=count", "target_type=rate", 1)
-		metric_out = strings.Replace(metric_out, "target_type_is_count", "target_type_is_rate", 1)
+		metric_out = strings.Replace(metric_out, "mtype=count", "mtype=rate", 1)
+		metric_out = strings.Replace(metric_out, "mtype_is_count", "mtype_is_rate", 1)
 		return
 	}
 	if m1Legacy {
@@ -89,8 +89,8 @@ func CountPckt(metric_in, m1Prefix string) (metric_out string) {
 				parts[i] = "unit=Pckt"
 				parts = append(parts, "orig_unit="+part[5:])
 			}
-			if strings.HasPrefix(part, "target_type=") {
-				parts[i] = "target_type=count"
+			if strings.HasPrefix(part, "mtype=") {
+				parts[i] = "mtype=count"
 			}
 		}
 		parts = append(parts, "pckt_type=sent")
@@ -103,8 +103,8 @@ func CountPckt(metric_in, m1Prefix string) (metric_out string) {
 				parts[i] = "unit_is_Pckt"
 				parts = append(parts, "orig_unit_is_"+part[8:])
 			}
-			if strings.HasPrefix(part, "target_type_is_") {
-				parts[i] = "target_type_is_count"
+			if strings.HasPrefix(part, "mtype_is_") {
+				parts[i] = "mtype_is_count"
 			}
 		}
 		parts = append(parts, "pckt_type_is_sent")
@@ -126,8 +126,8 @@ func CountMetric(metric_in, m1Prefix string) (metric_out string) {
 				parts[i] = "unit=Metric"
 				parts = append(parts, "orig_unit="+part[5:])
 			}
-			if strings.HasPrefix(part, "target_type=") {
-				parts[i] = "target_type=count"
+			if strings.HasPrefix(part, "mtype=") {
+				parts[i] = "mtype=count"
 			}
 		}
 		metric_out = strings.Join(parts, ".")
@@ -138,8 +138,8 @@ func CountMetric(metric_in, m1Prefix string) (metric_out string) {
 				parts[i] = "unit_is_Metric"
 				parts = append(parts, "orig_unit_is_"+part[8:])
 			}
-			if strings.HasPrefix(part, "target_type_is_") {
-				parts[i] = "target_type_is_count"
+			if strings.HasPrefix(part, "mtype_is_") {
+				parts[i] = "mtype_is_count"
 			}
 		}
 		metric_out = strings.Join(parts, ".")
@@ -156,26 +156,26 @@ func Count(metric_in, m1Prefix string, m1Legacy bool) (metric_out string) {
 		parts := strings.Split(metric_in, ".")
 		ttSeen := false
 		for i, part := range parts {
-			if strings.HasPrefix(part, "target_type=") {
+			if strings.HasPrefix(part, "mtype=") {
 				ttSeen = true
-				parts[i] = "target_type=count"
+				parts[i] = "mtype=count"
 			}
 		}
 		if !ttSeen {
-			parts = append(parts, "target_type=count")
+			parts = append(parts, "mtype=count")
 		}
 		metric_out = strings.Join(parts, ".")
 	} else if v == M20NoEquals {
 		parts := strings.Split(metric_in, ".")
 		ttSeen := false
 		for i, part := range parts {
-			if strings.HasPrefix(part, "target_type_is_") {
+			if strings.HasPrefix(part, "mtype_is_") {
 				ttSeen = true
-				parts[i] = "target_type_is_count"
+				parts[i] = "mtype_is_count"
 			}
 		}
 		if !ttSeen {
-			parts = append(parts, "target_type_is_count")
+			parts = append(parts, "mtype_is_count")
 		}
 		metric_out = strings.Join(parts, ".")
 	} else if m1Legacy {
@@ -193,26 +193,26 @@ func Counter(metric_in, m1Prefix string) (metric_out string) {
 		parts := strings.Split(metric_in, ".")
 		ttSeen := false
 		for i, part := range parts {
-			if strings.HasPrefix(part, "target_type=") {
+			if strings.HasPrefix(part, "mtype=") {
 				ttSeen = true
-				parts[i] = "target_type=counter"
+				parts[i] = "mtype=counter"
 			}
 		}
 		if !ttSeen {
-			parts = append(parts, "target_type=counter")
+			parts = append(parts, "mtype=counter")
 		}
 		metric_out = strings.Join(parts, ".")
 	} else if v == M20NoEquals {
 		parts := strings.Split(metric_in, ".")
 		ttSeen := false
 		for i, part := range parts {
-			if strings.HasPrefix(part, "target_type_is_") {
+			if strings.HasPrefix(part, "mtype_is_") {
 				ttSeen = true
-				parts[i] = "target_type_is_counter"
+				parts[i] = "mtype_is_counter"
 			}
 		}
 		if !ttSeen {
-			parts = append(parts, "target_type_is_counter")
+			parts = append(parts, "mtype_is_counter")
 		}
 		metric_out = strings.Join(parts, ".")
 	} else {
@@ -230,8 +230,8 @@ func RatePckt(metric_in, m1Prefix string) (metric_out string) {
 				parts[i] = "unit=Pcktps"
 				parts = append(parts, "orig_unit="+part[5:])
 			}
-			if strings.HasPrefix(part, "target_type=") {
-				parts[i] = "target_type=rate"
+			if strings.HasPrefix(part, "mtype=") {
+				parts[i] = "mtype=rate"
 			}
 		}
 		parts = append(parts, "pckt_type=sent")
@@ -244,8 +244,8 @@ func RatePckt(metric_in, m1Prefix string) (metric_out string) {
 				parts[i] = "unit_is_Pcktps"
 				parts = append(parts, "orig_unit_is_"+part[8:])
 			}
-			if strings.HasPrefix(part, "target_type_is_") {
-				parts[i] = "target_type_is_rate"
+			if strings.HasPrefix(part, "mtype_is_") {
+				parts[i] = "mtype_is_rate"
 			}
 		}
 		parts = append(parts, "pckt_type_is_sent")
