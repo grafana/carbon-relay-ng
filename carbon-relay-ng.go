@@ -5,7 +5,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"expvar"
 	"flag"
 	"fmt"
@@ -31,45 +30,23 @@ import (
 	"time"
 )
 
-type MetricValidationLevel struct {
-	Level m20.LegacyMetricValidation
-}
-
-func (m MetricValidationLevel) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.Level.String())
-}
-
-func (l *MetricValidationLevel) UnmarshalText(text []byte) error {
-	validationLevels := map[string]m20.LegacyMetricValidation{
-		"strict": m20.Strict,
-		"medium": m20.Medium,
-		"none":   m20.None,
-	}
-	var err error
-	var ok bool
-	l.Level, ok = validationLevels[string(text)]
-	if !ok {
-		err = fmt.Errorf("Invalid validation level '%s'. Valid validation levels are 'strict', 'medium', and 'none'.", string(text))
-	}
-	return err
-}
-
 type Config struct {
-	Listen_addr              string
-	Admin_addr               string
-	Http_addr                string
-	Spool_dir                string
-	max_procs                int
-	First_only               bool
-	Routes                   []*Route
-	Init                     []string
-	Instance                 string
-	Log_level                string
-	Instrumentation          instrumentation
-	Bad_metrics_max_age      string
-	Pid_file                 string
-	Legacy_metric_validation MetricValidationLevel
-	Validate_order           bool
+	Listen_addr             string
+	Admin_addr              string
+	Http_addr               string
+	Spool_dir               string
+	max_procs               int
+	First_only              bool
+	Routes                  []*Route
+	Init                    []string
+	Instance                string
+	Log_level               string
+	Instrumentation         instrumentation
+	Bad_metrics_max_age     string
+	Pid_file                string
+	Validation_level_legacy validate.LevelLegacy
+	Validation_level_m20    validate.LevelM20
+	Validate_order          bool
 }
 
 type instrumentation struct {
@@ -141,7 +118,7 @@ func handle(c net.Conn, config Config) {
 		copy(buf_copy, buf)
 		numIn.Inc(1)
 
-		key, _, ts, err := m20.ValidatePacket(buf, config.Legacy_metric_validation.Level)
+		key, _, ts, err := m20.ValidatePacket(buf, config.Validation_level_legacy.Level, config.Validation_level_m20.Level)
 		if err != nil {
 			badMetrics.Add(key, buf, err)
 			numInvalid.Inc(1)
@@ -176,8 +153,9 @@ func main() {
 	runtime.SetBlockProfileRate(*blockProfileRate)
 	runtime.MemProfileRate = *memProfileRate
 
-	// Default to strict validation
-	config.Legacy_metric_validation.Level = m20.Strict
+	// validation defaults
+	config.Validation_level_legacy.Level = m20.MediumLegacy
+	config.Validation_level_m20.Level = m20.MediumM20
 
 	config_file = "/etc/carbon-relay-ng.ini"
 	if 1 == flag.NArg() {
