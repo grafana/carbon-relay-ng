@@ -698,7 +698,7 @@
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_counter.spool_is_$dest.unit_is_Metric.*, 5)"
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_counter.spool_is_$dest.unit_is_Metric.*, 5)"
             },
             {
               "refId": "B",
@@ -774,7 +774,7 @@
             {
               "hide": false,
               "refId": "A",
-              "target": "alias(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.spool_is_$dest.unit_is_Metric.status_is_buffered, 'buffered')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.spool_is_$dest.unit_is_Metric.status_is_buffered, 'buffered')"
             }
           ],
           "timeFrom": null,
@@ -846,19 +846,19 @@
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max_50, 5, 6)"
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max_50, 5, 6)"
             },
             {
               "refId": "B",
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max_95, 5, 6)"
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max_95, 5, 6)"
             },
             {
               "refId": "C",
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max, 5, 6)"
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_max, 5, 6)"
             },
             {
               "refId": "D",
-              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_carbonrelay1-next.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_mean, 5, 6)"
+              "target": "aliasByNode(service_is_carbon-relay-ng.instance_is_$instance.target_type_is_gauge.unit_is_ns.spool_is_$dest.operation_is*.stat_is_mean, 5, 6)"
             }
           ],
           "timeFrom": null,
