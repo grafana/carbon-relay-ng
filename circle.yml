@@ -2,6 +2,7 @@ dependencies:
   pre:
     - gem install package_cloud
     - gem install fpm
+    - sudo apt-get install rpm
     - go get github.com/jteeuwen/go-bindata/...
 test:
   override:
