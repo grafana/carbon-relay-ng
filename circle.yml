@@ -8,7 +8,11 @@ test:
     - go test -v -race $(go list ./... | grep -v /vendor/)
   post:
     - make packages # note, this runs go-bindata again
-    - git diff --exit-code # make sure that if go-bindata generated new content, we fail. because devs should have run go-bindata and checked in changes already.
+    # ideally we'd make sure that if go-bindata generated new content, we fail.
+    # because devs should have run go-bindata and checked in changes already.
+    # but because git checkout will change the timestamps and mode, it'll generate slight differences, and it's hard to filter those out
+    # so for now, we just let it slip and assume devs will do a good enough job maintaining the generated data
+    # - git diff --exit-code
 general:
   artifacts:
     - build
