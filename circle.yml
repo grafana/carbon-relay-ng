@@ -1,6 +1,7 @@
 dependencies:
   pre:
     - gem install package_cloud
+    - gem install fpm
     - go get github.com/jteeuwen/go-bindata/...
 test:
   override:
