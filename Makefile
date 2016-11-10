@@ -1,4 +1,4 @@
-VERSION=$(shell git describe --tags | sed 's/^v//')
+VERSION=$(shell git describe --tags --always | sed 's/^v//')
 
 
 build:
