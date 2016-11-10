@@ -1,14 +1,16 @@
-test:
-  override:
-    - cd $IMPORTPATH && go test -v -race $(go list ./... | grep -v /vendor/)
-  post:
-    - make packages
-general:
-  artifacts:
-    - build
 dependencies:
   pre:
     - gem install package_cloud
+    - go get github.com/jteeuwen/go-bindata/...
+test:
+  override:
+    - go test -v -race $(go list ./... | grep -v /vendor/)
+  post:
+    - make packages # note, this runs go-bindata again
+    - git diff --exit-code # make sure that if go-bindata generated new content, we fail. because devs should have run go-bindata and checked in changes already.
+general:
+  artifacts:
+    - build
 deployment:
   production:
     branch: master
