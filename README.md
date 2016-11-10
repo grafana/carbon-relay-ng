@@ -23,13 +23,6 @@ This pattern allows alerting and event processing systems to act on the data as 
 ![screenshot](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/screenshots/screenshot.png)
 
 
-Future work aka what's missing
-------------------------------
-
-* multi-node clustered high availability (open for discussion whether it's worth it)
-* pub-sub interface, maybe
-
-
 Releases & versions
 -------------------
 
