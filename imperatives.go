@@ -125,10 +125,6 @@ func applyCommand(table *Table, cmd string) error {
 	default:
 		return fmt.Errorf("unrecognized command %q", t.Value)
 	}
-	if t = s.Next(); t.Token != toki.EOF {
-		return fmt.Errorf("extraneous input %q", t.Value)
-	}
-	return nil
 }
 
 func readAddAgg(s *toki.Scanner, table *Table) error {
