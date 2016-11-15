@@ -165,6 +165,8 @@ commands:
 
     addBlack <prefix|sub|regex> <substring>      blacklist (drops matching metrics as soon as they are received)
 
+    addRewriter <old> <new> <max>                add rewriter that will rewrite all old to new, max times
+
     addAgg <func> <regex> <fmt> <interval> <wait>  add a new aggregation rule.
              <func>:                             aggregation function to use
                sum
