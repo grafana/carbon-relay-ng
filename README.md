@@ -25,7 +25,7 @@ This pattern allows alerting and event processing systems to act on the data as 
 Limitations
 -----------
 
-* rewriter does not support regex (yet)
+* regex rewriter rules ignore max
 * the web UI is not always reliable to make changes.  the config file and tcp interface are safer and more complete anyway.
 * does not accept pickle protocol as input. (patch welcome!).  To my knowledge the official carbon-aggregator.py and carbon-relay.py only have pickle outputs.
   So putting carbon-relay-ng behind them will lead to compatibility problems.  If you need this, I'ld love to hear why.
@@ -86,7 +86,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
 
 * All incoming matrics are validated and go into the table when valid.
 * The table will then check metrics against the blacklist and discard when appropriate.
-* Then metrics pass through the rewriters and are modified if applicable.
+* Then metrics pass through the rewriters and are modified if applicable.  Rewrite rules wrapped with forward slashes are interpreted as regular expressions.
 * The table sends the metric to:
   * the aggregators, who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below for details.
   * any routes that matches
