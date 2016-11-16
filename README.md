@@ -22,6 +22,14 @@ This pattern allows alerting and event processing systems to act on the data as 
 
 ![screenshot](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/screenshots/screenshot.png)
 
+Limitations
+-----------
+
+* rewriter does not support regex (yet)
+* the web UI is not always reliable to make changes.  the config file and tcp interface are safer and more complete anyway.
+* does not accept pickle protocol as input. (patch welcome!).  To my knowledge the official carbon-aggregator.py and carbon-relay.py only have pickle outputs.
+  so if you try to link them up, you'll run into compatibility problems.  Most people just don't run any of the python ones, but if you need to, I'ld love to hear why.
+
 
 Releases & versions
 -------------------
