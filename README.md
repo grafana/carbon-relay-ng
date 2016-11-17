@@ -82,7 +82,6 @@ Concepts
 You have 1 master routing table.  This table contains 0-N routes.  Each route can contain 0-M destinations (tcp endpoints)
 
 First: "matching": you can match metrics on one or more of: prefix, substring, or regex.  All 3 default to "" (empty string, i.e. allow all).
-Note that the matching is applied to the entire metric line (including key, value and timestamp).
 The conditions are AND-ed.  Regexes are more resource intensive and hence should - and often can be - avoided.
 
 * All incoming matrics are validated and go into the table when valid.

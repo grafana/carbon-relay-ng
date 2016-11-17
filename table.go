@@ -63,7 +63,7 @@ func NewTable(spoolDir string) *Table {
 // after checking against the blacklist
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
-	buf_copy := make([]byte, len(buf), len(buf))
+	buf_copy := make([]byte, len(buf))
 	copy(buf_copy, buf)
 
 	fields := bytes.Fields(buf_copy)
@@ -77,12 +77,10 @@ func (table *Table) Dispatch(buf []byte) {
 		}
 	}
 
-	if len(conf.aggregators) > 0 {
-		for _, aggregator := range conf.aggregators {
-			// we rely on incoming metrics already having been validated
-			if aggregator.PreMatch(fields[0]) {
-				aggregator.In <- fields
-			}
+	for _, aggregator := range conf.aggregators {
+		// we rely on incoming metrics already having been validated
+		if aggregator.PreMatch(fields[0]) {
+			aggregator.In <- fields
 		}
 	}
 
@@ -90,7 +88,7 @@ func (table *Table) Dispatch(buf []byte) {
 		fields[0] = rw.Do(fields[0])
 	}
 
-	final := bytes.Join(fields, []byte(" "));
+	final := bytes.Join(fields, []byte(" "))
 
 	routed := false
 
