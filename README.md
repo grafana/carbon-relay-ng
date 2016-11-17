@@ -22,10 +22,11 @@ This pattern allows alerting and event processing systems to act on the data as 
 
 ![screenshot](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/screenshots/screenshot.png)
 
+
 Limitations
 -----------
 
-* rewriter does not support regex (yet)
+* regex rewriter rules do not support limiting number of replacements, max must be set to -1
 * the web UI is not always reliable to make changes.  the config file and tcp interface are safer and more complete anyway.
 * does not accept pickle protocol as input. (patch welcome!).  To my knowledge the official carbon-aggregator.py and carbon-relay.py only have pickle outputs.
   So putting carbon-relay-ng behind them will lead to compatibility problems.  If you need this, I'ld love to hear why.
@@ -86,7 +87,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
 
 * All incoming matrics are validated and go into the table when valid.
 * The table will then check metrics against the blacklist and discard when appropriate.
-* Then metrics pass through the rewriters and are modified if applicable.
+* Then metrics pass through the rewriters and are modified if applicable.  Rewrite rules wrapped with forward slashes are interpreted as regular expressions.
 * The table sends the metric to:
   * the aggregators, who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below for details.
   * any routes that matches
@@ -106,7 +107,7 @@ if connection is down and spooling disabled -> drop the data
 
 
 Validation
-==========
+----------
 
 All incoming metrics undergo some basic sanity checks before the metrics go into the routing table.  We always check the following:
 
@@ -134,6 +135,31 @@ Invalid metrics are dropped and can be seen at /badMetrics/timespec.json where t
 You can also validate that for each series, each point is older than the previous. using the validate_order option.  This is helpful for some backends like grafana.net
 
 
+Rewriting
+---------
+
+Series names can be rewritten as they pass through the system by Rewriter rules, which are processed in series.
+
+Basic rules use simple old/new text replacement, and support a Max parameter to specify the maximum number of matched items to be replaced.
+
+Rewriter rules also support regexp syntax, which is enabled by wrapping the "old" parameter with forward slashes and setting "max" to -1.
+
+Regexp rules support [golang's standard regular expression syntax](https://golang.org/pkg/regexp/syntax/), and the "new" value can include [submatch identifiers](https://golang.org/pkg/regexp/#Regexp.Expand) in the format `${1}`.
+
+Examples:
+
+```
+# basic rewriter rule to replace first occurrence of "foo" with "bar"
+addRewriter foo bar 1
+
+# regexp rewriter rule to add a prefix of "prefix." to all series
+addRewriter /^/ prefix. -1
+
+# regexp rewriter rule to replace "server.X" with "servers.X.collectd"
+addRewriter /server\.([^.]+)/ servers.${1}.collectd -1
+```
+
+
 Aggregation
 -----------
 
@@ -156,7 +182,6 @@ Note:
 Configuration
 -------------
 
-
 Look at the included carbon-relay-ng.ini, it should be self describing.
 In the init option you can create routes, populate the blacklist, etc using the same command as the telnet interface, detailed below.
 This mechanism is choosen so we can reuse the code, instead of doing much configuration boilerplate code which would have to execute on
@@ -174,6 +199,7 @@ commands:
     addBlack <prefix|sub|regex> <substring>      blacklist (drops matching metrics as soon as they are received)
 
     addRewriter <old> <new> <max>                add rewriter that will rewrite all old to new, max times
+                                                 use /old/ to specify a regular expression match, with support for ${1} style identifiers in new
 
     addAgg <func> <regex> <fmt> <interval> <wait>  add a new aggregation rule.
              <func>:                             aggregation function to use
