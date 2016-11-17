@@ -114,8 +114,6 @@ func handle(c net.Conn, config Config) {
 			break
 		}
 
-		buf_copy := make([]byte, len(buf), len(buf))
-		copy(buf_copy, buf)
 		numIn.Inc(1)
 
 		key, _, ts, err := m20.ValidatePacket(buf, config.Validation_level_legacy.Level, config.Validation_level_m20.Level)
@@ -134,7 +132,7 @@ func handle(c net.Conn, config Config) {
 			}
 		}
 
-		table.Dispatch(buf_copy)
+		table.Dispatch(buf)
 	}
 }
 

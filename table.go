@@ -63,17 +63,21 @@ func NewTable(spoolDir string) *Table {
 // after checking against the blacklist
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
+	buf_copy := make([]byte, len(buf), len(buf))
+	copy(buf_copy, buf)
+
+	fields := bytes.Fields(buf_copy)
+
 	conf := table.config.Load().(TableConfig)
 
 	for _, matcher := range conf.blacklist {
-		if matcher.Match(buf) {
+		if matcher.Match(fields[0]) {
 			table.numBlacklist.Inc(1)
 			return
 		}
 	}
 
 	if len(conf.aggregators) > 0 {
-		fields := bytes.Fields(buf)
 		for _, aggregator := range conf.aggregators {
 			// we rely on incoming metrics already having been validated
 			if aggregator.PreMatch(fields[0]) {
@@ -83,24 +87,25 @@ func (table *Table) Dispatch(buf []byte) {
 	}
 
 	for _, rw := range conf.rewriters {
-		buf = rw.Do(buf)
+		fields[0] = rw.Do(fields[0])
 	}
+
+	final := bytes.Join(fields, []byte(" "));
 
 	routed := false
 
 	for _, route := range conf.routes {
-		if route.Match(buf) {
+		if route.Match(fields[0]) {
 			routed = true
-			log.Info("table sending to route: %s", buf)
-			route.Dispatch(buf)
+			log.Info("table sending to route: %s", final)
+			route.Dispatch(final)
 		}
 	}
 
 	if !routed {
 		table.numUnroutable.Inc(1)
-		log.Notice("unrouteable: %s\n", buf)
+		log.Notice("unrouteable: %s\n", final)
 	}
-
 }
 
 // DispatchAggregate dispatches aggregation output by routing metrics into the matching routes.

@@ -7,6 +7,7 @@ import "regexp"
 var errEmptyOld = errors.New("Rewriter must have non-empty 'old' specification")
 var errMaxTooLow = errors.New("max must be >= -1. use -1 to mean no restriction")
 var errInvalidRegexp = errors.New("Invalid rewriter regular expression")
+var errInvalidRegexpMax = errors.New("Regular expression rewriters require max to be -1")
 
 type RW struct {
 	Old string `json:"old"`
@@ -34,6 +35,9 @@ func NewFromByte(old, new []byte, max int) (RW, error) {
 		if err != nil {
 			return RW{}, errInvalidRegexp
 		}
+		if max != -1 {
+			return RW{}, errInvalidRegexpMax
+		}
 	}
 
 	return RW{
@@ -60,6 +64,9 @@ func New(old, new string, max int) (RW, error) {
 		re, err = regexp.Compile(old[1:len(old) - 1])
 		if err != nil {
 			return RW{}, errInvalidRegexp
+		}
+		if max != -1 {
+			return RW{}, errInvalidRegexpMax
 		}
 	}
 
