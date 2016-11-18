@@ -157,7 +157,9 @@ func handlePickle(c net.Conn, config Config) {
 			var length uint32
 			err := binary.Read(r, binary.BigEndian, &length)
 			if nil != err {
-				log.Error("couldn't read payload length: " + err.Error())
+				if io.EOF != err {
+					log.Error("couldn't read payload length: " + err.Error())
+				}
 				break
 			}
 
@@ -171,7 +173,7 @@ func handlePickle(c net.Conn, config Config) {
 					log.Error("couldn't read payload: " + err.Error())
 					break ReadLoop
 				}
-				payload.Write(tmpPayload)
+				payload.Write(tmpPayload[:tmpLengthRead])
 				lengthRead += tmpLengthRead
 				if lengthRead == lengthTotal {
 					break

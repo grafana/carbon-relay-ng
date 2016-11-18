@@ -28,8 +28,6 @@ Limitations
 
 * regex rewriter rules do not support limiting number of replacements, max must be set to -1
 * the web UI is not always reliable to make changes.  the config file and tcp interface are safer and more complete anyway.
-* does not accept pickle protocol as input. (patch welcome!).  To my knowledge the official carbon-aggregator.py and carbon-relay.py only have pickle outputs.
-  So putting carbon-relay-ng behind them will lead to compatibility problems.  If you need this, I'ld love to hear why.
 
 
 Releases & versions
