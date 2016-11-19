@@ -163,28 +163,26 @@ func handlePickle(c net.Conn, config Config) {
 				break
 			}
 
-			payload := new(bytes.Buffer)
 			lengthTotal := int(length)
 			lengthRead := 0
+			payload := make([]byte, lengthTotal, lengthTotal)
 			for {
-				tmpPayload := make([]byte, lengthTotal - lengthRead)
-				tmpLengthRead, err := r.Read(tmpPayload)
+				tmpLengthRead, err := r.Read(payload[lengthRead:])
 				if nil != err {
 					log.Error("couldn't read payload: " + err.Error())
 					break ReadLoop
 				}
-				payload.Write(tmpPayload[:tmpLengthRead])
 				lengthRead += tmpLengthRead
 				if lengthRead == lengthTotal {
 					break
 				}
-				if lengthRead >= lengthTotal {
+				if lengthRead > lengthTotal {
 					log.Error(fmt.Sprintf("expected to read %d bytes, but read %d", length, lengthRead))
 					break ReadLoop
 				}
 			}
 
-			decoder := ogorek.NewDecoder(payload)
+			decoder := ogorek.NewDecoder(bytes.NewBuffer(payload))
 			decoded, err := decoder.Decode()
 			if nil != err {
 				if io.EOF != err {
