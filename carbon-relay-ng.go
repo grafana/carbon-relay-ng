@@ -183,7 +183,8 @@ func handlePickle(c net.Conn, config Config) {
 			}
 
 			decoder := ogorek.NewDecoder(bytes.NewBuffer(payload))
-			decoded, err := decoder.Decode()
+
+			rawDecoded, err := decoder.Decode()
 			if nil != err {
 				if io.EOF != err {
 					log.Error("error reading pickled data " + err.Error())
@@ -191,15 +192,49 @@ func handlePickle(c net.Conn, config Config) {
 				break
 			}
 
+			decoded, ok := rawDecoded.([]interface{})
+			if !ok {
+				log.Error(fmt.Sprintf("Unrecognized type %T for pickled data", rawDecoded))
+				break
+			}
+
 			ItemLoop:
-				for _, item := range decoded.([]interface{}) {
+				for _, rawItem := range decoded {
 					numIn.Inc(1)
 
-					metric := item.([]interface{})[0].(string)
-					data := item.([]interface{})[1].([]interface{})
+					item, ok := rawItem.([]interface{})
+					if !ok {
+						log.Error(fmt.Sprintf("Unrecognized type %T for item", rawItem))
+						numInvalid.Inc(1)
+						continue
+					}
+					if len(item) != 2 {
+						log.Error(fmt.Sprintf("item length must be 2, got %d", len(item)))
+						numInvalid.Inc(1)
+						continue
+					}
+
+					metric, ok := item[0].(string)
+					if !ok {
+						log.Error(fmt.Sprintf("item metric must be a string, got %T", item[0]))
+						numInvalid.Inc(1)
+						continue
+					}
+
+					data, ok := item[1].([]interface{})
+					if !ok {
+						log.Error(fmt.Sprintf("item data must be an array, got %T", item[1]))
+						numInvalid.Inc(1)
+						continue
+					}
+					if len(data) != 2 {
+						log.Error(fmt.Sprintf("item data length must be 2, got %d", len(data)))
+						numInvalid.Inc(1)
+						continue
+					}
 
 					var value string
-					switch v := data[1].(type) {
+					switch data[1].(type) {
 						case string:
 							value = data[1].(string)
 						case uint8, uint16, uint32, uint64, int8, int16, int32, int64:
@@ -207,13 +242,13 @@ func handlePickle(c net.Conn, config Config) {
 						case float32, float64:
 							value = fmt.Sprintf("%f", data[1])
 						default:
-							log.Error(fmt.Sprintf("Unrecognized type %s for value", v))
+							log.Error(fmt.Sprintf("Unrecognized type %T for value", data[1]))
 							numInvalid.Inc(1)
 							continue ItemLoop
 					}
 
 					var timestamp string
-					switch v := data[0].(type) {
+					switch data[0].(type) {
 						case string:
 							timestamp = data[0].(string)
 						case uint8, uint16, uint32, uint64, int8, int16, int32, int64:
@@ -221,7 +256,7 @@ func handlePickle(c net.Conn, config Config) {
 						case float32, float64:
 							timestamp = fmt.Sprintf("%.0f", data[0])
 						default:
-							log.Error(fmt.Sprintf("Unrecognized type %s for timestamp", v))
+							log.Error(fmt.Sprintf("Unrecognized type %T for timestamp", data[0]))
 							numInvalid.Inc(1)
 							continue ItemLoop
 					}
