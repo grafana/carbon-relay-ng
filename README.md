@@ -15,7 +15,6 @@ Like carbon-relay from the graphite project, except it:
  * supports a per-route spooling policy.
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
  * you can choose between plaintext or pickle output, per route.
- * can be restarted without dropping packets (needs testing)
  * performs validation on all incoming metrics (see below)
 
 

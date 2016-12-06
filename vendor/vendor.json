@@ -141,12 +141,6 @@
 			"revisionTime": "2015-11-20T02:40:02Z"
 		},
 		{
-			"checksumSHA1": "cDUeMY/U6zcLSSQEp4Yw26M4mLA=",
-			"path": "github.com/rcrowley/goagain",
-			"revision": "d591a7f5c6f5ad8ee6dfe8800696648eaa6d7116",
-			"revisionTime": "2014-01-28T19:57:44Z"
-		},
-		{
 			"checksumSHA1": "T8pFSFym6hKWcK3riWpyhWCxTls=",
 			"path": "github.com/taylorchu/toki",
 			"revision": "20e86122596c457c2d8a0bcd7af3158fbc7dd79e",
