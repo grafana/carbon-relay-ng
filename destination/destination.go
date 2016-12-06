@@ -42,14 +42,15 @@ type Destination struct {
 	periodReConn time.Duration
 
 	// set in/via Run()
-	In           chan []byte // incoming metrics
-	shutdown     chan bool   // signals shutdown internally
-	spool        *Spool      // queue used if spooling enabled
-	connUpdates  chan *Conn  // when the dest changes (possibly nil)
-	inConnUpdate chan bool   // to signal when we start a new conn and when we finish
-	flush        chan bool
-	flushErr     chan error
-	tasks        sync.WaitGroup
+	In                  chan []byte        // incoming metrics
+	shutdown            chan bool          // signals shutdown internally
+	spool               *Spool             // queue used if spooling enabled
+	connUpdates         chan *Conn         // when the dest changes (possibly nil)
+	inConnUpdate        chan bool          // to signal when we start a new conn and when we finish
+	setSignalConnOnline chan chan struct{} // the provided chan will be closed when the conn comes online (internal implementation detail)
+	flush               chan bool
+	flushErr            chan error
+	tasks               sync.WaitGroup
 
 	numDropNoConnNoSpool metrics.Counter
 	numDropSlowSpool     metrics.Counter
@@ -165,6 +166,7 @@ func (dest *Destination) Run() {
 	dest.inConnUpdate = make(chan bool)
 	dest.flush = make(chan bool)
 	dest.flushErr = make(chan error)
+	dest.setSignalConnOnline = make(chan chan struct{})
 	if dest.Spool {
 		dest.spool = NewSpool(dest.cleanAddr, dest.SpoolDir) // TODO better naming for spool, because it won't update when addr changes
 	}
@@ -215,6 +217,12 @@ func (dest *Destination) collectRedo(conn *Conn) {
 	dest.tasks.Done()
 }
 
+func (dest *Destination) WaitOnline() chan struct{} {
+	signalConnOnline := make(chan struct{})
+	dest.setSignalConnOnline <- signalConnOnline
+	return signalConnOnline
+}
+
 // TODO func (l *TCPListener) SetDeadline(t time.Time)
 // TODO Decide when to drop this buffer and move on.
 func (dest *Destination) relay() {
@@ -253,6 +261,7 @@ func (dest *Destination) relay() {
 
 	numConnUpdates := 0
 	go dest.updateConn(dest.Addr)
+	var signalConnOnline chan struct{}
 
 	// this loop/select should never block, we can't hang dest.In or the route & table locks up
 	for {
@@ -272,6 +281,8 @@ func (dest *Destination) relay() {
 		}
 		log.Debug("dest %v entering select. conn: %v spooling: %v slowLastloop: %v, slowNow: %v spoolQueue: %v", dest.Addr, conn != nil, dest.Spool, dest.SlowLastLoop, dest.SlowNow, toUnspool != nil)
 		select {
+		case sig := <-dest.setSignalConnOnline:
+			signalConnOnline = sig
 		case inConnUpdate := <-dest.inConnUpdate:
 			if inConnUpdate {
 				numConnUpdates += 1
@@ -286,6 +297,9 @@ func (dest *Destination) relay() {
 				// new conn? start with a clean slate!
 				dest.SlowLastLoop = false
 				dest.SlowNow = false
+				if signalConnOnline != nil {
+					close(signalConnOnline)
+				}
 			}
 		case <-ticker.C: // periodically try to bring connection (back) up, if we have to, and no other connect is happening
 			if conn == nil && numConnUpdates == 0 {
