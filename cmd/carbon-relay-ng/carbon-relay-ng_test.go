@@ -297,53 +297,6 @@ func TestAddRewrite(t *testing.T) {
 	shutdownOrFatal(table, t)
 }
 
-// i thought conn will drop messages because the tE tcp handler can't keep up.
-// but looks like that's not true (anymore?), it just works without having to sleep after dispatch
-// also note the dummyPackets uses a channel api which probably causes most of the slowdown
-func benchmarkSendAndReceive(b *testing.B, dp *dummyPackets) {
-	logging.SetLevel(logging.ERROR, "carbon-relay-ng") // testendpoint sends a warning because it does something bad with conn at end but it's harmless
-	tE := NewTestEndpoint(nil, ":2005")
-	na := tE.conditionNumAccepts(1)
-	tE.Start()
-	table := NewTableOrFatal(b, "", "addRoute sendAllMatch test1  127.0.0.1:2005")
-	na.Wait()
-	// reminder: go benchmark will invoke this with N = 0, then maybe N = 20, then maybe more
-	// and the time it prints is function run divided by N, which
-	// should be of a more or less stable time, which gets printed
-	fmt.Println()
-	for i := 0; i < b.N; i++ {
-		log.Notice("iteration %d: sending %d metrics", i, dp.amount)
-		ns := tE.conditionNumSeen(dp.amount * (i + 1))
-		for m := range dp.All() {
-			//fmt.Println("dispatching", m)
-			//fmt.Printf("dispatching '%s'\n", string(m))
-			table.Dispatch(m)
-		}
-		log.Notice("waiting until all %d messages received", dp.amount*(i+1))
-		ns.Wait()
-		log.Notice("iteration %d done. received %d metrics (%d total)", i, dp.amount, dp.amount*(i+1))
-	}
-	log.Notice("received all %d messages. wrapping up benchmark run", dp.amount*b.N)
-	err := table.Shutdown()
-	if err != nil {
-		b.Fatal(err)
-	}
-	tE.Close()
-}
-
-func BenchmarkSendAndReceiveThousand(b *testing.B) {
-	benchmarkSendAndReceive(b, packets3A)
-}
-func BenchmarkSendAndReceiveTenThousand(b *testing.B) {
-	benchmarkSendAndReceive(b, packets4A)
-}
-func BenchmarkSendAndReceiveHundredThousand(b *testing.B) {
-	benchmarkSendAndReceive(b, packets5A)
-}
-func BenchmarkSendAndReceiveMillion(b *testing.B) {
-	benchmarkSendAndReceive(b, packets6A)
-}
-
 // just dispatch (coming into table), no matching or sending to route
 func BenchmarkTableDispatch(b *testing.B) {
 	logging.SetLevel(logging.WARNING, "carbon-relay-ng")                                         // don't care about unroutable notices
@@ -352,4 +305,37 @@ func BenchmarkTableDispatch(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		table.Dispatch(metric70)
 	}
+}
+
+// i thought conn will drop messages because the tE tcp handler can't keep up.
+// but looks like that's not true (anymore?), it just works without having to sleep after dispatch
+// also note the dummyPackets uses a channel api which probably causes most of the slowdown
+func BenchmarkTableDisPatchAndEndpointReceive(b *testing.B) {
+	logging.SetLevel(logging.WARNING, "carbon-relay-ng") // testendpoint sends a warning because it does something bad with conn at end but it's harmless
+	tE := NewTestEndpointCounter(b, ":2005")
+	tE.Start()
+	table := NewTableOrFatal(b, "", "addRoute sendAllMatch test1  127.0.0.1:2005 flush=10")
+	tE.WaitAccepts(1, time.Second)
+	// reminder: go benchmark will invoke this with N = 0, then maybe N = 20, then maybe more
+	// and the time it prints is function run divided by N, which
+	// should be of a more or less stable time, which gets printed
+	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // key = 48, val = 10, ts = 10 -> 70
+	dest, err := table.GetRoute("test1").GetDestination(0)
+	if err != nil {
+		panic(err)
+	}
+	<-dest.WaitOnline()
+	b.ResetTimer()
+	go func() {
+		for i := 0; i < b.N; i++ {
+			table.Dispatch(metric70)
+		}
+	}()
+	tE.WaitMetrics(b.N, 5*time.Second)
+	b.StopTimer()
+	err = table.Shutdown()
+	if err != nil {
+		b.Fatal(err)
+	}
+	tE.Close()
 }

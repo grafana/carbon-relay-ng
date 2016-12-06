@@ -369,7 +369,6 @@ func (tE *TestEndpointCounter) Start() {
 			}
 			log.Debug("tE %s waiting for accept\n", tE.addr)
 			conn, err := ln.Accept()
-			fmt.Println("got an accet", conn, err)
 			// when closing, this can happen: accept tcp [::]:2005: use of closed network connection
 			if err != nil {
 				log.Debug("tE %s accept error: '%s' -> stopping tE\n", tE.addr, err)
@@ -384,9 +383,7 @@ func (tE *TestEndpointCounter) Start() {
 }
 
 func (tE *TestEndpointCounter) handle(c net.Conn) {
-	fmt.Println("handling")
 	defer func() {
-		fmt.Println("returning handle() -> defer closing conn")
 		log.Debug("tE %s closing conn %s\n", tE.addr, c)
 		c.Close()
 	}()
@@ -397,13 +394,11 @@ func (tE *TestEndpointCounter) handle(c net.Conn) {
 			return
 		default:
 		}
-		fmt.Println("reading line..")
 		_, _, err := r.ReadLine()
 		if err != nil {
 			log.Warning("tE %s read error: %s. closing handler\n", tE.addr, err)
 			return
 		}
-		fmt.Println("metrics <-- struct")
 		tE.metrics <- struct{}{}
 	}
 }
@@ -427,7 +422,6 @@ func (tE *TestEndpointCounter) WaitAccepts(exp int, max time.Duration) {
 }
 
 func (tE *TestEndpointCounter) WaitMetrics(exp int, max time.Duration) {
-	fmt.Println("waiting")
 	log.Notice("waiting until all %d messages received", exp)
 	timeout := time.Tick(max)
 	val := 0
@@ -435,7 +429,6 @@ func (tE *TestEndpointCounter) WaitMetrics(exp int, max time.Duration) {
 		select {
 		case <-tE.metrics:
 			val += 1
-			fmt.Println("val is now", val)
 			if val == exp {
 				log.Notice("received all %d metrics", exp)
 				return
