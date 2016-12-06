@@ -4,14 +4,16 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/Dieterbe/topic"
 	"net"
 	"sort"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Dieterbe/topic"
 )
 
+// TODO see if we can get simplify this type. do we need to track all bufs? can we do it in a more performant way?
 type TestEndpoint struct {
 	t              *testing.T
 	ln             net.Listener
@@ -313,6 +315,138 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 }
 
 func (tE *TestEndpoint) Close() {
+	log.Debug("tE %s shutting down accepter (after accept breaks)", tE.addr)
+	tE.shutdown <- true
+	log.Debug("tE %s shutting down handler (after readLine breaks)", tE.addr)
+	tE.shutdownHandle <- true
+	log.Debug("tE %s shutting down listener", tE.addr)
+	tE.ln.Close()
+	log.Debug("tE %s listener down", tE.addr)
+}
+
+type TestEndpointCounter struct {
+	t              testing.TB
+	addr           string
+	ln             net.Listener
+	seen           chan []byte
+	seenBufs       [][]byte
+	shutdown       chan bool
+	shutdownHandle chan bool // to shut down 1 handler. if you start more handlers they'll keep running
+	accepts        chan struct{}
+	metrics        chan struct{}
+}
+
+// 10 accept calls can accumulate without reading them out, before accept starts to block
+// 1000 metrics can come in without reading them out, before the reader starts to block
+func NewTestEndpointCounter(t testing.TB, addr string) *TestEndpointCounter {
+	// shutdown chan size 1 so that Close() doesn't have to wait on the write
+	// because the loops will typically be stuck in Accept and Readline
+	return &TestEndpointCounter{
+		t:              t,
+		addr:           addr,
+		seen:           make(chan []byte),
+		seenBufs:       make([][]byte, 0),
+		shutdown:       make(chan bool, 1),
+		shutdownHandle: make(chan bool, 1),
+		accepts:        make(chan struct{}, 10),
+		metrics:        make(chan struct{}, 1000),
+	}
+}
+
+func (tE *TestEndpointCounter) Start() {
+	ln, err := net.Listen("tcp", tE.addr)
+	if err != nil {
+		panic(err)
+	}
+	log.Notice("tE %s is now listening\n", tE.addr)
+	tE.ln = ln
+	go func() {
+		for {
+			select {
+			case <-tE.shutdown:
+				return
+			default:
+			}
+			log.Debug("tE %s waiting for accept\n", tE.addr)
+			conn, err := ln.Accept()
+			fmt.Println("got an accet", conn, err)
+			// when closing, this can happen: accept tcp [::]:2005: use of closed network connection
+			if err != nil {
+				log.Debug("tE %s accept error: '%s' -> stopping tE\n", tE.addr, err)
+				return
+			}
+			tE.accepts <- struct{}{}
+			log.Notice("tE %s accepted new conn\n", tE.addr)
+			go tE.handle(conn)
+			defer func() { log.Debug("tE %s closing conn.\n", tE.addr); conn.Close() }()
+		}
+	}()
+}
+
+func (tE *TestEndpointCounter) handle(c net.Conn) {
+	fmt.Println("handling")
+	defer func() {
+		fmt.Println("returning handle() -> defer closing conn")
+		log.Debug("tE %s closing conn %s\n", tE.addr, c)
+		c.Close()
+	}()
+	r := bufio.NewReaderSize(c, 4096)
+	for {
+		select {
+		case <-tE.shutdownHandle:
+			return
+		default:
+		}
+		fmt.Println("reading line..")
+		_, _, err := r.ReadLine()
+		if err != nil {
+			log.Warning("tE %s read error: %s. closing handler\n", tE.addr, err)
+			return
+		}
+		fmt.Println("metrics <-- struct")
+		tE.metrics <- struct{}{}
+	}
+}
+
+func (tE *TestEndpointCounter) WaitAccepts(exp int, max time.Duration) {
+	log.Notice("waiting for %d accepts", exp)
+	timeout := time.Tick(max)
+	val := 0
+	for {
+		select {
+		case <-tE.accepts:
+			val += 1
+			if val == exp {
+				log.Notice("seen %d accepts", val)
+				return
+			}
+		case <-timeout:
+			tE.t.Errorf("timed out after %s waiting for %d accepts. only saw %d", max, exp, val)
+		}
+	}
+}
+
+func (tE *TestEndpointCounter) WaitMetrics(exp int, max time.Duration) {
+	fmt.Println("waiting")
+	log.Notice("waiting until all %d messages received", exp)
+	timeout := time.Tick(max)
+	val := 0
+	for {
+		select {
+		case <-tE.metrics:
+			val += 1
+			fmt.Println("val is now", val)
+			if val == exp {
+				log.Notice("received all %d metrics", exp)
+				return
+			}
+		case <-timeout:
+			tE.t.Errorf("timed out after %s waiting for %d metrics. only saw %d", max, exp, val)
+		}
+	}
+}
+
+func (tE *TestEndpointCounter) Close() {
 	log.Debug("tE %s shutting down accepter (after accept breaks)", tE.addr)
 	tE.shutdown <- true
 	log.Debug("tE %s shutting down handler (after readLine breaks)", tE.addr)
