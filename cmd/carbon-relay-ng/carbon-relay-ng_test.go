@@ -53,15 +53,10 @@ func init() {
 	metric70 = []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // key = 48, val = 10, ts = 10 -> 70
 }
 
-func NewTableOrFatal(tb interface{}, spool_dir, cmd string) *tbl.Table {
+func NewTableOrFatal(tb testing.TB, spool_dir, cmd string) *tbl.Table {
 	table := tbl.New(spool_dir)
 	fatal := func(err error) {
-		switch tb.(type) {
-		case *testing.T:
-			tb.(*testing.T).Fatal(err)
-		case *testing.B:
-			tb.(*testing.B).Fatal(err)
-		}
+		tb.Fatal(err)
 	}
 	if cmd != "" {
 		err := imperatives.Apply(table, cmd)
