@@ -40,6 +40,7 @@ type Route interface {
 	Key() string
 	Flush() error
 	Shutdown() error
+	GetDestination(index int) (*dest.Destination, error)
 	DelDestination(index int) error
 	UpdateDestination(index int, opts map[string]string) error
 	Update(opts map[string]string) error
@@ -294,6 +295,16 @@ func (route *baseRoute) DelDestination(index int) error {
 
 func (route *ConsistentHashing) DelDestination(index int) error {
 	return route.delDestination(index, consistentHashingConfigExtender)
+}
+
+func (route *baseRoute) GetDestination(index int) (*dest.Destination, error) {
+	route.Lock()
+	defer route.Unlock()
+	conf := route.config.Load().(Config)
+	if index >= len(conf.Dests()) {
+		return nil, fmt.Errorf("Invalid index %d", index)
+	}
+	return conf.Dests()[index], nil
 }
 
 func (route *baseRoute) update(opts map[string]string, extendConfig baseCfgExtender) error {
