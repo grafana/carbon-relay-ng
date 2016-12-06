@@ -10,7 +10,6 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/validate"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
-	"github.com/rcrowley/goagain"
 )
 
 type Plain struct {
@@ -19,17 +18,14 @@ type Plain struct {
 	table  *table.Table
 }
 
-func NewPlain(config cfg.Config, addr string, tbl *table.Table, badMetrics *badmetrics.BadMetrics) error {
+func NewPlain(config cfg.Config, addr string, tbl *table.Table, badMetrics *badmetrics.BadMetrics) (net.Listener, error) {
 	plain := &Plain{config, badMetrics, tbl}
 	l, err := listen(addr, plain)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if err := goagain.AwaitSignals(l); nil != err {
-		return err
-	}
-	return nil
+	return l, nil
 }
 
 func (p *Plain) Handle(c net.Conn) {

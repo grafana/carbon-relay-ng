@@ -26,6 +26,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/ui/web"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
 	logging "github.com/op/go-logging"
+	"github.com/rcrowley/goagain"
 
 	"strconv"
 	"strings"
@@ -173,8 +174,10 @@ func main() {
 		log.Notice(line)
 	}
 
+	var lPlain, lPickle net.Listener
+
 	if config.Listen_addr != "" {
-		err := input.NewPlain(config, config.Listen_addr, table, badMetrics)
+		lPlain, err = input.NewPlain(config, config.Listen_addr, table, badMetrics)
 		if err != nil {
 			log.Error(err.Error())
 			os.Exit(1)
@@ -182,7 +185,7 @@ func main() {
 	}
 
 	if config.Pickle_addr != "" {
-		err := input.NewPickle(config, config.Pickle_addr, table, badMetrics)
+		lPickle, err = input.NewPickle(config, config.Pickle_addr, table, badMetrics)
 		if err != nil {
 			log.Error(err.Error())
 			os.Exit(1)
@@ -202,4 +205,19 @@ func main() {
 	if config.Http_addr != "" {
 		go web.Start(config.Http_addr, config, table, badMetrics)
 	}
+
+	if lPlain != nil {
+		if err := goagain.AwaitSignals(lPlain); nil != err {
+			log.Error(err.Error())
+			os.Exit(1)
+		}
+	}
+
+	if lPickle != nil {
+		if err := goagain.AwaitSignals(lPickle); nil != err {
+			log.Error(err.Error())
+			os.Exit(1)
+		}
+	}
+
 }

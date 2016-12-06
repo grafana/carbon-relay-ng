@@ -14,7 +14,6 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/validate"
 	ogorek "github.com/kisielk/og-rek"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
-	"github.com/rcrowley/goagain"
 )
 
 type Pickle struct {
@@ -23,16 +22,12 @@ type Pickle struct {
 	table  *table.Table
 }
 
-func NewPickle(config cfg.Config, addr string, tbl *table.Table, bad *badmetrics.BadMetrics) error {
+func NewPickle(config cfg.Config, addr string, tbl *table.Table, bad *badmetrics.BadMetrics) (net.Listener, error) {
 	l, err := listen(addr, &Pickle{config, bad, tbl})
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	if err := goagain.AwaitSignals(l); nil != err {
-		return err
-	}
-	return nil
+	return l, nil
 }
 
 func (p *Pickle) Handle(c net.Conn) {

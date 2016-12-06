@@ -273,6 +273,7 @@ func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 func Start(addr string, c cfg.Config, t *tbl.Table, bad *badmetrics.BadMetrics) {
 	table = t
 	config = c
+	badMetrics = bad
 
 	router := mux.NewRouter()
 	router.Handle("/badMetrics/{timespec}.json", handler(badMetricsHandler)).Methods("GET")
