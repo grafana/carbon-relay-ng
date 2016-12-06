@@ -201,18 +201,18 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas) *schema.MetricDat
 
 	elements := strings.Fields(msg)
 	if len(elements) != 3 {
-		log.Error("RouteGrafanaNet: %q error: need 3 fields", str)
+		log.Error("RouteGrafanaNet: %q error: need 3 fields", msg)
 		return nil
 	}
 	name := elements[0]
 	val, err := strconv.ParseFloat(elements[1], 64)
 	if err != nil {
-		log.Error("RouteGrafanaNet: %q error: %s", str, err.Error())
+		log.Error("RouteGrafanaNet: %q error: %s", msg, err.Error())
 		return nil
 	}
 	timestamp, err := strconv.ParseUint(elements[2], 10, 32)
 	if err != nil {
-		log.Error("RouteGrafanaNet: %q error: %s", str, err.Error())
+		log.Error("RouteGrafanaNet: %q error: %s", msg, err.Error())
 		return nil
 	}
 
