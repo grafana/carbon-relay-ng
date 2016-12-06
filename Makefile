@@ -2,8 +2,8 @@ VERSION=$(shell git describe --tags --always | sed 's/^v//')
 
 
 build:
-	go-bindata admin_http_assets
-	go build
+	cd ui/web && go-bindata -pkg web admin_http_assets
+	go build ./cmd/carbon-relay-ng
 
 all:
 
@@ -111,7 +111,6 @@ gh-pages: man
 	git checkout -q master
 
 install: build
-	go-bindata admin_http_assets
 	go install
 
 man:
