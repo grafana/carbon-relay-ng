@@ -20,17 +20,17 @@ import (
 	"github.com/Dieterbe/go-metrics/exp"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/validate"
+	ogorek "github.com/kisielk/og-rek"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
 	logging "github.com/op/go-logging"
 	"github.com/rcrowley/goagain"
-	ogorek "github.com/kisielk/og-rek"
 	//"runtime"
+	"bytes"
+	"encoding/binary"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
-	"encoding/binary"
-	"bytes"
 )
 
 type Config struct {
@@ -91,7 +91,7 @@ func init() {
 func accept(l *net.TCPListener, config Config, handler Handler) {
 	for {
 		c, err := l.AcceptTCP()
-		if nil != err {
+		if err != nil {
 			log.Error(err.Error())
 			break
 		}
@@ -99,7 +99,7 @@ func accept(l *net.TCPListener, config Config, handler Handler) {
 	}
 }
 
-func handle(c net.Conn, config Config) {
+func handlePlain(c net.Conn, config Config) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
@@ -113,7 +113,7 @@ func handle(c net.Conn, config Config) {
 		// note that we don't support lines longer than 4096B. that seems very reasonable..
 		buf, _, err := r.ReadLine()
 
-		if nil != err {
+		if err != nil {
 			if io.EOF != err {
 				log.Error(err.Error())
 			}
@@ -146,142 +146,142 @@ func handlePickle(c net.Conn, config Config) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
-	ReadLoop:
-		for {
+ReadLoop:
+	for {
 
-			// Note that everything in this loop should proceed as fast as it can
-			// so we're not blocked and can keep processing
-			// so the validation, the pipeline initiated via table.Dispatch(), etc
-			// must never block.
+		// Note that everything in this loop should proceed as fast as it can
+		// so we're not blocked and can keep processing
+		// so the validation, the pipeline initiated via table.Dispatch(), etc
+		// must never block.
 
-			var length uint32
-			err := binary.Read(r, binary.BigEndian, &length)
-			if nil != err {
-				if io.EOF != err {
-					log.Error("couldn't read payload length: " + err.Error())
-				}
-				break
+		var length uint32
+		err := binary.Read(r, binary.BigEndian, &length)
+		if err != nil {
+			if io.EOF != err {
+				log.Error("couldn't read payload length: " + err.Error())
 			}
-
-			lengthTotal := int(length)
-			lengthRead := 0
-			payload := make([]byte, lengthTotal, lengthTotal)
-			for {
-				tmpLengthRead, err := r.Read(payload[lengthRead:])
-				if nil != err {
-					log.Error("couldn't read payload: " + err.Error())
-					break ReadLoop
-				}
-				lengthRead += tmpLengthRead
-				if lengthRead == lengthTotal {
-					break
-				}
-				if lengthRead > lengthTotal {
-					log.Error(fmt.Sprintf("expected to read %d bytes, but read %d", length, lengthRead))
-					break ReadLoop
-				}
-			}
-
-			decoder := ogorek.NewDecoder(bytes.NewBuffer(payload))
-
-			rawDecoded, err := decoder.Decode()
-			if nil != err {
-				if io.EOF != err {
-					log.Error("error reading pickled data " + err.Error())
-				}
-				break
-			}
-
-			decoded, ok := rawDecoded.([]interface{})
-			if !ok {
-				log.Error(fmt.Sprintf("Unrecognized type %T for pickled data", rawDecoded))
-				break
-			}
-
-			ItemLoop:
-				for _, rawItem := range decoded {
-					numIn.Inc(1)
-
-					item, ok := rawItem.([]interface{})
-					if !ok {
-						log.Error(fmt.Sprintf("Unrecognized type %T for item", rawItem))
-						numInvalid.Inc(1)
-						continue
-					}
-					if len(item) != 2 {
-						log.Error(fmt.Sprintf("item length must be 2, got %d", len(item)))
-						numInvalid.Inc(1)
-						continue
-					}
-
-					metric, ok := item[0].(string)
-					if !ok {
-						log.Error(fmt.Sprintf("item metric must be a string, got %T", item[0]))
-						numInvalid.Inc(1)
-						continue
-					}
-
-					data, ok := item[1].([]interface{})
-					if !ok {
-						log.Error(fmt.Sprintf("item data must be an array, got %T", item[1]))
-						numInvalid.Inc(1)
-						continue
-					}
-					if len(data) != 2 {
-						log.Error(fmt.Sprintf("item data length must be 2, got %d", len(data)))
-						numInvalid.Inc(1)
-						continue
-					}
-
-					var value string
-					switch data[1].(type) {
-						case string:
-							value = data[1].(string)
-						case uint8, uint16, uint32, uint64, int8, int16, int32, int64:
-							value = fmt.Sprintf("%d", data[1])
-						case float32, float64:
-							value = fmt.Sprintf("%f", data[1])
-						default:
-							log.Error(fmt.Sprintf("Unrecognized type %T for value", data[1]))
-							numInvalid.Inc(1)
-							continue ItemLoop
-					}
-
-					var timestamp string
-					switch data[0].(type) {
-						case string:
-							timestamp = data[0].(string)
-						case uint8, uint16, uint32, uint64, int8, int16, int32, int64:
-							timestamp = fmt.Sprintf("%d", data[0])
-						case float32, float64:
-							timestamp = fmt.Sprintf("%.0f", data[0])
-						default:
-							log.Error(fmt.Sprintf("Unrecognized type %T for timestamp", data[0]))
-							numInvalid.Inc(1)
-							continue ItemLoop
-					}
-
-					buf := []byte(metric + " " + value + " " + timestamp)
-
-					key, _, ts, err := m20.ValidatePacket(buf, config.Validation_level_legacy.Level, config.Validation_level_m20.Level)
-					if err != nil {
-						badMetrics.Add(key, buf, err)
-						numInvalid.Inc(1)
-						continue
-					}
-
-					if config.Validate_order {
-						err = validate.Ordered(key, ts)
-						if err != nil {
-							badMetrics.Add(key, buf, err)
-							numOutOfOrder.Inc(1)
-							continue
-						}
-					}
-
-					table.Dispatch(buf)
-				}
+			break
 		}
+
+		lengthTotal := int(length)
+		lengthRead := 0
+		payload := make([]byte, lengthTotal, lengthTotal)
+		for {
+			tmpLengthRead, err := r.Read(payload[lengthRead:])
+			if err != nil {
+				log.Error("couldn't read payload: " + err.Error())
+				break ReadLoop
+			}
+			lengthRead += tmpLengthRead
+			if lengthRead == lengthTotal {
+				break
+			}
+			if lengthRead > lengthTotal {
+				log.Error(fmt.Sprintf("expected to read %d bytes, but read %d", length, lengthRead))
+				break ReadLoop
+			}
+		}
+
+		decoder := ogorek.NewDecoder(bytes.NewBuffer(payload))
+
+		rawDecoded, err := decoder.Decode()
+		if err != nil {
+			if io.EOF != err {
+				log.Error("error reading pickled data " + err.Error())
+			}
+			break
+		}
+
+		decoded, ok := rawDecoded.([]interface{})
+		if !ok {
+			log.Error(fmt.Sprintf("Unrecognized type %T for pickled data", rawDecoded))
+			break
+		}
+
+	ItemLoop:
+		for _, rawItem := range decoded {
+			numIn.Inc(1)
+
+			item, ok := rawItem.([]interface{})
+			if !ok {
+				log.Error(fmt.Sprintf("Unrecognized type %T for item", rawItem))
+				numInvalid.Inc(1)
+				continue
+			}
+			if len(item) != 2 {
+				log.Error(fmt.Sprintf("item length must be 2, got %d", len(item)))
+				numInvalid.Inc(1)
+				continue
+			}
+
+			metric, ok := item[0].(string)
+			if !ok {
+				log.Error(fmt.Sprintf("item metric must be a string, got %T", item[0]))
+				numInvalid.Inc(1)
+				continue
+			}
+
+			data, ok := item[1].([]interface{})
+			if !ok {
+				log.Error(fmt.Sprintf("item data must be an array, got %T", item[1]))
+				numInvalid.Inc(1)
+				continue
+			}
+			if len(data) != 2 {
+				log.Error(fmt.Sprintf("item data length must be 2, got %d", len(data)))
+				numInvalid.Inc(1)
+				continue
+			}
+
+			var value string
+			switch data[1].(type) {
+			case string:
+				value = data[1].(string)
+			case uint8, uint16, uint32, uint64, int8, int16, int32, int64:
+				value = fmt.Sprintf("%d", data[1])
+			case float32, float64:
+				value = fmt.Sprintf("%f", data[1])
+			default:
+				log.Error(fmt.Sprintf("Unrecognized type %T for value", data[1]))
+				numInvalid.Inc(1)
+				continue ItemLoop
+			}
+
+			var timestamp string
+			switch data[0].(type) {
+			case string:
+				timestamp = data[0].(string)
+			case uint8, uint16, uint32, uint64, int8, int16, int32, int64:
+				timestamp = fmt.Sprintf("%d", data[0])
+			case float32, float64:
+				timestamp = fmt.Sprintf("%.0f", data[0])
+			default:
+				log.Error(fmt.Sprintf("Unrecognized type %T for timestamp", data[0]))
+				numInvalid.Inc(1)
+				continue ItemLoop
+			}
+
+			buf := []byte(metric + " " + value + " " + timestamp)
+
+			key, _, ts, err := m20.ValidatePacket(buf, config.Validation_level_legacy.Level, config.Validation_level_m20.Level)
+			if err != nil {
+				badMetrics.Add(key, buf, err)
+				numInvalid.Inc(1)
+				continue
+			}
+
+			if config.Validate_order {
+				err = validate.Ordered(key, ts)
+				if err != nil {
+					badMetrics.Add(key, buf, err)
+					numOutOfOrder.Inc(1)
+					continue
+				}
+			}
+
+			table.Dispatch(buf)
+		}
+	}
 }
 
 func usage() {
@@ -295,13 +295,13 @@ func usage() {
 func listen(config Config, addr string, handler Handler) (net.Listener, error) {
 	// Follow the goagain protocol, <https://github.com/rcrowley/goagain>.
 	l, ppid, err := goagain.GetEnvs()
-	if nil != err {
+	if err != nil {
 		laddr, err := net.ResolveTCPAddr("tcp", addr)
-		if nil != err {
+		if err != nil {
 			return nil, err
 		}
 		l, err = net.ListenTCP("tcp", laddr)
-		if nil != err {
+		if err != nil {
 			return nil, err
 		}
 		log.Notice("listening on %v/tcp", laddr)
@@ -322,11 +322,11 @@ func listen(config Config, addr string, handler Handler) (net.Listener, error) {
 	}
 
 	udp_addr, err := net.ResolveUDPAddr("udp", addr)
-	if nil != err {
+	if err != nil {
 		return nil, err
 	}
 	udp_conn, err := net.ListenUDP("udp", udp_addr)
-	if nil != err {
+	if err != nil {
 		return nil, err
 	}
 	log.Notice("listening on %v/udp", udp_addr)
@@ -449,8 +449,8 @@ func main() {
 
 	var l net.Listener
 	if config.Listen_addr != "" {
-		l, err = listen(config, config.Listen_addr, handle)
-		if nil != err {
+		l, err = listen(config, config.Listen_addr, handlePlain)
+		if err != nil {
 			log.Error(err.Error())
 			os.Exit(1)
 		}
@@ -459,7 +459,7 @@ func main() {
 	var lp net.Listener
 	if config.Pickle_addr != "" {
 		lp, err = listen(config, config.Pickle_addr, handlePickle)
-		if nil != err {
+		if err != nil {
 			log.Error(err.Error())
 			os.Exit(1)
 		}
@@ -479,14 +479,14 @@ func main() {
 		go HttpListener(config.Http_addr, table)
 	}
 
-	if nil != l {
+	if l != nil {
 		if err := goagain.AwaitSignals(l); nil != err {
 			log.Error(err.Error())
 			os.Exit(1)
 		}
 	}
 
-	if nil != lp {
+	if lp != nil {
 		if err := goagain.AwaitSignals(lp); nil != err {
 			log.Error(err.Error())
 			os.Exit(1)
