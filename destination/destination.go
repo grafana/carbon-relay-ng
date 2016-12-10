@@ -42,7 +42,7 @@ type Destination struct {
 	periodReConn time.Duration
 
 	// set in/via Run()
-	In                  chan []byte        // incoming metrics
+	In                  chan []byte        `json:"-"` // incoming metrics
 	shutdown            chan bool          // signals shutdown internally
 	spool               *Spool             // queue used if spooling enabled
 	connUpdates         chan *Conn         // when the dest changes (possibly nil)
