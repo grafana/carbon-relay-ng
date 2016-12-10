@@ -26,7 +26,7 @@ func NewKeepSafe(initialCap int, periodKeep time.Duration) *keepSafe {
 
 func (k *keepSafe) keepClean() {
 	tick := time.NewTicker(k.periodKeep)
-	for _ = range tick.C {
+	for range tick.C {
 		k.Lock()
 		k.safeOld = k.safeRecent
 		k.safeRecent = make([][]byte, 0, k.initialCap)

@@ -29,9 +29,9 @@ func NewFromByte(old, new []byte, max int) (RW, error) {
 	Old := string(old)
 
 	var re *regexp.Regexp
-	if len(Old) > 1 && Old[0:1] == "/" && Old[len(Old) - 1:] == "/" {
+	if len(Old) > 1 && Old[0:1] == "/" && Old[len(Old)-1:] == "/" {
 		var err error
-		re, err = regexp.Compile(Old[1:len(Old) - 1])
+		re, err = regexp.Compile(Old[1 : len(Old)-1])
 		if err != nil {
 			return RW{}, errInvalidRegexp
 		}
@@ -59,9 +59,9 @@ func New(old, new string, max int) (RW, error) {
 	}
 
 	var re *regexp.Regexp
-	if len(old) > 1 && old[0:1] == "/" && old[len(old) - 1:] == "/" {
+	if len(old) > 1 && old[0:1] == "/" && old[len(old)-1:] == "/" {
 		var err error
-		re, err = regexp.Compile(old[1:len(old) - 1])
+		re, err = regexp.Compile(old[1 : len(old)-1])
 		if err != nil {
 			return RW{}, errInvalidRegexp
 		}

@@ -173,7 +173,6 @@ func main() {
 		log.Notice(line)
 	}
 
-
 	if config.Listen_addr != "" {
 		_, err = input.NewPlain(config, config.Listen_addr, table, badMetrics)
 		if err != nil {
