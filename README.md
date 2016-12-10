@@ -1,4 +1,4 @@
-[![Circle CI](https://circleci.com/gh/graphite-ng/carbon-relay-ng?style=shield)](https://circleci.com/gh/graphite-ng/carbon-relay-ng)
+[![Circle CI](https://circleci.com/gh/graphite-ng/carbon-relay-ng.svg?style=shield)](https://circleci.com/gh/graphite-ng/carbon-relay-ng)
 [![Go Report Card](https://goreportcard.com/badge/github.com/graphite-ng/carbon-relay-ng)](https://goreportcard.com/report/github.com/graphite-ng/carbon-relay-ng)
 [![GoDoc](https://godoc.org/github.com/graphite-ng/carbon-relay-ng?status.svg)](https://godoc.org/github.com/graphite-ng/carbon-relay-ng)
 
