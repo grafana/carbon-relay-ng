@@ -478,7 +478,7 @@ func readModRoute(s *toki.Scanner, table *tbl.Table) error {
 	key := string(t.Value)
 
 	opts := make(map[string]string)
-	for t != toki.EOF {
+	for t.Token != toki.EOF {
 		t = s.Next()
 		switch t.Token {
 		case toki.EOF:
