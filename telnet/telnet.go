@@ -52,7 +52,6 @@ func ListenAndServe(addr string) error {
 		}
 		go handleApiRequest(conn)
 	}
-	return nil
 }
 
 func handleApiRequest(conn net.Conn) {

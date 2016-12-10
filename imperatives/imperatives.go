@@ -434,7 +434,7 @@ func readModDest(s *toki.Scanner, table *tbl.Table) error {
 	}
 
 	opts := make(map[string]string)
-	for {
+	for t.Token != toki.EOF {
 		t = s.Next()
 		switch t.Token {
 		case toki.EOF:
@@ -478,7 +478,7 @@ func readModRoute(s *toki.Scanner, table *tbl.Table) error {
 	key := string(t.Value)
 
 	opts := make(map[string]string)
-	for {
+	for t != toki.EOF {
 		t = s.Next()
 		switch t.Token {
 		case toki.EOF:
@@ -605,7 +605,7 @@ func readRouteOpts(s *toki.Scanner) (prefix, sub, regex string, err error) {
 		t := s.Next()
 		switch t.Token {
 		case toki.EOF:
-			break
+			return
 		case toki.Error:
 			return "", "", "", errors.New("read the error token instead of one i recognize")
 		case optPrefix:
@@ -629,5 +629,4 @@ func readRouteOpts(s *toki.Scanner) (prefix, sub, regex string, err error) {
 			return "", "", "", fmt.Errorf("unrecognized option '%s'", t.Value)
 		}
 	}
-	return
 }
