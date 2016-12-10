@@ -1,3 +1,19 @@
+machine:
+  environment:
+    GOPATH: "$HOME/go"
+    BASE: "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME"
+    REPO: "$BASE/$CIRCLE_PROJECT_REPONAME"
+
+# circleCi by default checks out the project to $HOME/carbon-relay-ng
+# we need to move it to its gopath-ized location so that imports work
+# we also symlink because:
+# * even with our cd overrides, it starts by cd'ing into the default, showing ugly (but harmless errors)
+# * it lets us just refer to things like 'build' directory which will point to the right place
+
+checkout:
+  post:
+    - cd $HOME && mkdir -p $BASE && mv carbon-relay-ng $BASE/ && ln -s $REPO carbon-relay-ng
+
 dependencies:
   pre:
     - gem install package_cloud
@@ -6,9 +22,9 @@ dependencies:
     - go get github.com/jteeuwen/go-bindata/...
 test:
   override:
-    - go test -v -race $(go list ./... | grep -v /vendor/)
+    - cd $REPO && go test -v -race $(go list ./... | grep -v /vendor/)
   post:
-    - make packages # note, this runs go-bindata again
+    - cd $REPO && make packages # note, this runs go-bindata again
     # ideally we'd make sure that if go-bindata generated new content, we fail.
     # because devs should have run go-bindata and checked in changes already.
     # but because git checkout will change the timestamps and mode, it'll generate slight differences, and it's hard to filter those out
