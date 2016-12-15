@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
@@ -139,7 +140,7 @@ ReadLoop:
 			switch data[0].(type) {
 			case string:
 				timestamp = data[0].(string)
-			case uint8, uint16, uint32, uint64, int8, int16, int32, int64:
+			case uint8, uint16, uint32, uint64, int8, int16, int32, int64, (*big.Int):
 				timestamp = fmt.Sprintf("%d", data[0])
 			case float32, float64:
 				timestamp = fmt.Sprintf("%.0f", data[0])
