@@ -127,7 +127,7 @@ The following are valid values for the `legacy_metric_validation` field:
 * `medium` -- We validate that the metric name has only ASCII characters and no embedded NULLs.
 * `none` -- No metric name checks are performed.
 
-If we detect the metric is in metrics2.0 format we also check proper formatting, and unit and target_type are set.
+If we detect the metric is in metrics2.0 format we also check proper formatting, and unit and mtype are set.
 
 Invalid metrics are dropped and can be seen at /badMetrics/timespec.json where timespec is something like 30s, 10m, 24h, etc.
 (the counters are also exported.  See instrumentation section)

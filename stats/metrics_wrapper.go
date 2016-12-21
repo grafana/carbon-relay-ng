@@ -29,12 +29,12 @@ func New(inst string) {
 
 func Counter(key string) metrics.Counter {
 	c := metrics.NewCounter()
-	return metrics.GetOrRegister(expandKey("target_type=counter."+key), c).(metrics.Counter)
+	return metrics.GetOrRegister(expandKey("mtype=counter."+key), c).(metrics.Counter)
 }
 
 func Gauge(key string) metrics.Gauge {
 	g := metrics.NewGauge()
-	return metrics.GetOrRegister(expandKey("target_type=gauge."+key), g).(metrics.Gauge)
+	return metrics.GetOrRegister(expandKey("mtype=gauge."+key), g).(metrics.Gauge)
 }
 
 func Timer(key string) metrics.Timer {
@@ -44,12 +44,12 @@ func Timer(key string) metrics.Timer {
 	histogram := metrics.NewHistogram(metrics.NewWindowSample())
 	meter := metrics.NewMeter()
 	t := metrics.NewCustomTimer(histogram, meter)
-	return metrics.GetOrRegister(expandKey("target_type=gauge.unit=ns."+key), t).(metrics.Timer)
+	return metrics.GetOrRegister(expandKey("mtype=gauge.unit=ns."+key), t).(metrics.Timer)
 }
 
 func Histogram(key string) metrics.Histogram {
 	h := metrics.NewHistogram(metrics.NewWindowSample())
-	return metrics.GetOrRegister(expandKey("target_type=gauge."+key), h).(metrics.Histogram)
+	return metrics.GetOrRegister(expandKey("mtype=gauge."+key), h).(metrics.Histogram)
 }
 
 func expandKey(key string) string {
