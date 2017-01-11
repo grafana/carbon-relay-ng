@@ -138,6 +138,8 @@ func main() {
 		f.Close()
 	}
 
+	input.InitMetrics()
+
 	if config.Instrumentation.Graphite_addr != "" {
 		addr, err := net.ResolveTCPAddr("tcp", config.Instrumentation.Graphite_addr)
 		if err != nil {
