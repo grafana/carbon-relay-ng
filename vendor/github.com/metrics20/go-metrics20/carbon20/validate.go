@@ -221,17 +221,17 @@ func ValidatePacket(buf []byte, levelLegacy ValidationLevelLegacy, levelM20 Vali
 		err = ValidateKeyM20NoEqualsB(fields[0], levelM20)
 	}
 	if err != nil {
-		return empty, 0, 0, err
+		return fields[0], 0, 0, err
 	}
 
 	val, err := strconv.ParseFloat(string(fields[1]), 32)
 	if err != nil {
-		return empty, 0, 0, errValNotNumber
+		return fields[0], 0, 0, errValNotNumber
 	}
 
 	ts, err := strconv.ParseUint(string(fields[2]), 10, 0)
 	if err != nil {
-		return empty, 0, 0, errTsNotTs
+		return fields[0], 0, 0, errTsNotTs
 	}
 
 	return fields[0], val, uint32(ts), nil
