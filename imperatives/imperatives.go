@@ -49,6 +49,7 @@ const (
 	optTimeout
 	optSSLVerify
 	word
+	optConcurrency
 )
 
 // we should make sure we apply changes atomatically. e.g. when changing dest between address A and pickle=false and B with pickle=true,
@@ -81,6 +82,7 @@ var tokens = []toki.Def{
 	{Token: optFlushMaxWait, Pattern: "flushMaxWait="},
 	{Token: optTimeout, Pattern: "timeout="},
 	{Token: optSSLVerify, Pattern: "sslverify="},
+	{Token: optConcurrency, Pattern: "concurrency="},
 	{Token: str, Pattern: "\".*\""},
 	{Token: sep, Pattern: "##"},
 	{Token: sumFn, Pattern: "sum"},
@@ -94,7 +96,7 @@ var tokens = []toki.Def{
 var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
 var errFmtAddAgg = errors.New("addAgg <sum|avg> <regex> <fmt> <interval> <wait>")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
-var errFmtAddRouteGrafanaNet = errors.New("addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
+var errFmtAddRouteGrafanaNet = errors.New("addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int concurrency=int]")
 var errFmtAddDest = errors.New("addDest <routeKey> <dest>") // not implemented yet
 var errFmtAddRewriter = errors.New("addRewriter <old> <new> <max>")
 var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex=>") // one or more can be specified at once
@@ -302,6 +304,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table *tbl.Table) error {
 	var flushMaxNum = 10000 // number of metrics
 	var flushMaxWait = 500  // in ms
 	var timeout = 2000      // in ms
+	var concurrency = 10    // number of concurrent connections to tsdb-gw
 
 	for ; t.Token != toki.EOF; t = s.Next() {
 		switch t.Token {
@@ -345,6 +348,16 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table *tbl.Table) error {
 			} else {
 				return errFmtAddRouteGrafanaNet
 			}
+		case optConcurrency:
+			t = s.Next()
+			if t.Token == num {
+				concurrency, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
 		case optTimeout:
 			t = s.Next()
 			if t.Token == num {
@@ -371,7 +384,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table *tbl.Table) error {
 		}
 	}
 
-	route, err := route.NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile, spool, sslVerify, bufSize, flushMaxNum, flushMaxWait, timeout)
+	route, err := route.NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile, spool, sslVerify, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency)
 	if err != nil {
 		return err
 	}

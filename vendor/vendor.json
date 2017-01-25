@@ -57,6 +57,12 @@
 			"revisionTime": "2015-12-24T04:54:52Z"
 		},
 		{
+			"checksumSHA1": "W+E/2xXcE1GmJ0Qb784ald0Fn6I=",
+			"path": "github.com/golang/snappy",
+			"revision": "d9eb7a3d35ec988b8585d4a0068e462c27d28380",
+			"revisionTime": "2016-05-29T05:00:41Z"
+		},
+		{
 			"checksumSHA1": "iIUYZyoanCQQTUaWsu8b+iOSPt4=",
 			"path": "github.com/gorilla/context",
 			"revision": "215affda49addc4c8ef7e2534915df2c8c35c6cd",

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"net/http"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
+	"github.com/golang/snappy"
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
@@ -36,6 +38,11 @@ type GrafanaNet struct {
 	flushMaxWait time.Duration
 	timeout      time.Duration
 	sslVerify    bool
+	concurrency  int
+	writeQueue   []chan []byte
+	shutdown     chan struct{}
+	wg           *sync.WaitGroup
+	client       *http.Client
 
 	numErrFlush       metrics.Counter
 	numOut            metrics.Counter   // metrics successfully written to our buffered conn (no flushing yet)
@@ -49,7 +56,7 @@ type GrafanaNet struct {
 // NewGrafanaNet creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
 // ignores spool for now
-func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool, sslVerify bool, bufSize, flushMaxNum, flushMaxWait, timeout int) (Route, error) {
+func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool, sslVerify bool, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency int) (Route, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -87,6 +94,10 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		flushMaxWait: time.Duration(flushMaxWait) * time.Millisecond,
 		timeout:      time.Duration(timeout) * time.Millisecond,
 		sslVerify:    sslVerify,
+		concurrency:  concurrency,
+		writeQueue:   make([]chan []byte, concurrency),
+		shutdown:     make(chan struct{}),
+		wg:           new(sync.WaitGroup),
 
 		numErrFlush:       stats.Counter("dest=" + cleanAddr + ".unit=Err.type=flush"),
 		numOut:            stats.Counter("dest=" + cleanAddr + ".unit=Metric.direction=out"),
@@ -96,21 +107,17 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		manuFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=manual"),
 		numBuffered:       stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
 	}
-
-	r.config.Store(baseConfig{*m, make([]*dest.Destination, 0)})
-	go r.run()
-	return r, nil
-}
-
-func (route *GrafanaNet) run() {
-	metrics := make([]*schema.MetricData, 0, route.flushMaxNum)
-	ticker := time.NewTicker(route.flushMaxWait)
-	client := &http.Client{
-		Timeout: route.timeout,
+	for i := 0; i < r.concurrency; i++ {
+		r.writeQueue[i] = make(chan []byte)
 	}
-	if !route.sslVerify {
+	r.config.Store(baseConfig{*m, make([]*dest.Destination, 0)})
+
+	r.client = &http.Client{
+		Timeout: r.timeout,
+	}
+	if !r.sslVerify {
 		// this transport should be the equivalent of Go's DefaultTransport
-		client.Transport = &http.Transport{
+		r.client.Transport = &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			Dial: (&net.Dialer{
 				Timeout:   30 * time.Second,
@@ -125,41 +132,99 @@ func (route *GrafanaNet) run() {
 		}
 	}
 
+	go r.run()
+	return r, nil
+}
+
+func (route *GrafanaNet) run() {
+	metrics := make([][]*schema.MetricData, route.concurrency)
+	for i := 0; i < route.concurrency; i++ {
+		metrics[i] = make([]*schema.MetricData, 0, route.flushMaxNum)
+
+		// start up our goroutines for writing data to tsdb-gw
+		route.wg.Add(1)
+		go route.flush(i)
+	}
+
+	flush := func(shard int) {
+		if len(metrics[shard]) == 0 {
+			return
+		}
+		mda := schema.MetricDataArray(metrics[shard])
+		data, err := msg.CreateMsg(mda, 0, msg.FormatMetricDataArrayMsgp)
+		if err != nil {
+			panic(err)
+		}
+		route.writeQueue[shard] <- data
+		route.numOut.Inc(int64(len(metrics[shard])))
+		metrics[shard] = metrics[shard][:0]
+
+	}
+
+	hasher := fnv.New32a()
+
+	ticker := time.NewTicker(route.flushMaxWait)
+	for {
+		select {
+		case buf := <-route.buf:
+			route.numBuffered.Dec(1)
+			md := parseMetric(buf, route.schemas)
+			if md == nil {
+				continue
+			}
+			md.SetId()
+			buf = md.KeyBySeries(buf[:0])
+			hasher.Reset()
+			hasher.Write(buf)
+			shard := int(hasher.Sum32() % uint32(route.concurrency))
+			metrics[shard] = append(metrics[shard], md)
+			if len(metrics[shard]) == route.flushMaxNum {
+				flush(shard)
+			}
+		case <-ticker.C:
+			for shard := 0; shard < route.concurrency; shard++ {
+				flush(shard)
+			}
+		case <-route.shutdown:
+			for shard := 0; shard < route.concurrency; shard++ {
+				flush(shard)
+				close(route.writeQueue[shard])
+			}
+			return
+		}
+	}
+}
+
+func (route *GrafanaNet) flush(shard int) {
 	b := &backoff.Backoff{
 		Min:    100 * time.Millisecond,
 		Max:    time.Minute,
 		Factor: 1.5,
 		Jitter: true,
 	}
-
-	flush := func() {
-		if len(metrics) == 0 {
-			return
-		}
-
-		mda := schema.MetricDataArray(metrics)
-		data, err := msg.CreateMsg(mda, 0, msg.FormatMetricDataArrayMsgp)
-		if err != nil {
-			panic(err)
-		}
-
+	body := new(bytes.Buffer)
+	for data := range route.writeQueue[shard] {
 		for {
 			pre := time.Now()
-			req, err := http.NewRequest("POST", route.addr, bytes.NewBuffer(data))
+			body.Reset()
+			snappyBody := snappy.NewWriter(body)
+			snappyBody.Write(data)
+			snappyBody.Close()
+			req, err := http.NewRequest("POST", route.addr, body)
 			if err != nil {
 				panic(err)
 			}
 			req.Header.Add("Authorization", "Bearer "+route.apiKey)
-			req.Header.Add("Content-Type", "rt-metric-binary")
-			resp, err := client.Do(req)
+			req.Header.Add("Content-Type", "rt-metric-binary-snappy")
+			resp, err := route.client.Do(req)
 			diff := time.Since(pre)
 			if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				b.Reset()
-				log.Info("GrafanaNet sent %d metrics in %s -msg size %d", len(metrics), diff, len(data))
-				route.numOut.Inc(int64(len(metrics)))
+				log.Info("GrafanaNet sent metrics in %s -msg size %d", diff, len(data))
+
 				route.tickFlushSize.Update(int64(len(data)))
 				route.durationTickFlush.Update(diff)
-				metrics = metrics[:0]
+
 				resp.Body.Close()
 				break
 			}
@@ -177,23 +242,7 @@ func (route *GrafanaNet) run() {
 			time.Sleep(dur)
 		}
 	}
-	for {
-		select {
-		case buf := <-route.buf:
-			route.numBuffered.Dec(1)
-			md := parseMetric(buf, route.schemas)
-			if md == nil {
-				continue
-			}
-			md.SetId()
-			metrics = append(metrics, md)
-			if len(metrics) == route.flushMaxNum {
-				flush()
-			}
-		case <-ticker.C:
-			flush()
-		}
-	}
+	route.wg.Done()
 }
 
 func parseMetric(buf []byte, schemas persister.WhisperSchemas) *schema.MetricData {
@@ -251,6 +300,12 @@ func (route *GrafanaNet) Flush() error {
 
 func (route *GrafanaNet) Shutdown() error {
 	//conf := route.config.Load().(Config)
+
+	// trigger all of our queues to be flushed to the tsdb-gw
+	route.shutdown <- struct{}{}
+
+	// wait for all tsdb-gw writes to complete.
+	route.wg.Wait()
 	return nil
 }
 
