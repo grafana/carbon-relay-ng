@@ -235,7 +235,6 @@ func (c *Conn) HandleData() {
 			c.manuFlushSize.Update(flushSize)
 			flushSize = 0
 		case <-c.shutdown:
-			active = time.Now()
 			log.Debug("conn %s HandleData: shutdown received. returning.\n", c.dest.Addr)
 			return
 		}
