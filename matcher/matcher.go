@@ -9,7 +9,7 @@ type Matcher struct {
 	Prefix string `json:"prefix,omitempty"`
 	Sub    string `json:"substring,omitempty"`
 	Regex  string `json:"regex,omitempty"`
-	// internal represenation for performance optimalization
+	// internal representation for performance optimalization
 	prefix, substring []byte
 	regex             *regexp.Regexp // compiled version of Regex
 }

@@ -46,10 +46,10 @@ type Conn struct {
 	numErrFlush       metrics.Counter
 	numOut            metrics.Counter // metrics successfully written to our buffered conn (no flushing yet)
 	durationWrite     metrics.Timer
-	durationTickFlush metrics.Timer     // only updated after successfull flush
-	durationManuFlush metrics.Timer     // only updated after successfull flush
-	tickFlushSize     metrics.Histogram // only updated after successfull flush. in bytes
-	manuFlushSize     metrics.Histogram // only updated after successfull flush. in bytes
+	durationTickFlush metrics.Timer     // only updated after successful flush
+	durationManuFlush metrics.Timer     // only updated after successful flush
+	tickFlushSize     metrics.Histogram // only updated after successful flush. in bytes
+	manuFlushSize     metrics.Histogram // only updated after successful flush. in bytes
 	numBuffered       metrics.Gauge
 	numDropBadPickle  metrics.Counter
 }

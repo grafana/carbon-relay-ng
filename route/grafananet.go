@@ -39,10 +39,10 @@ type GrafanaNet struct {
 
 	numErrFlush       metrics.Counter
 	numOut            metrics.Counter   // metrics successfully written to our buffered conn (no flushing yet)
-	durationTickFlush metrics.Timer     // only updated after successfull flush
-	durationManuFlush metrics.Timer     // only updated after successfull flush. not implemented yet
-	tickFlushSize     metrics.Histogram // only updated after successfull flush
-	manuFlushSize     metrics.Histogram // only updated after successfull flush. not implemented yet
+	durationTickFlush metrics.Timer     // only updated after successful flush
+	durationManuFlush metrics.Timer     // only updated after successful flush. not implemented yet
+	tickFlushSize     metrics.Histogram // only updated after successful flush
+	manuFlushSize     metrics.Histogram // only updated after successful flush. not implemented yet
 	numBuffered       metrics.Gauge
 }
 

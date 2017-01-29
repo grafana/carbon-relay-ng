@@ -38,7 +38,7 @@ type Spool struct {
 // buffer no more then needed, esp if we know the queue is slower then the ingest rate
 func NewSpool(key, spoolDir string) *Spool {
 	dqName := "spool_" + key
-	// on our virtualized box i see mean write of around 100 micros upto 250 micros, max up to 200 millis.
+	// on our virtualized box i see mean write of around 100 micros up to 250 micros, max up to 200 millis.
 	// in 200 millis we can get up to 10k metrics, so let's make that our queueBuffer size
 	// for bulk, leaving 500 micros in between every metric should be enough.
 	// TODO make all these configurable:
