@@ -15,7 +15,7 @@ var (
 	numOutOfOrder metrics.Counter
 )
 
-func init() {
+func InitMetrics() {
 	numIn = stats.Counter("unit=Metric.direction=in")
 	numInvalid = stats.Counter("unit=Err.type=invalid")
 	numOutOfOrder = stats.Counter("unit=Err.type=out_of_order")
