@@ -4,6 +4,8 @@ machine:
     BASE: "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME"
     REPO: "$BASE/$CIRCLE_PROJECT_REPONAME"
     PATH: "$PATH:$GOPATH/bin"
+  services:
+    - docker
 
 # circleCi by default checks out the project to $HOME/carbon-relay-ng
 # we need to move it to its gopath-ized location so that imports work
@@ -25,7 +27,7 @@ test:
   override:
     - cd $REPO && go test -v -race $(go list ./... | grep -v /vendor/)
   post:
-    - cd $REPO && make packages # note, this runs go-bindata again
+    - cd $REPO && make packages docker # note, this runs go-bindata again
     # ideally we'd make sure that if go-bindata generated new content, we fail.
     # because devs should have run go-bindata and checked in changes already.
     # but because git checkout will change the timestamps and mode, it'll generate slight differences, and it's hard to filter those out
@@ -44,3 +46,5 @@ deployment:
       - package_cloud push ${PACKAGECLOUD_REPO}/debian/jessie build/deb-systemd/carbon-relay-ng-*.deb
       - package_cloud push ${PACKAGECLOUD_REPO}/el/6          build/centos-6/carbon-relay-ng-*.el6.*.rpm
       - package_cloud push ${PACKAGECLOUD_REPO}/el/7          build/centos-7/carbon-relay-ng-*.el7.*.rpm
+      - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_KEY
+      - ./deploy-docker.sh
