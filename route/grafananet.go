@@ -39,7 +39,7 @@ type GrafanaNet struct {
 	timeout      time.Duration
 	sslVerify    bool
 	concurrency  int
-	writeQueue   []chan []byte
+	writeQueues  []chan []byte
 	shutdown     chan struct{}
 	wg           *sync.WaitGroup
 	client       *http.Client
@@ -95,7 +95,7 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		timeout:      time.Duration(timeout) * time.Millisecond,
 		sslVerify:    sslVerify,
 		concurrency:  concurrency,
-		writeQueue:   make([]chan []byte, concurrency),
+		writeQueues:  make([]chan []byte, concurrency),
 		shutdown:     make(chan struct{}),
 		wg:           new(sync.WaitGroup),
 
@@ -108,7 +108,7 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		numBuffered:       stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
 	}
 	for i := 0; i < r.concurrency; i++ {
-		r.writeQueue[i] = make(chan []byte)
+		r.writeQueues[i] = make(chan []byte)
 	}
 	r.config.Store(baseConfig{*m, make([]*dest.Destination, 0)})
 
@@ -138,11 +138,11 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 
 func (route *GrafanaNet) run() {
 	metrics := make([][]*schema.MetricData, route.concurrency)
+	route.wg.Add(route.concurrency)
 	for i := 0; i < route.concurrency; i++ {
 		metrics[i] = make([]*schema.MetricData, 0, route.flushMaxNum)
 
 		// start up our goroutines for writing data to tsdb-gw
-		route.wg.Add(1)
 		go route.flush(i)
 	}
 
@@ -155,7 +155,7 @@ func (route *GrafanaNet) run() {
 		if err != nil {
 			panic(err)
 		}
-		route.writeQueue[shard] <- data
+		route.writeQueues[shard] <- data
 		route.numOut.Inc(int64(len(metrics[shard])))
 		metrics[shard] = metrics[shard][:0]
 
@@ -188,7 +188,7 @@ func (route *GrafanaNet) run() {
 		case <-route.shutdown:
 			for shard := 0; shard < route.concurrency; shard++ {
 				flush(shard)
-				close(route.writeQueue[shard])
+				close(route.writeQueues[shard])
 			}
 			return
 		}
@@ -203,7 +203,7 @@ func (route *GrafanaNet) flush(shard int) {
 		Jitter: true,
 	}
 	body := new(bytes.Buffer)
-	for data := range route.writeQueue[shard] {
+	for data := range route.writeQueues[shard] {
 		for {
 			pre := time.Now()
 			body.Reset()
