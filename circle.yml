@@ -38,7 +38,7 @@ general:
     - build
 deployment:
   production:
-    branch: master
+    branch: dockerhub-push
     commands:
       # Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8 (jessie), Centos6 and Centos7. (no debian 7 wheezy because that's sysvinit which we don't have packages for)
       - package_cloud push ${PACKAGECLOUD_REPO}/ubuntu/trusty build/deb-upstart/carbon-relay-ng-*.deb
