@@ -18,7 +18,7 @@ notes:
 * by specifying a prefix, sub or regex you can only send a subset of your metrics to grafana.net hosted metrics
 
 ```
-addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
+addRoute grafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
 ```
 
 

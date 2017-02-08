@@ -3,12 +3,9 @@ package route
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"hash/fnv"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -62,23 +59,9 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 	if err != nil {
 		return nil, err
 	}
-	schemas, err := persister.ReadWhisperSchemas(schemasFile)
+	schemas, err := getSchemas(schemasFile)
 	if err != nil {
 		return nil, err
-	}
-	var defaultFound bool
-	for _, schema := range schemas {
-		if schema.Pattern.String() == ".*" {
-			defaultFound = true
-		}
-		if len(schema.Retentions) == 0 {
-			return nil, fmt.Errorf("retention setting cannot be empty")
-		}
-	}
-	if !defaultFound {
-		// good graphite health (not sure what graphite does if there's no .*
-		// but we definitely need to always be able to determine which interval to use
-		return nil, fmt.Errorf("storage-conf does not have a default '.*' pattern")
 	}
 
 	cleanAddr := util.AddrToPath(addr)
@@ -170,8 +153,9 @@ func (route *GrafanaNet) run() {
 		select {
 		case buf := <-route.buf:
 			route.numBuffered.Dec(1)
-			md := parseMetric(buf, route.schemas, route.orgId)
-			if md == nil {
+			md, err := parseMetric(buf, route.schemas, route.orgId)
+			if err != nil {
+				log.Error("RouteGrafanaNet: %s", err)
 				continue
 			}
 			md.SetId()
@@ -247,45 +231,6 @@ func (route *GrafanaNet) flush(shard int) {
 		}
 	}
 	route.wg.Done()
-}
-
-func parseMetric(buf []byte, schemas persister.WhisperSchemas, orgId int) *schema.MetricData {
-	msg := strings.TrimSpace(string(buf))
-
-	elements := strings.Fields(msg)
-	if len(elements) != 3 {
-		log.Error("RouteGrafanaNet: %q error: need 3 fields", msg)
-		return nil
-	}
-	name := elements[0]
-	val, err := strconv.ParseFloat(elements[1], 64)
-	if err != nil {
-		log.Error("RouteGrafanaNet: %q error: %s", msg, err.Error())
-		return nil
-	}
-	timestamp, err := strconv.ParseUint(elements[2], 10, 32)
-	if err != nil {
-		log.Error("RouteGrafanaNet: %q error: %s", msg, err.Error())
-		return nil
-	}
-
-	s, ok := schemas.Match(name)
-	if !ok {
-		panic(fmt.Errorf("couldn't find a schema for %q - this is impossible since we asserted there was a default with patt .*", name))
-	}
-
-	md := schema.MetricData{
-		Name:     name,
-		Metric:   name,
-		Interval: s.Retentions[0].SecondsPerPoint(),
-		Value:    val,
-		Unit:     "unknown",
-		Time:     int64(timestamp),
-		Mtype:    "gauge",
-		Tags:     []string{},
-		OrgId:    orgId, // This may be overwritten by the TSDB-GW if it does not match the orgId of the apiKey used
-	}
-	return &md
 }
 
 func (route *GrafanaNet) Dispatch(buf []byte) {
