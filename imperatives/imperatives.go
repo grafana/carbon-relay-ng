@@ -23,6 +23,7 @@ const (
 	addRouteSendFirstMatch
 	addRouteConsistentHashing
 	addRouteGrafanaNet
+	addRouteKafkaMdm
 	addDest
 	addRewriter
 	delRoute
@@ -61,6 +62,7 @@ var tokens = []toki.Def{
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch"},
 	{Token: addRouteConsistentHashing, Pattern: "addRoute consistentHashing"},
 	{Token: addRouteGrafanaNet, Pattern: "addRoute grafanaNet"},
+	{Token: addRouteKafkaMdm, Pattern: "addRoute kafkaMdm"},
 	{Token: addDest, Pattern: "addDest"},
 	{Token: addRewriter, Pattern: "addRewriter"},
 	{Token: delRoute, Pattern: "delRoute"},
@@ -94,7 +96,8 @@ var tokens = []toki.Def{
 var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
 var errFmtAddAgg = errors.New("addAgg <sum|avg> <regex> <fmt> <interval> <wait>")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
-var errFmtAddRouteGrafanaNet = errors.New("addRoute GrafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
+var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
+var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex]  broker topic codec schemasFile partitionBy orgId [bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
 var errFmtAddDest = errors.New("addDest <routeKey> <dest>") // not implemented yet
 var errFmtAddRewriter = errors.New("addRewriter <old> <new> <max>")
 var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex=>") // one or more can be specified at once
@@ -119,6 +122,8 @@ func Apply(table *tbl.Table, cmd string) error {
 		return readAddRouteConsistentHashing(s, table)
 	case addRouteGrafanaNet:
 		return readAddRouteGrafanaNet(s, table)
+	case addRouteKafkaMdm:
+		return readAddRouteKafkaMdm(s, table)
 	case addRewriter:
 		return readAddRewriter(s, table)
 	case delRoute:
@@ -372,6 +377,123 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table *tbl.Table) error {
 	}
 
 	route, err := route.NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile, spool, sslVerify, bufSize, flushMaxNum, flushMaxWait, timeout)
+	if err != nil {
+		return err
+	}
+	table.AddRoute(route)
+	return nil
+}
+func readAddRouteKafkaMdm(s *toki.Scanner, table *tbl.Table) error {
+	t := s.Next()
+	if t.Token != word {
+		return errFmtAddRouteKafkaMdm
+	}
+	key := string(t.Value)
+
+	prefix, sub, regex, err := readRouteOpts(s)
+	if err != nil {
+		return err
+	}
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRouteKafkaMdm
+	}
+	broker := string(t.Value)
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRouteKafkaMdm
+	}
+	topic := string(t.Value)
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRouteKafkaMdm
+	}
+	codec := string(t.Value)
+	if codec != "none" && codec != "gzip" && codec != "snappy" {
+		return errFmtAddRouteKafkaMdm
+	}
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRouteKafkaMdm
+	}
+	schemasFile := string(t.Value)
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRouteKafkaMdm
+	}
+	partitionBy := string(t.Value)
+	if partitionBy != "byOrg" && partitionBy != "bySeries" {
+		return errFmtAddRouteKafkaMdm
+	}
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRouteKafkaMdm
+	}
+	orgId, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+	if err != nil {
+		return errFmtAddRouteKafkaMdm
+	}
+
+	var bufSize = int(1e7)  // since a message is typically around 100B this is 1GB
+	var flushMaxNum = 10000 // number of metrics
+	var flushMaxWait = 500  // in ms
+	var timeout = 2000      // in ms
+
+	t = s.Next()
+	for ; t.Token != toki.EOF; t = s.Next() {
+		switch t.Token {
+		case optBufSize:
+			t = s.Next()
+			if t.Token == num {
+				bufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteKafkaMdm
+			}
+		case optFlushMaxNum:
+			t = s.Next()
+			if t.Token == num {
+				flushMaxNum, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteKafkaMdm
+			}
+		case optFlushMaxWait:
+			t = s.Next()
+			if t.Token == num {
+				flushMaxWait, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteKafkaMdm
+			}
+		case optTimeout:
+			t = s.Next()
+			if t.Token == num {
+				timeout, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteKafkaMdm
+			}
+		default:
+			return fmt.Errorf("unexpected token %d %q", t.Token, t.Value)
+		}
+	}
+
+	route, err := route.NewKafkaMdm(key, prefix, sub, regex, broker, topic, codec, schemasFile, partitionBy, bufSize, orgId, flushMaxNum, flushMaxWait, timeout)
 	if err != nil {
 		return err
 	}
