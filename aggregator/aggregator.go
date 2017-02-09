@@ -25,9 +25,37 @@ func Avg(in []float64) float64 {
 	return Sum(in) / float64(len(in))
 }
 
+func Max(in []float64) float64 {
+	if len(in) == 0 {
+		panic("max() called in aggregator with 0 terms")
+	}
+	max := in[0]
+	for _, val := range in {
+		if val > max {
+			max = val
+		}
+	}
+	return max
+}
+
+func Min(in []float64) float64 {
+	if len(in) == 0 {
+		panic("min() called in aggregator with 0 terms")
+	}
+	min := in[0]
+	for _, val := range in {
+		if val < min {
+			min = val
+		}
+	}
+	return min
+}
+
 var Funcs = map[string]Func{
 	"sum": Sum,
 	"avg": Avg,
+	"max": Max,
+	"min": Min,
 }
 
 type Aggregator struct {
