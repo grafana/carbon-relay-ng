@@ -141,6 +141,12 @@
 			"revisionTime": "2015-11-20T02:40:02Z"
 		},
 		{
+			"checksumSHA1": "PNFiPbDwLwZs7CcqH91LH7gXI5U=",
+			"path": "github.com/streadway/amqp",
+			"revision": "d75c3a341ff43309ad0cb69ac8bdbd1d8772775f",
+			"revisionTime": "2017-02-03T13:40:38Z"
+		},
+		{
 			"checksumSHA1": "T8pFSFym6hKWcK3riWpyhWCxTls=",
 			"path": "github.com/taylorchu/toki",
 			"revision": "20e86122596c457c2d8a0bcd7af3158fbc7dd79e",

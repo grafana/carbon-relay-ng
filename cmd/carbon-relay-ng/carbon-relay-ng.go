@@ -191,6 +191,19 @@ func main() {
 		}
 	}
 
+	if config.Amqp.Amqp_enabled == true {
+		go func() {
+			for {
+				err := input.StartAMQP(config, config.Amqp, table, badMetrics)
+				if err != nil {
+					log.Error("consume AMQP: %v", err)
+				}
+				// retry
+				// TODO: backoff?
+			}
+		}()
+	}
+
 	if config.Admin_addr != "" {
 		go func() {
 			err := telnet.Start(config.Admin_addr, table)
