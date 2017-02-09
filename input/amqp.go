@@ -45,7 +45,13 @@ func StartAMQP(config cfg.Config, amqpcfg cfg.Amqp, tbl *table.Table, bad *badme
 	}
 	defer amqpChan.Close()
 
-	q, err := amqpChan.QueueDeclare(amqpcfg.Amqp_queue, false, true, true, false, nil)
+	// queue name will be random, as in the python implementation
+	q, err := amqpChan.QueueDeclare("", false, false, true, false, nil)
+	if err != nil {
+		return err
+	}
+
+	err = amqpChan.QueueBind(q.Name, "#", amqpcfg.Amqp_exchange, false, nil)
 	if err != nil {
 		return err
 	}
@@ -57,11 +63,9 @@ func StartAMQP(config cfg.Config, amqpcfg cfg.Amqp, tbl *table.Table, bad *badme
 
 	log.Notice("consuming AMQP messages")
 	for m := range c {
-		m.Ack(true)
 		a.dispatch(m.Body)
 	}
-
-	return fmt.Errorf("amqp channel closed")
+	return fmt.Errorf("AMQP channel closed")
 }
 
 func (a *Amqp) dispatch(buf []byte) {

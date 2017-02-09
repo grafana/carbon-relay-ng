@@ -34,7 +34,6 @@ type Amqp struct {
 	Amqp_user     string
 	Amqp_password string
 	Amqp_exchange string
-	Amqp_queue    string
 }
 
 type instrumentation struct {
