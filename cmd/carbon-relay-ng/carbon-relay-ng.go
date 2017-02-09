@@ -193,13 +193,10 @@ func main() {
 
 	if config.Amqp.Amqp_enabled == true {
 		go func() {
-			for {
-				err := input.StartAMQP(config, config.Amqp, table, badMetrics)
-				if err != nil {
-					log.Error("consume AMQP: %v", err)
-				}
-				// retry
-				// TODO: backoff?
+			err := input.StartAMQP(config, config.Amqp, table, badMetrics)
+			if err != nil {
+				log.Error("consume AMQP: %v", err)
+				os.Exit(1)
 			}
 		}()
 	}
