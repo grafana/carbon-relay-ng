@@ -27,6 +27,12 @@
 			"revisionTime": "2014-12-09T01:45:55Z"
 		},
 		{
+			"checksumSHA1": "RNby1ZoJbIzrENjgiE2hwjgkswE=",
+			"path": "github.com/Shopify/sarama",
+			"revision": "1416bd78f804d523005322194994f08c2a0ad797",
+			"revisionTime": "2017-02-09T16:01:41Z"
+		},
+		{
 			"checksumSHA1": "USQFwXWz6tO69wtZdj3zZDB1MA4=",
 			"path": "github.com/Sirupsen/logrus",
 			"revision": "55eb11d21d2a31a3cc93838241d04800f52e823d",
@@ -51,10 +57,40 @@
 			"revisionTime": "2014-02-08T11:57:53Z"
 		},
 		{
+			"checksumSHA1": "jqSVRDK7dGg6E/NikVq1Kw6gdbA=",
+			"path": "github.com/davecgh/go-spew/spew",
+			"revision": "2df174808ee097f90d259e432cc04442cf60be21",
+			"revisionTime": "2015-06-18T03:34:22Z"
+		},
+		{
+			"checksumSHA1": "y2Kh4iPlgCPXSGTCcFpzePYdzzg=",
+			"path": "github.com/eapache/go-resiliency/breaker",
+			"revision": "b86b1ec0dd4209a588dc1285cdd471e73525c0b3",
+			"revisionTime": "2016-01-04T19:15:39Z"
+		},
+		{
+			"checksumSHA1": "WHl96RVZlOOdF4Lb1OOadMpw8ls=",
+			"path": "github.com/eapache/go-xerial-snappy",
+			"revision": "bb955e01b9346ac19dc29eb16586c90ded99a98c",
+			"revisionTime": "2016-06-09T14:24:08Z"
+		},
+		{
+			"checksumSHA1": "AEGF/lRMFJukJAnRqdCVQ/0I+BY=",
+			"path": "github.com/eapache/queue",
+			"revision": "ded5959c0d4e360646dc9e9908cff48666781367",
+			"revisionTime": "2015-06-06T11:53:03Z"
+		},
+		{
 			"checksumSHA1": "5ftkjfUwI9A6xCQ1PwIAd5+qlo0=",
 			"path": "github.com/elazarl/go-bindata-assetfs",
 			"revision": "57eb5e1fc594ad4b0b1dbea7b286d299e0cb43c2",
 			"revisionTime": "2015-12-24T04:54:52Z"
+		},
+		{
+			"checksumSHA1": "P/YMhqTnQl9HbvyC72rBhe/N32I=",
+			"path": "github.com/golang/snappy",
+			"revision": "7db9049039a047d955fe8c19b83c8ff5abd765c7",
+			"revisionTime": "2017-01-19T01:47:23Z"
 		},
 		{
 			"checksumSHA1": "iIUYZyoanCQQTUaWsu8b+iOSPt4=",
@@ -85,6 +121,12 @@
 			"path": "github.com/kisielk/og-rek",
 			"revision": "28bae785206e71d70d9c770903d06abb87547734",
 			"revisionTime": "2016-01-04T20:53:23Z"
+		},
+		{
+			"checksumSHA1": "7ttJJBMDGKL63tX23fNmW7r7NvQ=",
+			"path": "github.com/klauspost/crc32",
+			"revision": "6834731faf32e62a2dd809d99fb24d1e4ae5a92d",
+			"revisionTime": "2016-01-12T14:50:11Z"
 		},
 		{
 			"checksumSHA1": "HIsIO4+e5awXjNSj/UJzbSePEZQ=",
@@ -139,6 +181,30 @@
 			"path": "github.com/philhofer/fwd",
 			"revision": "92647f2bd94a89b170c19e96e6456dd64ac37e1a",
 			"revisionTime": "2015-11-20T02:40:02Z"
+		},
+		{
+			"checksumSHA1": "BMjSRH5mPFsBz4Z1r9f/MzwVlXA=",
+			"path": "github.com/pierrec/lz4",
+			"revision": "5c9560bfa9ace2bf86080bf40d46b34ae44604df",
+			"revisionTime": "2016-12-06T20:23:05Z"
+		},
+		{
+			"checksumSHA1": "IT4sX58d+e8osXHV5U6YCSdB/uE=",
+			"path": "github.com/pierrec/xxHash/xxHash32",
+			"revision": "5a004441f897722c627870a981d02b29924215fa",
+			"revisionTime": "2016-01-12T16:53:51Z"
+		},
+		{
+			"checksumSHA1": "SWV4Uo3QEGMHg1VXehu/hyDTXjk=",
+			"path": "github.com/raintank/metrictank/cluster/partitioner",
+			"revision": "c1b3cb1beb4aee2aa66d9d8f3f53a569be73ee73",
+			"revisionTime": "2017-02-11T18:49:35Z"
+		},
+		{
+			"checksumSHA1": "smfS7rkFG9ihm9H+Gdn2OPN/oM0=",
+			"path": "github.com/rcrowley/go-metrics",
+			"revision": "7da7ed57785040df39407030c3f8f39747383bed",
+			"revisionTime": "2015-11-30T03:37:52Z"
 		},
 		{
 			"checksumSHA1": "PNFiPbDwLwZs7CcqH91LH7gXI5U=",
