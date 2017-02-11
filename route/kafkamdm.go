@@ -14,7 +14,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/lomik/go-carbon/persister"
-	"github.com/raintank/metrictank/cluster"
+	"github.com/raintank/metrictank/cluster/partitioner"
 	"gopkg.in/raintank/schema.v1"
 )
 
@@ -25,7 +25,7 @@ type KafkaMdm struct {
 	topic       string
 	broker      string
 	buf         chan []byte
-	partitioner *cluster.KafkaPartitioner
+	partitioner *partitioner.Kafka
 	schemas     persister.WhisperSchemas
 
 	orgId int // organisation to publish data under
@@ -78,7 +78,7 @@ func NewKafkaMdm(key, prefix, sub, regex, broker, topic, codec, schemasFile, par
 		numBuffered:       stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
 	}
 
-	r.partitioner, err = cluster.NewKafkaPartitioner(partitionBy)
+	r.partitioner, err = partitioner.NewKafka(partitionBy)
 	if err != nil {
 		log.Fatal(4, "kafkaMdm %q: failed to initialize partitioner. %s", r.Key, err)
 	}
