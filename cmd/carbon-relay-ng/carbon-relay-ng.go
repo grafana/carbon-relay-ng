@@ -192,13 +192,7 @@ func main() {
 	}
 
 	if config.Amqp.Amqp_enabled == true {
-		go func() {
-			err := input.StartAMQP(config, config.Amqp, table, badMetrics)
-			if err != nil {
-				log.Error("consume AMQP: %v", err)
-				os.Exit(1)
-			}
-		}()
+		go input.StartAMQP(config, table, badMetrics)
 	}
 
 	if config.Admin_addr != "" {

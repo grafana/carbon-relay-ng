@@ -1,71 +1,117 @@
 package input
 
 import (
-	"fmt"
+	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/validate"
+	"github.com/jpillora/backoff"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
 	"github.com/streadway/amqp"
 )
 
 type Amqp struct {
+	uri     amqp.URI
+	conn    *amqp.Connection
+	channel *amqp.Channel
+
 	config cfg.Config
 	bad    *badmetrics.BadMetrics
 	table  *table.Table
 }
 
-func StartAMQP(config cfg.Config, amqpcfg cfg.Amqp, tbl *table.Table, bad *badmetrics.BadMetrics) error {
+func (a *Amqp) close() {
+	a.channel.Close()
+	a.conn.Close()
+}
+
+func StartAMQP(config cfg.Config, tbl *table.Table, bad *badmetrics.BadMetrics) {
+	uri := amqp.URI{
+		Scheme:   "amqp",
+		Host:     config.Amqp.Amqp_host,
+		Port:     config.Amqp.Amqp_port,
+		Username: config.Amqp.Amqp_user,
+		Password: config.Amqp.Amqp_password,
+		Vhost:    config.Amqp.Amqp_vhost,
+	}
+
 	a := &Amqp{
+		uri:    uri,
 		config: config,
 		bad:    bad,
 		table:  tbl,
 	}
 
-	uri := amqp.URI{
-		Scheme:   "amqp",
-		Host:     amqpcfg.Amqp_host,
-		Port:     amqpcfg.Amqp_port,
-		Username: amqpcfg.Amqp_user,
-		Password: amqpcfg.Amqp_password,
-		Vhost:    amqpcfg.Amqp_vhost,
+	b := &backoff.Backoff{
+		Min: 500 * time.Millisecond,
 	}
-	log.Notice("dialing AMQP: %v", uri)
-	conn, err := amqp.Dial(uri.String())
+	for {
+		c, err := connectAMQP(a)
+		if err != nil {
+			// failed to connect; backoff and try again
+			log.Error("connectAMQP: %v", err)
+
+			d := b.Duration()
+			log.Info("retrying in %v", d)
+			time.Sleep(d)
+		} else {
+			// connected successfully; reset backoff
+			b.Reset()
+
+			// blocks until channel is closed
+			consumeAMQP(a, c)
+			log.Notice("consumeAMQP: channel closed")
+
+			// reconnect immediately
+			a.close()
+		}
+	}
+}
+
+func connectAMQP(a *Amqp) (<-chan amqp.Delivery, error) {
+	log.Notice("dialing AMQP: %v", a.uri)
+	conn, err := amqp.Dial(a.uri.String())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer conn.Close()
+	a.conn = conn
 
 	amqpChan, err := conn.Channel()
 	if err != nil {
-		return err
+		a.conn.Close()
+		return nil, err
 	}
-	defer amqpChan.Close()
+	a.channel = amqpChan
 
 	// queue name will be random, as in the python implementation
 	q, err := amqpChan.QueueDeclare("", false, false, true, false, nil)
 	if err != nil {
-		return err
+		a.close()
+		return nil, err
 	}
 
-	err = amqpChan.QueueBind(q.Name, "#", amqpcfg.Amqp_exchange, false, nil)
+	err = amqpChan.QueueBind(q.Name, "#", a.config.Amqp.Amqp_exchange, false, nil)
 	if err != nil {
-		return err
+		a.close()
+		return nil, err
 	}
 
 	c, err := amqpChan.Consume(q.Name, "carbon-relay-ng", true, true, true, false, nil)
 	if err != nil {
-		return err
+		a.close()
+		return nil, err
 	}
 
+	return c, nil
+}
+
+func consumeAMQP(a *Amqp, c <-chan amqp.Delivery) {
 	log.Notice("consuming AMQP messages")
 	for m := range c {
 		a.dispatch(m.Body)
 	}
-	return fmt.Errorf("AMQP channel closed")
 }
 
 func (a *Amqp) dispatch(buf []byte) {
