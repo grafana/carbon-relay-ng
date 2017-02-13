@@ -191,6 +191,10 @@ func main() {
 		}
 	}
 
+	if config.Amqp.Amqp_enabled == true {
+		go input.StartAMQP(config, table, badMetrics)
+	}
+
 	if config.Admin_addr != "" {
 		go func() {
 			err := telnet.Start(config.Admin_addr, table)

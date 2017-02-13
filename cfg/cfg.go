@@ -11,6 +11,7 @@ type Config struct {
 	Admin_addr              string
 	Http_addr               string
 	Spool_dir               string
+	Amqp                    Amqp
 	Max_procs               int
 	First_only              bool
 	Routes                  []*route.Route
@@ -23,6 +24,16 @@ type Config struct {
 	Validation_level_legacy validate.LevelLegacy
 	Validation_level_m20    validate.LevelM20
 	Validate_order          bool
+}
+
+type Amqp struct {
+	Amqp_enabled  bool
+	Amqp_host     string
+	Amqp_port     int
+	Amqp_vhost    string
+	Amqp_user     string
+	Amqp_password string
+	Amqp_exchange string
 }
 
 type instrumentation struct {
