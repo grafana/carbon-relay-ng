@@ -111,7 +111,7 @@ func (r *KafkaMdm) run() {
 	ticker := time.NewTicker(r.flushMaxWait)
 	brokers := []string{r.broker}
 
-	connect := func() {
+	connect := func() error {
 		var err error
 		r.producer, err = sarama.NewSyncProducer(brokers, r.saramaCfg)
 		if err == sarama.ErrOutOfBrokers {
@@ -121,12 +121,12 @@ func (r *KafkaMdm) run() {
 		} else {
 			log.Notice("kafkaMdm %q: now connected to kafka", r.key)
 		}
+		return err
 	}
 
 	// flushes the data to kafka and resets buffer.  blocks until it succeeds
 	flush := func() {
-		for r.producer == nil {
-			connect()
+		for r.producer == nil && connect() != nil {
 			time.Sleep(time.Second)
 		}
 		for {
