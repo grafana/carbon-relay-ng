@@ -39,6 +39,7 @@ type GrafanaNet struct {
 	timeout      time.Duration
 	sslVerify    bool
 	concurrency  int
+	orgId        int
 	writeQueues  []chan []byte
 	shutdown     chan struct{}
 	wg           *sync.WaitGroup
@@ -56,7 +57,7 @@ type GrafanaNet struct {
 // NewGrafanaNet creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
 // ignores spool for now
-func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool, sslVerify bool, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency int) (Route, error) {
+func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool, sslVerify bool, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId int) (Route, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -95,6 +96,7 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		timeout:      time.Duration(timeout) * time.Millisecond,
 		sslVerify:    sslVerify,
 		concurrency:  concurrency,
+		orgId:        orgId,
 		writeQueues:  make([]chan []byte, concurrency),
 		shutdown:     make(chan struct{}),
 		wg:           new(sync.WaitGroup),
@@ -168,11 +170,13 @@ func (route *GrafanaNet) run() {
 		select {
 		case buf := <-route.buf:
 			route.numBuffered.Dec(1)
-			md := parseMetric(buf, route.schemas)
+			md := parseMetric(buf, route.schemas, route.orgId)
 			if md == nil {
 				continue
 			}
 			md.SetId()
+
+			//re-use our []byte slice to save an allocation.
 			buf = md.KeyBySeries(buf[:0])
 			hasher.Reset()
 			hasher.Write(buf)
@@ -245,7 +249,7 @@ func (route *GrafanaNet) flush(shard int) {
 	route.wg.Done()
 }
 
-func parseMetric(buf []byte, schemas persister.WhisperSchemas) *schema.MetricData {
+func parseMetric(buf []byte, schemas persister.WhisperSchemas, orgId int) *schema.MetricData {
 	msg := strings.TrimSpace(string(buf))
 
 	elements := strings.Fields(msg)
@@ -279,7 +283,7 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas) *schema.MetricDat
 		Time:     int64(timestamp),
 		Mtype:    "gauge",
 		Tags:     []string{},
-		OrgId:    1, // the hosted tsdb service will adjust to the correct OrgId if using a regular key.  orgid 1 is only retained with admin key.
+		OrgId:    orgId, // This may be overwritten by the TSDB-GW if it does not match the orgId of the apiKey used
 	}
 	return &md
 }
