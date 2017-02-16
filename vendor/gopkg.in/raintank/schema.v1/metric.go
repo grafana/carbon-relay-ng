@@ -3,11 +3,11 @@ package schema
 import (
 	"bytes"
 	"crypto/md5"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 )
 
 var errInvalidIntervalzero = errors.New("interval cannot be 0")
@@ -15,6 +15,19 @@ var errInvalidOrgIdzero = errors.New("org-id cannot be 0")
 var errInvalidEmptyName = errors.New("name cannot be empty")
 var errInvalidEmptyMetric = errors.New("metric cannot be empty")
 var errInvalidMtype = errors.New("invalid mtype")
+
+type PartitionedMetric interface {
+	Validate() error
+	SetId()
+	// return a []byte key comprised of the metric's OrgId
+	// accepts an input []byte to allow callers to re-use
+	// buffers to reduce memory allocations
+	KeyByOrgId([]byte) []byte
+	// return a []byte key comprised of the metric's Name
+	// accepts an input []byte to allow callers to re-use
+	// buffers to reduce memory allocations
+	KeyBySeries([]byte) []byte
+}
 
 //go:generate msgp
 
@@ -51,6 +64,25 @@ func (m *MetricData) Validate() error {
 	return nil
 }
 
+func (m *MetricData) KeyByOrgId(b []byte) []byte {
+	if cap(b)-len(b) < 4 {
+		// not enough unused space in the slice so we need to grow it.
+		newBuf := make([]byte, len(b), len(b)+4)
+		copy(newBuf, b)
+		b = newBuf
+	}
+	// PutUint32 writes directly to the slice rather then appending.
+	// so we need to set the length to 4 more bytes then it currently is.
+	b = b[:len(b)+4]
+	binary.LittleEndian.PutUint32(b[len(b)-4:], uint32(m.OrgId))
+	return b
+}
+
+func (m *MetricData) KeyBySeries(b []byte) []byte {
+	b = append(b, []byte(m.Name)...)
+	return b
+}
+
 // returns a id (hash key) in the format OrgId.md5Sum
 // the md5sum is a hash of the the concatination of the
 // metric + each tag key:value pair (in metrics2.0 sense, so also fields), sorted alphabetically.
@@ -77,17 +109,16 @@ type MetricDataArray []*MetricData
 
 // for ES
 type MetricDefinition struct {
-	Id         string            `json:"id"`
-	OrgId      int               `json:"org_id"`
-	Name       string            `json:"name" elastic:"type:string,index:not_analyzed"` // graphite format
-	Metric     string            `json:"metric"`                                        // kairosdb format (like graphite, but not including some tags)
-	Interval   int               `json:"interval"`                                      // minimum 10
-	Unit       string            `json:"unit"`
-	Mtype      string            `json:"mtype"`
-	Tags       []string          `json:"tags" elastic:"type:string,index:not_analyzed"`
-	LastUpdate int64             `json:"lastUpdate"` // unix timestamp
-	Nodes      map[string]string `json:"nodes"`
-	NodeCount  int               `json:"node_count"`
+	Id         string   `json:"id"`
+	OrgId      int      `json:"org_id"`
+	Name       string   `json:"name" elastic:"type:string,index:not_analyzed"` // graphite format
+	Metric     string   `json:"metric"`                                        // kairosdb format (like graphite, but not including some tags)
+	Interval   int      `json:"interval"`                                      // minimum 10
+	Unit       string   `json:"unit"`
+	Mtype      string   `json:"mtype"`
+	Tags       []string `json:"tags" elastic:"type:string,index:not_analyzed"`
+	LastUpdate int64    `json:"lastUpdate"` // unix timestamp
+	Partition  int32    `json:"partition"`
 }
 
 func (m *MetricDefinition) SetId() {
@@ -127,6 +158,25 @@ func (m *MetricDefinition) Validate() error {
 	return nil
 }
 
+func (m *MetricDefinition) KeyByOrgId(b []byte) []byte {
+	if cap(b)-len(b) < 4 {
+		// not enough unused space in the slice so we need to grow it.
+		newBuf := make([]byte, len(b), len(b)+4)
+		copy(newBuf, b)
+		b = newBuf
+	}
+	// PutUint32 writes directly to the slice rather then appending.
+	// so we need to set the length to 4 more bytes then it currently is.
+	b = b[:len(b)+4]
+	binary.LittleEndian.PutUint32(b[len(b)-4:], uint32(m.OrgId))
+	return b
+}
+
+func (m *MetricDefinition) KeyBySeries(b []byte) []byte {
+	b = append(b, []byte(m.Name)...)
+	return b
+}
+
 func MetricDefinitionFromJSON(b []byte) (*MetricDefinition, error) {
 	def := new(MetricDefinition)
 	if err := json.Unmarshal(b, &def); err != nil {
@@ -138,12 +188,6 @@ func MetricDefinitionFromJSON(b []byte) (*MetricDefinition, error) {
 // MetricDefinitionFromMetricData yields a MetricDefinition that has no references
 // to the original MetricData
 func MetricDefinitionFromMetricData(d *MetricData) *MetricDefinition {
-	nodesMap := make(map[string]string)
-	nodes := strings.Split(d.Name, ".")
-	for i, n := range nodes {
-		key := fmt.Sprintf("n%d", i)
-		nodesMap[key] = n
-	}
 	tags := make([]string, len(d.Tags))
 	copy(tags, d.Tags)
 	return &MetricDefinition{
@@ -156,7 +200,5 @@ func MetricDefinitionFromMetricData(d *MetricData) *MetricDefinition {
 		LastUpdate: d.Time,
 		Unit:       d.Unit,
 		Tags:       tags,
-		Nodes:      nodesMap,
-		NodeCount:  len(nodes),
 	}
 }
