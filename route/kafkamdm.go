@@ -110,6 +110,7 @@ func (r *KafkaMdm) run() {
 	metrics := make([]*schema.MetricData, 0, r.flushMaxNum)
 	ticker := time.NewTicker(r.flushMaxWait)
 	brokers := []string{r.broker}
+	var err error
 
 	for r.producer == nil {
 		r.producer, err = sarama.NewSyncProducer(brokers, r.saramaCfg)
@@ -127,7 +128,6 @@ func (r *KafkaMdm) run() {
 	flush := func() {
 		for {
 			pre := time.Now()
-			var err error
 			size := 0
 
 			payload := make([]*sarama.ProducerMessage, len(metrics))
