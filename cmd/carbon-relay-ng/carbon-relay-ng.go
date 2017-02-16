@@ -14,6 +14,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/go-metrics"
+	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/destination"
@@ -57,6 +58,7 @@ func init() {
 	destination.SetLogger(log)
 	telnet.SetLogger(log)
 	web.SetLogger(log)
+	aggregator.SetLogger(log)
 }
 
 func usage() {
