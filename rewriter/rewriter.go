@@ -9,6 +9,7 @@ var errMaxTooLow = errors.New("max must be >= -1. use -1 to mean no restriction"
 var errInvalidRegexp = errors.New("Invalid rewriter regular expression")
 var errInvalidRegexpMax = errors.New("Regular expression rewriters require max to be -1")
 
+// RW is a rewriter
 type RW struct {
 	Old string `json:"old"`
 	New string `json:"new"`
@@ -18,6 +19,8 @@ type RW struct {
 	re  *regexp.Regexp
 }
 
+// NewFromByte creates a rewriter that will rewrite old to new, up to max times
+// for regex, max must be -1
 func NewFromByte(old, new []byte, max int) (RW, error) {
 	if len(old) == 0 {
 		return RW{}, errEmptyOld
