@@ -1,6 +1,9 @@
 package input
 
 import (
+	"bufio"
+	"bytes"
+	"io"
 	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
@@ -110,7 +113,20 @@ func connectAMQP(a *Amqp) (<-chan amqp.Delivery, error) {
 func consumeAMQP(a *Amqp, c <-chan amqp.Delivery) {
 	log.Notice("consuming AMQP messages")
 	for m := range c {
-		a.dispatch(m.Body)
+		// note that we don't support lines longer than 4096B. that seems very reasonable..
+		r := bufio.NewReaderSize(bytes.NewReader(m.Body), 4096)
+		for {
+			buf, _, err := r.ReadLine()
+
+			if err != nil {
+				if io.EOF != err {
+					log.Error(err.Error())
+				}
+				break
+			}
+
+			a.dispatch(buf)
+		}
 	}
 }
 
