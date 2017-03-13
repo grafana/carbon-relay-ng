@@ -101,7 +101,7 @@ func connectAMQP(a *Amqp) (<-chan amqp.Delivery, error) {
 		return nil, err
 	}
 
-	c, err := amqpChan.Consume(q.Name, "carbon-relay-ng", !a.config.Amqp.Amqp_durable, true, true, false, nil)
+	c, err := amqpChan.Consume(q.Name, "carbon-relay-ng", !a.config.Amqp.Amqp_ack, true, true, false, nil)
 	if err != nil {
 		a.close()
 		return nil, err
