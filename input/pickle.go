@@ -35,6 +35,7 @@ func (p *Pickle) Handle(c net.Conn) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
+	log.Debug("pickle.go: entering ReadLoop...")
 ReadLoop:
 	for {
 
@@ -43,19 +44,23 @@ ReadLoop:
 		// so the validation, the pipeline initiated via table.Dispatch(), etc
 		// must never block.
 
+		log.Debug("pickle.go: detecting payload length with binary.Read...")
 		var length uint32
 		err := binary.Read(r, binary.BigEndian, &length)
 		if err != nil {
 			if io.EOF != err {
 				log.Error("couldn't read payload length: " + err.Error())
 			}
+			log.Debug("pickle.go: detected EOF while detecting payload length with binary.Read, nothing more to read, breaking")
 			break
 		}
+		log.Debug(fmt.Sprintf("pickle.go: done detecting payload length with binary.Read, length is %d", int(length)))
 
 		lengthTotal := int(length)
 		lengthRead := 0
 		payload := make([]byte, lengthTotal, lengthTotal)
 		for {
+			log.Debug("pickle.go: reading payload...")
 			tmpLengthRead, err := r.Read(payload[lengthRead:])
 			if err != nil {
 				log.Error("couldn't read payload: " + err.Error())
@@ -63,6 +68,7 @@ ReadLoop:
 			}
 			lengthRead += tmpLengthRead
 			if lengthRead == lengthTotal {
+				log.Debug("pickle.go: done reading payload")
 				break
 			}
 			if lengthRead > lengthTotal {
@@ -73,25 +79,33 @@ ReadLoop:
 
 		decoder := ogorek.NewDecoder(bytes.NewBuffer(payload))
 
+		log.Debug("pickle.go: decoding pickled data...")
 		rawDecoded, err := decoder.Decode()
 		if err != nil {
-			if io.EOF != err {
+			if io.ErrUnexpectedEOF != err {
 				log.Error("error reading pickled data " + err.Error())
 			}
+			log.Debug("pickle.go: detected ErrUnexpectedEOF while decoding pickled data, nothing more to decode, breaking")
 			break
 		}
+		log.Debug("pickle.go: done decoding pickled data")
 
+		log.Debug("pickle.go: checking the type of pickled data...")
 		decoded, ok := rawDecoded.([]interface{})
 		if !ok {
 			log.Error(fmt.Sprintf("Unrecognized type %T for pickled data", rawDecoded))
 			break
 		}
+		log.Debug("pickle.go: done checking the type of pickled data")
+
+		log.Debug("pickle.go: entering ItemLoop...")
 
 	ItemLoop:
 		for _, rawItem := range decoded {
 			numIn.Inc(1)
 
-			item, ok := rawItem.([]interface{})
+			log.Debug("pickle.go: doing high-level validation of unpickled item and data...")
+			item, ok := rawItem.(ogorek.Tuple)
 			if !ok {
 				log.Error(fmt.Sprintf("Unrecognized type %T for item", rawItem))
 				numInvalid.Inc(1)
@@ -110,7 +124,7 @@ ReadLoop:
 				continue
 			}
 
-			data, ok := item[1].([]interface{})
+			data, ok := item[1].(ogorek.Tuple)
 			if !ok {
 				log.Error(fmt.Sprintf("item data must be an array, got %T", item[1]))
 				numInvalid.Inc(1)
@@ -121,6 +135,7 @@ ReadLoop:
 				numInvalid.Inc(1)
 				continue
 			}
+			log.Debug("pickle.go: done doing high-level validation of unpickled item and data")
 
 			var value string
 			switch data[1].(type) {
@@ -152,23 +167,31 @@ ReadLoop:
 
 			buf := []byte(metric + " " + value + " " + timestamp)
 
+			log.Debug("pickle.go: passing unpickled metric to m20 Packet validator...")
 			key, _, ts, err := m20.ValidatePacket(buf, p.config.Validation_level_legacy.Level, p.config.Validation_level_m20.Level)
 			if err != nil {
+				log.Debug("pickle.go: metric failed to pass m20 Packet validation!")
 				p.bad.Add(key, buf, err)
 				numInvalid.Inc(1)
 				continue
 			}
 
 			if p.config.Validate_order {
+				log.Debug("pickle.go: order validation enabled, performing order validation...")
 				err = validate.Ordered(key, ts)
 				if err != nil {
+					log.Debug("pickle.go: order validation failed!")
 					p.bad.Add(key, buf, err)
 					numOutOfOrder.Inc(1)
 					continue
 				}
 			}
 
+			log.Debug("pickle.go: all good, dispatching metrics buffer")
 			p.table.Dispatch(buf)
+
+			log.Debug("pickle.go: exiting ItemLoop")
 		}
+		log.Debug("pickle.go: exiting ReadLoop")
 	}
 }
