@@ -35,6 +35,7 @@ type Amqp struct {
 	Amqp_password  string
 	Amqp_exchange  string
 	Amqp_queue     string
+	Amqp_key       string
 	Amqp_durable   bool
 	Amqp_exclusive bool
 }

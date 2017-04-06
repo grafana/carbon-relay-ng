@@ -95,7 +95,7 @@ func connectAMQP(a *Amqp) (<-chan amqp.Delivery, error) {
 		return nil, err
 	}
 
-	err = amqpChan.QueueBind(q.Name, "#", a.config.Amqp.Amqp_exchange, false, nil)
+	err = amqpChan.QueueBind(q.Name, a.config.Amqp.Amqp_key, a.config.Amqp.Amqp_exchange, false, nil)
 	if err != nil {
 		a.close()
 		return nil, err
