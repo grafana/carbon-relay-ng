@@ -48,7 +48,7 @@ other options can appear after the schemasFile, space-separated.
 * bufSize: how many metrics we can queue up in the route before providing backpressure (default 1e7 i.e. 10 million)
 * flushMaxNum: after this many metrics have queued up, trigger a flush (default 10k)
 * flushMaxWait: after this many milliseconds, trigger a flush (default 500)
-* timeout: after how many milliseconds to consider a request to the hosted metrics to timeout, so that it will retry later (default 2000)
+* timeout: after how many milliseconds to consider a request to the hosted metrics to timeout, so that it will retry later (default 5000)
 * sslverify: disables ssl verifications, useful for test/POC setups with self signed ssl certificates (default true)
 * concurrency: how many independent workers pushing data to grafanacloud (default 10)
 
