@@ -50,7 +50,5 @@ other options can appear after the schemasFile, space-separated.
 * flushMaxWait: after this many milliseconds, trigger a flush (default 500)
 * timeout: after how many milliseconds to consider a request to the hosted metrics to timeout, so that it will retry later (default 2000)
 * sslverify: disables ssl verifications, useful for test/POC setups with self signed ssl certificates (default true)
+* concurrency: how many independent workers pushing data to grafanacloud (default 10)
 
-Note that there's only 1 flush worker so you have to check the carbon-relay-ng dashboard (or the log)
-to make sure flushes don't last so long that the buffer fills up.
-In that case, increase the flush values, so that we can flush more data per flush.
