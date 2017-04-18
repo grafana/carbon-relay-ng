@@ -116,16 +116,19 @@ type Decoder struct {
 	// a reusable buffer that can be used by the various decoding functions
 	// functions using this should call buf.Reset to clear the old contents
 	buf bytes.Buffer
+
+	// reusable buffer for readLine
+	line  []byte
 }
 
 // NewDecoder constructs a new Decoder which will decode the pickle stream in r.
-func NewDecoder(r io.Reader) Decoder {
+func NewDecoder(r io.Reader) *Decoder {
 	reader := bufio.NewReader(r)
-	return Decoder{r: reader, stack: make([]interface{}, 0), memo: make(map[string]interface{})}
+	return &Decoder{r: reader, stack: make([]interface{}, 0), memo: make(map[string]interface{})}
 }
 
 // Decode decodes the pickle stream and returns the result or an error.
-func (d Decoder) Decode() (interface{}, error) {
+func (d *Decoder) Decode() (interface{}, error) {
 
 	insn := 0
 loop:
@@ -265,21 +268,23 @@ loop:
 	return d.pop()
 }
 
+// readLine reads next line from pickle stream
+// returned line is valid only till next call to readLine
 func (d *Decoder) readLine() ([]byte, error) {
 	var (
-		line     []byte
 		data     []byte
 		isPrefix = true
 		err      error
 	)
+	d.line = d.line[:0]
 	for isPrefix {
 		data, isPrefix, err = d.r.ReadLine()
 		if err != nil {
-			return line, err
+			return d.line, err
 		}
-		line = append(line, data...)
+		d.line = append(d.line, data...)
 	}
-	return line, nil
+	return d.line, nil
 }
 
 // Push a marker
@@ -536,6 +541,7 @@ func (d *Decoder) loadBinString() error {
 	v := binary.LittleEndian.Uint32(b[:])
 
 	d.buf.Reset()
+	d.buf.Grow(int(v))
 	_, err = io.CopyN(&d.buf, d.r, int64(v))
 	if err != nil {
 		return err
@@ -551,6 +557,7 @@ func (d *Decoder) loadShortBinString() error {
 	}
 
 	d.buf.Reset()
+	d.buf.Grow(int(b))
 	_, err = io.CopyN(&d.buf, d.r, int64(b))
 	if err != nil {
 		return err
@@ -568,6 +575,7 @@ func (d *Decoder) loadUnicode() error {
 	sline := string(line)
 
 	d.buf.Reset()
+	d.buf.Grow(len(line)) // approximation
 
 	for len(sline) > 0 {
 		var r rune
@@ -643,11 +651,13 @@ func (d *Decoder) global() error {
 	if err != nil {
 		return err
 	}
+	smodule := string(module)
 	name, err := d.readLine()
 	if err != nil {
 		return err
 	}
-	d.stack = append(d.stack, Class{Module: string(module), Name: string(name)})
+	sname := string(name)
+	d.stack = append(d.stack, Class{Module: smodule, Name: sname})
 	return nil
 }
 
@@ -925,6 +935,7 @@ func (d *Decoder) loadShortBinUnicode() error {
 	}
 
 	d.buf.Reset()
+	d.buf.Grow(int(b))
 	_, err = io.CopyN(&d.buf, d.r, int64(b))
 	if err != nil {
 		return err
