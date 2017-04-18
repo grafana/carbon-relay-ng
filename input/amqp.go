@@ -89,19 +89,19 @@ func connectAMQP(a *Amqp) (<-chan amqp.Delivery, error) {
 	a.channel = amqpChan
 
 	// queue name will be random, as in the python implementation
-	q, err := amqpChan.QueueDeclare("", false, false, true, false, nil)
+	q, err := amqpChan.QueueDeclare(a.config.Amqp.Amqp_queue, a.config.Amqp.Amqp_durable, false, a.config.Amqp.Amqp_exclusive, false, nil)
 	if err != nil {
 		a.close()
 		return nil, err
 	}
 
-	err = amqpChan.QueueBind(q.Name, "#", a.config.Amqp.Amqp_exchange, false, nil)
+	err = amqpChan.QueueBind(q.Name, a.config.Amqp.Amqp_key, a.config.Amqp.Amqp_exchange, false, nil)
 	if err != nil {
 		a.close()
 		return nil, err
 	}
 
-	c, err := amqpChan.Consume(q.Name, "carbon-relay-ng", true, true, true, false, nil)
+	c, err := amqpChan.Consume(q.Name, "carbon-relay-ng", true, a.config.Amqp.Amqp_exclusive, true, false, nil)
 	if err != nil {
 		a.close()
 		return nil, err

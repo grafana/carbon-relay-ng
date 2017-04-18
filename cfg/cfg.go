@@ -27,13 +27,17 @@ type Config struct {
 }
 
 type Amqp struct {
-	Amqp_enabled  bool
-	Amqp_host     string
-	Amqp_port     int
-	Amqp_vhost    string
-	Amqp_user     string
-	Amqp_password string
-	Amqp_exchange string
+	Amqp_enabled   bool
+	Amqp_host      string
+	Amqp_port      int
+	Amqp_vhost     string
+	Amqp_user      string
+	Amqp_password  string
+	Amqp_exchange  string
+	Amqp_queue     string
+	Amqp_key       string
+	Amqp_durable   bool
+	Amqp_exclusive bool
 }
 
 type instrumentation struct {
