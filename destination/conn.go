@@ -25,6 +25,7 @@ var keepsafe_keep_duration = time.Duration(10 * time.Second)
 
 var newLine = []byte{'\n'}
 
+// Conn represents a connection to a tcp endpoint
 type Conn struct {
 	conn        *net.TCPConn
 	buffered    *Writer
