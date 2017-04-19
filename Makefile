@@ -11,21 +11,30 @@ docker: build
 
 all:
 
-deb: build
+deb: deb-systemd
+
+deb-systemd: build deb-common
 	mkdir -p build/deb-systemd
-	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng debian/lib/systemd/system debian/var/run/carbon-relay-ng
-	install carbon-relay-ng debian/usr/bin
-	install examples/carbon-relay-ng.ini debian/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install -d debian/lib/systemd/system
 	install examples/carbon-relay-ng.service debian/lib/systemd/system
-	install man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
-	gzip debian/usr/share/man/man1/carbon-relay-ng.1
-	fpm \
+	DEBDIR=build/deb-systemd $(MAKE) deb-fpm
+
+deb-upstart: build deb-common
+	mkdir -p build/deb-upstart
+	DEBDIR=build/deb-upstart FPMARGS="--deb-upstart examples/carbon-relay-ng.upstart" $(MAKE) deb-fpm
+
+deb-nostart: build deb-common
+	mkdir -p build/deb-nostart
+	DEBDIR=build/deb-nostart $(MAKE) deb-fpm
+
+deb-fpm:
+	fpm $(FPMARGS) \
 		-s dir \
 		-t deb \
 		-n carbon-relay-ng \
 		-v $(VERSION)-1 \
 		-a native \
-		-p build/deb-systemd/carbon-relay-ng-VERSION_ARCH.deb \
+		-p $(DEBDIR)/carbon-relay-ng-VERSION_ARCH.deb \
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
@@ -33,27 +42,18 @@ deb: build
 		-C debian .
 	rm -rf debian
 
-deb-upstart: build
-	mkdir build/deb-upstart
-	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng
-	install carbon-relay-ng debian/usr/bin
+
+deb-common:
+	install -d debian/etc/carbon-relay-ng
 	install examples/carbon-relay-ng.ini debian/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install -d debian/var/run/carbon-relay-ng
+	install -d debian/usr/bin
+	install carbon-relay-ng debian/usr/bin
+	install -d debian/usr/share/man/man1
 	install man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
 	gzip debian/usr/share/man/man1/carbon-relay-ng.1
-	fpm \
-		-s dir \
-		-t deb \
-		-n carbon-relay-ng \
-		-v $(VERSION)-1 \
-		-a native \
-		-p build/deb-upstart/carbon-relay-ng-VERSION_ARCH.deb \
-		--deb-upstart examples/carbon-relay-ng.upstart \
-		-m "Dieter Plaetinck <dieter@raintank.io>" \
-		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
-		--license BSD \
-		--url https://github.com/graphite-ng/carbon-relay-ng \
-		-C debian .
-	rm -rf debian
+	install -d debian/usr/share/doc/carbon-relay-ng/examples
+	install examples/* debian/usr/share/doc/carbon-relay-ng/examples
 
 rpm: build
 	mkdir -p build/centos-7
