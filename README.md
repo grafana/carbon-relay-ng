@@ -87,7 +87,7 @@ You have 1 master routing table.  This table contains 0-N routes.  Each route ca
 First: "matching": you can match metrics on one or more of: prefix, substring, or regex.  All 3 default to "" (empty string, i.e. allow all).
 The conditions are AND-ed.  Regexes are more resource intensive and hence should - and often can be - avoided.
 
-* All incoming matrics are validated and go into the table when valid.
+* All incoming metrics are validated and go into the table when valid.
 * The table will then check metrics against the blacklist and discard when appropriate.
 * Then metrics pass through the rewriters and are modified if applicable.  Rewrite rules wrapped with forward slashes are interpreted as regular expressions.
 * The table sends the metric to:
