@@ -3,11 +3,14 @@ package table
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
+	"github.com/graphite-ng/carbon-relay-ng/cfg"
+	"github.com/graphite-ng/carbon-relay-ng/imperatives"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
@@ -61,6 +64,14 @@ func New(spoolDir string) *Table {
 		}
 	}()
 	return t
+}
+
+func (table *Table) GetIn() chan []byte {
+	return table.In
+}
+
+func (table *Table) GetSpoolDir() string {
+	return table.SpoolDir
 }
 
 // Dispatch dispatches incoming metrics into matching aggregators and routes,
@@ -451,4 +462,235 @@ func (table *Table) Print() (str string) {
 		str += "\n"
 	}
 	return
+}
+
+func InitFromConfig(config cfg.Config) (*Table, error) {
+	table := New(config.Spool_dir)
+
+	err := table.InitCmd(config)
+	if err != nil {
+		return table, err
+	}
+
+	err = table.InitBlacklist(config)
+	if err != nil {
+		return table, err
+	}
+
+	err = table.InitAggregation(config)
+	if err != nil {
+		return table, err
+	}
+
+	err = table.InitRewrite(config)
+	if err != nil {
+		return table, err
+	}
+
+	err = table.InitRoutes(config)
+	if err != nil {
+		return table, err
+	}
+
+	return table, nil
+}
+
+func (table *Table) InitCmd(config cfg.Config) error {
+	for i, cmd := range config.Init {
+		log.Notice("applying: %s", cmd)
+		err := imperatives.Apply(table, cmd)
+		if err != nil {
+			log.Error(err.Error())
+			return fmt.Errorf("could not apply init cmd #%d", i+1)
+		}
+	}
+
+	return nil
+}
+
+func (table *Table) InitBlacklist(config cfg.Config) error {
+	for i, entry := range config.BlackList {
+		prefix_pat := ""
+		sub_pat := ""
+		regex_pat := ""
+
+		parts := strings.SplitN(entry, " ", 2)
+		switch parts[0] {
+		case "prefix":
+			prefix_pat = parts[1]
+		case "sub":
+			sub_pat = parts[1]
+		case "regex":
+			regex_pat = parts[1]
+		default:
+			return fmt.Errorf("invalid blacklist cmd #%d", i+1)
+		}
+
+		m, err := matcher.New(prefix_pat, sub_pat, regex_pat)
+		if err != nil {
+			log.Error(err.Error())
+			return fmt.Errorf("could not apply blacklist cmd #%d: %s", i+1)
+		}
+
+		table.AddBlacklist(m)
+	}
+
+	return nil
+}
+
+func (table *Table) InitAggregation(config cfg.Config) error {
+	for i, aggConfig := range config.Aggregation {
+		agg, err := aggregator.New(aggConfig.Type, aggConfig.Regex, aggConfig.Format, uint(aggConfig.Interval), uint(aggConfig.Wait), table.In)
+		if err != nil {
+			log.Error(err.Error())
+			return fmt.Errorf("could not add aggregation #%d", i+1)
+		}
+
+		table.AddAggregator(agg)
+	}
+
+	return nil
+}
+
+func (table *Table) InitRewrite(config cfg.Config) error {
+	for i, rewriterConfig := range config.Rewriter {
+		rw, err := rewriter.New(rewriterConfig.Old, rewriterConfig.New, rewriterConfig.Max)
+		if err != nil {
+			log.Error(err.Error())
+			return fmt.Errorf("could not add rewriter #%d", i+1)
+		}
+
+		table.AddRewriter(rw)
+	}
+
+	return nil
+}
+
+func (table *Table) InitRoutes(config cfg.Config) error {
+	for _, routeConfig := range config.Route {
+		switch routeConfig.Type {
+		case "sendAllMatch":
+			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, true)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("could not parse destinations for route '%s'", routeConfig.Key)
+			}
+			if len(destinations) == 0 {
+				return fmt.Errorf("must get at least 1 destination for route '%s'", routeConfig.Key)
+			}
+
+			route, err := route.NewSendAllMatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
+			}
+			table.AddRoute(route)
+		case "sendFirstMatch":
+			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, true)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("could not parse destinations for route '%s'", routeConfig.Key)
+			}
+			if len(destinations) == 0 {
+				return fmt.Errorf("must get at least 1 destination for route '%s'", routeConfig.Key)
+			}
+
+			route, err := route.NewSendFirstMatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
+			}
+			table.AddRoute(route)
+		case "consistentHashing":
+			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, false)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("could not parse destinations for route '%s'", routeConfig.Key)
+			}
+			if len(destinations) < 2 {
+				return fmt.Errorf("must get at least 2 destination for route '%s'", routeConfig.Key)
+			}
+
+			route, err := route.NewConsistentHashing(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
+			}
+			table.AddRoute(route)
+		case "grafanaNet":
+			var spool bool
+			sslVerify := true
+			var bufSize = int(1e7)  // since a message is typically around 100B this is 1GB
+			var flushMaxNum = 10000 // number of metrics
+			var flushMaxWait = 500  // in ms
+			var timeout = 5000      // in ms
+			var concurrency = 10    // number of concurrent connections to tsdb-gw
+			var orgId = 1
+
+			if routeConfig.Spool {
+				spool = routeConfig.Spool
+			}
+			if routeConfig.SslVerify == false {
+				sslVerify = routeConfig.SslVerify
+			}
+			if routeConfig.BufSize != 0 {
+				bufSize = routeConfig.BufSize
+			}
+			if routeConfig.FlushMaxNum != 0 {
+				flushMaxNum = routeConfig.FlushMaxNum
+			}
+			if routeConfig.FlushMaxWait != 0 {
+				flushMaxWait = routeConfig.FlushMaxWait
+			}
+			if routeConfig.Timeout != 0 {
+				timeout = routeConfig.Timeout
+			}
+			if routeConfig.Concurrency != 0 {
+				concurrency = routeConfig.Concurrency
+			}
+			if routeConfig.OrgId != 0 {
+				orgId = routeConfig.OrgId
+			}
+
+			route, err := route.NewGrafanaNet(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile, spool, sslVerify, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
+			}
+			table.AddRoute(route)
+		case "kafkaMdm":
+			var bufSize = int(1e7)  // since a message is typically around 100B this is 1GB
+			var flushMaxNum = 10000 // number of metrics
+			var flushMaxWait = 500  // in ms
+			var timeout = 2000      // in ms
+
+			if routeConfig.PartitionBy != "byOrg" && routeConfig.PartitionBy != "bySeries" {
+				return fmt.Errorf("invalid partitionBy for route '%s'", routeConfig.Key)
+			}
+
+			if routeConfig.BufSize != 0 {
+				bufSize = routeConfig.BufSize
+			}
+			if routeConfig.FlushMaxNum != 0 {
+				flushMaxNum = routeConfig.FlushMaxNum
+			}
+			if routeConfig.FlushMaxWait != 0 {
+				flushMaxWait = routeConfig.FlushMaxWait
+			}
+			if routeConfig.Timeout != 0 {
+				timeout = routeConfig.Timeout
+			}
+
+			route, err := route.NewKafkaMdm(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Broker, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, bufSize, routeConfig.OrgId, flushMaxNum, flushMaxWait, timeout)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
+			}
+			table.AddRoute(route)
+		default:
+			return fmt.Errorf("unrecognized route type '%s'", routeConfig.Type)
+		}
+	}
+
+	return nil
 }

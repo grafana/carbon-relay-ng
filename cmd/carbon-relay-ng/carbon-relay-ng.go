@@ -18,7 +18,6 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/destination"
-	"github.com/graphite-ng/carbon-relay-ng/imperatives"
 	"github.com/graphite-ng/carbon-relay-ng/input"
 	"github.com/graphite-ng/carbon-relay-ng/route"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
@@ -150,7 +149,6 @@ func main() {
 		go metrics.Graphite(metrics.DefaultRegistry, time.Duration(config.Instrumentation.Graphite_interval)*time.Millisecond, "", addr)
 	}
 
-	log.Notice("creating routing table...")
 	maxAge, err := time.ParseDuration(config.Bad_metrics_max_age)
 	if err != nil {
 		log.Error("could not parse badMetrics max age")
@@ -158,17 +156,15 @@ func main() {
 		os.Exit(1)
 	}
 	badMetrics = badmetrics.New(maxAge)
-	table = tbl.New(config.Spool_dir)
+
 	log.Notice("initializing routing table...")
-	for i, cmd := range config.Init {
-		log.Notice("applying: %s", cmd)
-		err = imperatives.Apply(table, cmd)
-		if err != nil {
-			log.Error("could not apply init cmd #%d", i+1)
-			log.Error(err.Error())
-			os.Exit(1)
-		}
+
+	table, err := tbl.InitFromConfig(config)
+	if err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
 	}
+
 	tablePrinted := table.Print()
 	log.Notice("===========================")
 	log.Notice("========== TABLE ==========")
