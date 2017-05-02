@@ -461,7 +461,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table *tbl.Table) error {
 	}
 
 	t = s.Next()
-	if t.Token != word {
+	if t.Token != word && t.Token != num {
 		return errFmtAddRouteKafkaMdm
 	}
 	orgId, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
