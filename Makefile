@@ -13,9 +13,10 @@ all:
 
 deb: build
 	mkdir -p build/deb-systemd
-	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng debian/lib/systemd/system debian/var/run/carbon-relay-ng
+	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng debian/lib/systemd/system debian/var/run/carbon-relay-ng debian/usr/lib/tmpfiles.d
 	install carbon-relay-ng debian/usr/bin
 	install examples/carbon-relay-ng.ini debian/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install examples/carbon-relay-ng-tmpfiles.conf debian/usr/lib/tmpfiles.d/carbon-relay-ng.conf
 	install examples/carbon-relay-ng.service debian/lib/systemd/system
 	install man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
 	gzip debian/usr/share/man/man1/carbon-relay-ng.1
