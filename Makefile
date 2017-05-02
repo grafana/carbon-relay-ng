@@ -26,6 +26,7 @@ deb: build
 		-n carbon-relay-ng \
 		-v $(VERSION)-1 \
 		-a native \
+		--config-files etc/carbon-relay-ng/carbon-relay-ng.conf \
 		-p build/deb-systemd/carbon-relay-ng-VERSION_ARCH.deb \
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
@@ -47,6 +48,7 @@ deb-upstart: build
 		-n carbon-relay-ng \
 		-v $(VERSION)-1 \
 		-a native \
+		--config-files etc/carbon-relay-ng/carbon-relay-ng.conf \
 		-p build/deb-upstart/carbon-relay-ng-VERSION_ARCH.deb \
 		--deb-upstart examples/carbon-relay-ng.upstart \
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
@@ -71,6 +73,7 @@ rpm: build
 		-v $(VERSION) \
 		--epoch 1 \
 		-a native \
+		--config-files etc/carbon-relay-ng/carbon-relay-ng.conf \
 		-p build/centos-7/carbon-relay-ng-VERSION.el7.ARCH.rpm \
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
@@ -94,6 +97,7 @@ rpm-centos6: build
 		-v $(VERSION) \
 		--epoch 1 \
 		-a native \
+		--config-files etc/carbon-relay-ng/carbon-relay-ng.conf \
 		-p build/centos-6/carbon-relay-ng-VERSION.el6.ARCH.rpm \
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
