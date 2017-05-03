@@ -162,7 +162,7 @@ func (r *KafkaMdm) run() {
 				break
 			}
 			r.numErrFlush.Inc(1)
-			log.Warning("KafkaMdm %q: failed to submit data: %s will try again in %s (this attempt took %s)", r.key, err, diff)
+			log.Warning("KafkaMdm %q: failed to submit data: %s will try again in 100ms. (this attempt took %s)", r.key, err, diff)
 
 			time.Sleep(100 * time.Millisecond)
 		}
