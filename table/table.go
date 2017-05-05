@@ -540,7 +540,7 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 
 func (table *Table) InitAggregation(config cfg.Config) error {
 	for i, aggConfig := range config.Aggregation {
-		agg, err := aggregator.New(aggConfig.Type, aggConfig.Regex, aggConfig.Format, uint(aggConfig.Interval), uint(aggConfig.Wait), table.In)
+		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.Format, uint(aggConfig.Interval), uint(aggConfig.Wait), table.In)
 		if err != nil {
 			log.Error(err.Error())
 			return fmt.Errorf("could not add aggregation #%d", i+1)

@@ -671,6 +671,23 @@ func readModRoute(s *toki.Scanner, table Table) error {
 	return table.UpdateRoute(key, opts)
 }
 
+// we should read and apply all destinations at once,
+// or at least make sure we apply them to the global datastruct at once,
+// otherwise we can destabilize things / send wrong traffic, etc
+func readDestinations(s *toki.Scanner, table Table, allowMatcher bool) (destinations []*destination.Destination, err error) {
+	for t := s.Peek(); t.Token != toki.EOF; {
+		if t.Token == sep {
+			t = s.Next()
+		}
+		dest, err := readDestination(s, table, allowMatcher)
+		if err != nil {
+			return destinations, err
+		}
+		destinations = append(destinations, dest)
+	}
+	return destinations, nil
+}
+
 func readDestination(s *toki.Scanner, table Table, allowMatcher bool) (dest *destination.Destination, err error) {
 	var prefix, sub, regex, addr, spoolDir string
 	var spool, pickle bool
@@ -749,23 +766,6 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool) (dest *des
 	}
 
 	return destination.New(prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn)
-}
-
-// we should read and apply all destinations at once,
-// or at least make sure we apply them to the global datastruct at once,
-// otherwise we can destabilize things / send wrong traffic, etc
-func readDestinations(s *toki.Scanner, table Table, allowMatcher bool) (destinations []*destination.Destination, err error) {
-	for t := s.Peek(); t.Token != toki.EOF; {
-		if t.Token == sep {
-			t = s.Next()
-		}
-		dest, err := readDestination(s, table, allowMatcher)
-		if err != nil {
-			return destinations, err
-		}
-		destinations = append(destinations, dest)
-	}
-	return destinations, nil
 }
 
 func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bool) (destinations []*destination.Destination, err error) {

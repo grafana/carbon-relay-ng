@@ -29,7 +29,7 @@ type Config struct {
 }
 
 type AggregationConfig struct {
-	Type     string
+	Function string
 	Regex    string
 	Format   string
 	Interval int
