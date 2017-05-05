@@ -23,12 +23,12 @@ type Config struct {
 	Validation_level_m20    validate.LevelM20
 	Validate_order          bool
 	BlackList               []string
-	Aggregation             []*AggregationConfig
-	Route                   []*RouteConfig
-	Rewriter                []*RewriterConfig
+	Aggregation             []Aggregation
+	Route                   []Route
+	Rewriter                []Rewriter
 }
 
-type AggregationConfig struct {
+type Aggregation struct {
 	Function string
 	Regex    string
 	Format   string
@@ -36,7 +36,7 @@ type AggregationConfig struct {
 	Wait     int
 }
 
-type RouteConfig struct {
+type Route struct {
 	Key          string
 	Type         string
 	Prefix       string
@@ -66,7 +66,7 @@ type RouteConfig struct {
 	PartitionBy string
 }
 
-type RewriterConfig struct {
+type Rewriter struct {
 	Old string
 	New string
 	Max int

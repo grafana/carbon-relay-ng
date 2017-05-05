@@ -510,11 +510,15 @@ func (table *Table) InitCmd(config cfg.Config) error {
 
 func (table *Table) InitBlacklist(config cfg.Config) error {
 	for i, entry := range config.BlackList {
+		parts := strings.SplitN(entry, " ", 2)
+		if len(parts) < 2 {
+			return fmt.Errorf("invalid blacklist cmd #%d", i+1)
+		}
+
 		prefix_pat := ""
 		sub_pat := ""
 		regex_pat := ""
 
-		parts := strings.SplitN(entry, " ", 2)
 		switch parts[0] {
 		case "prefix":
 			prefix_pat = parts[1]
@@ -523,13 +527,13 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 		case "regex":
 			regex_pat = parts[1]
 		default:
-			return fmt.Errorf("invalid blacklist cmd #%d", i+1)
+			return fmt.Errorf("invalid blacklist method for cmd #%d: %s", i+1, parts[1])
 		}
 
 		m, err := matcher.New(prefix_pat, sub_pat, regex_pat)
 		if err != nil {
 			log.Error(err.Error())
-			return fmt.Errorf("could not apply blacklist cmd #%d: %s", i+1)
+			return fmt.Errorf("could not apply blacklist cmd #%d", i+1)
 		}
 
 		table.AddBlacklist(m)
