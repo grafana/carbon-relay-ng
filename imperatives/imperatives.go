@@ -675,15 +675,23 @@ func readModRoute(s *toki.Scanner, table Table) error {
 // or at least make sure we apply them to the global datastruct at once,
 // otherwise we can destabilize things / send wrong traffic, etc
 func readDestinations(s *toki.Scanner, table Table, allowMatcher bool) (destinations []*destination.Destination, err error) {
-	for t := s.Peek(); t.Token != toki.EOF; {
-		if t.Token == sep {
-			t = s.Next()
+	t := s.Peek()
+	for t.Token != toki.EOF {
+		for t.Token == sep {
+			s.Next()
+			t = s.Peek()
 		}
+		if t.Token == toki.EOF {
+			break
+		}
+
 		dest, err := readDestination(s, table, allowMatcher)
 		if err != nil {
 			return destinations, err
 		}
 		destinations = append(destinations, dest)
+
+		t = s.Peek()
 	}
 	return destinations, nil
 }
