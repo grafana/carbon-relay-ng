@@ -198,9 +198,9 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 }
 
 func readAddBlack(s *toki.Scanner, table Table) error {
-	prefix_pat := ""
-	sub_pat := ""
-	regex_pat := ""
+	prefix := ""
+	sub := ""
+	regex := ""
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddBlack
@@ -211,22 +211,22 @@ func readAddBlack(s *toki.Scanner, table Table) error {
 		if t = s.Next(); t.Token != word {
 			return errFmtAddBlack
 		}
-		prefix_pat = string(t.Value)
+		prefix = string(t.Value)
 	case "sub":
 		if t = s.Next(); t.Token != word {
 			return errFmtAddBlack
 		}
-		sub_pat = string(t.Value)
+		sub = string(t.Value)
 	case "regex":
 		if t = s.Next(); t.Token != word {
 			return errFmtAddBlack
 		}
-		regex_pat = string(t.Value)
+		regex = string(t.Value)
 	default:
 		return errFmtAddBlack
 	}
 
-	m, err := matcher.New(prefix_pat, sub_pat, regex_pat)
+	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return err
 	}
