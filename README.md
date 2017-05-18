@@ -194,11 +194,11 @@ Note:
 Configuration
 -------------
 
-Look at the included carbon-relay-ng.ini, it should be self describing.
-In the init option you can create routes, populate the blacklist, etc using the same command as the telnet interface, detailed below.
-This mechanism is choosen so we can reuse the code, instead of doing much configuration boilerplate code which would have to execute on
-a declarative specification.  We can just use the same imperative commands since we just set up the initial state here.
+Take a look at the included carbon-relay-ng.ini, which includes comments describing the available options.
 
+The major config sections are the `blacklist` array, and the `[[aggregation]]`, `[[rewriter]]` and `[[route]]` entries.
+
+You can also create routes, populate the blacklist, etc via the `init` config array using the same commands as the telnet interface, detailed below.
 
 TCP interface
 -------------
