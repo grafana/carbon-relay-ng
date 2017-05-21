@@ -152,6 +152,12 @@ func (r *KafkaMdm) run() {
 			}
 			err = r.producer.SendMessages(payload)
 
+			if err != nil {
+				for _, error := range err.(sarama.ProducerErrors) {
+					log.Error("Write to kafka failed: ", error)
+				}
+			}
+
 			diff := time.Since(pre)
 			if err == nil {
 				log.Info("KafkaMdm %q: sent %d metrics in %s - msg size %d", r.key, len(metrics), diff, size)
