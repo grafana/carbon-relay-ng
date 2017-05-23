@@ -1,7 +1,6 @@
 package cfg
 
 import (
-	"github.com/graphite-ng/carbon-relay-ng/route"
 	"github.com/graphite-ng/carbon-relay-ng/validate"
 )
 
@@ -14,7 +13,6 @@ type Config struct {
 	Amqp                    Amqp
 	Max_procs               int
 	First_only              bool
-	Routes                  []*route.Route
 	Init                    []string
 	Instance                string
 	Log_level               string
@@ -24,6 +22,54 @@ type Config struct {
 	Validation_level_legacy validate.LevelLegacy
 	Validation_level_m20    validate.LevelM20
 	Validate_order          bool
+	BlackList               []string
+	Aggregation             []Aggregation
+	Route                   []Route
+	Rewriter                []Rewriter
+}
+
+type Aggregation struct {
+	Function string
+	Regex    string
+	Format   string
+	Interval int
+	Wait     int
+}
+
+type Route struct {
+	Key          string
+	Type         string
+	Prefix       string
+	Substr       string
+	Regex        string
+	Destinations []string
+
+	// grafanaNet & kafkaMdm
+	SchemasFile  string
+	OrgId        int
+	BufSize      int
+	FlushMaxNum  int
+	FlushMaxWait int
+	Timeout      int
+
+	// grafanaNet
+	Addr        string
+	ApiKey      string
+	Spool       bool
+	SslVerify   bool
+	Concurrency int
+
+	// kafkaMdm
+	Broker      string
+	Topic       string
+	Codec       string
+	PartitionBy string
+}
+
+type Rewriter struct {
+	Old string
+	New string
+	Max int
 }
 
 type Amqp struct {

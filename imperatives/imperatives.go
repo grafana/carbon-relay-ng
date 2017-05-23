@@ -12,7 +12,6 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
-	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/taylorchu/toki"
 )
 
@@ -111,7 +110,19 @@ var errFmtAddRewriter = errors.New("addRewriter <old> <new> <max>")
 var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex=>") // one or more can be specified at once
 var errFmtModRoute = errors.New("modRoute <routeKey> <prefix/sub/regex=>")           // one or more can be specified at once
 
-func Apply(table *tbl.Table, cmd string) error {
+type Table interface {
+	AddAggregator(agg *aggregator.Aggregator)
+	AddRewriter(rw rewriter.RW)
+	AddBlacklist(matcher *matcher.Matcher)
+	AddRoute(route route.Route)
+	DelRoute(key string) error
+	UpdateDestination(key string, index int, opts map[string]string) error
+	UpdateRoute(key string, opts map[string]string) error
+	GetIn() chan []byte
+	GetSpoolDir() string
+}
+
+func Apply(table Table, cmd string) error {
 	s := toki.NewScanner(tokens)
 	s.SetInput(strings.Replace(cmd, "  ", " ## ", -1)) // token library skips whitespace but for us double space is significant
 	t := s.Next()
@@ -145,7 +156,7 @@ func Apply(table *tbl.Table, cmd string) error {
 	}
 }
 
-func readAddAgg(s *toki.Scanner, table *tbl.Table) error {
+func readAddAgg(s *toki.Scanner, table Table) error {
 	t := s.Next()
 	if t.Token != sumFn && t.Token != avgFn && t.Token != minFn && t.Token != maxFn {
 		return errors.New("invalid function. need avg/max/min/sum")
@@ -178,7 +189,7 @@ func readAddAgg(s *toki.Scanner, table *tbl.Table) error {
 		return err
 	}
 
-	agg, err := aggregator.New(fun, regex, outFmt, uint(interval), uint(wait), table.In)
+	agg, err := aggregator.New(fun, regex, outFmt, uint(interval), uint(wait), table.GetIn())
 	if err != nil {
 		return err
 	}
@@ -186,10 +197,10 @@ func readAddAgg(s *toki.Scanner, table *tbl.Table) error {
 	return nil
 }
 
-func readAddBlack(s *toki.Scanner, table *tbl.Table) error {
-	prefix_pat := ""
-	sub_pat := ""
-	regex_pat := ""
+func readAddBlack(s *toki.Scanner, table Table) error {
+	prefix := ""
+	sub := ""
+	regex := ""
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddBlack
@@ -200,22 +211,22 @@ func readAddBlack(s *toki.Scanner, table *tbl.Table) error {
 		if t = s.Next(); t.Token != word {
 			return errFmtAddBlack
 		}
-		prefix_pat = string(t.Value)
+		prefix = string(t.Value)
 	case "sub":
 		if t = s.Next(); t.Token != word {
 			return errFmtAddBlack
 		}
-		sub_pat = string(t.Value)
+		sub = string(t.Value)
 	case "regex":
 		if t = s.Next(); t.Token != word {
 			return errFmtAddBlack
 		}
-		regex_pat = string(t.Value)
+		regex = string(t.Value)
 	default:
 		return errFmtAddBlack
 	}
 
-	m, err := matcher.New(prefix_pat, sub_pat, regex_pat)
+	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return err
 	}
@@ -223,7 +234,7 @@ func readAddBlack(s *toki.Scanner, table *tbl.Table) error {
 	return nil
 }
 
-func readAddRoute(s *toki.Scanner, table *tbl.Table, constructor func(key, prefix, sub, regex string, destinations []*destination.Destination) (route.Route, error)) error {
+func readAddRoute(s *toki.Scanner, table Table, constructor func(key, prefix, sub, regex string, destinations []*destination.Destination) (route.Route, error)) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -251,7 +262,7 @@ func readAddRoute(s *toki.Scanner, table *tbl.Table, constructor func(key, prefi
 	return nil
 }
 
-func readAddRouteConsistentHashing(s *toki.Scanner, table *tbl.Table) error {
+func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -278,7 +289,7 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table *tbl.Table) error {
 	table.AddRoute(route)
 	return nil
 }
-func readAddRouteGrafanaNet(s *toki.Scanner, table *tbl.Table) error {
+func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRouteGrafanaNet
@@ -412,7 +423,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table *tbl.Table) error {
 	table.AddRoute(route)
 	return nil
 }
-func readAddRouteKafkaMdm(s *toki.Scanner, table *tbl.Table) error {
+func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRouteKafkaMdm
@@ -530,7 +541,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table *tbl.Table) error {
 	return nil
 }
 
-func readAddRewriter(s *toki.Scanner, table *tbl.Table) error {
+func readAddRewriter(s *toki.Scanner, table Table) error {
 	var t *toki.Result
 	if t = s.Next(); t.Token != word {
 		return errFmtAddRewriter
@@ -559,7 +570,7 @@ func readAddRewriter(s *toki.Scanner, table *tbl.Table) error {
 	return nil
 }
 
-func readDelRoute(s *toki.Scanner, table *tbl.Table) error {
+func readDelRoute(s *toki.Scanner, table Table) error {
 	t := s.Next()
 	if t.Token != word {
 		return errors.New("need route key")
@@ -568,7 +579,7 @@ func readDelRoute(s *toki.Scanner, table *tbl.Table) error {
 	return table.DelRoute(key)
 }
 
-func readModDest(s *toki.Scanner, table *tbl.Table) error {
+func readModDest(s *toki.Scanner, table Table) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -621,7 +632,7 @@ func readModDest(s *toki.Scanner, table *tbl.Table) error {
 	return table.UpdateDestination(key, index, opts)
 }
 
-func readModRoute(s *toki.Scanner, table *tbl.Table) error {
+func readModRoute(s *toki.Scanner, table Table) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -663,86 +674,114 @@ func readModRoute(s *toki.Scanner, table *tbl.Table) error {
 // we should read and apply all destinations at once,
 // or at least make sure we apply them to the global datastruct at once,
 // otherwise we can destabilize things / send wrong traffic, etc
-func readDestinations(s *toki.Scanner, table *tbl.Table, allowMatcher bool) (destinations []*destination.Destination, err error) {
-	for t := s.Next(); t.Token != toki.EOF; {
-		if t.Token == sep {
-			t = s.Next()
+func readDestinations(s *toki.Scanner, table Table, allowMatcher bool) (destinations []*destination.Destination, err error) {
+	t := s.Peek()
+	for t.Token != toki.EOF {
+		for t.Token == sep {
+			s.Next()
+			t = s.Peek()
 		}
-		var prefix, sub, regex, addr, spoolDir string
-		var spool, pickle bool
-		flush := 1000
-		reconn := 10000
-		spoolDir = table.SpoolDir
-
-		if t.Token != word {
-			return destinations, errors.New("addr not set for endpoint")
+		if t.Token == toki.EOF {
+			break
 		}
-		addr = string(t.Value)
 
-		for t.Token != toki.EOF && t.Token != sep {
-			t = s.Next()
-			switch t.Token {
-			case optPrefix:
-				if t = s.Next(); t.Token != word {
-					return destinations, errFmtAddRoute
-				}
-				prefix = string(t.Value)
-			case optSub:
-				if t = s.Next(); t.Token != word {
-					return destinations, errFmtAddRoute
-				}
-				sub = string(t.Value)
-			case optRegex:
-				if t = s.Next(); t.Token != word {
-					return destinations, errFmtAddRoute
-				}
-				regex = string(t.Value)
-			case optFlush:
-				if t = s.Next(); t.Token != num {
-					return destinations, errFmtAddRoute
-				}
-				flush, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
-				if err != nil {
-					return destinations, err
-				}
-			case optReconn:
-				if t = s.Next(); t.Token != num {
-					return destinations, errFmtAddRoute
-				}
-				reconn, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
-				if err != nil {
-					return destinations, err
-				}
-			case optPickle:
-				if t = s.Next(); t.Token != optTrue && t.Token != optFalse {
-					return destinations, errFmtAddRoute
-				}
-				pickle, err = strconv.ParseBool(string(t.Value))
-				if err != nil {
-					return destinations, fmt.Errorf("unrecognized pickle value '%s'", t)
-				}
-			case optSpool:
-				if t = s.Next(); t.Token != optTrue && t.Token != optFalse {
-					return destinations, errFmtAddRoute
-				}
-				spool, err = strconv.ParseBool(string(t.Value))
-				if err != nil {
-					return destinations, fmt.Errorf("unrecognized spool value '%s'", t)
-				}
-			case toki.EOF:
-			case sep:
-				break
-			default:
-				return destinations, fmt.Errorf("unrecognized option '%s'", t)
+		dest, err := readDestination(s, table, allowMatcher)
+		if err != nil {
+			return destinations, err
+		}
+		destinations = append(destinations, dest)
+
+		t = s.Peek()
+	}
+	return destinations, nil
+}
+
+func readDestination(s *toki.Scanner, table Table, allowMatcher bool) (dest *destination.Destination, err error) {
+	var prefix, sub, regex, addr, spoolDir string
+	var spool, pickle bool
+	flush := 1000
+	reconn := 10000
+	spoolDir = table.GetSpoolDir()
+
+	t := s.Next()
+	if t.Token != word {
+		return nil, errors.New("addr not set for endpoint")
+	}
+	addr = string(t.Value)
+
+	for t.Token != toki.EOF && t.Token != sep {
+		t = s.Next()
+		switch t.Token {
+		case optPrefix:
+			if t = s.Next(); t.Token != word {
+				return nil, errFmtAddRoute
 			}
+			prefix = string(t.Value)
+		case optSub:
+			if t = s.Next(); t.Token != word {
+				return nil, errFmtAddRoute
+			}
+			sub = string(t.Value)
+		case optRegex:
+			if t = s.Next(); t.Token != word {
+				return nil, errFmtAddRoute
+			}
+			regex = string(t.Value)
+		case optFlush:
+			if t = s.Next(); t.Token != num {
+				return nil, errFmtAddRoute
+			}
+			flush, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+			if err != nil {
+				return nil, err
+			}
+		case optReconn:
+			if t = s.Next(); t.Token != num {
+				return nil, errFmtAddRoute
+			}
+			reconn, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+			if err != nil {
+				return nil, err
+			}
+		case optPickle:
+			if t = s.Next(); t.Token != optTrue && t.Token != optFalse {
+				return nil, errFmtAddRoute
+			}
+			pickle, err = strconv.ParseBool(string(t.Value))
+			if err != nil {
+				return nil, fmt.Errorf("unrecognized pickle value '%s'", t)
+			}
+		case optSpool:
+			if t = s.Next(); t.Token != optTrue && t.Token != optFalse {
+				return nil, errFmtAddRoute
+			}
+			spool, err = strconv.ParseBool(string(t.Value))
+			if err != nil {
+				return nil, fmt.Errorf("unrecognized spool value '%s'", t)
+			}
+		case toki.EOF:
+		case sep:
+			break
+		default:
+			return nil, fmt.Errorf("unrecognized option '%s'", t)
 		}
+	}
 
-		periodFlush := time.Duration(flush) * time.Millisecond
-		periodReConn := time.Duration(reconn) * time.Millisecond
-		if !allowMatcher && (prefix != "" || sub != "" || regex != "") {
-			return destinations, fmt.Errorf("matching options (prefix, sub, and regex) not allowed for this route type")
-		}
-		dest, err := destination.New(prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn)
+	periodFlush := time.Duration(flush) * time.Millisecond
+	periodReConn := time.Duration(reconn) * time.Millisecond
+	if !allowMatcher && (prefix != "" || sub != "" || regex != "") {
+		return nil, fmt.Errorf("matching options (prefix, sub, and regex) not allowed for this route type")
+	}
+
+	return destination.New(prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn)
+}
+
+func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bool) (destinations []*destination.Destination, err error) {
+	s := toki.NewScanner(tokens)
+	for _, destinationConfig := range destinationConfigs {
+		s.SetInput(destinationConfig)
+
+		dest, err := readDestination(s, table, allowMatcher)
 		if err != nil {
 			return destinations, err
 		}
