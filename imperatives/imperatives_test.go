@@ -1,7 +1,6 @@
 package imperatives
 
 import (
-	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/taylorchu/toki"
 	"strings"
 	"testing"
@@ -56,19 +55,11 @@ func TestScanner(t *testing.T) {
 		}
 	}
 
-	table := tbl.New("")
+	table := &mockTable{}
 	for _, c := range cases {
 		err := Apply(table, c.cmd)
 		if err != nil {
 			t.Fatalf("could not apply init cmd %q: %s", c.cmd, err)
 		}
 	}
-	tablePrinted := table.Print()
-	t.Log("===========================")
-	t.Log("========== TABLE ==========")
-	t.Log("===========================")
-	for _, line := range strings.Split(tablePrinted, "\n") {
-		t.Logf(line)
-	}
-
 }
