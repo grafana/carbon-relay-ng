@@ -9,13 +9,14 @@ A relay for carbon streams, in go.
 Like carbon-relay from the graphite project, except it:
 
 
- * performs better: should be able to do about 100k ~ 1M million metrics per second depending on configuration
- * you can adjust the routing table at runtime, in real time using the web or telnet interface (interfaces need more work)
- * has aggregator functionality built-in
- * supports a per-route spooling policy.
+ * performs better: should be able to do about 100k ~ 1M million metrics per second depending on configuration and CPU speed.
+ * you can adjust the routing table at runtime, in real time using the web or telnet interface (though they may have some rough edges)
+ * has aggregator functionality built-in for cross-series, cross-time and cross-time-and-series aggregations.
+ * supports plaintext and pickle graphite routes (output) and metrics2.0/grafana.net, as well as kafka.
+ * graphite routes supports a per-route spooling policy.
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
- * you can choose between plaintext or pickle output, per route.
  * performs validation on all incoming metrics (see below)
+ * supported inputs: plaintext, pickle and AMQP
 
 
 This makes it easy to fanout to other tools that feed in on the metrics.
@@ -146,32 +147,6 @@ Invalid metrics are dropped and can be seen at /badMetrics/timespec.json where t
 
 You can also validate that for each series, each point is older than the previous. using the validate_order option.  This is helpful for some backends like grafana.net
 
-
-Rewriting
----------
-
-Series names can be rewritten as they pass through the system by Rewriter rules, which are processed in series.
-
-Basic rules use simple old/new text replacement, and support a Max parameter to specify the maximum number of matched items to be replaced.
-
-Rewriter rules also support regexp syntax, which is enabled by wrapping the "old" parameter with forward slashes and setting "max" to -1.
-
-Regexp rules support [golang's standard regular expression syntax](https://golang.org/pkg/regexp/syntax/), and the "new" value can include [submatch identifiers](https://golang.org/pkg/regexp/#Regexp.Expand) in the format `${1}`.
-
-Examples:
-
-```
-# basic rewriter rule to replace first occurrence of "foo" with "bar"
-addRewriter foo bar 1
-
-# regexp rewriter rule to add a prefix of "prefix." to all series
-addRewriter /^/ prefix. -1
-
-# regexp rewriter rule to replace "server.X" with "servers.X.collectd"
-addRewriter /server\.([^.]+)/ servers.${1}.collectd -1
-```
-
-
 Aggregation
 -----------
 
@@ -189,6 +164,30 @@ Note:
 * functions currently available: avg, sum, min, max
 * aggregation output is routed via the routing table just like all other metrics.  Note that aggregation output will never go back into aggregators (to prevent loops) and also bypasses the validation and blacklist.
 * see the included ini for examples
+
+Rewriting
+---------
+
+Series names can be rewritten as they pass through the system by Rewriter rules, which are processed in series.
+
+Basic rules use simple old/new text replacement, and support a Max parameter to specify the maximum number of matched items to be replaced.
+
+Rewriter rules also support regexp syntax, which is enabled by wrapping the "old" parameter with forward slashes and setting "max" to -1.
+
+Regexp rules support [golang's standard regular expression syntax](https://golang.org/pkg/regexp/syntax/), and the "new" value can include [submatch identifiers](https://golang.org/pkg/regexp/#Regexp.Expand) in the format `${1}`.
+
+Examples (using init commands. you can also specify them in the config directly. see the included config):
+
+```
+# basic rewriter rule to replace first occurrence of "foo" with "bar"
+addRewriter foo bar 1
+
+# regexp rewriter rule to add a prefix of "prefix." to all series
+addRewriter /^/ prefix. -1
+
+# regexp rewriter rule to replace "server.X" with "servers.X.collectd"
+addRewriter /server\.([^.]+)/ servers.${1}.collectd -1
+```
 
 
 Configuration
