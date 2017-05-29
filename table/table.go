@@ -80,6 +80,7 @@ func (table *Table) GetSpoolDir() string {
 func (table *Table) Dispatch(buf []byte) {
 	buf_copy := make([]byte, len(buf))
 	copy(buf_copy, buf)
+	log.Debug("table received packet %s", buf_copy)
 
 	fields := bytes.Fields(buf_copy)
 
