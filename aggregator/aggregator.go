@@ -160,7 +160,7 @@ func (a *Aggregator) Flush(ts uint) {
 		if agg.ts < ts {
 			result := a.fn(agg.values)
 			metric := fmt.Sprintf("%s %f %d", string(agg.key), result, agg.ts)
-			log.Debug("aggregator emitting %q", metric)
+			log.Debug("aggregator %s-%v-%v values %v -> result %q", a.Fun, a.Regex, a.OutFmt, agg.values, metric)
 			a.out <- []byte(metric)
 		} else {
 			aggregations2 = append(aggregations2, agg)
