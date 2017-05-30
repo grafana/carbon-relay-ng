@@ -207,10 +207,10 @@
 			"revisionTime": "2015-11-30T03:37:52Z"
 		},
 		{
-			"checksumSHA1": "PNFiPbDwLwZs7CcqH91LH7gXI5U=",
+			"checksumSHA1": "LABAG6dyYKeWXmRCXwU6Vic2WwU=",
 			"path": "github.com/streadway/amqp",
-			"revision": "d75c3a341ff43309ad0cb69ac8bdbd1d8772775f",
-			"revisionTime": "2017-02-03T13:40:38Z"
+			"revision": "dfe15e36048539f4cda41f240b27a5ca25b9cd46",
+			"revisionTime": "2017-05-21T21:24:53Z"
 		},
 		{
 			"checksumSHA1": "T8pFSFym6hKWcK3riWpyhWCxTls=",
