@@ -59,8 +59,11 @@ commands:
 
     addAgg <func> <regex> <fmt> <interval> <wait>  add a new aggregation rule.
              <func>:                             aggregation function to use
-               sum
                avg
+               last
+               max
+               min
+               sum
              <regex>                             regex to match incoming metrics. supports groups (numbered, see fmt)
              <fmt>                               format of output metric. you can use $1, $2, etc to refer to numbered groups
              <interval>                          align odd timestamps of metrics into buckets by this interval in seconds.
