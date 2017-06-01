@@ -33,7 +33,16 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
               if (value == "sum") {
                   return true;
               }
+              if (value == "min") {
+                  return true;
+              }
               if (value == "avg") {
+                  return true;
+              }
+              if (value == "max") {
+                  return true;
+              }
+              if (value == "last") {
                   return true;
               }
               return false;

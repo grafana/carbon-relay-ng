@@ -161,7 +161,7 @@ Note:
     if you set the interval to the period between each incoming packet of a given key, and the fmt yields the same key for different input metric keys
   - aggregation of individual metrics, i.e. packets for the same key, with different timestamps.  For example if you receive values for the same key every second, you can aggregate into minutely buckets by setting interval to 60, and have the fmt yield a unique key for every input metric key.  (~ graphite rollups)
   - the combination: compute aggregates from values seen with different keys, and at multiple points in time.
-* functions currently available: avg, sum, min, max
+* functions currently available: avg, sum, min, max, last
 * aggregation output is routed via the routing table just like all other metrics.  Note that aggregation output will never go back into aggregators (to prevent loops) and also bypasses the validation and blacklist.
 * see the included ini for examples
 

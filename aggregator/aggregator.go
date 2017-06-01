@@ -51,11 +51,20 @@ func Min(in []float64) float64 {
 	return min
 }
 
+func Last(in []float64) float64 {
+	if len(in) == 0 {
+		panic("last() called in aggregator with 0 terms")
+	}
+	last := in[len(in)-1]
+	return last
+}
+
 var Funcs = map[string]Func{
-	"sum": Sum,
-	"avg": Avg,
-	"max": Max,
-	"min": Min,
+	"sum":  Sum,
+	"avg":  Avg,
+	"max":  Max,
+	"min":  Min,
+	"last": Last,
 }
 
 type Aggregator struct {
