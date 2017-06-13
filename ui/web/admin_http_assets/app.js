@@ -30,21 +30,28 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   $scope.validAggFunc = (function() {
       return {
           test: function(value) {
-              if (value == "sum") {
-                  return true;
-              }
-              if (value == "min") {
-                  return true;
-              }
               if (value == "avg") {
                   return true;
               }
-              if (value == "max") {
+              if (value == "delta") {
                   return true;
               }
               if (value == "last") {
                   return true;
               }
+              if (value == "max") {
+                  return true;
+              }
+              if (value == "min") {
+                  return true;
+              }
+              if (value == "stdev") {
+                  return true;
+              }
+              if (value == "sum") {
+                  return true;
+              }
+
               return false;
           }
       };
