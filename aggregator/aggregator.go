@@ -3,6 +3,7 @@ package aggregator
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"time"
@@ -10,19 +11,35 @@ import (
 
 type Func func(in []float64) float64
 
-func Sum(in []float64) float64 {
-	sum := float64(0)
-	for _, term := range in {
-		sum += term
-	}
-	return sum
-}
-
 func Avg(in []float64) float64 {
 	if len(in) == 0 {
 		panic("avg() called in aggregator with 0 terms")
 	}
 	return Sum(in) / float64(len(in))
+}
+
+func Delta(in []float64) float64 {
+	if len(in) == 0 {
+		panic("delta() called in aggregator with 0 terms")
+	}
+	min := in[0]
+	max := in[0]
+	for _, val := range in {
+		if val > max {
+			max = val
+		} else if val < min {
+			min = val
+		}
+	}
+	return max - min
+}
+
+func Last(in []float64) float64 {
+	if len(in) == 0 {
+		panic("last() called in aggregator with 0 terms")
+	}
+	last := in[len(in)-1]
+	return last
 }
 
 func Max(in []float64) float64 {
@@ -51,20 +68,40 @@ func Min(in []float64) float64 {
 	return min
 }
 
-func Last(in []float64) float64 {
+func Stdev(in []float64) float64 {
 	if len(in) == 0 {
-		panic("last() called in aggregator with 0 terms")
+		panic("stdev() called in aggregator with 0 terms")
 	}
-	last := in[len(in)-1]
-	return last
+	// Get the average (or mean) of the series
+	mean := Avg(in)
+
+	// Calculate the variance
+	variance := float64(0)
+	for _, term := range in {
+		variance += math.Pow((float64(term) - mean), float64(2))
+	}
+	variance /= float64(len(in))
+
+	// Calculate the standard deviation
+	return math.Sqrt(variance)
+}
+
+func Sum(in []float64) float64 {
+	sum := float64(0)
+	for _, term := range in {
+		sum += term
+	}
+	return sum
 }
 
 var Funcs = map[string]Func{
-	"sum":  Sum,
-	"avg":  Avg,
-	"max":  Max,
-	"min":  Min,
-	"last": Last,
+	"avg":   Avg,
+	"delta": Delta,
+	"last":  Last,
+	"max":   Max,
+	"min":   Min,
+	"stdev": Stdev,
+	"sum":   Sum,
 }
 
 type Aggregator struct {

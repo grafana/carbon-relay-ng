@@ -6,6 +6,9 @@ build:
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	CGO_ENABLED=0 go build ./cmd/carbon-relay-ng
 
+test:
+	go test ./...
+
 docker: build
 	docker build --tag=raintank/carbon-relay-ng:latest .
 
@@ -80,7 +83,7 @@ rpm: build
 		--license BSD \
 		--url https://github.com/graphite-ng/carbon-relay-ng \
 		-C redhat .
-	rm -rf redhat	
+	rm -rf redhat
 
 rpm-centos6: build
 	mkdir build/centos-6
@@ -131,4 +134,4 @@ run: build
 run-docker:
 	docker run --rm -p 2003:2003 -p 2004:2004 -p 8081:8081 -v $(pwd)/examples:/conf -v $(pwd)/spool:/spool raintank/carbon-relay-ng
 
-.PHONY: all deb gh-pages install man
+.PHONY: all deb gh-pages install man test
