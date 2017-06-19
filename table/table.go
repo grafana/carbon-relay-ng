@@ -686,7 +686,7 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 				timeout = routeConfig.Timeout
 			}
 
-			route, err := route.NewKafkaMdm(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Broker, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, bufSize, routeConfig.OrgId, flushMaxNum, flushMaxWait, timeout)
+			route, err := route.NewKafkaMdm(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, routeConfig.OrgId, flushMaxNum, flushMaxWait, timeout)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)

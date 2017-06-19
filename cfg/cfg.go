@@ -60,7 +60,7 @@ type Route struct {
 	Concurrency int
 
 	// kafkaMdm
-	Broker      string
+	Brokers     []string
 	Topic       string
 	Codec       string
 	PartitionBy string

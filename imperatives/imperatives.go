@@ -441,7 +441,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 	if t.Token != word {
 		return errFmtAddRouteKafkaMdm
 	}
-	broker := string(t.Value)
+	brokers := strings.Split(string(t.Value), ",")
 
 	t = s.Next()
 	if t.Token != word {
@@ -535,7 +535,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	route, err := route.NewKafkaMdm(key, prefix, sub, regex, broker, topic, codec, schemasFile, partitionBy, bufSize, orgId, flushMaxNum, flushMaxWait, timeout)
+	route, err := route.NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy, brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout)
 	if err != nil {
 		return err
 	}

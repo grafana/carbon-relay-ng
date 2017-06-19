@@ -23,7 +23,7 @@ type KafkaMdm struct {
 	saramaCfg   *sarama.Config
 	producer    sarama.SyncProducer
 	topic       string
-	broker      string
+	brokers     []string
 	buf         chan []byte
 	partitioner *partitioner.Kafka
 	schemas     persister.WhisperSchemas
@@ -45,7 +45,7 @@ type KafkaMdm struct {
 
 // NewKafkaMdm creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
-func NewKafkaMdm(key, prefix, sub, regex, broker, topic, codec, schemasFile, partitionBy string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int) (Route, error) {
+func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int) (Route, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -55,12 +55,12 @@ func NewKafkaMdm(key, prefix, sub, regex, broker, topic, codec, schemasFile, par
 		return nil, err
 	}
 
-	cleanAddr := util.AddrToPath(broker)
+	cleanAddr := util.AddrToPath(brokers[0])
 
 	r := &KafkaMdm{
 		baseRoute: baseRoute{sync.Mutex{}, atomic.Value{}, key},
 		topic:     topic,
-		broker:    broker,
+		brokers:   brokers,
 		buf:       make(chan []byte, bufSize),
 		schemas:   schemas,
 		orgId:     orgId,
@@ -109,11 +109,10 @@ func NewKafkaMdm(key, prefix, sub, regex, broker, topic, codec, schemasFile, par
 func (r *KafkaMdm) run() {
 	metrics := make([]*schema.MetricData, 0, r.flushMaxNum)
 	ticker := time.NewTicker(r.flushMaxWait)
-	brokers := []string{r.broker}
 	var err error
 
 	for r.producer == nil {
-		r.producer, err = sarama.NewSyncProducer(brokers, r.saramaCfg)
+		r.producer, err = sarama.NewSyncProducer(r.brokers, r.saramaCfg)
 		if err == sarama.ErrOutOfBrokers {
 			log.Warning("kafkaMdm %q: %s", r.key, err)
 			// sleep before trying to connect again.
@@ -205,7 +204,7 @@ func (r *KafkaMdm) run() {
 }
 
 func (r *KafkaMdm) Dispatch(buf []byte) {
-	log.Info("kafkaMdm %q: sending to dest %s: %s", r.key, r.broker, buf)
+	log.Info("kafkaMdm %q: sending to dest %v: %s", r.key, r.brokers, buf)
 	r.numBuffered.Inc(1)
 	// either write to buffer, or if it's full discard the data
 	select {
