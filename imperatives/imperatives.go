@@ -93,13 +93,13 @@ var tokens = []toki.Def{
 	{Token: optOrgId, Pattern: "orgId="},
 	{Token: str, Pattern: "\".*\""},
 	{Token: sep, Pattern: "##"},
-	{Token: avgFn, Pattern: "avg"},
-	{Token: maxFn, Pattern: "max"},
-	{Token: minFn, Pattern: "min"},
-	{Token: sumFn, Pattern: "sum"},
-	{Token: lastFn, Pattern: "last"},
-	{Token: deltaFn, Pattern: "delta"},
-	{Token: stdevFn, Pattern: "stdev"},
+	{Token: avgFn, Pattern: "avg "},
+	{Token: maxFn, Pattern: "max "},
+	{Token: minFn, Pattern: "min "},
+	{Token: sumFn, Pattern: "sum "},
+	{Token: lastFn, Pattern: "last "},
+	{Token: deltaFn, Pattern: "delta "},
+	{Token: stdevFn, Pattern: "stdev "},
 	{Token: num, Pattern: "[0-9]+( |$)"}, // unfortunately we need the 2nd piece cause otherwise it would match the first of ip addresses etc. this means we need to TrimSpace later
 	{Token: word, Pattern: "[^ ]+"},
 }
@@ -167,7 +167,7 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 	if t.Token != sumFn && t.Token != avgFn && t.Token != minFn && t.Token != maxFn && t.Token != lastFn && t.Token != deltaFn && t.Token != stdevFn {
 		return errors.New("invalid function. need avg/max/min/sum/last/delta/stdev")
 	}
-	fun := string(t.Value)
+	fun := string(t.Value[:len(t.Value)-1]) // strip trailing space
 
 	if t = s.Next(); t.Token != word {
 		return errors.New("need a regex string")
