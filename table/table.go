@@ -74,7 +74,8 @@ func (table *Table) GetSpoolDir() string {
 	return table.SpoolDir
 }
 
-// Dispatch dispatches incoming metrics into matching aggregators and routes,
+// Dispatch is the entrypoint to send data into the table.
+// it dispatches incoming metrics into matching aggregators and routes,
 // after checking against the blacklist
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
