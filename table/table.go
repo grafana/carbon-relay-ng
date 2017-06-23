@@ -119,7 +119,7 @@ func (table *Table) Dispatch(buf []byte) {
 
 	if !routed {
 		table.numUnroutable.Inc(1)
-		log.Notice("unrouteable: %s\n", final)
+		log.Info("unrouteable: %s\n", final)
 	}
 }
 
@@ -139,7 +139,7 @@ func (table *Table) DispatchAggregate(buf []byte) {
 
 	if !routed {
 		table.numUnroutable.Inc(1)
-		log.Notice("unrouteable: %s\n", buf)
+		log.Info("unrouteable: %s\n", buf)
 	}
 
 }
