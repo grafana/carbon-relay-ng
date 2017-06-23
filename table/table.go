@@ -94,15 +94,15 @@ func (table *Table) Dispatch(buf []byte) {
 		}
 	}
 
+	for _, rw := range conf.rewriters {
+		fields[0] = rw.Do(fields[0])
+	}
+
 	for _, aggregator := range conf.aggregators {
 		// we rely on incoming metrics already having been validated
 		if aggregator.PreMatch(fields[0]) {
 			aggregator.In <- fields
 		}
-	}
-
-	for _, rw := range conf.rewriters {
-		fields[0] = rw.Do(fields[0])
 	}
 
 	final := bytes.Join(fields, []byte(" "))
