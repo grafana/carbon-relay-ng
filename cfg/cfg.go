@@ -13,7 +13,7 @@ type Config struct {
 	Amqp                    Amqp
 	Max_procs               int
 	First_only              bool
-	Init                    []string
+	Init                    Init
 	Instance                string
 	Log_level               string
 	Instrumentation         instrumentation
@@ -84,6 +84,10 @@ type Amqp struct {
 	Amqp_key       string
 	Amqp_durable   bool
 	Amqp_exclusive bool
+}
+
+type Init struct {
+	Cmds []string
 }
 
 type instrumentation struct {

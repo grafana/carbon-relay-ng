@@ -498,7 +498,7 @@ func InitFromConfig(config cfg.Config) (*Table, error) {
 }
 
 func (table *Table) InitCmd(config cfg.Config) error {
-	for i, cmd := range config.Init {
+	for i, cmd := range config.Init.Cmds {
 		log.Notice("applying: %s", cmd)
 		err := imperatives.Apply(table, cmd)
 		if err != nil {
