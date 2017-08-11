@@ -9,16 +9,16 @@ import (
 	"time"
 )
 
-type Func func(in []float64) float64
+type Func func(in []float64, ts []uint) float64
 
-func Avg(in []float64) float64 {
+func Avg(in []float64, ts []uint) float64 {
 	if len(in) == 0 {
 		panic("avg() called in aggregator with 0 terms")
 	}
-	return Sum(in) / float64(len(in))
+	return Sum(in, ts) / float64(len(in))
 }
 
-func Delta(in []float64) float64 {
+func Delta(in []float64, ts []uint) float64 {
 	if len(in) == 0 {
 		panic("delta() called in aggregator with 0 terms")
 	}
@@ -34,7 +34,7 @@ func Delta(in []float64) float64 {
 	return max - min
 }
 
-func Last(in []float64) float64 {
+func Last(in []float64, ts []uint) float64 {
 	if len(in) == 0 {
 		panic("last() called in aggregator with 0 terms")
 	}
@@ -42,7 +42,7 @@ func Last(in []float64) float64 {
 	return last
 }
 
-func Max(in []float64) float64 {
+func Max(in []float64, ts []uint) float64 {
 	if len(in) == 0 {
 		panic("max() called in aggregator with 0 terms")
 	}
@@ -55,7 +55,7 @@ func Max(in []float64) float64 {
 	return max
 }
 
-func Min(in []float64) float64 {
+func Min(in []float64, ts []uint) float64 {
 	if len(in) == 0 {
 		panic("min() called in aggregator with 0 terms")
 	}
@@ -68,12 +68,12 @@ func Min(in []float64) float64 {
 	return min
 }
 
-func Stdev(in []float64) float64 {
+func Stdev(in []float64, ts []uint) float64 {
 	if len(in) == 0 {
 		panic("stdev() called in aggregator with 0 terms")
 	}
 	// Get the average (or mean) of the series
-	mean := Avg(in)
+	mean := Avg(in, ts)
 
 	// Calculate the variance
 	variance := float64(0)
@@ -86,12 +86,24 @@ func Stdev(in []float64) float64 {
 	return math.Sqrt(variance)
 }
 
-func Sum(in []float64) float64 {
+func Sum(in []float64, ts []uint) float64 {
 	sum := float64(0)
 	for _, term := range in {
 		sum += term
 	}
 	return sum
+}
+
+func Rate(in []float64, ts []uint) float64 {
+	if len(in) == 0 {
+		panic("rate() called in aggregator with 0 terms")
+	}
+	Vnew := in[len(in)-1]
+	Vold := in[0]
+	Tnew := ts[len(ts)-1]
+	Told := ts[0]
+
+	return (Vnew - Vold) / float64(Tnew-Told)
 }
 
 var Funcs = map[string]Func{
@@ -100,6 +112,7 @@ var Funcs = map[string]Func{
 	"last":  Last,
 	"max":   Max,
 	"min":   Min,
+	"rate":  Rate,
 	"stdev": Stdev,
 	"sum":   Sum,
 }
@@ -182,20 +195,23 @@ func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggr
 }
 
 type aggregation struct {
-	key    string
-	ts     uint
-	values []float64
+	key     string
+	ts      uint
+	values  []float64
+	tstamps []uint
 }
 
-func (a *Aggregator) AddOrCreate(key string, ts uint, value float64) {
+func (a *Aggregator) AddOrCreate(key string, quantized uint, ts uint, value float64) {
 	for i, agg := range a.aggregations {
-		if agg.key == key && agg.ts == ts {
+		if agg.key == key && agg.ts == quantized {
 			a.aggregations[i].values = append(agg.values, value)
+			a.aggregations[i].tstamps = append(agg.tstamps, ts)
 			return
 		}
 	}
+
 	if ts > uint(time.Now().Unix())-a.Wait {
-		a.aggregations = append(a.aggregations, aggregation{key, ts, []float64{value}})
+		a.aggregations = append(a.aggregations, aggregation{key, quantized, []float64{value}, []uint{ts}})
 	}
 }
 
@@ -204,7 +220,7 @@ func (a *Aggregator) Flush(ts uint) {
 	aggregations2 := make([]aggregation, 0, len(a.aggregations))
 	for _, agg := range a.aggregations {
 		if agg.ts < ts {
-			result := a.fn(agg.values)
+			result := a.fn(agg.values, agg.tstamps)
 			metric := fmt.Sprintf("%s %f %d", string(agg.key), result, agg.ts)
 			log.Debug("aggregator %s-%v-%v values %v -> result %q", a.Fun, a.Regex, a.OutFmt, agg.values, metric)
 			a.out <- []byte(metric)
@@ -247,7 +263,7 @@ func (agg *Aggregator) run() {
 			var dst []byte
 			outKey := string(agg.regex.Expand(dst, agg.outFmt, key, matches))
 			quantized := ts - (ts % agg.Interval)
-			agg.AddOrCreate(outKey, quantized, value)
+			agg.AddOrCreate(outKey, quantized, ts, value)
 		case now := <-ticker.C:
 			thresh := now.Add(-time.Duration(agg.Wait) * time.Second)
 			agg.Flush(uint(thresh.Unix()))

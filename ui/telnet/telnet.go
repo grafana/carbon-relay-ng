@@ -64,6 +64,7 @@ commands:
                last
                max
                min
+               rate
                stdev
                sum
              <regex>                             regex to match incoming metrics. supports groups (numbered, see fmt)
