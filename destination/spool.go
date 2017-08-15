@@ -36,20 +36,12 @@ type Spool struct {
 // parameters should be tuned so that:
 // can buffer packets for the duration of 1 sync
 // buffer no more then needed, esp if we know the queue is slower then the ingest rate
-func NewSpool(key, spoolDir string) *Spool {
+func NewSpool(key, spoolDir string, bufSize int, maxBytesPerFile, syncEvery int64, syncPeriod, spoolSleep, unspoolSleep time.Duration) *Spool {
 	dqName := "spool_" + key
-	// on our virtualized box i see mean write of around 100 micros up to 250 micros, max up to 200 millis.
-	// in 200 millis we can get up to 10k metrics, so let's make that our queueBuffer size
-	// for bulk, leaving 500 micros in between every metric should be enough.
-	// TODO make all these configurable:
-	queueBuffer := 10000
-	maxBytesPerFile := int64(200 * 1024 * 1024)
-	syncEvery := int64(10000)
-	periodSync := 1 * time.Second
-	queue := nsqd.NewDiskQueue(dqName, spoolDir, maxBytesPerFile, syncEvery, periodSync).(*nsqd.DiskQueue)
-
-	spoolSleep := time.Duration(500) * time.Microsecond
-	unspoolSleep := time.Duration(10) * time.Microsecond
+	// bufSize should be tuned to be able to hold the max amount of metrics that can be received
+	// while the disk subsystem is doing a write/sync. Basically set it to the amount of metrics
+	// you receive in a second.
+	queue := nsqd.NewDiskQueue(dqName, spoolDir, maxBytesPerFile, syncEvery, syncPeriod).(*nsqd.DiskQueue)
 	s := Spool{
 		key:             key,
 		InRT:            make(chan []byte, 10),
@@ -58,7 +50,7 @@ func NewSpool(key, spoolDir string) *Spool {
 		spoolSleep:      spoolSleep,
 		unspoolSleep:    unspoolSleep,
 		queue:           queue,
-		queueBuffer:     make(chan []byte, queueBuffer),
+		queueBuffer:     make(chan []byte, bufSize),
 		durationWrite:   stats.Timer("spool=" + key + ".operation=write"),
 		durationBuffer:  stats.Timer("spool=" + key + ".operation=buffer"),
 		numBuffered:     stats.Gauge("spool=" + key + ".unit=Metric.status=buffered"),

@@ -12,11 +12,6 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/util"
 )
 
-var bufio_buffer_size = 2000000 // in bytes. 4096 is go default
-
-// to make sure writes to In are fast until we really can't keep up
-var conn_in_buffer = 30000 // in metrics. (each metric line is typically about 70 bytes)
-
 var keepsafe_initial_cap = 100000 // not very important
 
 // this interval should be long enough to capture all failure modes
@@ -55,7 +50,7 @@ type Conn struct {
 	numDropBadPickle  metrics.Counter
 }
 
-func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle bool) (*Conn, error) {
+func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle bool, connBufSize, ioBufSize int) (*Conn, error) {
 	raddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -68,9 +63,9 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle b
 	cleanAddr := util.AddrToPath(addr)
 	connObj := &Conn{
 		conn:              conn,
-		buffered:          NewWriter(conn, bufio_buffer_size, cleanAddr),
+		buffered:          NewWriter(conn, ioBufSize, cleanAddr),
 		shutdown:          make(chan bool, 1), // when we write here, HandleData() may not be running anymore to read from the chan
-		In:                make(chan []byte, conn_in_buffer),
+		In:                make(chan []byte, connBufSize),
 		dest:              dest,
 		up:                true,
 		pickle:            pickle,

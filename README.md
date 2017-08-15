@@ -248,6 +248,16 @@ commands:
                    reconn=<int>                  reconnection interval in ms
                    pickle={true,false}           pickle output format instead of the default text protocol
                    spool={true,false}            enable spooling for this endpoint
+                   connbuf=<int>                 connection buffer (how many metrics can be queued, not written into network conn). default 30k
+                   iobuf=<int>                   buffered io connection buffer in bytes. default: 2M
+                   spoolbuf=<int>                num of metrics to buffer across disk-write stalls. practically, tune this to number of metrics in a second. default: 10000
+                   spoolmaxbytesperfile=<int>    max filesize for spool files. default: 200MiB (200 * 1024 * 1024)
+                   spoolsyncevery=<int>          sync spool to disk every this many metrics. default: 10000
+                   spoolsyncperiod=<int>         sync spool to disk every this many milliseconds. default 1000
+                   spoolsleep=<int>              sleep this many microseconds(!) in between ingests from bulkdata/redo buffers into spool. default 500
+                   unspoolsleep=<int>            sleep this many microseconds(!) in between reads from the spool, when replaying spooled data. default 10
+
+
 
     addDest <routeKey> <dest>                    not implemented yet
 

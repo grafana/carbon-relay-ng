@@ -44,6 +44,14 @@ const (
 	optRegex
 	optFlush
 	optReconn
+	optConnBufSize
+	optIoBufSize
+	optSpoolBufSize
+	optSpoolMaxBytesPerFile
+	optSpoolSyncEvery
+	optSpoolSyncPeriod
+	optSpoolSleep
+	optUnspoolSleep
 	optPickle
 	optSpool
 	optTrue
@@ -80,6 +88,14 @@ var tokens = []toki.Def{
 	{Token: optRegex, Pattern: "regex="},
 	{Token: optFlush, Pattern: "flush="},
 	{Token: optReconn, Pattern: "reconn="},
+	{Token: optConnBufSize, Pattern: "connbuf="},
+	{Token: optIoBufSize, Pattern: "iobuf="},
+	{Token: optSpoolBufSize, Pattern: "spoolbuf="},
+	{Token: optSpoolMaxBytesPerFile, Pattern: "spoolmaxbytesperfile="},
+	{Token: optSpoolSyncEvery, Pattern: "spoolsyncevery="},
+	{Token: optSpoolSyncPeriod, Pattern: "spoolsyncperiod="},
+	{Token: optSpoolSleep, Pattern: "spoolsleep="},
+	{Token: optUnspoolSleep, Pattern: "unspoolsleep="},
 	{Token: optPickle, Pattern: "pickle="},
 	{Token: optSpool, Pattern: "spool="},
 	{Token: optTrue, Pattern: "true"},
@@ -707,7 +723,16 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool) (dest *des
 	var spool, pickle bool
 	flush := 1000
 	reconn := 10000
+	connBufSize := 30000
+	ioBufSize := 2000000
 	spoolDir = table.GetSpoolDir()
+
+	spoolBufSize := 10000
+	spoolMaxBytesPerFile := int64(200 * 1024 * 1024)
+	spoolSyncEvery := int64(10000)
+	spoolSyncPeriod := time.Second
+	spoolSleep := time.Duration(500) * time.Microsecond
+	unspoolSleep := time.Duration(10) * time.Microsecond
 
 	t := s.Next()
 	if t.Token != word {
@@ -765,6 +790,75 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool) (dest *des
 			if err != nil {
 				return nil, fmt.Errorf("unrecognized spool value '%s'", t)
 			}
+		case optConnBufSize:
+			if t = s.Next(); t.Token != num {
+				return nil, errFmtAddRoute
+			}
+			connBufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+			if err != nil {
+				return nil, err
+			}
+		case optIoBufSize:
+			if t = s.Next(); t.Token != num {
+				return nil, errFmtAddRoute
+			}
+			ioBufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+			if err != nil {
+				return nil, err
+			}
+		case optSpoolBufSize:
+			if t = s.Next(); t.Token != num {
+				return nil, errFmtAddRoute
+			}
+			spoolBufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+			if err != nil {
+				return nil, err
+			}
+		case optSpoolMaxBytesPerFile:
+			if t = s.Next(); t.Token != num {
+				return nil, errFmtAddRoute
+			}
+			tmp, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+			if err != nil {
+				return nil, err
+			}
+			spoolMaxBytesPerFile = int64(tmp)
+		case optSpoolSyncEvery:
+			if t = s.Next(); t.Token != num {
+				return nil, errFmtAddRoute
+			}
+			tmp, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+			if err != nil {
+				return nil, err
+			}
+			spoolSyncEvery = int64(tmp)
+		case optSpoolSyncPeriod:
+			if t = s.Next(); t.Token != num {
+				return nil, errFmtAddRoute
+			}
+			tmp, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+			if err != nil {
+				return nil, err
+			}
+			spoolSyncPeriod = time.Duration(tmp) * time.Millisecond
+		case optSpoolSleep:
+			if t = s.Next(); t.Token != num {
+				return nil, errFmtAddRoute
+			}
+			tmp, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+			if err != nil {
+				return nil, err
+			}
+			spoolSleep = time.Duration(tmp) * time.Microsecond
+		case optUnspoolSleep:
+			if t = s.Next(); t.Token != num {
+				return nil, errFmtAddRoute
+			}
+			tmp, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+			if err != nil {
+				return nil, err
+			}
+			unspoolSleep = time.Duration(tmp) * time.Microsecond
 		case toki.EOF:
 		case sep:
 			break
@@ -779,7 +873,7 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool) (dest *des
 		return nil, fmt.Errorf("matching options (prefix, sub, and regex) not allowed for this route type")
 	}
 
-	return destination.New(prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn)
+	return destination.New(prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep)
 }
 
 func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bool) (destinations []*destination.Destination, err error) {
