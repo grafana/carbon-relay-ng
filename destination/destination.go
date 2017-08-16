@@ -40,6 +40,15 @@ type Destination struct {
 	cleanAddr    string
 	periodFlush  time.Duration
 	periodReConn time.Duration
+	connBufSize  int // in metrics. (each metric line is typically about 70 bytes). default 30k. to make sure writes to In are fast until conn flushing can't keep up
+	ioBufSize    int // conn io buffer in bytes. 4096 is go default. 2M is our default
+
+	SpoolBufSize         int
+	SpoolMaxBytesPerFile int64
+	SpoolSyncEvery       int64
+	SpoolSyncPeriod      time.Duration
+	SpoolSleep           time.Duration // how long to wait between stores to spool
+	UnspoolSleep         time.Duration // how long to wait between loads from spool
 
 	// set in/via Run()
 	In                  chan []byte        `json:"-"` // incoming metrics
@@ -58,7 +67,7 @@ type Destination struct {
 }
 
 // New creates a destination object. Note that it still needs to be told to run via Run().
-func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration) (*Destination, error) {
+func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration) (*Destination, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -66,15 +75,23 @@ func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFl
 	addr, instance := addrInstanceSplit(addr)
 	cleanAddr := util.AddrToPath(addr)
 	dest := &Destination{
-		Matcher:      *m,
-		Addr:         addr,
-		Instance:     instance,
-		SpoolDir:     spoolDir,
-		Spool:        spool,
-		Pickle:       pickle,
-		cleanAddr:    cleanAddr,
-		periodFlush:  periodFlush,
-		periodReConn: periodReConn,
+		Matcher:              *m,
+		Addr:                 addr,
+		Instance:             instance,
+		SpoolDir:             spoolDir,
+		Spool:                spool,
+		Pickle:               pickle,
+		cleanAddr:            cleanAddr,
+		periodFlush:          periodFlush,
+		periodReConn:         periodReConn,
+		connBufSize:          connBufSize,
+		ioBufSize:            ioBufSize,
+		SpoolBufSize:         spoolBufSize,
+		SpoolMaxBytesPerFile: spoolMaxBytesPerFile,
+		SpoolSyncEvery:       spoolSyncEvery,
+		SpoolSyncPeriod:      spoolSyncPeriod,
+		SpoolSleep:           spoolSleep,
+		UnspoolSleep:         unspoolSleep,
 	}
 	dest.setMetrics()
 	return dest, nil
@@ -168,7 +185,17 @@ func (dest *Destination) Run() {
 	dest.flushErr = make(chan error)
 	dest.setSignalConnOnline = make(chan chan struct{})
 	if dest.Spool {
-		dest.spool = NewSpool(dest.cleanAddr, dest.SpoolDir) // TODO better naming for spool, because it won't update when addr changes
+		// TODO better naming for spool, because it won't update when addr changes
+		dest.spool = NewSpool(
+			dest.cleanAddr,
+			dest.SpoolDir,
+			dest.SpoolBufSize,
+			dest.SpoolMaxBytesPerFile,
+			dest.SpoolSyncEvery,
+			dest.SpoolSyncPeriod,
+			dest.SpoolSleep,
+			dest.UnspoolSleep,
+		)
 	}
 	dest.tasks = sync.WaitGroup{}
 	go dest.relay()
@@ -193,7 +220,7 @@ func (dest *Destination) updateConn(addr string) {
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
 	addr, instance := addrInstanceSplit(addr)
-	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle)
+	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle, dest.connBufSize, dest.ioBufSize)
 	if err != nil {
 		log.Debug("dest %v: %v\n", dest.Addr, err.Error())
 		return

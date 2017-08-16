@@ -154,37 +154,61 @@ func removeRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerE
 	return make(map[string]string), nil
 }
 func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
-	var request struct {
-		Address   string
-		Key       string
-		Pickle    bool
-		Spool     bool
-		Type      string
-		Substring string
-		Prefix    string
-		Regex     string
+	var req struct {
+		Key                  string
+		Type                 string
+		Prefix               string
+		Substring            string
+		Regex                string
+		Address              string
+		Spool                bool
+		Pickle               bool
+		periodFlush          int
+		periodReconn         int
+		ConnBufSize          int
+		ConnIoBufSize        int
+		SpoolBufSize         int
+		SpoolMaxBytesPerFile int
+		SpoolSyncEvery       int
+		spoolSyncPeriod      int
+		SpoolSleep           int
+		UnspoolSleep         int
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
 	}
-	// use hard coded defaults for flush and reconn as specified in
-	// readDestinations
-	periodFlush := time.Duration(1000) * time.Millisecond
-	periodReconn := time.Duration(10000) * time.Millisecond
-	dest, err := destination.New("", "", "", request.Address, table.SpoolDir, request.Spool, request.Pickle, periodFlush, periodReconn)
+	dest, err := destination.New(
+		"",
+		"",
+		"",
+		req.Address,
+		table.SpoolDir,
+		req.Spool,
+		req.Pickle,
+		time.Duration(req.periodFlush)*time.Millisecond,
+		time.Duration(req.periodReconn)*time.Millisecond,
+		req.ConnBufSize,
+		req.ConnIoBufSize,
+		req.SpoolBufSize,
+		int64(req.SpoolMaxBytesPerFile),
+		int64(req.SpoolSyncEvery),
+		time.Duration(req.spoolSyncPeriod)*time.Millisecond,
+		time.Duration(req.SpoolSleep)*time.Microsecond,
+		time.Duration(req.UnspoolSleep)*time.Microsecond,
+	)
 	if err != nil {
 		return nil, &handlerError{err, "unable to create destination", http.StatusBadRequest}
 	}
 
 	var ro route.Route
 	var e error
-	switch request.Type {
+	switch req.Type {
 	case "sendAllMatch":
-		ro, e = route.NewSendAllMatch(request.Key, request.Prefix, request.Substring, request.Regex, []*destination.Destination{dest})
+		ro, e = route.NewSendAllMatch(req.Key, req.Prefix, req.Substring, req.Regex, []*destination.Destination{dest})
 	case "sendFirstMatch":
-		ro, e = route.NewSendFirstMatch(request.Key, request.Prefix, request.Substring, request.Regex, []*destination.Destination{dest})
+		ro, e = route.NewSendFirstMatch(req.Key, req.Prefix, req.Substring, req.Regex, []*destination.Destination{dest})
 	default:
-		return nil, &handlerError{nil, "unknown route type: " + request.Type, http.StatusBadRequest}
+		return nil, &handlerError{nil, "unknown route type: " + req.Type, http.StatusBadRequest}
 	}
 	if e != nil {
 		return nil, &handlerError{e, "could not create route", http.StatusBadRequest}
