@@ -35,6 +35,7 @@ deb: build
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/graphite-ng/carbon-relay-ng \
+		--after-install examples/after_install.sh \
 		-C debian .
 	rm -rf debian
 
@@ -82,6 +83,7 @@ rpm: build
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/graphite-ng/carbon-relay-ng \
+		--after-install examples/after_install.sh \
 		-C redhat .
 	rm -rf redhat
 
@@ -134,4 +136,4 @@ run: build
 run-docker:
 	docker run --rm -p 2003:2003 -p 2004:2004 -p 8081:8081 -v $(pwd)/examples:/conf -v $(pwd)/spool:/spool raintank/carbon-relay-ng
 
-.PHONY: all deb gh-pages install man test
+.PHONY: all deb gh-pages install man test build
