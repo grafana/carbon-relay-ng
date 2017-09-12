@@ -47,3 +47,26 @@ func TestParseMetricWithTags(t *testing.T) {
 		t.Fatalf("Returned MetricData is not as expected:\nGot:\n%+v\nExpected:\n%+v\n", md, expectedMd)
 	}
 }
+
+func TestParseMetricWithoutTags(t *testing.T) {
+	schemas := getMatchEverythingSchemas()
+	time := int64(200)
+	value := float64(100)
+	name := "a.b.c"
+	line := []byte(fmt.Sprintf("%s %f %d", name, value, time))
+	md, _ := parseMetric(line, schemas, 1)
+	expectedMd := &schema.MetricData{
+		Name:     name,
+		Metric:   name,
+		Interval: 10,
+		Value:    value,
+		Unit:     "unknown",
+		Time:     time,
+		Mtype:    "gauge",
+		Tags:     []string{},
+		OrgId:    1,
+	}
+	if !reflect.DeepEqual(md, expectedMd) {
+		t.Fatalf("Returned MetricData is not as expected:\nGot:\n%+v\nExpected:\n%+v\n", md, expectedMd)
+	}
+}
