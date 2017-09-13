@@ -36,7 +36,7 @@ type GrafanaNet struct {
 	timeout      time.Duration
 	sslVerify    bool
 	blocking     bool
-	dispatch     func(chan []byte, []byte, metrics.Gauge)
+	dispatch     func(chan []byte, []byte, metrics.Gauge, metrics.Counter)
 	concurrency  int
 	orgId        int
 	writeQueues  []chan []byte
@@ -46,6 +46,7 @@ type GrafanaNet struct {
 
 	numErrFlush       metrics.Counter
 	numOut            metrics.Counter   // metrics successfully written to our buffered conn (no flushing yet)
+	numDropBuffFull   metrics.Counter   // metric drops due to queue full
 	durationTickFlush metrics.Timer     // only updated after successful flush
 	durationManuFlush metrics.Timer     // only updated after successful flush. not implemented yet
 	tickFlushSize     metrics.Histogram // only updated after successful flush
@@ -94,6 +95,7 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		tickFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=ticker"),
 		manuFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=manual"),
 		numBuffered:       stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
+		numDropBuffFull:   stats.Counter("dest=" + cleanAddr + ".unit=Metric.action=drop.reason=queue_full"),
 	}
 
 	if blocking {
@@ -247,7 +249,7 @@ func (route *GrafanaNet) Dispatch(buf []byte) {
 	//conf := route.config.Load().(Config)
 	// should return as quickly as possible
 	log.Info("route %s sending to dest %s: %s", route.key, route.addr, buf)
-	route.dispatch(route.buf, buf, route.numBuffered)
+	route.dispatch(route.buf, buf, route.numBuffered, route.numDropBuffFull)
 }
 
 func (route *GrafanaNet) Flush() error {
