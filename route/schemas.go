@@ -71,7 +71,7 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas, orgId int) (*sche
 		Unit:     "unknown",
 		Time:     int64(timestamp),
 		Mtype:    "gauge",
-		Tags:     []string{},
+		Tags:     strings.Split(name, ";")[1:],
 		OrgId:    orgId,
 	}
 	return &md, nil
