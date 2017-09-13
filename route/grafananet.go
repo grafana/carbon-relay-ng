@@ -30,11 +30,13 @@ type GrafanaNet struct {
 	buf     chan []byte
 	schemas persister.WhisperSchemas
 
-	bufSize      int // amount of messages we can buffer up before providing backpressure. each message is about 100B. so 1e7 is about 1GB.
+	bufSize      int // amount of messages we can buffer up. each message is about 100B. so 1e7 is about 1GB.
 	flushMaxNum  int
 	flushMaxWait time.Duration
 	timeout      time.Duration
 	sslVerify    bool
+	blocking     bool
+	dispatch     func(chan []byte, []byte, metrics.Gauge, metrics.Counter)
 	concurrency  int
 	orgId        int
 	writeQueues  []chan []byte
@@ -44,17 +46,19 @@ type GrafanaNet struct {
 
 	numErrFlush       metrics.Counter
 	numOut            metrics.Counter   // metrics successfully written to our buffered conn (no flushing yet)
+	numDropBuffFull   metrics.Counter   // metric drops due to queue full
 	durationTickFlush metrics.Timer     // only updated after successful flush
 	durationManuFlush metrics.Timer     // only updated after successful flush. not implemented yet
 	tickFlushSize     metrics.Histogram // only updated after successful flush
 	manuFlushSize     metrics.Histogram // only updated after successful flush. not implemented yet
 	numBuffered       metrics.Gauge
+	bufferSize        metrics.Gauge
 }
 
 // NewGrafanaNet creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
 // ignores spool for now
-func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool, sslVerify bool, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId int) (Route, error) {
+func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool, sslVerify, blocking bool, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId int) (Route, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -78,6 +82,7 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		flushMaxWait: time.Duration(flushMaxWait) * time.Millisecond,
 		timeout:      time.Duration(timeout) * time.Millisecond,
 		sslVerify:    sslVerify,
+		blocking:     blocking,
 		concurrency:  concurrency,
 		orgId:        orgId,
 		writeQueues:  make([]chan []byte, concurrency),
@@ -91,7 +96,18 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		tickFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=ticker"),
 		manuFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=manual"),
 		numBuffered:       stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
+		bufferSize:        stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=bufferSize"),
+		numDropBuffFull:   stats.Counter("dest=" + cleanAddr + ".unit=Metric.action=drop.reason=queue_full"),
 	}
+
+	r.bufferSize.Update(int64(bufSize))
+
+	if blocking {
+		r.dispatch = dispatchBlocking
+	} else {
+		r.dispatch = dispatchNonBlocking
+	}
+
 	for i := 0; i < r.concurrency; i++ {
 		r.writeQueues[i] = make(chan []byte)
 	}
@@ -237,8 +253,7 @@ func (route *GrafanaNet) Dispatch(buf []byte) {
 	//conf := route.config.Load().(Config)
 	// should return as quickly as possible
 	log.Info("route %s sending to dest %s: %s", route.key, route.addr, buf)
-	route.numBuffered.Inc(1)
-	route.buf <- buf
+	route.dispatch(route.buf, buf, route.numBuffered, route.numDropBuffFull)
 }
 
 func (route *GrafanaNet) Flush() error {

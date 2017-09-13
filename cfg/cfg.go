@@ -51,6 +51,7 @@ type Route struct {
 	FlushMaxNum  int
 	FlushMaxWait int
 	Timeout      int
+	Blocking     bool
 
 	// grafanaNet
 	Addr        string

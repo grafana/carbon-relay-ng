@@ -27,25 +27,29 @@ type KafkaMdm struct {
 	buf         chan []byte
 	partitioner *partitioner.Kafka
 	schemas     persister.WhisperSchemas
+	blocking    bool
+	dispatch    func(chan []byte, []byte, metrics.Gauge, metrics.Counter)
 
 	orgId int // organisation to publish data under
 
-	bufSize      int // amount of messages we can buffer up before providing backpressure. each message is about 100B. so 1e7 is about 1GB.
+	bufSize      int // amount of messages we can buffer up. each message is about 100B. so 1e7 is about 1GB.
 	flushMaxNum  int
 	flushMaxWait time.Duration
 
 	numErrFlush       metrics.Counter
 	numOut            metrics.Counter   // metrics successfully written to kafka
+	numDropBuffFull   metrics.Counter   // metric drops due to queue full
 	durationTickFlush metrics.Timer     // only updated after successful flush
 	durationManuFlush metrics.Timer     // only updated after successful flush. not implemented yet
 	tickFlushSize     metrics.Histogram // only updated after successful flush
 	manuFlushSize     metrics.Histogram // only updated after successful flush. not implemented yet
 	numBuffered       metrics.Gauge
+	bufferSize        metrics.Gauge
 }
 
 // NewKafkaMdm creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
-func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int) (Route, error) {
+func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool) (Route, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -63,6 +67,7 @@ func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy
 		brokers:   brokers,
 		buf:       make(chan []byte, bufSize),
 		schemas:   schemas,
+		blocking:  blocking,
 		orgId:     orgId,
 
 		bufSize:      bufSize,
@@ -76,6 +81,15 @@ func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy
 		tickFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=ticker"),
 		manuFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=manual"),
 		numBuffered:       stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
+		bufferSize:        stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=bufferSize"),
+		numDropBuffFull:   stats.Counter("dest=" + cleanAddr + ".unit=Metric.action=drop.reason=queue_full"),
+	}
+	r.bufferSize.Update(int64(bufSize))
+
+	if blocking {
+		r.dispatch = dispatchBlocking
+	} else {
+		r.dispatch = dispatchNonBlocking
 	}
 
 	r.partitioner, err = partitioner.NewKafka(partitionBy)
@@ -205,12 +219,7 @@ func (r *KafkaMdm) run() {
 
 func (r *KafkaMdm) Dispatch(buf []byte) {
 	log.Info("kafkaMdm %q: sending to dest %v: %s", r.key, r.brokers, buf)
-	r.numBuffered.Inc(1)
-	// either write to buffer, or if it's full discard the data
-	select {
-	case r.buf <- buf:
-	default:
-	}
+	r.dispatch(r.buf, buf, r.numBuffered, r.numDropBuffFull)
 }
 
 func (r *KafkaMdm) Flush() error {
