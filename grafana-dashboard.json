@@ -527,6 +527,13 @@
               "lines": true,
               "linewidth": 3,
               "points": false
+            },
+            {
+              "alias": "memory-usage",
+              "lines": true,
+              "linewidth": 0,
+              "points": false,
+              "yaxis": 2
             }
           ],
           "span": 4,
@@ -540,6 +547,10 @@
             {
               "refId": "B",
               "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.mtype_is_gauge.dest_is_$dest.unit_is_Metric.what_is_bufferSize, 'bufferSize')"
+            },
+            {
+              "refId": "C",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_dev.mtype_is_gauge.what_is_virtual_memory.unit_is_Byte, 'memory-usage')"
             }
           ],
           "timeFrom": null,
@@ -563,7 +574,7 @@
               "show": true
             },
             {
-              "format": "short",
+              "format": "bytes",
               "max": null,
               "min": null,
               "show": true
