@@ -141,6 +141,17 @@ func main() {
 
 	input.InitMetrics()
 
+	go func() {
+		sys := stats.Gauge("what=virtual_memory.unit=Byte")
+		ticker := time.NewTicker(time.Second)
+		var memstats runtime.MemStats
+		for range ticker.C {
+			runtime.ReadMemStats(&memstats)
+			sys.Update(int64(memstats.Sys))
+
+		}
+	}()
+
 	if config.Instrumentation.Graphite_addr != "" {
 		addr, err := net.ResolveTCPAddr("tcp", config.Instrumentation.Graphite_addr)
 		if err != nil {
