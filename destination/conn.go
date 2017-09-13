@@ -47,6 +47,7 @@ type Conn struct {
 	tickFlushSize     metrics.Histogram // only updated after successful flush. in bytes
 	manuFlushSize     metrics.Histogram // only updated after successful flush. in bytes
 	numBuffered       metrics.Gauge
+	bufferSize        metrics.Gauge
 	numDropBadPickle  metrics.Counter
 }
 
@@ -85,8 +86,10 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle b
 		tickFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=ticker"),
 		manuFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=manual"),
 		numBuffered:       stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
+		bufferSize:        stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=bufferSize"),
 		numDropBadPickle:  stats.Counter("dest=" + cleanAddr + ".unit=Metric.action=drop.reason=bad_pickle"),
 	}
+	connObj.bufferSize.Update(int64(connBufSize))
 
 	go connObj.checkEOF()
 

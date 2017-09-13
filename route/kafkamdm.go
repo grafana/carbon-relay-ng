@@ -44,6 +44,7 @@ type KafkaMdm struct {
 	tickFlushSize     metrics.Histogram // only updated after successful flush
 	manuFlushSize     metrics.Histogram // only updated after successful flush. not implemented yet
 	numBuffered       metrics.Gauge
+	bufferSize        metrics.Gauge
 }
 
 // NewKafkaMdm creates a special route that writes to a grafana.net datastore
@@ -80,8 +81,10 @@ func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy
 		tickFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=ticker"),
 		manuFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=manual"),
 		numBuffered:       stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
+		bufferSize:        stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=bufferSize"),
 		numDropBuffFull:   stats.Counter("dest=" + cleanAddr + ".unit=Metric.action=drop.reason=queue_full"),
 	}
+	r.bufferSize.Update(int64(bufSize))
 
 	if blocking {
 		r.dispatch = dispatchBlocking

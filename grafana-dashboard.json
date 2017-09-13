@@ -511,15 +511,24 @@
             "total": false,
             "values": false
           },
-          "lines": true,
+          "lines": false,
           "linewidth": 1,
           "links": [],
           "nullPointMode": "connected",
           "percentage": false,
-          "pointradius": 5,
-          "points": false,
+          "pointradius": 2,
+          "points": true,
           "renderer": "flot",
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {
+              "alias": "/bufferSize/",
+              "color": "#890F02",
+              "fill": 0,
+              "lines": true,
+              "linewidth": 3,
+              "points": false
+            }
+          ],
           "span": 4,
           "stack": false,
           "steppedLine": false,
@@ -527,6 +536,10 @@
             {
               "refId": "A",
               "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.mtype_is_gauge.dest_is_$dest.unit_is_Metric.what_is_numBuffered, 'numBuffered')"
+            },
+            {
+              "refId": "B",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.mtype_is_gauge.dest_is_$dest.unit_is_Metric.what_is_bufferSize, 'bufferSize')"
             }
           ],
           "timeFrom": null,
