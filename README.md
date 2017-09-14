@@ -47,8 +47,7 @@ Instrumentation
 
 * Extensive performance variables are available in json at http://localhost:8081/debug/vars2 (update port if you change it in config)
 * You can also send metrics to graphite (or feed back into the relay), see config.
-* Comes with a [grafana dashboard template](https://github.com/graphite-ng/carbon-relay-ng/blob/master/grafana-dashboard.json) so you get up and running in no time.
-* UPDATE: you can now get the [dashboard on grafana.net](https://grafana.net/dashboards/338) !
+* Comes with a [grafana dashboard](https://github.com/graphite-ng/carbon-relay-ng/blob/master/grafana-dashboard.json) which you can also [download from the grafana dashboards site](https://grafana.com/dashboards/338)
 
 ![grafana dashboard](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/screenshots/grafana-screenshot.png)
 
@@ -196,6 +195,8 @@ Configuration
 Take a look at the included carbon-relay-ng.ini, which includes comments describing the available options.
 
 The major config sections are the `blacklist` array, and the `[[aggregation]]`, `[[rewriter]]` and `[[route]]` entries.
+
+[Overview of all routes/destinations config options and tuning options](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/routes.md)
 
 You can also create routes, populate the blacklist, etc via the `init` config array using the same commands as the telnet interface, detailed below.
 
