@@ -2,6 +2,7 @@ package route
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -46,8 +47,6 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas, orgId int) (*sche
 		return nil, fmt.Errorf(errFmt3Fields, msg)
 	}
 
-	name := elements[0]
-
 	val, err := strconv.ParseFloat(elements[1], 64)
 	if err != nil {
 		return nil, fmt.Errorf(errFmt, msg, err)
@@ -58,7 +57,13 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas, orgId int) (*sche
 		return nil, fmt.Errorf(errFmt, msg, err)
 	}
 
-	s, ok := schemas.Match(name)
+	nameWithTags := elements[0]
+	elements = strings.Split(nameWithTags, ";")
+	name := elements[0]
+	tags := elements[1:]
+	sort.Strings(tags)
+	nameWithTags = fmt.Sprintf("%s;%s", name, strings.Join(tags, ";"))
+	s, ok := schemas.Match(nameWithTags)
 	if !ok {
 		panic(fmt.Errorf("couldn't find a schema for %q - this is impossible since we asserted there was a default with patt .*", name))
 	}
@@ -71,7 +76,7 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas, orgId int) (*sche
 		Unit:     "unknown",
 		Time:     int64(timestamp),
 		Mtype:    "gauge",
-		Tags:     strings.Split(name, ";")[1:],
+		Tags:     tags,
 		OrgId:    orgId,
 	}
 	return &md, nil

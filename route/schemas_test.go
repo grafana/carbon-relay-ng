@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -26,12 +27,14 @@ func getMatchEverythingSchemas() persister.WhisperSchemas {
 
 func TestParseMetricWithTags(t *testing.T) {
 	schemas := getMatchEverythingSchemas()
-	tags := []string{"tag1=value1", "tag2=value2"}
+	tags := []string{"tag2=value2", "tag1=value1"}
 	time := int64(200)
 	value := float64(100)
-	name := fmt.Sprintf("a.b.c;%s", strings.Join(tags, ";"))
-	line := []byte(fmt.Sprintf("%s %f %d", name, value, time))
+	name := "a.b.c"
+	nameWithTags := fmt.Sprintf("%s;%s", name, strings.Join(tags, ";"))
+	line := []byte(fmt.Sprintf("%s %f %d", nameWithTags, value, time))
 	md, _ := parseMetric(line, schemas, 1)
+	sort.Strings(tags)
 	expectedMd := &schema.MetricData{
 		Name:     name,
 		Metric:   name,
