@@ -550,7 +550,7 @@
             },
             {
               "refId": "C",
-              "target": "alias(service_is_carbon-relay-ng.instance_is_dev.mtype_is_gauge.what_is_virtual_memory.unit_is_Byte, 'memory-usage')"
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.mtype_is_gauge.what_is_virtual_memory.unit_is_Byte, 'memory-usage')"
             }
           ],
           "timeFrom": null,
