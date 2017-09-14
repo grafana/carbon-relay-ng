@@ -4,13 +4,14 @@ VERSION=$(shell git describe --tags --always | sed 's/^v//')
 build:
 	cd ui/web && go-bindata -pkg web admin_http_assets
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
-	CGO_ENABLED=0 go build ./cmd/carbon-relay-ng
+	CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
 
 test:
 	go test ./...
 
 docker: build
 	docker build --tag=raintank/carbon-relay-ng:latest .
+	docker tag raintank/carbon-relay-ng raintank/carbon-relay-ng:$(VERSION)
 
 all:
 

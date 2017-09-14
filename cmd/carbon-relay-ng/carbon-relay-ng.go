@@ -41,6 +41,7 @@ var (
 	blockProfileRate = flag.Int("block-profile-rate", 0, "see https://golang.org/pkg/runtime/#SetBlockProfileRate")
 	memProfileRate   = flag.Int("mem-profile-rate", 512*1024, "0 to disable. 1 for max precision (expensive!) see https://golang.org/pkg/runtime/#pkg-variables")
 	badMetrics       *badmetrics.BadMetrics
+	Version          = "unknown"
 )
 
 var log = logging.MustGetLogger("carbon-relay-ng")
@@ -81,7 +82,12 @@ func main() {
 
 	config_file = "/etc/carbon-relay-ng.ini"
 	if 1 == flag.NArg() {
-		config_file = flag.Arg(0)
+		val := flag.Arg(0)
+		if val == "version" {
+			fmt.Printf("carbon-relay-ng %s (built with %s)\n", Version, runtime.Version())
+			return
+		}
+		config_file = val
 	}
 
 	if _, err := toml.DecodeFile(config_file, &config); err != nil {
@@ -122,7 +128,7 @@ func main() {
 
 	runtime.GOMAXPROCS(config.Max_procs)
 
-	log.Notice("===== carbon-relay-ng instance '%s' starting. =====\n", config.Instance)
+	log.Notice("===== carbon-relay-ng instance '%s' starting. (version %s) =====\n", config.Instance, Version)
 	stats.New(config.Instance)
 
 	if config.Pid_file != "" {
