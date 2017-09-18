@@ -534,6 +534,13 @@
               "linewidth": 0,
               "points": false,
               "yaxis": 2
+            },
+            {
+              "alias": "allocated memory",
+              "lines": true,
+              "linewidth": 0,
+              "points": false,
+              "yaxis": 2
             }
           ],
           "span": 4,
@@ -551,6 +558,10 @@
             {
               "refId": "C",
               "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.mtype_is_gauge.what_is_virtual_memory.unit_is_Byte, 'memory-usage')"
+            },
+            {
+              "refId": "D",
+              "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.mtype_is_gauge.what_is_memory_allocated.unit_is_Byte, 'allocated memory')"
             }
           ],
           "timeFrom": null,

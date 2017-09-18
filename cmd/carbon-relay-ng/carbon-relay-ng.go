@@ -149,11 +149,13 @@ func main() {
 
 	go func() {
 		sys := stats.Gauge("what=virtual_memory.unit=Byte")
+		alloc := stats.Gauge("what=memory_allocated.unit=Byte")
 		ticker := time.NewTicker(time.Second)
 		var memstats runtime.MemStats
 		for range ticker.C {
 			runtime.ReadMemStats(&memstats)
 			sys.Update(int64(memstats.Sys))
+			alloc.Update(int64(memstats.Alloc))
 
 		}
 	}()
