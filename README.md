@@ -16,7 +16,7 @@ Like carbon-relay from the graphite project, except it:
  * graphite routes supports a per-route spooling policy.
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
  * performs validation on all incoming metrics (see below)
- * supported inputs: plaintext, pickle and AMQP
+ * supported inputs: plaintext, pickle and AMQP (rabbitmq)
 
 
 This makes it easy to fanout to other tools that feed in on the metrics.
@@ -82,7 +82,7 @@ We use https://github.com/kardianos/govendor to manage vendoring 3rd party libra
 Concepts
 --------
 
-You have 1 master routing table.  This table contains 0-N routes.  Each route can contain 0-M destinations (tcp endpoints)
+You have 1 master routing table.  This table contains 0-N routes.  Each carbon route can contain 0-M destinations (tcp endpoints)
 
 First: "matching": you can match metrics on one or more of: prefix, substring, or regex.  All 3 default to "" (empty string, i.e. allow all).
 The conditions are AND-ed.  Regexes are more resource intensive and hence should - and often can be - avoided.
@@ -95,6 +95,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
   * any routes that matches
 * The route can have different behaviors, based on its type:
 
+  * for grafanaNet / kafkaMdm routes, there is only a single endpoint so that's where the data goes.  For standard/carbon routes you can control how data gets routed into destinations:
   * sendAllMatch: send all metrics to all the defined endpoints (possibly, and commonly only 1 endpoint).
   * sendFirstMatch: send the metrics to the first endpoint that matches it.
   * consistentHashing: the algorithm is the same as Carbon's consistent hashing.
@@ -103,9 +104,12 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
 
 carbon-relay-ng (for now) focuses on staying up and not consuming much resources.
 
-if connection is up but slow, we drop the data
+For carbon routes:
+if connection is up but slow, we drop the data 
 if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data
 if connection is down and spooling disabled -> drop the data
+
+kafka and grafanaNet have an in-memory buffer and can be configured to blocking or non-blocking mode when the buffer runs full.
 
 
 Input
