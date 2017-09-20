@@ -21,6 +21,13 @@ limit nofile 102400 102400
 #limit sigpending <softlimit> <hardlimit>
 #limit stack <softlimit> <hardlimit>
 
-
-exec chroot --userspec root:root / /usr/bin/carbon-relay-ng "/etc/carbon-relay-ng/carbon-relay-ng.conf"
-
+### NOTE: logging does not work on the older version of upstart without a redirect as explained here http://upstart.ubuntu.com/cookbook/#versions-of-upstart-older-than-1-4 
+script
+  # When loading default and sysconfig files, we use `set -a` to make
+  # all variables automatically into environment variables.
+  set -a
+  [ -r "/etc/default/carbon-relay-ng" ] && . "/etc/default/carbon-relay-ng"
+  [ -r "/etc/sysconfig/carbon-relay-ng" ] && . "/etc/sysconfig/carbon-relay-ng"
+  set +a
+  exec chroot --userspec root:root / /usr/bin/carbon-relay-ng  >> /var/log/carbon-relay-ng-stdout.log 2>> /var/log/carbon-relay-ng-stderr.log
+end script
