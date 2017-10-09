@@ -135,4 +135,4 @@ run: build
 run-docker:
 	docker run --rm -p 2003:2003 -p 2004:2004 -p 8081:8081 -v $(pwd)/examples:/conf -v $(pwd)/spool:/spool raintank/carbon-relay-ng
 
-.PHONY: all deb gh-pages install man test
+.PHONY: all deb gh-pages install man test build

@@ -45,6 +45,9 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
               if (value == "min") {
                   return true;
               }
+              if (value == "rate") {
+                  return true;
+              }
               if (value == "stdev") {
                   return true;
               }
