@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/graphite-ng/carbon-relay-ng/clock"
 )
 
 type Func func(in []float64) float64
@@ -234,7 +236,7 @@ func (a *Aggregator) PreMatch(buf []byte) bool {
 
 func (a *Aggregator) run() {
 	interval := time.Duration(a.Interval) * time.Second
-	ticker := getAlignedTicker(interval)
+	tick := clock.AlignedTick(interval)
 	for {
 		select {
 		case fields := <-a.in:
@@ -253,10 +255,9 @@ func (a *Aggregator) run() {
 			outKey := string(a.regex.Expand(dst, a.outFmt, key, matches))
 			quantized := ts - (ts % a.Interval)
 			a.AddOrCreate(outKey, quantized, value)
-		case now := <-ticker.C:
+		case now := <-tick:
 			thresh := now.Add(-time.Duration(a.Wait) * time.Second)
 			a.Flush(uint(thresh.Unix()))
-			ticker = getAlignedTicker(interval)
 		case <-a.snapReq:
 			var aggs []aggregation
 			copy(aggs, a.aggregations)
@@ -290,14 +291,4 @@ func (a *Aggregator) run() {
 func (a *Aggregator) Snapshot() *Aggregator {
 	a.snapReq <- true
 	return <-a.snapResp
-}
-
-// getAlignedTicker returns a ticker so that, let's say interval is a second
-// then it will tick at every whole second, or if it's 60s than it's every whole
-// minute. Note that in my testing this is about .0001 to 0.0002 seconds later due
-// to scheduling etc.
-func getAlignedTicker(period time.Duration) *time.Ticker {
-	unix := time.Now().UnixNano()
-	diff := time.Duration(period - (time.Duration(unix) % period))
-	return time.NewTicker(diff)
 }
