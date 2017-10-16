@@ -124,6 +124,8 @@ type Aggregator struct {
 	snapResp     chan *Aggregator // chan on which snapshot response gets sent
 	shutdown     chan struct{}    // chan used internally to shut down
 	wg           sync.WaitGroup   // tracks worker running state
+	now          func() time.Time // returns current time. wraps time.Now except in some unit tests
+	tick         <-chan time.Time // controls when to flush
 }
 
 // regexToPrefix inspects the regex and returns the longest static prefix part of the regex
@@ -156,6 +158,10 @@ func regexToPrefix(regex string) []byte {
 
 // New creates an aggregator
 func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggregator, error) {
+	return NewMocked(fun, regex, outFmt, interval, wait, out, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
+}
+
+func NewMocked(fun, regex, outFmt string, interval, wait uint, out chan []byte, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
 	regexObj, err := regexp.Compile(regex)
 	if err != nil {
 		return nil, err
@@ -181,6 +187,8 @@ func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggr
 		make(chan *Aggregator),
 		make(chan struct{}),
 		sync.WaitGroup{},
+		now,
+		tick,
 	}
 	a.wg.Add(1)
 	go a.run()
@@ -240,8 +248,6 @@ func (a *Aggregator) PreMatch(buf []byte) bool {
 }
 
 func (a *Aggregator) run() {
-	interval := time.Duration(a.Interval) * time.Second
-	tick := clock.AlignedTick(interval)
 	for {
 		select {
 		case fields := <-a.in:
@@ -260,7 +266,7 @@ func (a *Aggregator) run() {
 			outKey := string(a.regex.Expand(dst, a.outFmt, key, matches))
 			quantized := ts - (ts % a.Interval)
 			a.AddOrCreate(outKey, quantized, value)
-		case now := <-tick:
+		case now := <-a.tick:
 			thresh := now.Add(-time.Duration(a.Wait) * time.Second)
 			a.Flush(uint(thresh.Unix()))
 		case <-a.snapReq:
@@ -283,11 +289,13 @@ func (a *Aggregator) run() {
 				nil,
 				nil,
 				sync.WaitGroup{},
+				time.Now,
+				nil,
 			}
 
 			a.snapResp <- s
 		case <-a.shutdown:
-			thresh := time.Now().Add(-time.Duration(a.Wait) * time.Second)
+			thresh := a.now().Add(-time.Duration(a.Wait) * time.Second)
 			a.Flush(uint(thresh.Unix()))
 			a.wg.Done()
 			return
