@@ -107,7 +107,7 @@ var Funcs = map[string]Func{
 type Aggregator struct {
 	Fun          string `json:"fun"`
 	fn           Func
-	In           chan [][]byte  `json:"-"` // incoming metrics, already split in 3 fields
+	in           chan [][]byte  `json:"-"` // incoming metrics, already split in 3 fields
 	out          chan []byte    // outgoing metrics
 	Regex        string         `json:"regex,omitempty"`
 	regex        *regexp.Regexp // compiled version of Regex
@@ -219,6 +219,12 @@ func (a *Aggregator) Shutdown() {
 	a.shutdown <- true
 }
 
+func (a *Aggregator) AddMaybe(buf [][]byte) {
+	if a.PreMatch(buf[0]) {
+		a.in <- buf
+	}
+}
+
 //PreMatch checks if the specified metric might match the regex
 //by comparing it to the prefix derived from the regex
 //if this returns false, the metric will definitely not match the regex and be ignored.
@@ -231,7 +237,7 @@ func (a *Aggregator) run() {
 	ticker := getAlignedTicker(interval)
 	for {
 		select {
-		case fields := <-a.In:
+		case fields := <-a.in:
 			// note, we rely here on the fact that the packet has already been validated
 			key := fields[0]
 

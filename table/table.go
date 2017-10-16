@@ -100,9 +100,7 @@ func (table *Table) Dispatch(buf []byte) {
 
 	for _, aggregator := range conf.aggregators {
 		// we rely on incoming metrics already having been validated
-		if aggregator.PreMatch(fields[0]) {
-			aggregator.In <- fields
-		}
+		aggregator.AddMaybe(fields)
 	}
 
 	final := bytes.Join(fields, []byte(" "))
