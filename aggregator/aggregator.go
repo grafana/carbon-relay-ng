@@ -6,6 +6,7 @@ import (
 	"math"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/clock"
@@ -121,7 +122,8 @@ type Aggregator struct {
 	aggregations []aggregation    // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
 	snapReq      chan bool        // chan to issue snapshot requests on
 	snapResp     chan *Aggregator // chan on which snapshot response gets sent
-	shutdown     chan bool        // chan used internally to shut down
+	shutdown     chan struct{}    // chan used internally to shut down
+	wg           sync.WaitGroup   // tracks worker running state
 }
 
 // regexToPrefix inspects the regex and returns the longest static prefix part of the regex
@@ -177,8 +179,10 @@ func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggr
 		make([]aggregation, 0, 4),
 		make(chan bool),
 		make(chan *Aggregator),
-		make(chan bool),
+		make(chan struct{}),
+		sync.WaitGroup{},
 	}
+	a.wg.Add(1)
 	go a.run()
 	return a, nil
 }
@@ -218,7 +222,8 @@ func (a *Aggregator) Flush(ts uint) {
 }
 
 func (a *Aggregator) Shutdown() {
-	a.shutdown <- true
+	close(a.shutdown)
+	a.wg.Wait()
 }
 
 func (a *Aggregator) AddMaybe(buf [][]byte) {
@@ -277,10 +282,14 @@ func (a *Aggregator) run() {
 				nil,
 				nil,
 				nil,
+				sync.WaitGroup{},
 			}
 
 			a.snapResp <- s
 		case <-a.shutdown:
+			thresh := time.Now().Add(-time.Duration(a.Wait) * time.Second)
+			a.Flush(uint(thresh.Unix()))
+			a.wg.Done()
 			return
 
 		}
