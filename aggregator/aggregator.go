@@ -160,7 +160,7 @@ func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggr
 	if !ok {
 		return nil, fmt.Errorf("no such aggregation function '%s'", fun)
 	}
-	agg := &Aggregator{
+	a := &Aggregator{
 		fun,
 		fn,
 		make(chan [][]byte, 2000),
@@ -177,8 +177,8 @@ func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggr
 		make(chan *Aggregator),
 		make(chan bool),
 	}
-	go agg.run()
-	return agg, nil
+	go a.run()
+	return a, nil
 }
 
 type aggregation struct {
@@ -215,28 +215,27 @@ func (a *Aggregator) Flush(ts uint) {
 	a.aggregations = aggregations2
 }
 
-func (agg *Aggregator) Shutdown() {
-	agg.shutdown <- true
-	return
+func (a *Aggregator) Shutdown() {
+	a.shutdown <- true
 }
 
 //PreMatch checks if the specified metric might match the regex
 //by comparing it to the prefix derived from the regex
 //if this returns false, the metric will definitely not match the regex and be ignored.
-func (agg *Aggregator) PreMatch(buf []byte) bool {
-	return bytes.HasPrefix(buf, agg.prefix)
+func (a *Aggregator) PreMatch(buf []byte) bool {
+	return bytes.HasPrefix(buf, a.prefix)
 }
 
-func (agg *Aggregator) run() {
-	interval := time.Duration(agg.Interval) * time.Second
+func (a *Aggregator) run() {
+	interval := time.Duration(a.Interval) * time.Second
 	ticker := getAlignedTicker(interval)
 	for {
 		select {
-		case fields := <-agg.In:
+		case fields := <-a.In:
 			// note, we rely here on the fact that the packet has already been validated
 			key := fields[0]
 
-			matches := agg.regex.FindSubmatchIndex(key)
+			matches := a.regex.FindSubmatchIndex(key)
 			if len(matches) == 0 {
 				continue
 			}
@@ -245,36 +244,36 @@ func (agg *Aggregator) run() {
 			ts := uint(t)
 
 			var dst []byte
-			outKey := string(agg.regex.Expand(dst, agg.outFmt, key, matches))
-			quantized := ts - (ts % agg.Interval)
-			agg.AddOrCreate(outKey, quantized, value)
+			outKey := string(a.regex.Expand(dst, a.outFmt, key, matches))
+			quantized := ts - (ts % a.Interval)
+			a.AddOrCreate(outKey, quantized, value)
 		case now := <-ticker.C:
-			thresh := now.Add(-time.Duration(agg.Wait) * time.Second)
-			agg.Flush(uint(thresh.Unix()))
+			thresh := now.Add(-time.Duration(a.Wait) * time.Second)
+			a.Flush(uint(thresh.Unix()))
 			ticker = getAlignedTicker(interval)
-		case <-agg.snapReq:
+		case <-a.snapReq:
 			var aggs []aggregation
-			copy(aggs, agg.aggregations)
+			copy(aggs, a.aggregations)
 			s := &Aggregator{
-				agg.Fun,
-				agg.fn,
+				a.Fun,
+				a.fn,
 				nil,
 				nil,
-				agg.Regex,
+				a.Regex,
 				nil,
-				agg.prefix,
-				agg.OutFmt,
+				a.prefix,
+				a.OutFmt,
 				nil,
-				agg.Interval,
-				agg.Wait,
+				a.Interval,
+				a.Wait,
 				aggs,
 				nil,
 				nil,
 				nil,
 			}
 
-			agg.snapResp <- s
-		case <-agg.shutdown:
+			a.snapResp <- s
+		case <-a.shutdown:
 			return
 
 		}
@@ -282,9 +281,9 @@ func (agg *Aggregator) run() {
 }
 
 // to view the state of the aggregator at any point in time
-func (agg *Aggregator) Snapshot() *Aggregator {
-	agg.snapReq <- true
-	return <-agg.snapResp
+func (a *Aggregator) Snapshot() *Aggregator {
+	a.snapReq <- true
+	return <-a.snapResp
 }
 
 // getAlignedTicker returns a ticker so that, let's say interval is a second
