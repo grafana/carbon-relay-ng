@@ -78,7 +78,7 @@ func (table *Table) GetSpoolDir() string {
 // it dispatches incoming metrics into matching aggregators and routes,
 // after checking against the blacklist
 // buf is assumed to have no whitespace at the end
-func (table *Table) Dispatch(buf []byte) {
+func (table *Table) Dispatch(buf []byte, val float64, ts uint32) {
 	buf_copy := make([]byte, len(buf))
 	copy(buf_copy, buf)
 	log.Debug("table received packet %s", buf_copy)
@@ -100,7 +100,7 @@ func (table *Table) Dispatch(buf []byte) {
 
 	for _, aggregator := range conf.aggregators {
 		// we rely on incoming metrics already having been validated
-		aggregator.AddMaybe(fields)
+		aggregator.AddMaybe(fields, val, ts)
 	}
 
 	final := bytes.Join(fields, []byte(" "))

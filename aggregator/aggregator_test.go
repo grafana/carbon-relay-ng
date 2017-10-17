@@ -151,11 +151,20 @@ func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, b *te
 	// 1030    - 1030      1042 -> flush point with outputTs 1010
 	// 1035    - 1030      1047
 	// 1040    - 1040      1052 -> flush point with outputTs 1020
-	var timestamps [][]byte
-	var wall []int64
-	for t := uint64(1000); t < uint64(1000+(10*b.N)); t += 5 {
-		timestamps = append(timestamps, strconv.AppendUint(nil, t, 10))
-		wall = append(wall, int64(t+12))
+
+	// tinfo holds all data to represent a point in time during the bench run
+	type tinfo struct {
+		ts    uint32 // the timestamp for the data at each point
+		tsBuf []byte // ascii representation for the timestamp
+		wall  int64  // the fake wall clock time at each point
+	}
+	var tinfos []tinfo
+	for t := uint32(1000); t < uint32(1000+(10*b.N)); t += 5 {
+		tinfos = append(tinfos, tinfo{
+			ts:    t,
+			tsBuf: strconv.AppendUint(nil, uint64(t), 10),
+			wall:  int64(t + 12),
+		})
 	}
 	val := strconv.AppendUint(nil, 1, 10)
 
@@ -173,16 +182,16 @@ func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, b *te
 	}
 
 	b.ResetTimer()
-	for i, ts := range timestamps {
+	for _, t := range tinfos {
 		//	fmt.Println("setting clock to", wall[i], "and sending", len(inputs)/2, "will go through. for ts", string(ts))
-		clock.Set(wall[i])
+		clock.Set(t.wall)
 		for _, input := range inputs {
 			buf := [][]byte{
 				input,
 				val,
-				ts,
+				t.tsBuf,
 			}
-			agg.AddMaybe(buf)
+			agg.AddMaybe(buf, 1, t.ts)
 		}
 	}
 	// we must make sure to get the final aggregated point.
@@ -194,13 +203,13 @@ func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, b *te
 		buf := [][]byte{
 			[]byte("raw.abc.ignoreme"),
 			val,
-			timestamps[0],
+			tinfos[0].tsBuf,
 		}
-		agg.AddMaybe(buf)
+		agg.AddMaybe(buf, 1, tinfos[0].ts)
 	}
 	// then, we keep updating the clock, triggering ticks, with high enough timestamps to surely flush the last aggregates.
 	// this so that if the aggregator is busy and doesn't read ticks, we keep trying until it isn't and does.
-	lastFlushTs := wall[len(wall)-1] + 1000
+	lastFlushTs := tinfos[len(tinfos)-1].wall + 1000
 	almostFinished := time.Now()
 	for {
 		select {

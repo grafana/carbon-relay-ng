@@ -51,7 +51,7 @@ func (p *Plain) Handle(c net.Conn) {
 
 		numIn.Inc(1)
 
-		key, _, ts, err := m20.ValidatePacket(buf, p.config.Validation_level_legacy.Level, p.config.Validation_level_m20.Level)
+		key, val, ts, err := m20.ValidatePacket(buf, p.config.Validation_level_legacy.Level, p.config.Validation_level_m20.Level)
 		if err != nil {
 			p.bad.Add(key, buf, err)
 			numInvalid.Inc(1)
@@ -67,6 +67,6 @@ func (p *Plain) Handle(c net.Conn) {
 			}
 		}
 
-		p.table.Dispatch(buf)
+		p.table.Dispatch(buf, val, ts)
 	}
 }

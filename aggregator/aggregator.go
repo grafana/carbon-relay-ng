@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"strconv"
 	"sync"
 	"time"
 
@@ -110,7 +109,7 @@ var Funcs = map[string]Func{
 type Aggregator struct {
 	Fun          string `json:"fun"`
 	fn           Func
-	in           chan [][]byte  `json:"-"` // incoming metrics, already split in 3 fields
+	in           chan msg       `json:"-"` // incoming metrics, already split in 3 fields
 	out          chan []byte    // outgoing metrics
 	Regex        string         `json:"regex,omitempty"`
 	regex        *regexp.Regexp // compiled version of Regex
@@ -126,6 +125,12 @@ type Aggregator struct {
 	wg           sync.WaitGroup       // tracks worker running state
 	now          func() time.Time     // returns current time. wraps time.Now except in some unit tests
 	tick         <-chan time.Time     // controls when to flush
+}
+
+type msg struct {
+	buf [][]byte
+	val float64
+	ts  uint32
 }
 
 // regexToPrefix inspects the regex and returns the longest static prefix part of the regex
@@ -173,7 +178,7 @@ func NewMocked(fun, regex, outFmt string, interval, wait uint, out chan []byte, 
 	a := &Aggregator{
 		fun,
 		fn,
-		make(chan [][]byte, inBuf),
+		make(chan msg, inBuf),
 		out,
 		regex,
 		regexObj,
@@ -230,9 +235,13 @@ func (a *Aggregator) Shutdown() {
 	a.wg.Wait()
 }
 
-func (a *Aggregator) AddMaybe(buf [][]byte) {
+func (a *Aggregator) AddMaybe(buf [][]byte, val float64, ts uint32) {
 	if a.PreMatch(buf[0]) {
-		a.in <- buf
+		a.in <- msg{
+			buf,
+			val,
+			ts,
+		}
 	}
 }
 
@@ -246,22 +255,19 @@ func (a *Aggregator) PreMatch(buf []byte) bool {
 func (a *Aggregator) run() {
 	for {
 		select {
-		case fields := <-a.in:
+		case msg := <-a.in:
 			// note, we rely here on the fact that the packet has already been validated
-			key := fields[0]
+			key := msg.buf[0]
 
 			matches := a.regex.FindSubmatchIndex(key)
 			if len(matches) == 0 {
 				continue
 			}
-			value, _ := strconv.ParseFloat(string(fields[1]), 64)
-			t, _ := strconv.ParseUint(string(fields[2]), 10, 0)
-			ts := uint(t)
-
 			var dst []byte
 			outKey := string(a.regex.Expand(dst, a.outFmt, key, matches))
+			ts := uint(msg.ts)
 			quantized := ts - (ts % a.Interval)
-			a.AddOrCreate(outKey, quantized, value)
+			a.AddOrCreate(outKey, quantized, msg.val)
 		case now := <-a.tick:
 			thresh := now.Add(-time.Duration(a.Wait) * time.Second)
 			a.Flush(uint(thresh.Unix()))
