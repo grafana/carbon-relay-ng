@@ -117,15 +117,15 @@ type Aggregator struct {
 	prefix       []byte         // automatically generated based on regex, for fast preMatch
 	OutFmt       string
 	outFmt       []byte
-	Interval     uint             // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
-	Wait         uint             // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
-	aggregations []aggregation    // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
-	snapReq      chan bool        // chan to issue snapshot requests on
-	snapResp     chan *Aggregator // chan on which snapshot response gets sent
-	shutdown     chan struct{}    // chan used internally to shut down
-	wg           sync.WaitGroup   // tracks worker running state
-	now          func() time.Time // returns current time. wraps time.Now except in some unit tests
-	tick         <-chan time.Time // controls when to flush
+	Interval     uint                 // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
+	Wait         uint                 // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
+	aggregations map[aggkey][]float64 // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
+	snapReq      chan bool            // chan to issue snapshot requests on
+	snapResp     chan *Aggregator     // chan on which snapshot response gets sent
+	shutdown     chan struct{}        // chan used internally to shut down
+	wg           sync.WaitGroup       // tracks worker running state
+	now          func() time.Time     // returns current time. wraps time.Now except in some unit tests
+	tick         <-chan time.Time     // controls when to flush
 }
 
 // regexToPrefix inspects the regex and returns the longest static prefix part of the regex
@@ -182,7 +182,7 @@ func NewMocked(fun, regex, outFmt string, interval, wait uint, out chan []byte, 
 		[]byte(outFmt),
 		interval,
 		wait,
-		make([]aggregation, 0, 4),
+		make(map[aggkey][]float64),
 		make(chan bool),
 		make(chan *Aggregator),
 		make(chan struct{}),
@@ -195,38 +195,34 @@ func NewMocked(fun, regex, outFmt string, interval, wait uint, out chan []byte, 
 	return a, nil
 }
 
-type aggregation struct {
-	key    string
-	ts     uint
-	values []float64
+type aggkey struct {
+	key string
+	ts  uint
 }
 
 func (a *Aggregator) AddOrCreate(key string, ts uint, value float64) {
-	for i, agg := range a.aggregations {
-		if agg.key == key && agg.ts == ts {
-			a.aggregations[i].values = append(agg.values, value)
-			return
-		}
+	k := aggkey{
+		key,
+		ts,
 	}
-	if ts > uint(a.now().Unix())-a.Wait {
-		a.aggregations = append(a.aggregations, aggregation{key, ts, []float64{value}})
+	agg, ok := a.aggregations[k]
+	if ok || ts > uint(a.now().Unix())-a.Wait {
+		a.aggregations[k] = append(agg, value)
 	}
 }
 
 // Flush finalizes and removes aggregations that are due
 func (a *Aggregator) Flush(ts uint) {
-	aggregations2 := make([]aggregation, 0, len(a.aggregations))
-	for _, agg := range a.aggregations {
-		if agg.ts < ts {
-			result := a.fn(agg.values)
-			metric := fmt.Sprintf("%s %f %d", string(agg.key), result, agg.ts)
-			//log.Debug("aggregator %s-%v-%v values %v -> result %q", a.Fun, a.Regex, a.OutFmt, agg.values, metric)
+	for k, agg := range a.aggregations {
+		if k.ts < ts {
+			result := a.fn(agg)
+			metric := fmt.Sprintf("%s %f %d", string(k.key), result, k.ts)
+			//		log.Debug("aggregator %s-%v-%v values %v -> result %q", a.Fun, a.Regex, a.OutFmt, agg, metric)
 			a.out <- []byte(metric)
-		} else {
-			aggregations2 = append(aggregations2, agg)
+			delete(a.aggregations, k)
 		}
 	}
-	a.aggregations = aggregations2
+	//fmt.Println("flush done for ", a.now().Unix(), ". agg size now", len(a.aggregations), a.now())
 }
 
 func (a *Aggregator) Shutdown() {
@@ -270,8 +266,10 @@ func (a *Aggregator) run() {
 			thresh := now.Add(-time.Duration(a.Wait) * time.Second)
 			a.Flush(uint(thresh.Unix()))
 		case <-a.snapReq:
-			var aggs []aggregation
-			copy(aggs, a.aggregations)
+			aggs := make(map[aggkey][]float64)
+			for k, a := range a.aggregations {
+				aggs[k] = a
+			}
 			s := &Aggregator{
 				a.Fun,
 				a.fn,
