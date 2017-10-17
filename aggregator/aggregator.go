@@ -158,10 +158,10 @@ func regexToPrefix(regex string) []byte {
 
 // New creates an aggregator
 func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggregator, error) {
-	return NewMocked(fun, regex, outFmt, interval, wait, out, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
+	return NewMocked(fun, regex, outFmt, interval, wait, out, 2000, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
 }
 
-func NewMocked(fun, regex, outFmt string, interval, wait uint, out chan []byte, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
+func NewMocked(fun, regex, outFmt string, interval, wait uint, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
 	regexObj, err := regexp.Compile(regex)
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ func NewMocked(fun, regex, outFmt string, interval, wait uint, out chan []byte, 
 	a := &Aggregator{
 		fun,
 		fn,
-		make(chan [][]byte, 2000),
+		make(chan [][]byte, inBuf),
 		out,
 		regex,
 		regexObj,
@@ -208,7 +208,7 @@ func (a *Aggregator) AddOrCreate(key string, ts uint, value float64) {
 			return
 		}
 	}
-	if ts > uint(time.Now().Unix())-a.Wait {
+	if ts > uint(a.now().Unix())-a.Wait {
 		a.aggregations = append(a.aggregations, aggregation{key, ts, []float64{value}})
 	}
 }
@@ -220,7 +220,7 @@ func (a *Aggregator) Flush(ts uint) {
 		if agg.ts < ts {
 			result := a.fn(agg.values)
 			metric := fmt.Sprintf("%s %f %d", string(agg.key), result, agg.ts)
-			log.Debug("aggregator %s-%v-%v values %v -> result %q", a.Fun, a.Regex, a.OutFmt, agg.values, metric)
+			//log.Debug("aggregator %s-%v-%v values %v -> result %q", a.Fun, a.Regex, a.OutFmt, agg.values, metric)
 			a.out <- []byte(metric)
 		} else {
 			aggregations2 = append(aggregations2, agg)
