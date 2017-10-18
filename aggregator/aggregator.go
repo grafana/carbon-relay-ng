@@ -116,6 +116,8 @@ type Aggregator struct {
 	prefix       []byte         // automatically generated based on regex, for fast preMatch
 	OutFmt       string
 	outFmt       []byte
+	Cache        bool
+	reCache      map[string]CacheEntry
 	Interval     uint                 // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
 	Wait         uint                 // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
 	aggregations map[aggkey][]float64 // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
@@ -162,11 +164,11 @@ func regexToPrefix(regex string) []byte {
 }
 
 // New creates an aggregator
-func New(fun, regex, outFmt string, interval, wait uint, out chan []byte) (*Aggregator, error) {
-	return NewMocked(fun, regex, outFmt, interval, wait, out, 2000, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
+func New(fun, regex, outFmt string, cache bool, interval, wait uint, out chan []byte) (*Aggregator, error) {
+	return NewMocked(fun, regex, outFmt, cache, interval, wait, out, 2000, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
 }
 
-func NewMocked(fun, regex, outFmt string, interval, wait uint, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
+func NewMocked(fun, regex, outFmt string, cache bool, interval, wait uint, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
 	regexObj, err := regexp.Compile(regex)
 	if err != nil {
 		return nil, err
@@ -174,6 +176,10 @@ func NewMocked(fun, regex, outFmt string, interval, wait uint, out chan []byte, 
 	fn, ok := Funcs[fun]
 	if !ok {
 		return nil, fmt.Errorf("no such aggregation function '%s'", fun)
+	}
+	var reCache map[string]CacheEntry
+	if cache {
+		reCache = make(map[string]CacheEntry)
 	}
 	a := &Aggregator{
 		fun,
@@ -185,6 +191,8 @@ func NewMocked(fun, regex, outFmt string, interval, wait uint, out chan []byte, 
 		regexToPrefix(regex),
 		outFmt,
 		[]byte(outFmt),
+		cache,
+		reCache,
 		interval,
 		wait,
 		make(map[aggkey][]float64),
@@ -252,25 +260,83 @@ func (a *Aggregator) PreMatch(buf []byte) bool {
 	return bytes.HasPrefix(buf, a.prefix)
 }
 
+type CacheEntry struct {
+	match bool
+	key   string
+	seen  uint32
+}
+
+//
+func (a *Aggregator) match(m msg) (string, bool) {
+	key := m.buf[0]
+	var dst []byte
+	matches := a.regex.FindSubmatchIndex(key)
+	if matches == nil {
+		return "", false
+	}
+	return string(a.regex.Expand(dst, a.outFmt, key, matches)), true
+}
+
 func (a *Aggregator) run() {
 	for {
 		select {
 		case msg := <-a.in:
 			// note, we rely here on the fact that the packet has already been validated
 			key := msg.buf[0]
-
-			matches := a.regex.FindSubmatchIndex(key)
-			if len(matches) == 0 {
-				continue
+			if a.reCache != nil {
+				//		fmt.Println("look in cache for", string(key))
+				entry, ok := a.reCache[string(key)]
+				if ok {
+					entry.seen = uint32(a.now().Unix())
+					a.reCache[string(key)] = entry
+					if !entry.match {
+						continue
+					}
+					ts := uint(msg.ts)
+					quantized := ts - (ts % a.Interval)
+					a.AddOrCreate(entry.key, quantized, msg.val)
+				} else {
+					outKey, ok := a.match(msg)
+					a.reCache[string(key)] = CacheEntry{
+						ok,
+						outKey,
+						uint32(a.now().Unix()),
+					}
+					if !ok {
+						continue
+					}
+					ts := uint(msg.ts)
+					quantized := ts - (ts % a.Interval)
+					a.AddOrCreate(outKey, quantized, msg.val)
+				}
+			} else {
+				outKey, ok := a.match(msg)
+				if ok {
+					ts := uint(msg.ts)
+					quantized := ts - (ts % a.Interval)
+					a.AddOrCreate(outKey, quantized, msg.val)
+				}
 			}
-			var dst []byte
-			outKey := string(a.regex.Expand(dst, a.outFmt, key, matches))
-			ts := uint(msg.ts)
-			quantized := ts - (ts % a.Interval)
-			a.AddOrCreate(outKey, quantized, msg.val)
 		case now := <-a.tick:
 			thresh := now.Add(-time.Duration(a.Wait) * time.Second)
 			a.Flush(uint(thresh.Unix()))
+
+			// if cache is enabled, clean it out of stale entries
+			// it's not ideal to block our channel while flushing AND cleaning up the cache
+			// ideally, these operations are interleaved in time, but we can optimize that later
+			// this is a simple heuristic but should make the cache always converge on only active data (without memory leaks)
+			// even though some cruft may temporarily linger a bit longer.
+			// WARNING: this relies on Go's map implementation detail which randomizes iteration order, in order for us to reach
+			// the entire keyspace. This may stop working properly with future go releases.  Will need to come up with smth better.
+			cutoff := uint32(now.Add(-100 * time.Duration(a.Wait) * time.Second).Unix())
+			if a.reCache != nil {
+				for k, v := range a.reCache {
+					if v.seen < cutoff {
+						delete(a.reCache, k)
+					}
+					break // stop looking when we don't see old entries. we'll look again soon enough.
+				}
+			}
 		case <-a.snapReq:
 			aggs := make(map[aggkey][]float64)
 			for k, a := range a.aggregations {
@@ -285,6 +351,8 @@ func (a *Aggregator) run() {
 				nil,
 				a.prefix,
 				a.OutFmt,
+				nil,
+				a.Cache,
 				nil,
 				a.Interval,
 				a.Wait,

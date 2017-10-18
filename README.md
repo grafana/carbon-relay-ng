@@ -167,6 +167,7 @@ Note:
 * functions currently available: avg, delta, last, max, min, stdev, sum
 * aggregation output is routed via the routing table just like all other metrics.  Note that aggregation output will never go back into aggregators (to prevent loops) and also bypasses the validation and blacklist and rewriters.
 * see the included ini for examples
+* each aggregator can be configured to cache regex matches or not. there is no cache size limit because a limited size, under a typical workload where we see each metric key sequentially, in perpetual cycles, would just result in cache thrashing and wasting memory. If enabled, all matches are cached for at least 100 times the wait parameter. By default, the cache is enabled for aggregators set up via commands (init commands in the config) but disabled for aggregators configured via config sections (due to a limitation in our config library).  Basically enabling the cache means you trade in RAM for cpu.
 
 Rewriting
 ---------
@@ -217,7 +218,7 @@ commands:
     addRewriter <old> <new> <max>                add rewriter that will rewrite all old to new, max times
                                                  use /old/ to specify a regular expression match, with support for ${1} style identifiers in new
 
-    addAgg <func> <regex> <fmt> <interval> <wait>  add a new aggregation rule.
+    addAgg <func> <regex> <fmt> <interval> <wait> [cache=true/false] add a new aggregation rule.
              <func>:                             aggregation function to use
                avg
                delta

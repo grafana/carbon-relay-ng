@@ -57,7 +57,7 @@ commands:
     addRewriter <old> <new> <max>                add rewriter that will rewrite all old to new, max times
                                                  use /old/ to specify a regular expression match, with support for ${1} style identifiers in new
 
-    addAgg <func> <regex> <fmt> <interval> <wait>  add a new aggregation rule.
+    addAgg <func> <regex> <fmt> <interval> <wait> [cache=true/false] add a new aggregation rule.
              <func>:                             aggregation function to use
                avg
                delta

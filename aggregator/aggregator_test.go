@@ -83,20 +83,30 @@ func TestScanner(t *testing.T) {
 // an operation here is an aggregation, comprising of 2*aggregates*pointsPerAggregate points,
 // (with just as many points ignored each time)
 func BenchmarkAggregator1Aggregates2PointsPerAggregate(b *testing.B) {
-	benchmarkAggregator(1, 2, "4.0000", b)
+	benchmarkAggregator(1, 2, "4.0000", false, b)
 }
 func BenchmarkAggregator5Aggregates10PointsPerAggregate(b *testing.B) {
-	benchmarkAggregator(5, 10, "20.000", b)
+	benchmarkAggregator(5, 10, "20.000", false, b)
 }
 func BenchmarkAggregator5Aggregates100PointsPerAggregate(b *testing.B) {
-	benchmarkAggregator(5, 100, "200.00", b)
+	benchmarkAggregator(5, 100, "200.00", false, b)
+}
+
+func BenchmarkAggregator1Aggregates2PointsPerAggregateWithReCache(b *testing.B) {
+	benchmarkAggregator(1, 2, "4.0000", true, b)
+}
+func BenchmarkAggregator5Aggregates10PointsPerAggregateWithReCache(b *testing.B) {
+	benchmarkAggregator(5, 10, "20.000", true, b)
+}
+func BenchmarkAggregator5Aggregates100PointsPerAggregateWithReCache(b *testing.B) {
+	benchmarkAggregator(5, 100, "200.00", true, b)
 }
 
 // we purposely keep the regex relatively simple because regex performance is up to the carbon-relay-ng user,
 // so we want to focus on the carbon-relay-ng features, not regex performance
 // b.N is how many points we generate (each based on 100 inputs)
 
-func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, b *testing.B) {
+func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, cache bool, b *testing.B) {
 	//fmt.Println("BenchmarkAggregator", aggregates, pointsPerAggregate, "with b.N", b.N)
 	out := make(chan []byte)
 	done := make(chan struct{})
@@ -176,7 +186,7 @@ func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, b *te
 	clock.AddTick(tick)
 	bufSize := 2 * aggregates * pointsPerAggregate
 
-	agg, err := NewMocked("sum", regex, outFmt, 10, 30, out, bufSize, clock.Now, tick.C)
+	agg, err := NewMocked("sum", regex, outFmt, cache, 10, 30, out, bufSize, clock.Now, tick.C)
 	if err != nil {
 		b.Fatalf("couldn't create aggregation: %q", err)
 	}

@@ -140,6 +140,7 @@
                   <th>Function</th>
                   <th>Regex</th>
                   <th>Output format</th>
+                  <th>Cache</th>
                   <th>Interval (sec)</th>
                   <th>Wait (sec)</th>
                   <th>Actions</th>
@@ -150,6 +151,7 @@
                     <td>{{a.fun}}</td>
                     <td>{{a.regex}}</td>
                     <td>{{a.OutFmt}}</td>
+                    <td>{{a.Cache}}</td>
                     <td>{{a.Interval}}</td>
                     <td>{{a.Wait}}</td>
                     <td class="text-center"><a ng-click="removeAggregator($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
@@ -172,6 +174,9 @@
                     </td>
                     <td class="form-group has-feedback">
                         <input ng-model="newAgg.OutFmt" name="outfmt" class="form-control" placeholder="out" required>
+                    </td>
+                    <td class="form-group has-feedback">
+                      <input type="checkbox" ng-model="newAgg.Cache" name="Cache" class="form-control">
                     </td>
                     <td class="form-group has-feedback">
                         <input type="number" ng-model="newAgg.Interval" name="interval" class="form-control" ng-pattern="/^[0-9]+$/">

@@ -32,6 +32,7 @@ type Aggregation struct {
 	Function string
 	Regex    string
 	Format   string
+	Cache    bool
 	Interval int
 	Wait     int
 }

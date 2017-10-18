@@ -405,8 +405,8 @@ func (table *Table) Print() (str string) {
 	rowFmtRW := fmt.Sprintf("%%%ds %%%ds %%%dd\n", maxRWOld+1, maxRWNew+1, maxRWMax+1)
 	heaFmtB := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
 	rowFmtB := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
-	heaFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%%ds %%%ds\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
-	rowFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%%dd %%%dd\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
+	heaFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%6s %%%ds %%%ds\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
+	rowFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%6t %%%dd %%%dd\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
 	heaFmtR := fmt.Sprintf("  %%%ds %%%ds %%%ds %%%ds %%%ds\n", maxRType+1, maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
 	rowFmtR := fmt.Sprintf("> %%%ds %%%ds %%%ds %%%ds %%%ds\n", maxRType+1, maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
 	heaFmtD := fmt.Sprintf("        %%%ds %%%ds %%%ds %%%ds %%%ds %%6s %%6s %%6s\n", maxDPrefix+1, maxDSub+1, maxDRegex+1, maxDAddr+1, maxDSpoolDir+1)
@@ -436,10 +436,10 @@ func (table *Table) Print() (str string) {
 	}
 
 	str += "\n## Aggregations:\n"
-	cols = fmt.Sprintf(heaFmtA, "func", "regex", "outFmt", "interval", "wait")
+	cols = fmt.Sprintf(heaFmtA, "func", "regex", "outFmt", "cache", "interval", "wait")
 	str += cols + underscore(len(cols))
 	for _, agg := range t.Aggregators {
-		str += fmt.Sprintf(rowFmtA, agg.Fun, agg.Regex, agg.OutFmt, agg.Interval, agg.Wait)
+		str += fmt.Sprintf(rowFmtA, agg.Fun, agg.Regex, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait)
 	}
 
 	str += "\n## Routes:\n"
@@ -544,7 +544,7 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 
 func (table *Table) InitAggregation(config cfg.Config) error {
 	for i, aggConfig := range config.Aggregation {
-		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.Format, uint(aggConfig.Interval), uint(aggConfig.Wait), table.In)
+		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), table.In)
 		if err != nil {
 			log.Error(err.Error())
 			return fmt.Errorf("could not add aggregation #%d", i+1)
