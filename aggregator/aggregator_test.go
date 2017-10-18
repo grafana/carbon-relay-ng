@@ -80,6 +80,20 @@ func TestScanner(t *testing.T) {
 	}
 }
 
+var r float64
+
+func BenchmarkProcessorMax(b *testing.B) {
+	fn := Max
+	for i := 0; i < b.N; i++ {
+		var data []float64
+		for j := 0; j < 10; j++ {
+			data = append(data, float64(j))
+		}
+		res := fn(data)
+		r = res
+	}
+}
+
 // an operation here is an aggregation, comprising of 2*aggregates*pointsPerAggregate points,
 // (with just as many points ignored each time)
 func BenchmarkAggregator1Aggregates2PointsPerAggregate(b *testing.B) {
