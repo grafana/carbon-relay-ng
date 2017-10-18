@@ -39,57 +39,41 @@ func TestScanner(t *testing.T) {
 			12,
 		},
 	}
+	testCase := func(i int, name string, in []float64, exp float64) {
+		procConstr, err := GetProcessorConstructor(name)
+		if err != nil {
+			t.Fatalf("got err %q", err)
+		}
+		p := procConstr()
+		for _, v := range in {
+			p.Add(v)
+		}
+		got := p.Flush()
+		if got != exp {
+			t.Fatalf("case %d %s - expected %v, actual %v", i, name, exp, got)
+		}
+	}
 	for i, e := range cases {
-		var actual float64
-
-		actual = Avg(e.in)
-		if actual != e.avg {
-			t.Fatalf("case %d AVG - expected %v, actual %v", i, e.avg, actual)
-		}
-
-		actual = Delta(e.in)
-		if actual != e.delta {
-			t.Fatalf("case %d DELTA - expected %v, actual %v", i, e.delta, actual)
-		}
-
-		actual = Last(e.in)
-		if actual != e.last {
-			t.Fatalf("case %d LAST - expected %v, actual %v", i, e.last, actual)
-		}
-
-		actual = Max(e.in)
-		if actual != e.max {
-			t.Fatalf("case %d MAX - expected %v, actual %v", i, e.max, actual)
-		}
-
-		actual = Min(e.in)
-		if actual != e.min {
-			t.Fatalf("case %d MIN - expected %v, actual %v", i, e.min, actual)
-		}
-
-		actual = Stdev(e.in)
-		if actual != e.stdev {
-			t.Fatalf("case %d STDEV - expected %v, actual %v", i, e.stdev, actual)
-		}
-
-		actual = Sum(e.in)
-		if actual != e.sum {
-			t.Fatalf("case %d SUM - expected %v, actual %v", i, e.sum, actual)
-		}
-
+		testCase(i, "avg", e.in, e.avg)
+		testCase(i, "delta", e.in, e.delta)
+		testCase(i, "last", e.in, e.last)
+		testCase(i, "max", e.in, e.max)
+		testCase(i, "min", e.in, e.min)
+		testCase(i, "stdev", e.in, e.stdev)
+		testCase(i, "sum", e.in, e.sum)
 	}
 }
 
 var r float64
 
 func BenchmarkProcessorMax(b *testing.B) {
-	fn := Max
+	procConstr, _ := GetProcessorConstructor("max")
+	proc := procConstr()
 	for i := 0; i < b.N; i++ {
-		var data []float64
 		for j := 0; j < 10; j++ {
-			data = append(data, float64(j))
+			proc.Add(float64(j))
 		}
-		res := fn(data)
+		res := proc.Flush()
 		r = res
 	}
 }
