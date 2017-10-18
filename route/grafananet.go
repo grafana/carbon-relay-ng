@@ -130,6 +130,9 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
+			// .. and except we disable http 2.0 because there seems to be a compatibility problem between nginx hosts and the golang http2 implementation
+			// which would occasionally result in bogus `400 Bad Request` errors.
+			TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
 		}
 	}
 
