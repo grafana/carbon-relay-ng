@@ -6,3 +6,4 @@
 /carbon-relay-ng.test
 test_spool
 spool/*.dat
+*~

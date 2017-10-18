@@ -78,8 +78,14 @@ func NewDiskQueue(name string, dataPath string, maxBytesPerFile int64, syncEvery
 		syncTimeout:       syncTimeout,
 	}
 
+	// Create the spool directory and all of its parents lazily
+	err := os.MkdirAll(d.dataPath, os.ModePerm)
+	if err != nil {
+		log.Printf("ERROR: diskqueue(%s) failed to make directory path:'%s' - %s", d.name, d.dataPath, err.Error())
+	}
+
 	// no need to lock here, nothing else could possibly be touching this instance
-	err := d.retrieveMetaData()
+	err = d.retrieveMetaData()
 	if err != nil && !os.IsNotExist(err) {
 		log.Printf("ERROR: diskqueue(%s) failed to retrieveMetaData - %s", d.name, err.Error())
 	}
