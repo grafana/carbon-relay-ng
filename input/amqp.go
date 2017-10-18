@@ -134,7 +134,7 @@ func (a *Amqp) dispatch(buf []byte) {
 	numIn.Inc(1)
 	log.Debug("dispatching message: %s", buf)
 
-	key, _, ts, err := m20.ValidatePacket(buf, a.config.Validation_level_legacy.Level, a.config.Validation_level_m20.Level)
+	key, val, ts, err := m20.ValidatePacket(buf, a.config.Validation_level_legacy.Level, a.config.Validation_level_m20.Level)
 	if err != nil {
 		a.bad.Add(key, buf, err)
 		numInvalid.Inc(1)
@@ -150,5 +150,5 @@ func (a *Amqp) dispatch(buf []byte) {
 		}
 	}
 
-	a.table.Dispatch(buf)
+	a.table.Dispatch(buf, val, ts)
 }

@@ -168,7 +168,7 @@ ReadLoop:
 			buf := []byte(metric + " " + value + " " + timestamp)
 
 			log.Debug("pickle.go: passing unpickled metric to m20 Packet validator...")
-			key, _, ts, err := m20.ValidatePacket(buf, p.config.Validation_level_legacy.Level, p.config.Validation_level_m20.Level)
+			key, val, ts, err := m20.ValidatePacket(buf, p.config.Validation_level_legacy.Level, p.config.Validation_level_m20.Level)
 			if err != nil {
 				log.Debug("pickle.go: metric failed to pass m20 Packet validation!")
 				p.bad.Add(key, buf, err)
@@ -188,7 +188,7 @@ ReadLoop:
 			}
 
 			log.Debug("pickle.go: all good, dispatching metrics buffer")
-			p.table.Dispatch(buf)
+			p.table.Dispatch(buf, val, ts)
 
 			log.Debug("pickle.go: exiting ItemLoop")
 		}

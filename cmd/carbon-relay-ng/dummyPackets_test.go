@@ -10,7 +10,7 @@ import (
 
 // so that whatever the timestamp is, if we add it to this, it will always use same amount
 // of chars. in other words, don't use that many DP's that this statement would no longer be true!
-const tsTpl = 1000000000
+const tsBase = 1000000000
 
 type dummyPackets struct {
 	key       string
@@ -24,8 +24,8 @@ func NewDummyPackets(key string, amount int) *dummyPackets {
 	packetLen := 17 + 10 + len(key)
 	scratchBuf := make([]byte, 0, packetLen*amount)
 	scratch := bytes.NewBuffer(scratchBuf)
-	for i := 1; i <= amount; i++ {
-		ts := tsTpl + i
+	for i := 0; i < amount; i++ {
+		ts := tsBase + i + 1
 		l, err := fmt.Fprintf(scratch, tpl, key, ts)
 		if err != nil {
 			panic(err)
@@ -37,28 +37,38 @@ func NewDummyPackets(key string, amount int) *dummyPackets {
 	return &dummyPackets{key, amount, packetLen, scratch}
 }
 
-func (dp *dummyPackets) Get(i int) []byte {
+func (dp *dummyPackets) Get(i int) ([]byte, float64, uint32) {
 	if i >= dp.amount {
 		panic("can't ask for higher index then what we have in dummyPackets")
 	}
 	sliceFull := dp.scratch.Bytes()
-	return sliceFull[dp.packetLen*i : dp.packetLen*(i+1)]
+	return sliceFull[dp.packetLen*i : dp.packetLen*(i+1)], 123, uint32(tsBase + i + 1)
 }
 
-func (dp *dummyPackets) All() chan []byte {
-	ret := make(chan []byte, 10000) // pretty arbitrary, but seems to help perf
-	go func(dp *dummyPackets, ret chan []byte) {
+type msg struct {
+	Buf []byte
+	Val float64
+	Ts  uint32
+}
+
+func (dp *dummyPackets) All() chan msg {
+	ret := make(chan msg, 10000) // pretty arbitrary, but seems to help perf
+	go func(dp *dummyPackets, ret chan msg) {
 		sliceFull := dp.scratch.Bytes()
 		for i := 0; i < dp.amount; i++ {
-			ret <- sliceFull[dp.packetLen*i : dp.packetLen*(i+1)]
+			ret <- msg{
+				sliceFull[dp.packetLen*i : dp.packetLen*(i+1)],
+				123,
+				uint32(tsBase + i + 1),
+			}
 		}
 		close(ret)
 	}(dp, ret)
 	return ret
 }
 
-func mergeAll(in ...chan []byte) chan []byte {
-	ret := make(chan []byte, 10000) // pretty arbitrary, but seems to help perf
+func mergeAll(in ...chan msg) chan msg {
+	ret := make(chan msg, 10000) // pretty arbitrary, but seems to help perf
 	go func() {
 		for _, inChan := range in {
 			for val := range inChan {

@@ -239,12 +239,13 @@ func (data arr) Less(i, j int) bool {
 }
 
 // assume that ref feeds in sorted order, because we rely on that!
-func (tE *TestEndpoint) SeenThisOrFatal(ref chan []byte) {
+func (tE *TestEndpoint) SeenThisOrFatal(ref chan msg) {
 	tE.WhatHaveISeen <- true
 	seen := <-tE.IHaveSeen
 	sort.Sort(arr(seen))
 	getRefBuf := func() []byte {
-		return <-ref
+		msg := <-ref
+		return msg.Buf
 	}
 	i := 0
 	getSeenBuf := func() []byte {

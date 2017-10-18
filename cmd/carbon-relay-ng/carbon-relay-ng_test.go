@@ -259,8 +259,8 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 	ns1 := t1.conditionNumSeen(dp.amount)
 	ns2 := t2.conditionNumSeen(dp.amount)
 
-	for buf := range dp.All() {
-		table.Dispatch(buf)
+	for msg := range dp.All() {
+		table.Dispatch(msg.Buf, msg.Val, msg.Ts)
 		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
 		// note i'm afraid this sleep masks another issue: data can get reordered.
 		// if you take this sleep away, and run like so:
@@ -300,10 +300,10 @@ func TestAddRewrite(t *testing.T) {
 // just dispatch (coming into table), no matching or sending to route
 func BenchmarkTableDispatch(b *testing.B) {
 	logging.SetLevel(logging.WARNING, "carbon-relay-ng")                                         // don't care about unroutable notices
-	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // key = 48, val = 10, ts = 10 -> 70
+	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // size: key = 48, val = 10, ts = 10 -> 70
 	table := NewTableOrFatal(b, "", "")
 	for i := 0; i < b.N; i++ {
-		table.Dispatch(metric70)
+		table.Dispatch(metric70, 12345.6789, 1234567890)
 	}
 }
 
@@ -319,7 +319,7 @@ func BenchmarkTableDisPatchAndEndpointReceive(b *testing.B) {
 	// reminder: go benchmark will invoke this with N = 0, then maybe N = 20, then maybe more
 	// and the time it prints is function run divided by N, which
 	// should be of a more or less stable time, which gets printed
-	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // key = 48, val = 10, ts = 10 -> 70
+	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // size: key = 48, val = 10, ts = 10 -> 70
 	dest, err := table.GetRoute("test1").GetDestination(0)
 	if err != nil {
 		panic(err)
@@ -328,7 +328,7 @@ func BenchmarkTableDisPatchAndEndpointReceive(b *testing.B) {
 	b.ResetTimer()
 	go func() {
 		for i := 0; i < b.N; i++ {
-			table.Dispatch(metric70)
+			table.Dispatch(metric70, 12345.6789, 1234567890)
 		}
 	}()
 	tE.WaitMetrics(b.N, 5*time.Second)
