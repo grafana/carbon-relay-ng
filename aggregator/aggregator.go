@@ -283,8 +283,9 @@ func (a *Aggregator) run() {
 		case msg := <-a.in:
 			// note, we rely here on the fact that the packet has already been validated
 			key := msg.buf[0]
+			var outKey string
+			var ok bool
 			if a.reCache != nil {
-				//		fmt.Println("look in cache for", string(key))
 				entry, ok := a.reCache[string(key)]
 				if ok {
 					entry.seen = uint32(a.now().Unix())
@@ -292,11 +293,9 @@ func (a *Aggregator) run() {
 					if !entry.match {
 						continue
 					}
-					ts := uint(msg.ts)
-					quantized := ts - (ts % a.Interval)
-					a.AddOrCreate(entry.key, quantized, msg.val)
+					outKey = entry.key
 				} else {
-					outKey, ok := a.match(msg)
+					outKey, ok = a.match(msg)
 					a.reCache[string(key)] = CacheEntry{
 						ok,
 						outKey,
@@ -305,18 +304,16 @@ func (a *Aggregator) run() {
 					if !ok {
 						continue
 					}
-					ts := uint(msg.ts)
-					quantized := ts - (ts % a.Interval)
-					a.AddOrCreate(outKey, quantized, msg.val)
 				}
 			} else {
-				outKey, ok := a.match(msg)
-				if ok {
-					ts := uint(msg.ts)
-					quantized := ts - (ts % a.Interval)
-					a.AddOrCreate(outKey, quantized, msg.val)
+				outKey, ok = a.match(msg)
+				if !ok {
+					continue
 				}
 			}
+			ts := uint(msg.ts)
+			quantized := ts - (ts % a.Interval)
+			a.AddOrCreate(outKey, quantized, msg.val)
 		case now := <-a.tick:
 			thresh := now.Add(-time.Duration(a.Wait) * time.Second)
 			a.Flush(uint(thresh.Unix()))
