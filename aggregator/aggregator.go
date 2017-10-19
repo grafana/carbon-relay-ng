@@ -12,7 +12,7 @@ import (
 
 type Aggregator struct {
 	Fun          string `json:"fun"`
-	procConstr   func(val float64) Processor
+	procConstr   func(val float64, ts uint32) Processor
 	in           chan msg       `json:"-"` // incoming metrics, already split in 3 fields
 	out          chan []byte    // outgoing metrics
 	Regex        string         `json:"regex,omitempty"`
@@ -117,16 +117,16 @@ type aggkey struct {
 	ts  uint
 }
 
-func (a *Aggregator) AddOrCreate(key string, ts uint, value float64) {
+func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value float64) {
 	k := aggkey{
 		key,
-		ts,
+		quantized,
 	}
 	proc, ok := a.aggregations[k]
 	if ok {
-		proc.Add(value)
-	} else if ts > uint(a.now().Unix())-a.Wait {
-		proc = a.procConstr(value)
+		proc.Add(value, ts)
+	} else if quantized > uint(a.now().Unix())-a.Wait {
+		proc = a.procConstr(value, ts)
 		a.aggregations[k] = proc
 	}
 }
@@ -135,10 +135,12 @@ func (a *Aggregator) AddOrCreate(key string, ts uint, value float64) {
 func (a *Aggregator) Flush(ts uint) {
 	for k, proc := range a.aggregations {
 		if k.ts < ts {
-			result := proc.Flush()
-			metric := fmt.Sprintf("%s %f %d", string(k.key), result, k.ts)
-			//		log.Debug("aggregator %s-%v-%v values %v -> result %q", a.Fun, a.Regex, a.OutFmt, agg, metric)
-			a.out <- []byte(metric)
+			result, ok := proc.Flush()
+			if ok {
+				metric := fmt.Sprintf("%s %f %d", string(k.key), result, k.ts)
+				//		log.Debug("aggregator %s-%v-%v values %v -> result %q", a.Fun, a.Regex, a.OutFmt, agg, metric)
+				a.out <- []byte(metric)
+			}
 			delete(a.aggregations, k)
 		}
 	}
@@ -220,7 +222,7 @@ func (a *Aggregator) run() {
 			}
 			ts := uint(msg.ts)
 			quantized := ts - (ts % a.Interval)
-			a.AddOrCreate(outKey, quantized, msg.val)
+			a.AddOrCreate(outKey, msg.ts, quantized, msg.val)
 		case now := <-a.tick:
 			thresh := now.Add(-time.Duration(a.Wait) * time.Second)
 			a.Flush(uint(thresh.Unix()))

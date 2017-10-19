@@ -61,6 +61,7 @@ commands:
              <func>:                             aggregation function to use
                avg
                delta
+               derive
                last
                max
                min

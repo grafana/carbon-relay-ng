@@ -10,6 +10,7 @@ import (
 func TestScanner(t *testing.T) {
 	cases := []struct {
 		in    []float64
+		ts    []uint32
 		avg   float64
 		delta float64
 		last  float64
@@ -17,9 +18,11 @@ func TestScanner(t *testing.T) {
 		min   float64
 		stdev float64
 		sum   float64
+		deriv float64
 	}{
 		{
 			[]float64{5, 4, 7, 4, 2, 5, 4, 9},
+			[]uint32{1, 2, 3, 4, 5, 6, 7, 8},
 			5,
 			7,
 			9,
@@ -27,9 +30,11 @@ func TestScanner(t *testing.T) {
 			2,
 			2,
 			40,
+			float64(4) / float64(7),
 		},
 		{
 			[]float64{6, 2, 3, 1},
+			[]uint32{1, 2, 3, 4},
 			3,
 			5,
 			1,
@@ -37,30 +42,48 @@ func TestScanner(t *testing.T) {
 			1,
 			1.8708286933869707,
 			12,
+			float64(-5) / float64(3),
+		},
+		// test out of order. this is the same dataset as the first one, but a bit shuffled
+		{
+			[]float64{7, 4, 5, 4, 9, 5, 4, 2},
+			[]uint32{3, 2, 1, 4, 8, 6, 7, 5},
+			5,
+			7,
+			2, // last is the last received one, not the one with last timestamp. we could handle that better perhaps
+			9,
+			2,
+			2,
+			40,
+			float64(4) / float64(7),
 		},
 	}
-	testCase := func(i int, name string, in []float64, exp float64) {
+	testCase := func(i int, name string, in []float64, ts []uint32, exp float64) {
 		procConstr, err := GetProcessorConstructor(name)
 		if err != nil {
 			t.Fatalf("got err %q", err)
 		}
-		p := procConstr(in[0])
-		for _, v := range in[1:] {
-			p.Add(v)
+		p := procConstr(in[0], ts[0])
+		for i, v := range in[1:] {
+			p.Add(v, ts[i+1])
 		}
-		got := p.Flush()
+		got, ok := p.Flush()
+		if !ok {
+			t.Fatalf("case %d %s - expected valid output, got null", i, name)
+		}
 		if got != exp {
 			t.Fatalf("case %d %s - expected %v, actual %v", i, name, exp, got)
 		}
 	}
 	for i, e := range cases {
-		testCase(i, "avg", e.in, e.avg)
-		testCase(i, "delta", e.in, e.delta)
-		testCase(i, "last", e.in, e.last)
-		testCase(i, "max", e.in, e.max)
-		testCase(i, "min", e.in, e.min)
-		testCase(i, "stdev", e.in, e.stdev)
-		testCase(i, "sum", e.in, e.sum)
+		testCase(i, "avg", e.in, e.ts, e.avg)
+		testCase(i, "delta", e.in, e.ts, e.delta)
+		testCase(i, "last", e.in, e.ts, e.last)
+		testCase(i, "max", e.in, e.ts, e.max)
+		testCase(i, "min", e.in, e.ts, e.min)
+		testCase(i, "stdev", e.in, e.ts, e.stdev)
+		testCase(i, "sum", e.in, e.ts, e.sum)
+		testCase(i, "derive", e.in, e.ts, e.deriv)
 	}
 }
 
@@ -68,12 +91,15 @@ var r float64
 
 func BenchmarkProcessorMax(b *testing.B) {
 	procConstr, _ := GetProcessorConstructor("max")
-	proc := procConstr(3)
+	proc := procConstr(3, 0)
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 10; j++ {
-			proc.Add(float64(j))
+			proc.Add(float64(j), uint32(j))
 		}
-		res := proc.Flush()
+		res, ok := proc.Flush()
+		if !ok {
+			panic("why would max produce an invalid output here?")
+		}
 		r = res
 	}
 }
