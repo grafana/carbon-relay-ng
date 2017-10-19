@@ -29,5 +29,5 @@ script
   [ -r "/etc/default/carbon-relay-ng" ] && . "/etc/default/carbon-relay-ng"
   [ -r "/etc/sysconfig/carbon-relay-ng" ] && . "/etc/sysconfig/carbon-relay-ng"
   set +a
-  exec chroot --userspec root:root / /usr/bin/carbon-relay-ng  >> /var/log/carbon-relay-ng-stdout.log 2>> /var/log/carbon-relay-ng-stderr.log
+  exec chroot --userspec root:root / /usr/bin/carbon-relay-ng "/etc/carbon-relay-ng/carbon-relay-ng.conf" >> /var/log/carbon-relay-ng-stdout.log 2>> /var/log/carbon-relay-ng-stderr.log
 end script
