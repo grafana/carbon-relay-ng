@@ -32,6 +32,7 @@ const (
 	sep
 	avgFn
 	deltaFn
+	deriveFn
 	lastFn
 	maxFn
 	minFn
@@ -119,6 +120,7 @@ var tokens = []toki.Def{
 	{Token: sumFn, Pattern: "sum "},
 	{Token: lastFn, Pattern: "last "},
 	{Token: deltaFn, Pattern: "delta "},
+	{Token: deriveFn, Pattern: "derive "},
 	{Token: stdevFn, Pattern: "stdev "},
 	{Token: num, Pattern: "[0-9]+( |$)"}, // unfortunately we need the 2nd piece cause otherwise it would match the first of ip addresses etc. this means we need to TrimSpace later
 	{Token: word, Pattern: "[^ ]+"},
@@ -127,7 +129,7 @@ var tokens = []toki.Def{
 // note the two spaces between a route and endpoints
 // match options can't have spaces for now. sorry
 var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
-var errFmtAddAgg = errors.New("addAgg <avg|delta|last|max|min|stdev|sum> <regex> <fmt> <interval> <wait> [cache=true/false]")
+var errFmtAddAgg = errors.New("addAgg <avg|delta|derive|last|max|min|stdev|sum> <regex> <fmt> <interval> <wait> [cache=true/false]")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
 var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int concurrency=int orgId=int]")
 var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex]  broker topic codec schemasFile partitionBy orgId [blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
@@ -184,8 +186,8 @@ func Apply(table Table, cmd string) error {
 
 func readAddAgg(s *toki.Scanner, table Table) error {
 	t := s.Next()
-	if t.Token != sumFn && t.Token != avgFn && t.Token != minFn && t.Token != maxFn && t.Token != lastFn && t.Token != deltaFn && t.Token != stdevFn {
-		return errors.New("invalid function. need avg/max/min/sum/last/delta/stdev")
+	if t.Token != sumFn && t.Token != avgFn && t.Token != minFn && t.Token != maxFn && t.Token != lastFn && t.Token != deltaFn && t.Token != deriveFn && t.Token != stdevFn {
+		return errors.New("invalid function. need avg/max/min/sum/last/delta/derive/stdev")
 	}
 	fun := string(t.Value[:len(t.Value)-1]) // strip trailing space
 
