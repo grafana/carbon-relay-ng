@@ -116,25 +116,31 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 	r.client = &http.Client{
 		Timeout: r.timeout,
 	}
+	// start off with a transport the same as Go's DefaultTransport
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	// disable http 2.0 because there seems to be a compatibility problem between nginx hosts and the golang http2 implementation
+	// which would occasionally result in bogus `400 Bad Request` errors.
+	transport.TLSNextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
+
 	if !r.sslVerify {
-		// this transport should be the equivalent of Go's DefaultTransport
-		r.client.Transport = &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			TLSHandshakeTimeout: 10 * time.Second,
-			// except we removed ExpectContinueTimeout cause it doesn't seem very useful, requires go 1.6, and prevents using http2.
-			// and except for this
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-			// .. and except we disable http 2.0 because there seems to be a compatibility problem between nginx hosts and the golang http2 implementation
-			// which would occasionally result in bogus `400 Bad Request` errors.
-			TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
 		}
 	}
+
+	r.client.Transport = transport
 
 	go r.run()
 	return r, nil

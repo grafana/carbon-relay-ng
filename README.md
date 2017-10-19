@@ -65,7 +65,7 @@ You can also just build a binary (see below) and run the binary with a config fi
 Building
 --------
 
-Requires Go 1.4 or higher.
+Requires Go 1.7 or higher.
 We use https://github.com/kardianos/govendor to manage vendoring 3rd party libraries
 
     export GOPATH=/some/path/
