@@ -8,7 +8,6 @@ carbon-relay-ng
 A relay for carbon streams, in go.
 Like carbon-relay from the graphite project, except it:
 
-
  * performs better: should be able to do about 100k ~ 1M million metrics per second depending on configuration and CPU speed.
  * you can adjust the routing table at runtime, in real time using the web or telnet interface (though they may have some rough edges)
  * has aggregator functionality built-in for cross-series, cross-time and cross-time-and-series aggregations.
@@ -17,7 +16,6 @@ Like carbon-relay from the graphite project, except it:
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
  * performs validation on all incoming metrics (see below)
  * supported inputs: plaintext, pickle and AMQP (rabbitmq)
-
 
 This makes it easy to fanout to other tools that feed in on the metrics.
 Or balance/split load, or provide redundancy, or partition the data, etc.
