@@ -12,7 +12,7 @@ import (
 
 type Aggregator struct {
 	Fun          string `json:"fun"`
-	procConstr   func() Processor
+	procConstr   func(val float64) Processor
 	in           chan msg       `json:"-"` // incoming metrics, already split in 3 fields
 	out          chan []byte    // outgoing metrics
 	Regex        string         `json:"regex,omitempty"`
@@ -126,9 +126,8 @@ func (a *Aggregator) AddOrCreate(key string, ts uint, value float64) {
 	if ok {
 		proc.Add(value)
 	} else if ts > uint(a.now().Unix())-a.Wait {
-		proc = a.procConstr()
+		proc = a.procConstr(value)
 		a.aggregations[k] = proc
-		proc.Add(value)
 	}
 }
 

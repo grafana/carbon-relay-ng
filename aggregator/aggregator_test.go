@@ -44,8 +44,8 @@ func TestScanner(t *testing.T) {
 		if err != nil {
 			t.Fatalf("got err %q", err)
 		}
-		p := procConstr()
-		for _, v := range in {
+		p := procConstr(in[0])
+		for _, v := range in[1:] {
 			p.Add(v)
 		}
 		got := p.Flush()
@@ -68,7 +68,7 @@ var r float64
 
 func BenchmarkProcessorMax(b *testing.B) {
 	procConstr, _ := GetProcessorConstructor("max")
-	proc := procConstr()
+	proc := procConstr(3)
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 10; j++ {
 			proc.Add(float64(j))
