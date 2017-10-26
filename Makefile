@@ -65,10 +65,11 @@ deb-upstart: build
 
 rpm: build
 	mkdir -p build/centos-7
-	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/lib/systemd/system redhat/var/run/carbon-relay-ng
+	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/lib/systemd/system redhat/var/run/carbon-relay-ng redhat/etc/tmpfiles.d
 	install carbon-relay-ng redhat/usr/bin
 	install man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
 	install examples/carbon-relay-ng.ini redhat/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install examples/carbon-relay-ng-tmpfiles.conf redhat/etc/tmpfiles.d/carbon-relay-ng.conf
 	install examples/carbon-relay-ng.service redhat/lib/systemd/system
 	gzip redhat/usr/share/man/man1/carbon-relay-ng.1
 	fpm \
