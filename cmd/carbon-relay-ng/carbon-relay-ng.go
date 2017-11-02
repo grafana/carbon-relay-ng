@@ -121,6 +121,7 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
+	config.Instance = os.Expand(config.Instance, expandVars)
 	if len(config.Instance) == 0 {
 		log.Error("instance identifier cannot be empty")
 		os.Exit(1)
@@ -227,4 +228,16 @@ func main() {
 	}
 
 	select {}
+}
+
+func expandVars(in string) (out string) {
+	switch in {
+	case "HOST":
+		hostname, _ := os.Hostname()
+		// in case hostname is an fqdn or has dots, only take first part
+		parts := strings.SplitN(hostname, ".", 2)
+		return parts[0]
+	default:
+		return ""
+	}
 }
