@@ -31,6 +31,8 @@ type Config struct {
 type Aggregation struct {
 	Function string
 	Regex    string
+	Prefix   string
+	Substr   string
 	Format   string
 	Cache    bool
 	Interval int

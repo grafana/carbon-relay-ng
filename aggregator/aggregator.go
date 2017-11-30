@@ -16,8 +16,11 @@ type Aggregator struct {
 	in           chan msg       `json:"-"` // incoming metrics, already split in 3 fields
 	out          chan []byte    // outgoing metrics
 	Regex        string         `json:"regex,omitempty"`
+	Prefix       string         `json:"prefix,omitempty"`
+	Sub          string         `json:"substring,omitempty"`
 	regex        *regexp.Regexp // compiled version of Regex
-	prefix       []byte         // automatically generated based on regex, for fast preMatch
+	prefix       []byte         // automatically generated based on Prefix or regex, for fast preMatch
+	substring    []byte         // based on Sub, for fast preMatch
 	OutFmt       string
 	outFmt       []byte
 	Cache        bool
@@ -68,11 +71,11 @@ func regexToPrefix(regex string) []byte {
 }
 
 // New creates an aggregator
-func New(fun, regex, outFmt string, cache bool, interval, wait uint, out chan []byte) (*Aggregator, error) {
-	return NewMocked(fun, regex, outFmt, cache, interval, wait, out, 2000, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
+func New(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, out chan []byte) (*Aggregator, error) {
+	return NewMocked(fun, regex, prefix, sub, outFmt, cache, interval, wait, out, 2000, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
 }
 
-func NewMocked(fun, regex, outFmt string, cache bool, interval, wait uint, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
+func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
 	regexObj, err := regexp.Compile(regex)
 	if err != nil {
 		return nil, err
@@ -85,14 +88,24 @@ func NewMocked(fun, regex, outFmt string, cache bool, interval, wait uint, out c
 	if cache {
 		reCache = make(map[string]CacheEntry)
 	}
+	var prefixBytes []byte
+	if prefix != "" {
+		prefixBytes = []byte(prefix)
+	} else {
+		prefixBytes = regexToPrefix(regex)
+	}
+
 	a := &Aggregator{
 		fun,
 		procConstr,
 		make(chan msg, inBuf),
 		out,
 		regex,
+		string(prefixBytes),
+		sub,
 		regexObj,
-		regexToPrefix(regex),
+		prefixBytes,
+		[]byte(sub),
 		outFmt,
 		[]byte(outFmt),
 		cache,
@@ -166,7 +179,13 @@ func (a *Aggregator) AddMaybe(buf [][]byte, val float64, ts uint32) {
 //by comparing it to the prefix derived from the regex
 //if this returns false, the metric will definitely not match the regex and be ignored.
 func (a *Aggregator) PreMatch(buf []byte) bool {
-	return bytes.HasPrefix(buf, a.prefix)
+	if len(a.prefix) > 0 && !bytes.HasPrefix(buf, a.prefix) {
+		return false
+	}
+	if len(a.substring) > 0 && !bytes.Contains(buf, a.substring) {
+		return false
+	}
+	return true
 }
 
 type CacheEntry struct {
@@ -254,8 +273,11 @@ func (a *Aggregator) run() {
 				nil,
 				nil,
 				a.Regex,
+				a.Prefix,
+				a.Sub,
 				nil,
 				a.prefix,
+				a.substring,
 				a.OutFmt,
 				nil,
 				a.Cache,

@@ -129,10 +129,10 @@ var tokens = []toki.Def{
 // note the two spaces between a route and endpoints
 // match options can't have spaces for now. sorry
 var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
-var errFmtAddAgg = errors.New("addAgg <avg|delta|derive|last|max|min|stdev|sum> <regex> <fmt> <interval> <wait> [cache=true/false]")
+var errFmtAddAgg = errors.New("addAgg <avg|delta|derive|last|max|min|stdev|sum> [prefix/sub/regex=,..] <fmt> <interval> <wait> [cache=true/false]")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
-var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int concurrency=int orgId=int]")
-var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex]  broker topic codec schemasFile partitionBy orgId [blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
+var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/sub/regex=,...]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int concurrency=int orgId=int]")
+var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex=,...]  broker topic codec schemasFile partitionBy orgId [blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
 var errFmtAddDest = errors.New("addDest <routeKey> <dest>") // not implemented yet
 var errFmtAddRewriter = errors.New("addRewriter <old> <new> <max>")
 var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex=>") // one or more can be specified at once
@@ -191,12 +191,44 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 	}
 	fun := string(t.Value[:len(t.Value)-1]) // strip trailing space
 
-	if t = s.Next(); t.Token != word {
+	regex := ""
+	prefix := ""
+	sub := ""
+
+	t = s.Next()
+	// handle old syntax of a raw regex
+	if t.Token == word {
+		regex = string(t.Value)
+		t = s.Next()
+	}
+	// scan for prefix/sub/regex=, stop when we hit a bare word (outFmt)
+	for ; t.Token != toki.EOF && t.Token != word; t = s.Next() {
+		switch t.Token {
+		case optPrefix:
+			if t = s.Next(); t.Token != word {
+				return errFmtAddAgg
+			}
+			prefix = string(t.Value)
+		case optSub:
+			if t = s.Next(); t.Token != word {
+				return errFmtAddAgg
+			}
+			sub = string(t.Value)
+		case optRegex:
+			if t = s.Next(); t.Token != word {
+				return errFmtAddAgg
+			}
+			regex = string(t.Value)
+		default:
+			return fmt.Errorf("unexpected token %d %q", t.Token, t.Value)
+		}
+	}
+
+	if regex == "" {
 		return errors.New("need a regex string")
 	}
-	regex := string(t.Value)
 
-	if t = s.Next(); t.Token != word {
+	if t.Token != word {
 		return errors.New("need a format string")
 	}
 	outFmt := string(t.Value)
@@ -237,7 +269,7 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	agg, err := aggregator.New(fun, regex, outFmt, cache, uint(interval), uint(wait), table.GetIn())
+	agg, err := aggregator.New(fun, regex, prefix, sub, outFmt, cache, uint(interval), uint(wait), table.GetIn())
 	if err != nil {
 		return err
 	}

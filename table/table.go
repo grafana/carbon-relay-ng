@@ -346,28 +346,30 @@ func (table *Table) Print() (str string) {
 	// the default values can be arbitrary (bot not smaller than the column titles),
 	// i figured multiples of 4 should look good
 	// 'R' stands for Route, 'D' for dest, 'B' blacklist, 'A" for aggregation, 'RW' for rewriter
-	maxBPrefix := 4
-	maxBSub := 4
-	maxBRegex := 4
+	maxBPrefix := 6
+	maxBSub := 6
+	maxBRegex := 5
 	maxAFunc := 4
-	maxARegex := 8
-	maxAOutFmt := 8
-	maxAInterval := 4
+	maxARegex := 5
+	maxAPrefix := 6
+	maxASub := 6
+	maxAOutFmt := 6
+	maxAInterval := 8
 	maxAwait := 4
-	maxRType := 8
-	maxRKey := 8
-	maxRPrefix := 4
-	maxRSub := 4
-	maxRRegex := 4
-	maxDPrefix := 4
-	maxDSub := 4
-	maxDRegex := 4
+	maxRType := 4
+	maxRKey := 3
+	maxRPrefix := 6
+	maxRSub := 6
+	maxRRegex := 5
+	maxDPrefix := 6
+	maxDSub := 6
+	maxDRegex := 5
 	maxDAddr := 16
 	maxDSpoolDir := 16
 
-	maxRWOld := 4
-	maxRWNew := 4
-	maxRWMax := 4
+	maxRWOld := 3
+	maxRWNew := 3
+	maxRWMax := 3
 
 	t := table.Snapshot()
 	for _, rw := range t.Rewriters {
@@ -376,13 +378,15 @@ func (table *Table) Print() (str string) {
 		maxRWMax = max(maxRWMax, len(fmt.Sprintf("%d", rw.Max)))
 	}
 	for _, black := range t.Blacklist {
-		maxBPrefix = max(maxBRegex, len(black.Prefix))
+		maxBPrefix = max(maxBPrefix, len(black.Prefix))
 		maxBSub = max(maxBSub, len(black.Sub))
 		maxBRegex = max(maxBRegex, len(black.Regex))
 	}
 	for _, agg := range t.Aggregators {
 		maxAFunc = max(maxAFunc, len(agg.Fun))
 		maxARegex = max(maxARegex, len(agg.Regex))
+		maxAPrefix = max(maxAPrefix, len(agg.Prefix))
+		maxASub = max(maxASub, len(agg.Sub))
 		maxAOutFmt = max(maxAOutFmt, len(agg.OutFmt))
 		maxAInterval = max(maxAInterval, len(fmt.Sprintf("%d", agg.Interval)))
 		maxAwait = max(maxAwait, len(fmt.Sprintf("%d", agg.Wait)))
@@ -401,63 +405,56 @@ func (table *Table) Print() (str string) {
 			maxDSpoolDir = max(maxDSpoolDir, len(dest.SpoolDir))
 		}
 	}
-	heaFmtRW := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxRWOld+1, maxRWNew+1, maxRWMax+1)
-	rowFmtRW := fmt.Sprintf("%%%ds %%%ds %%%dd\n", maxRWOld+1, maxRWNew+1, maxRWMax+1)
-	heaFmtB := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
-	rowFmtB := fmt.Sprintf("%%%ds %%%ds %%%ds\n", maxBPrefix+1, maxBSub+1, maxBRegex+1)
-	heaFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%6s %%%ds %%%ds\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
-	rowFmtA := fmt.Sprintf("%%%ds %%%ds %%%ds %%6t %%%dd %%%dd\n", maxAFunc+1, maxARegex+1, maxAOutFmt+1, maxAInterval+1, maxAwait+1)
-	heaFmtR := fmt.Sprintf("  %%%ds %%%ds %%%ds %%%ds %%%ds\n", maxRType+1, maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
-	rowFmtR := fmt.Sprintf("> %%%ds %%%ds %%%ds %%%ds %%%ds\n", maxRType+1, maxRKey+1, maxRPrefix+1, maxRSub+1, maxRRegex+1)
-	heaFmtD := fmt.Sprintf("        %%%ds %%%ds %%%ds %%%ds %%%ds %%6s %%6s %%6s\n", maxDPrefix+1, maxDSub+1, maxDRegex+1, maxDAddr+1, maxDSpoolDir+1)
-	rowFmtD := fmt.Sprintf("                %%%ds %%%ds %%%ds %%%ds %%%ds %%6t %%6t %%6t\n", maxDPrefix+1, maxDSub+1, maxDRegex+1, maxDAddr+1, maxDSpoolDir+1)
+	heaFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxRWOld, maxRWNew, maxRWMax)
+	rowFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%dd\n", maxRWOld, maxRWNew, maxRWMax)
+	heaFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBSub, maxBRegex)
+	rowFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBSub, maxBRegex)
+	heaFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-%ds  %%-%ds\n", maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
+	rowFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5t  %%-%dd  %%-%dd\n", maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
+	heaFmtR := fmt.Sprintf("  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRType, maxRKey, maxRPrefix, maxRSub, maxRRegex)
+	rowFmtR := fmt.Sprintf("> %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRType, maxRKey, maxRPrefix, maxRSub, maxRRegex)
+	heaFmtD := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-6s  %%-6s\n", maxDPrefix, maxDSub, maxDRegex, maxDAddr, maxDSpoolDir)
+	rowFmtD := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5t  %%-6t  %%-6t\n", maxDPrefix, maxDSub, maxDRegex, maxDAddr, maxDSpoolDir)
 
 	underscore := func(amount int) string {
-		str := ""
-		for i := 1; i < amount; i++ {
-			str += "="
-		}
-		str += "\n"
-		return str
+		return strings.Repeat("=", amount) + "\n"
 	}
 
 	str += "\n## Rewriters:\n"
 	cols := fmt.Sprintf(heaFmtRW, "old", "new", "max")
-	str += cols + underscore(len(cols))
+	str += cols + underscore(len(cols)-1)
 	for _, rw := range t.Rewriters {
 		str += fmt.Sprintf(rowFmtRW, rw.Old, rw.New, rw.Max)
 	}
 
 	str += "\n## Blacklist:\n"
 	cols = fmt.Sprintf(heaFmtB, "prefix", "substr", "regex")
-	str += cols + underscore(len(cols))
+	str += cols + underscore(len(cols)-1)
 	for _, black := range t.Blacklist {
 		str += fmt.Sprintf(rowFmtB, black.Prefix, black.Sub, black.Regex)
 	}
 
 	str += "\n## Aggregations:\n"
-	cols = fmt.Sprintf(heaFmtA, "func", "regex", "outFmt", "cache", "interval", "wait")
-	str += cols + underscore(len(cols))
+	cols = fmt.Sprintf(heaFmtA, "func", "regex", "prefix", "substr", "outFmt", "cache", "interval", "wait")
+	str += cols + underscore(len(cols)-1)
 	for _, agg := range t.Aggregators {
-		str += fmt.Sprintf(rowFmtA, agg.Fun, agg.Regex, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait)
+		str += fmt.Sprintf(rowFmtA, agg.Fun, agg.Regex, agg.Prefix, agg.Sub, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait)
 	}
 
 	str += "\n## Routes:\n"
 	cols = fmt.Sprintf(heaFmtR, "type", "key", "prefix", "substr", "regex")
-	str += cols + underscore(len(cols))
+	rcols := fmt.Sprintf(heaFmtD, "prefix", "substr", "regex", "addr", "spoolDir", "spool", "pickle", "online")
+	indent := "  "
+	str += cols + underscore(max(len(cols), len(rcols)+len(indent))-1)
+	divider := indent + strings.Repeat("-", max(len(cols)-len(indent), len(rcols))-1) + "\n"
 
 	for _, route := range t.Routes {
 		m := route.Matcher
 		str += fmt.Sprintf(rowFmtR, route.Type, route.Key, m.Prefix, m.Sub, m.Regex)
-		str += fmt.Sprintf(heaFmtD, "prefix", "substr", "regex", "addr", "spoolDir", "spool", "pickle", "online")
-		str += "              "
-		for i := 1; i < maxDPrefix+maxDSub+maxDRegex+maxDAddr+maxDSpoolDir+5+3*6+10; i++ {
-			str += "-"
-		}
-		str += "\n"
+		str += indent + rcols + divider
 		for _, dest := range route.Dests {
 			m := dest.Matcher
-			str += fmt.Sprintf(rowFmtD, m.Prefix, m.Sub, m.Regex, dest.Addr, dest.SpoolDir, dest.Spool, dest.Pickle, dest.Online)
+			str += indent + fmt.Sprintf(rowFmtD, m.Prefix, m.Sub, m.Regex, dest.Addr, dest.SpoolDir, dest.Spool, dest.Pickle, dest.Online)
 		}
 		str += "\n"
 	}
@@ -544,7 +541,7 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 
 func (table *Table) InitAggregation(config cfg.Config) error {
 	for i, aggConfig := range config.Aggregation {
-		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), table.In)
+		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.Prefix, aggConfig.Substr, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), table.In)
 		if err != nil {
 			log.Error(err.Error())
 			return fmt.Errorf("could not add aggregation #%d", i+1)
