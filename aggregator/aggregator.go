@@ -175,9 +175,9 @@ func (a *Aggregator) AddMaybe(buf [][]byte, val float64, ts uint32) {
 	}
 }
 
-//PreMatch checks if the specified metric might match the regex
-//by comparing it to the prefix derived from the regex
-//if this returns false, the metric will definitely not match the regex and be ignored.
+//PreMatch checks if the specified metric matches the specified prefix and/or substring
+//If prefix isn't explicitly specified it will be derived from the regex where possible.
+//If this returns false the metric will not be passed through to the main regex matching stage.
 func (a *Aggregator) PreMatch(buf []byte) bool {
 	if len(a.prefix) > 0 && !bytes.HasPrefix(buf, a.prefix) {
 		return false

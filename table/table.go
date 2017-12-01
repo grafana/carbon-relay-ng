@@ -340,11 +340,9 @@ func (table *Table) UpdateRoute(key string, opts map[string]string) error {
 }
 
 func (table *Table) Print() (str string) {
-	// TODO also print route type, print blacklist
 	// we want to print things concisely (but no smaller than the defaults below)
 	// so we have to figure out the max lengths of everything first
 	// the default values can be arbitrary (bot not smaller than the column titles),
-	// i figured multiples of 4 should look good
 	// 'R' stands for Route, 'D' for dest, 'B' blacklist, 'A" for aggregation, 'RW' for rewriter
 	maxBPrefix := 6
 	maxBSub := 6
