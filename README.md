@@ -217,16 +217,20 @@ commands:
     addRewriter <old> <new> <max>                add rewriter that will rewrite all old to new, max times
                                                  use /old/ to specify a regular expression match, with support for ${1} style identifiers in new
 
-    addAgg <func> <regex> <fmt> <interval> <wait> [cache=true/false] add a new aggregation rule.
+    addAgg <func> <match> <fmt> <interval> <wait> [cache=true/false] add a new aggregation rule.
              <func>:                             aggregation function to use
                avg
                delta
                derive
+               last
                max
                min
                stdev
                sum
-             <regex>                             regex to match incoming metrics. supports groups (numbered, see fmt)
+             <match>
+               regex=<str>                       mandatory. regex to match incoming metrics. supports groups (numbered, see fmt)
+               sub=<str>                         substring to match incoming metrics before matching regex (can save you CPU)
+               prefix=<str>                      prefix to match incoming metrics before matching regex (can save you CPU). If not specified, will try to automatically determine from regex.
              <fmt>                               format of output metric. you can use $1, $2, etc to refer to numbered groups
              <interval>                          align odd timestamps of metrics into buckets by this interval in seconds.
              <wait>                              amount of seconds to wait for "late" metric messages before computing and flushing final result.
