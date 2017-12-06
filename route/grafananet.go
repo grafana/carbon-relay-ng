@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"hash/fnv"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"sync"
@@ -113,9 +114,6 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 	}
 	r.config.Store(baseConfig{*m, make([]*dest.Destination, 0)})
 
-	r.client = &http.Client{
-		Timeout: r.timeout,
-	}
 	// start off with a transport the same as Go's DefaultTransport
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -140,7 +138,10 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		}
 	}
 
-	r.client.Transport = transport
+	r.client = &http.Client{
+		Timeout:   r.timeout,
+		Transport: transport,
+	}
 
 	go r.run()
 	return r, nil
@@ -238,6 +239,7 @@ func (route *GrafanaNet) flush(shard int) {
 				route.tickFlushSize.Update(int64(len(data)))
 				route.durationTickFlush.Update(diff)
 
+				ioutil.ReadAll(resp.Body)
 				resp.Body.Close()
 				break
 			}
@@ -249,6 +251,8 @@ func (route *GrafanaNet) flush(shard int) {
 				buf := make([]byte, 300)
 				n, _ := resp.Body.Read(buf)
 				log.Warning("GrafanaNet failed to submit data: http %d - %s will try again in %s (this attempt took %s)", resp.StatusCode, buf[:n], dur, diff)
+
+				ioutil.ReadAll(resp.Body)
 				resp.Body.Close()
 			}
 
