@@ -283,5 +283,7 @@ func (route *GrafanaNet) Shutdown() error {
 }
 
 func (route *GrafanaNet) Snapshot() Snapshot {
-	return makeSnapshot(&route.baseRoute, "GrafanaNet")
+	snapshot := makeSnapshot(&route.baseRoute, "GrafanaNet")
+	snapshot.Addr = route.addr
+	return snapshot
 }
