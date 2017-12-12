@@ -1,6 +1,7 @@
 *.deb
 *.swp
 /carbon-relay-ng
+/carbon-relay-ng.exe
 /carbon-relay-ng.ini
 /carbon-relay-ng.pid
 /carbon-relay-ng.test
