@@ -6,6 +6,11 @@ build:
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
 
+build-win:
+	cd ui/web && go-bindata -pkg web admin_http_assets
+	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" -o carbon-relay-ng.exe ./cmd/carbon-relay-ng
+
 test:
 	go test ./...
 
