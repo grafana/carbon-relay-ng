@@ -449,6 +449,14 @@ func (table *Table) Print() (str string) {
 	for _, route := range t.Routes {
 		m := route.Matcher
 		str += fmt.Sprintf(rowFmtR, route.Type, route.Key, m.Prefix, m.Sub, m.Regex)
+		if route.Type == "GrafanaNet" {
+			str += indent + route.Addr + "\n"
+			continue
+		}
+
+		if len(route.Dests) < 1 {
+			continue
+		}
 		str += indent + rcols + divider
 		for _, dest := range route.Dests {
 			m := dest.Matcher

@@ -51,6 +51,7 @@ type Snapshot struct {
 	Dests   []*dest.Destination `json:"destination"`
 	Type    string              `json:"type"`
 	Key     string              `json:"key"`
+	Addr    string              `json:"addr,omitempty"`
 }
 
 type baseRoute struct {
@@ -206,8 +207,7 @@ func makeSnapshot(route *baseRoute, routeType string) Snapshot {
 	for i, d := range conf.Dests() {
 		dests[i] = d.Snapshot()
 	}
-	return Snapshot{*conf.Matcher(), dests, routeType, route.key}
-
+	return Snapshot{Matcher: *conf.Matcher(), Dests: dests, Type: routeType, Key: route.key}
 }
 
 func (route *SendAllMatch) Snapshot() Snapshot {
