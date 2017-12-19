@@ -51,7 +51,7 @@ type Conn struct {
 	numDropBadPickle  metrics.Counter
 }
 
-func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle bool, connBufSize, ioBufSize int) (*Conn, error) {
+func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle bool, connBufSize int, inChan *chan []byte, ioBufSize int, buffer *[]byte) (*Conn, error) {
 	raddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -64,9 +64,9 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle b
 	cleanAddr := util.AddrToPath(addr)
 	connObj := &Conn{
 		conn:              conn,
-		buffered:          NewWriter(conn, ioBufSize, cleanAddr),
+		buffered:          NewWriter(conn, ioBufSize, cleanAddr, buffer),
 		shutdown:          make(chan bool, 1), // when we write here, HandleData() may not be running anymore to read from the chan
-		In:                make(chan []byte, connBufSize),
+		In:                *inChan,
 		dest:              dest,
 		up:                true,
 		pickle:            pickle,

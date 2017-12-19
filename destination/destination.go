@@ -41,7 +41,9 @@ type Destination struct {
 	periodFlush  time.Duration
 	periodReConn time.Duration
 	connBufSize  int // in metrics. (each metric line is typically about 70 bytes). default 30k. to make sure writes to In are fast until conn flushing can't keep up
+	connInChan   chan []byte
 	ioBufSize    int // conn io buffer in bytes. 4096 is go default. 2M is our default
+	Buffer       []byte
 
 	SpoolBufSize         int
 	SpoolMaxBytesPerFile int64
@@ -85,7 +87,9 @@ func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFl
 		periodFlush:          periodFlush,
 		periodReConn:         periodReConn,
 		connBufSize:          connBufSize,
+		connInChan:           make(chan []byte, connBufSize),
 		ioBufSize:            ioBufSize,
+		Buffer:               make([]byte, ioBufSize),
 		SpoolBufSize:         spoolBufSize,
 		SpoolMaxBytesPerFile: spoolMaxBytesPerFile,
 		SpoolSyncEvery:       spoolSyncEvery,
@@ -220,7 +224,7 @@ func (dest *Destination) updateConn(addr string) {
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
 	addr, instance := addrInstanceSplit(addr)
-	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle, dest.connBufSize, dest.ioBufSize)
+	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle, dest.connBufSize, &dest.connInChan, dest.ioBufSize, &dest.Buffer)
 	if err != nil {
 		log.Debug("dest %v: %v\n", dest.Addr, err.Error())
 		return

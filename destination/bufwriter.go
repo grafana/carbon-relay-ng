@@ -32,13 +32,13 @@ type Writer struct {
 // NewWriterSize returns a new Writer whose buffer has at least the specified
 // size. If the argument io.Writer is already a Writer with large enough
 // size, it returns the underlying Writer.
-func NewWriter(w io.Writer, size int, key string) *Writer {
+func NewWriter(w io.Writer, size int, key string, buffer *[]byte) *Writer {
 	if size <= 0 {
 		panic("invalid size requested")
 	}
 	return &Writer{
 		key: key,
-		buf: make([]byte, size),
+		buf: *buffer,
 		wr:  w,
 		durationOverflowFlush: stats.Timer("dest=" + key + ".what=durationFlush.type=overflow"),
 	}
