@@ -40,10 +40,13 @@ deployment:
   production:
     branch: master
     commands:
-      # Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8 (jessie), Centos6 and Centos7. (no debian 7 wheezy because that's sysvinit which we don't have packages for)
+      # Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8 (jessie), debian 9 (stretch), debian 10 (buster, testing) Centos6 and Centos7.
+      # (no debian 7 wheezy because that's sysvinit which we don't have packages for)
       - package_cloud push ${PACKAGECLOUD_REPO}/ubuntu/trusty build/deb-upstart/carbon-relay-ng-*.deb
       - package_cloud push ${PACKAGECLOUD_REPO}/ubuntu/xenial build/deb-systemd/carbon-relay-ng-*.deb
       - package_cloud push ${PACKAGECLOUD_REPO}/debian/jessie build/deb-systemd/carbon-relay-ng-*.deb
+      - package_cloud push ${PACKAGECLOUD_REPO}/debian/stretch build/deb-systemd/carbon-relay-ng-*.deb
+      - package_cloud push ${PACKAGECLOUD_REPO}/debian/buster build/deb-systemd/carbon-relay-ng-*.deb
       - package_cloud push ${PACKAGECLOUD_REPO}/el/6          build/centos-6/carbon-relay-ng-*.el6.*.rpm
       - package_cloud push ${PACKAGECLOUD_REPO}/el/7          build/centos-7/carbon-relay-ng-*.el7.*.rpm
       - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_KEY

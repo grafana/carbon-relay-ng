@@ -54,7 +54,7 @@ Installation
 ------------
 
 You can install packages from the [raintank packagecloud repository](https://packagecloud.io/raintank/raintank)
-We automatically build packages for Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8 (jessie), Centos6 and Centos7 when builds in CircleCI succeed.
+We automatically build packages for Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8, 9, 10 (jessie, stretch and buster/testing), Centos6 and Centos7 when builds in CircleCI succeed.
 [Instructions for enabling the repository](https://packagecloud.io/raintank/raintank/install)
 
 You can also just build a binary (see below) and run the binary with a config file like so:
