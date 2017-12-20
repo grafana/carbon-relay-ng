@@ -29,7 +29,7 @@ func (k *keepSafe) keepClean() {
 	for range tick.C {
 		k.Lock()
 		k.safeOld = k.safeRecent
-		k.safeRecent = make([][]byte, 0, k.initialCap)
+		k.safeRecent = k.safeRecent[:0]
 		k.Unlock()
 	}
 }
@@ -43,8 +43,8 @@ func (k *keepSafe) Add(buf []byte) {
 func (k *keepSafe) GetAll() [][]byte {
 	k.Lock()
 	ret := append(k.safeOld, k.safeRecent...)
-	k.safeOld = make([][]byte, 0, k.initialCap)
-	k.safeRecent = make([][]byte, 0, k.initialCap)
+	k.safeOld = k.safeOld[:0]
+	k.safeRecent = k.safeRecent[:0]
 	k.Unlock()
 	return ret
 }

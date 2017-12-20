@@ -51,6 +51,7 @@ type Destination struct {
 	SpoolSyncPeriod      time.Duration
 	SpoolSleep           time.Duration // how long to wait between stores to spool
 	UnspoolSleep         time.Duration // how long to wait between loads from spool
+	keepSafe             *keepSafe
 
 	// set in/via Run()
 	In                  chan []byte        `json:"-"` // incoming metrics
@@ -96,6 +97,7 @@ func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFl
 		SpoolSyncPeriod:      spoolSyncPeriod,
 		SpoolSleep:           spoolSleep,
 		UnspoolSleep:         unspoolSleep,
+		keepSafe:             NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
 	}
 	dest.setMetrics()
 	return dest, nil
@@ -224,7 +226,7 @@ func (dest *Destination) updateConn(addr string) {
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
 	addr, instance := addrInstanceSplit(addr)
-	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle, dest.connBufSize, &dest.connInChan, dest.ioBufSize, &dest.Buffer)
+	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle, dest.connBufSize, &dest.connInChan, dest.ioBufSize, &dest.Buffer, dest.keepSafe)
 	if err != nil {
 		log.Debug("dest %v: %v\n", dest.Addr, err.Error())
 		return

@@ -51,7 +51,7 @@ type Conn struct {
 	numDropBadPickle  metrics.Counter
 }
 
-func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle bool, connBufSize int, inChan *chan []byte, ioBufSize int, buffer *[]byte) (*Conn, error) {
+func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle bool, connBufSize int, inChan *chan []byte, ioBufSize int, buffer *[]byte, keepSafe *keepSafe) (*Conn, error) {
 	raddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle b
 		flush:             make(chan bool),
 		flushErr:          make(chan error),
 		periodFlush:       periodFlush,
-		keepSafe:          NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
+		keepSafe:          keepSafe,
 		numErrTruncated:   stats.Counter("dest=" + cleanAddr + ".unit=Err.type=truncated"),
 		numErrWrite:       stats.Counter("dest=" + cleanAddr + ".unit=Err.type=write"),
 		numErrFlush:       stats.Counter("dest=" + cleanAddr + ".unit=Err.type=flush"),
