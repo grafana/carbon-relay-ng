@@ -5,27 +5,30 @@ import (
 )
 
 type Config struct {
-	Listen_addr             string
-	Pickle_addr             string
-	Admin_addr              string
-	Http_addr               string
-	Spool_dir               string
-	Amqp                    Amqp
-	Max_procs               int
-	First_only              bool
-	Init                    Init
-	Instance                string
-	Log_level               string
-	Instrumentation         instrumentation
-	Bad_metrics_max_age     string
-	Pid_file                string
-	Validation_level_legacy validate.LevelLegacy
-	Validation_level_m20    validate.LevelM20
-	Validate_order          bool
-	BlackList               []string
-	Aggregation             []Aggregation
-	Route                   []Route
-	Rewriter                []Rewriter
+	// Plaintext
+	Listen_addr              string
+	Plaintext_socket_timeout int64
+	Pickle_addr              string
+	Pickle_socket_timeout    int64
+	Admin_addr               string
+	Http_addr                string
+	Spool_dir                string
+	Amqp                     Amqp
+	Max_procs                int
+	First_only               bool
+	Init                     Init
+	Instance                 string
+	Log_level                string
+	Instrumentation          instrumentation
+	Bad_metrics_max_age      string
+	Pid_file                 string
+	Validation_level_legacy  validate.LevelLegacy
+	Validation_level_m20     validate.LevelM20
+	Validate_order           bool
+	BlackList                []string
+	Aggregation              []Aggregation
+	Route                    []Route
+	Rewriter                 []Rewriter
 }
 
 type Aggregation struct {

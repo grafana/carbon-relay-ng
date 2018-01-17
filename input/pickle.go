@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -33,11 +34,16 @@ func NewPickle(config cfg.Config, addr string, tbl *table.Table, bad *badmetrics
 
 func (p *Pickle) Handle(c net.Conn) {
 	defer c.Close()
-	// TODO c.SetTimeout(60e9)
+	idle_timeout := time.Duration(p.config.Pickle_socket_timeout) * time.Second
 	r := bufio.NewReaderSize(c, 4096)
 	log.Debug("pickle.go: entering ReadLoop...")
 ReadLoop:
 	for {
+		if idle_timeout > 0 && c.RemoteAddr() != nil {
+			if err := c.SetReadDeadline(time.Now().Add(idle_timeout)); err != nil {
+				log.Error(err.Error())
+			}
+		}
 
 		// Note that everything in this loop should proceed as fast as it can
 		// so we're not blocked and can keep processing
@@ -48,7 +54,9 @@ ReadLoop:
 		var length uint32
 		err := binary.Read(r, binary.BigEndian, &length)
 		if err != nil {
-			if io.EOF != err {
+			if err, ok := err.(net.Error); ok && err.Timeout() {
+				log.Warning("Connection from %s is idle, closing.\n", c.RemoteAddr())
+			} else if io.EOF != err {
 				log.Error("couldn't read payload length: " + err.Error())
 			}
 			log.Debug("pickle.go: detected EOF while detecting payload length with binary.Read, nothing more to read, breaking")

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"net"
+	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -30,9 +31,14 @@ func NewPlain(config cfg.Config, addr string, tbl *table.Table, badMetrics *badm
 
 func (p *Plain) Handle(c net.Conn) {
 	defer c.Close()
-	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
+	idle_timeout := time.Duration(p.config.Plaintext_socket_timeout) * time.Second
 	for {
+		if idle_timeout > 0 && c.RemoteAddr() != nil {
+			if err := c.SetReadDeadline(time.Now().Add(idle_timeout)); err != nil {
+				log.Error(err.Error())
+			}
+		}
 
 		// Note that everything in this loop should proceed as fast as it can
 		// so we're not blocked and can keep processing
@@ -43,7 +49,9 @@ func (p *Plain) Handle(c net.Conn) {
 		buf, _, err := r.ReadLine()
 
 		if err != nil {
-			if io.EOF != err {
+			if err, ok := err.(net.Error); ok && err.Timeout() {
+				log.Warning("Connection from %v is idle, closing.\n", c.RemoteAddr())
+			} else if io.EOF != err {
 				log.Error(err.Error())
 			}
 			break
