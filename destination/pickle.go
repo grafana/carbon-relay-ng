@@ -3,10 +3,11 @@ package destination
 import (
 	"bytes"
 	"encoding/binary"
+
 	"github.com/kisielk/og-rek"
 )
 
-func pickle(dp *Datapoint) []byte {
+func Pickle(dp *Datapoint) []byte {
 	dataBuf := &bytes.Buffer{}
 	pickler := ogórek.NewEncoder(dataBuf)
 

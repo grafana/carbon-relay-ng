@@ -11,7 +11,7 @@ Like carbon-relay from the graphite project, except it:
  * performs better: should be able to do about 100k ~ 1M million metrics per second depending on configuration and CPU speed.
  * you can adjust the routing table at runtime, in real time using the web or telnet interface (though they may have some rough edges)
  * has aggregator functionality built-in for cross-series, cross-time and cross-time-and-series aggregations.
- * supports plaintext and pickle graphite routes (output) and metrics2.0/grafana.net, as well as kafka.
+ * supports plaintext and pickle graphite routes (output) and metrics2.0/grafana.net, as well as kafka and Google PubSub.
  * graphite routes supports a per-route spooling policy.
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
  * performs validation on all incoming metrics (see below)
@@ -93,7 +93,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
   * any routes that matches
 * The route can have different behaviors, based on its type:
 
-  * for grafanaNet / kafkaMdm routes, there is only a single endpoint so that's where the data goes.  For standard/carbon routes you can control how data gets routed into destinations:
+  * for grafanaNet / kafkaMdm / Google PubSub routes, there is only a single endpoint so that's where the data goes.  For standard/carbon routes you can control how data gets routed into destinations:
   * sendAllMatch: send all metrics to all the defined endpoints (possibly, and commonly only 1 endpoint).
   * sendFirstMatch: send the metrics to the first endpoint that matches it.
   * consistentHashing: the algorithm is the same as Carbon's consistent hashing.
@@ -107,7 +107,7 @@ if connection is up but slow, we drop the data
 if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data
 if connection is down and spooling disabled -> drop the data
 
-kafka and grafanaNet have an in-memory buffer and can be configured to blocking or non-blocking mode when the buffer runs full.
+kafka, Google PubSub, and grafanaNet have an in-memory buffer and can be configured to blocking or non-blocking mode when the buffer runs full.
 
 
 Input

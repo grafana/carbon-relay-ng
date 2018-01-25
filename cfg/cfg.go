@@ -47,7 +47,7 @@ type Route struct {
 	Regex        string
 	Destinations []string
 
-	// grafanaNet & kafkaMdm
+	// grafanaNet & kafkaMdm & Google PubSub
 	SchemasFile  string
 	OrgId        int
 	BufSize      int
@@ -65,9 +65,14 @@ type Route struct {
 
 	// kafkaMdm
 	Brokers     []string
-	Topic       string
-	Codec       string
+	Topic       string // also used by Google PubSub
+	Codec       string // also used by Google PubSub
 	PartitionBy string
+
+	// Google PubSub
+	Project      string
+	Format       string
+	FlushMaxSize int
 }
 
 type Rewriter struct {
