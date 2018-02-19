@@ -195,6 +195,7 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 		time.Duration(req.spoolSyncPeriod)*time.Millisecond,
 		time.Duration(req.SpoolSleep)*time.Microsecond,
 		time.Duration(req.UnspoolSleep)*time.Microsecond,
+		req.Key,
 	)
 	if err != nil {
 		return nil, &handlerError{err, "unable to create destination", http.StatusBadRequest}
