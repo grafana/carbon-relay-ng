@@ -32,6 +32,7 @@ type Destination struct {
 	Addr         string `json:"address"`  // tcp dest
 	Instance     string `json:"instance"` // Optional carbon instance name, useful only with consistent hashing
 	SpoolDir     string // where to store spool files (if enabled)
+	SpoolKey     string // unique name per destination for spoolDir
 	Spool        bool   `json:"spool"`        // spool metrics to disk while dest down?
 	Pickle       bool   `json:"pickle"`       // send in pickle format?
 	Online       bool   `json:"online"`       // state of connection online/offline.
@@ -49,6 +50,7 @@ type Destination struct {
 	SpoolSyncPeriod      time.Duration
 	SpoolSleep           time.Duration // how long to wait between stores to spool
 	UnspoolSleep         time.Duration // how long to wait between loads from spool
+	RouteName            string        // how long to wait between loads from spool
 
 	// set in/via Run()
 	In                  chan []byte        `json:"-"` // incoming metrics
@@ -67,18 +69,20 @@ type Destination struct {
 }
 
 // New creates a destination object. Note that it still needs to be told to run via Run().
-func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration) (*Destination, error) {
+func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration, routeName string) (*Destination, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
 	}
 	addr, instance := addrInstanceSplit(addr)
 	cleanAddr := util.AddrToPath(addr)
+	spoolKey := util.SpoolKeyAddrToPath(addr, routeName)
 	dest := &Destination{
 		Matcher:              *m,
 		Addr:                 addr,
 		Instance:             instance,
 		SpoolDir:             spoolDir,
+		SpoolKey:             spoolKey,
 		Spool:                spool,
 		Pickle:               pickle,
 		cleanAddr:            cleanAddr,
@@ -92,6 +96,7 @@ func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFl
 		SpoolSyncPeriod:      spoolSyncPeriod,
 		SpoolSleep:           spoolSleep,
 		UnspoolSleep:         unspoolSleep,
+		RouteName:            routeName,
 	}
 	dest.setMetrics()
 	return dest, nil
@@ -187,7 +192,7 @@ func (dest *Destination) Run() {
 	if dest.Spool {
 		// TODO better naming for spool, because it won't update when addr changes
 		dest.spool = NewSpool(
-			dest.cleanAddr,
+			dest.SpoolKey,
 			dest.SpoolDir,
 			dest.SpoolBufSize,
 			dest.SpoolMaxBytesPerFile,
