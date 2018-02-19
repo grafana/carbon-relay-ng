@@ -5,10 +5,10 @@ import (
 	"net"
 	"strings"
 
+	logging "github.com/op/go-logging"
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/telnet"
-	logging "github.com/op/go-logging"
 )
 
 var log = logging.MustGetLogger("ui-telnet") // for tests. overridden by main

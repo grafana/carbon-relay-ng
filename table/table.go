@@ -577,7 +577,7 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 	for _, routeConfig := range config.Route {
 		switch routeConfig.Type {
 		case "sendAllMatch":
-			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, true)
+			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, true, routeConfig.Key)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("could not parse destinations for route '%s'", routeConfig.Key)
@@ -593,7 +593,7 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 			}
 			table.AddRoute(route)
 		case "sendFirstMatch":
-			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, true)
+			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, true, routeConfig.Key)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("could not parse destinations for route '%s'", routeConfig.Key)
@@ -609,7 +609,7 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 			}
 			table.AddRoute(route)
 		case "consistentHashing":
-			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, false)
+			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, false, routeConfig.Key)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("could not parse destinations for route '%s'", routeConfig.Key)

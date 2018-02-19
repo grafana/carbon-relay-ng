@@ -103,7 +103,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
 carbon-relay-ng (for now) focuses on staying up and not consuming much resources.
 
 For carbon routes:
-if connection is up but slow, we drop the data 
+if connection is up but slow, we drop the data
 if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data
 if connection is down and spooling disabled -> drop the data
 
