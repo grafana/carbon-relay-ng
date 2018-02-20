@@ -10,14 +10,14 @@ import (
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
-	"github.com/graphite-ng/carbon-relay-ng/aggregator"
-	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
-	"github.com/graphite-ng/carbon-relay-ng/cfg"
-	"github.com/graphite-ng/carbon-relay-ng/destination"
-	"github.com/graphite-ng/carbon-relay-ng/rewriter"
-	"github.com/graphite-ng/carbon-relay-ng/route"
-	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	logging "github.com/op/go-logging"
+	"github.com/scrichar/carbon-relay-ng/aggregator"
+	"github.com/scrichar/carbon-relay-ng/badmetrics"
+	"github.com/scrichar/carbon-relay-ng/cfg"
+	"github.com/scrichar/carbon-relay-ng/destination"
+	"github.com/scrichar/carbon-relay-ng/rewriter"
+	"github.com/scrichar/carbon-relay-ng/route"
+	tbl "github.com/scrichar/carbon-relay-ng/table"
 )
 
 var table *tbl.Table

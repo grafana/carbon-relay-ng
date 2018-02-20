@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/imperatives"
-	tbl "github.com/graphite-ng/carbon-relay-ng/table"
+	"github.com/scrichar/carbon-relay-ng/imperatives"
+	tbl "github.com/scrichar/carbon-relay-ng/table"
 
 	logging "github.com/op/go-logging"
 )

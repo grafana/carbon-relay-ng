@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
-	"github.com/graphite-ng/carbon-relay-ng/util"
+	"github.com/scrichar/carbon-relay-ng/stats"
+	"github.com/scrichar/carbon-relay-ng/util"
 )
 
 var keepsafe_initial_cap = 100000 // not very important
