@@ -282,6 +282,8 @@ func (c *Conn) Close() error {
 	c.updateUp <- false // redundant in case HandleData() called us, but not if the dest called us
 	log.Debugf("conn %s Close() called. sending shutdown", c.dest.Key)
 	c.shutdown <- true
+	log.Debugf("conn %s c.keepSafe.Close()\n", c.dest.Key)
+	c.keepSafe.Stop()
 	log.Debugf("conn %s c.conn.Close()", c.dest.Key)
 	a := c.conn.Close()
 	log.Debugf("conn %s c.conn is closed", c.dest.Key)
