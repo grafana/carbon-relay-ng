@@ -50,7 +50,7 @@ type Destination struct {
 	SpoolSyncPeriod      time.Duration
 	SpoolSleep           time.Duration // how long to wait between stores to spool
 	UnspoolSleep         time.Duration // how long to wait between loads from spool
-	RouteName            string        // how long to wait between loads from spool
+	RouteName            string
 
 	// set in/via Run()
 	In                  chan []byte        `json:"-"` // incoming metrics
