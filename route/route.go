@@ -125,7 +125,7 @@ func (route *SendAllMatch) Dispatch(buf []byte) {
 	for _, dest := range conf.Dests() {
 		if dest.Match(buf) {
 			// dest should handle this as quickly as it can
-			log.Info("route %s sending to dest %s: %s", route.key, dest.Addr, buf)
+			log.Info("route %s sending to dest %s: %s", route.key, dest.Key, buf)
 			dest.In <- buf
 		}
 	}
@@ -137,7 +137,7 @@ func (route *SendFirstMatch) Dispatch(buf []byte) {
 	for _, dest := range conf.Dests() {
 		if dest.Match(buf) {
 			// dest should handle this as quickly as it can
-			log.Info("route %s sending to dest %s: %s", route.key, dest.Addr, buf)
+			log.Info("route %s sending to dest %s: %s", route.key, dest.Key, buf)
 			dest.In <- buf
 			break
 		}
@@ -150,7 +150,7 @@ func (route *ConsistentHashing) Dispatch(buf []byte) {
 		name := buf[0:pos]
 		dest := conf.Dests()[conf.Hasher.GetDestinationIndex(name)]
 		// dest should handle this as quickly as it can
-		log.Info("route %s sending to dest %s: %s", route.key, dest.Addr, name)
+		log.Info("route %s sending to dest %s: %s", route.key, dest.Key, name)
 		dest.In <- buf
 	} else {
 		log.Error("could not parse %s\n", buf)

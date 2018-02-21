@@ -13,7 +13,5 @@ func AddrToPath(s string) string {
 // some.host:2003, kafkaRoute -> kafkaRoute_some_host_2003
 // http://some.host:8080, kafkaRoute -> kafkaRoute_http_some_host_8080
 func SpoolKeyAddrToPath(s string, routeName string) string {
-	s = AddrToPath(s)
-	sList := []string{routeName, s}
-	return strings.Join(sList, "_")
+	return routeName + "_" + AddrToPath(s)
 }
