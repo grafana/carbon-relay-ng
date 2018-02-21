@@ -630,7 +630,7 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 			var bufSize = int(1e7)  // since a message is typically around 100B this is 1GB
 			var flushMaxNum = 10000 // number of metrics
 			var flushMaxWait = 500  // in ms
-			var timeout = 5000      // in ms
+			var timeout = 10000     // in ms
 			var concurrency = 10    // number of concurrent connections to tsdb-gw
 			var orgId = 1
 

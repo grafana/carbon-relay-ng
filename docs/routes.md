@@ -49,7 +49,7 @@ concurrency    |     N     |  int        | 10      | number of concurrent connec
 bufSize        |     N     |  int        | 10M     | buffer size. assume +- 100B per message, so 10M is about 1GB of RAM
 flushMaxNum    |     N     |  int        | 10k     | max number of metrics to buffer before triggering flush
 flushMaxWait   |     N     |  int (ms)   | 500     | max time to buffer before triggering flush
-timeout        |     N     |  int (ms)   | 5000    | abort and retry requests to api gateway if takes longer than this.
+timeout        |     N     |  int (ms)   | 10000   | abort and retry requests to api gateway if takes longer than this.
 orgId          |     N     |  int        | 1       |
 
 ## kafkaMdm route
