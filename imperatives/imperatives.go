@@ -23,6 +23,7 @@ const (
 	addRouteConsistentHashing
 	addRouteGrafanaNet
 	addRouteKafkaMdm
+	addRoutePubSub
 	addDest
 	addRewriter
 	delRoute
@@ -67,6 +68,11 @@ const (
 	word
 	optConcurrency
 	optOrgId
+	optPubSubProject
+	optPubSubTopic
+	optPubSubFormat
+	optPubSubCodec
+	optPubSubFlushMaxSize
 )
 
 // we should make sure we apply changes atomatically. e.g. when changing dest between address A and pickle=false and B with pickle=true,
@@ -80,6 +86,7 @@ var tokens = []toki.Def{
 	{Token: addRouteConsistentHashing, Pattern: "addRoute consistentHashing"},
 	{Token: addRouteGrafanaNet, Pattern: "addRoute grafanaNet"},
 	{Token: addRouteKafkaMdm, Pattern: "addRoute kafkaMdm"},
+	{Token: addRoutePubSub, Pattern: "addRoute pubsub"},
 	{Token: addDest, Pattern: "addDest"},
 	{Token: addRewriter, Pattern: "addRewriter"},
 	{Token: delRoute, Pattern: "delRoute"},
@@ -112,6 +119,11 @@ var tokens = []toki.Def{
 	{Token: optSSLVerify, Pattern: "sslverify="},
 	{Token: optConcurrency, Pattern: "concurrency="},
 	{Token: optOrgId, Pattern: "orgId="},
+	{Token: optPubSubProject, Pattern: "project="},
+	{Token: optPubSubTopic, Pattern: "topic="},
+	{Token: optPubSubFormat, Pattern: "format="},
+	{Token: optPubSubCodec, Pattern: "codec="},
+	{Token: optPubSubFlushMaxSize, Pattern: "flushMaxSize="},
 	{Token: str, Pattern: "\".*\""},
 	{Token: sep, Pattern: "##"},
 	{Token: avgFn, Pattern: "avg "},
@@ -133,6 +145,7 @@ var errFmtAddAgg = errors.New("addAgg <avg|delta|derive|last|max|min|stdev|sum> 
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
 var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/sub/regex=,...]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int concurrency=int orgId=int]")
 var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex=,...]  broker topic codec schemasFile partitionBy orgId [blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
+var errFmtAddRoutePubSub = errors.New("addRoute pubsub key [prefix/sub/regex=,...]  project topic [codec=gzip/none format=plain/pickle blocking=true/false bufSize=int flushMaxSize=int flushMaxWait=int]")
 var errFmtAddDest = errors.New("addDest <routeKey> <dest>") // not implemented yet
 var errFmtAddRewriter = errors.New("addRewriter <old> <new> <max>")
 var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex=>") // one or more can be specified at once
@@ -171,6 +184,8 @@ func Apply(table Table, cmd string) error {
 		return readAddRouteGrafanaNet(s, table)
 	case addRouteKafkaMdm:
 		return readAddRouteKafkaMdm(s, table)
+	case addRoutePubSub:
+		return readAddRoutePubSub(s, table)
 	case addRewriter:
 		return readAddRewriter(s, table)
 	case delRoute:
@@ -636,6 +651,111 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 	}
 
 	route, err := route.NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy, brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, blocking)
+	if err != nil {
+		return err
+	}
+	table.AddRoute(route)
+	return nil
+}
+
+func readAddRoutePubSub(s *toki.Scanner, table Table) error {
+	t := s.Next()
+	if t.Token != word {
+		return errFmtAddRoutePubSub
+	}
+	key := string(t.Value)
+
+	prefix, sub, regex, err := readRouteOpts(s)
+	if err != nil {
+		return err
+	}
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRoutePubSub
+	}
+	project := string(t.Value)
+
+	t = s.Next()
+	if t.Token != word {
+		return errFmtAddRoutePubSub
+	}
+	topic := string(t.Value)
+
+	var codec = "gzip"
+	var format = "plain"                    // aka graphite 'linemode'
+	var bufSize = int(1e7)                  // since a message is typically around 100B this is 1GB
+	var flushMaxSize = int(1e7) - int(4096) // 5e6 = 5MB. max size of message. Note google limits to 10M, but we want to limit to less to account for overhead
+	var flushMaxWait = 1000                 // in ms
+	var blocking = false
+
+	t = s.Next()
+	for ; t.Token != toki.EOF; t = s.Next() {
+		switch t.Token {
+		case optPubSubCodec:
+			t = s.Next()
+			if t.Token != word {
+				return errFmtAddRoutePubSub
+			}
+			codec = string(t.Value)
+			if codec != "none" && codec != "gzip" {
+				return errFmtAddRoutePubSub
+			}
+		case optPubSubFormat:
+			t = s.Next()
+			if t.Token != word {
+				return errFmtAddRoutePubSub
+			}
+			format = string(t.Value)
+			if format != "plain" && format != "pickle" {
+				return errFmtAddRoutePubSub
+			}
+		case optBlocking:
+			t = s.Next()
+			if t.Token == optTrue || t.Token == optFalse {
+				blocking, err = strconv.ParseBool(string(t.Value))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRoutePubSub
+			}
+		case optBufSize:
+			t = s.Next()
+			if t.Token == num {
+				bufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRoutePubSub
+			}
+		case optPubSubFlushMaxSize:
+			t = s.Next()
+			if t.Token == num {
+				flushMaxSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRoutePubSub
+			}
+		case optFlushMaxWait:
+			t = s.Next()
+			if t.Token == num {
+				flushMaxWait, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRoutePubSub
+			}
+		default:
+			return fmt.Errorf("unexpected token %d %q", t.Token, t.Value)
+		}
+	}
+
+	route, err := route.NewPubSub(key, prefix, sub, regex, project, topic, format, codec, bufSize, flushMaxSize, flushMaxWait, blocking)
 	if err != nil {
 		return err
 	}

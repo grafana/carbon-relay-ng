@@ -12,7 +12,7 @@ type Datapoint struct {
 	Time uint32
 }
 
-func parseDataPoint(buf []byte) (*Datapoint, error) {
+func ParseDataPoint(buf []byte) (*Datapoint, error) {
 	str := strings.TrimSpace(string(buf))
 	elements := strings.Fields(str)
 	if len(elements) != 3 {
