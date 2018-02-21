@@ -9,7 +9,6 @@ import (
 
 	"github.com/Dieterbe/go-metrics"
 	"github.com/scrichar/carbon-relay-ng/stats"
-	"github.com/scrichar/carbon-relay-ng/util"
 )
 
 var keepsafe_initial_cap = 100000 // not very important
@@ -61,10 +60,9 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle b
 	if err != nil {
 		return nil, err
 	}
-	cleanAddr := util.AddrToPath(addr)
 	connObj := &Conn{
 		conn:              conn,
-		buffered:          NewWriter(conn, ioBufSize, cleanAddr),
+		buffered:          NewWriter(conn, ioBufSize, dest.Key),
 		shutdown:          make(chan bool, 1), // when we write here, HandleData() may not be running anymore to read from the chan
 		In:                make(chan []byte, connBufSize),
 		dest:              dest,
@@ -76,18 +74,18 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle b
 		flushErr:          make(chan error),
 		periodFlush:       periodFlush,
 		keepSafe:          NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
-		numErrTruncated:   stats.Counter("dest=" + cleanAddr + ".unit=Err.type=truncated"),
-		numErrWrite:       stats.Counter("dest=" + cleanAddr + ".unit=Err.type=write"),
-		numErrFlush:       stats.Counter("dest=" + cleanAddr + ".unit=Err.type=flush"),
-		numOut:            stats.Counter("dest=" + cleanAddr + ".unit=Metric.direction=out"),
-		durationWrite:     stats.Timer("dest=" + cleanAddr + ".what=durationWrite"),
-		durationTickFlush: stats.Timer("dest=" + cleanAddr + ".what=durationFlush.type=ticker"),
-		durationManuFlush: stats.Timer("dest=" + cleanAddr + ".what=durationFlush.type=manual"),
-		tickFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=ticker"),
-		manuFlushSize:     stats.Histogram("dest=" + cleanAddr + ".unit=B.what=FlushSize.type=manual"),
-		numBuffered:       stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=numBuffered"),
-		bufferSize:        stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=bufferSize"),
-		numDropBadPickle:  stats.Counter("dest=" + cleanAddr + ".unit=Metric.action=drop.reason=bad_pickle"),
+		numErrTruncated:   stats.Counter("dest=" + dest.Key + ".unit=Err.type=truncated"),
+		numErrWrite:       stats.Counter("dest=" + dest.Key + ".unit=Err.type=write"),
+		numErrFlush:       stats.Counter("dest=" + dest.Key + ".unit=Err.type=flush"),
+		numOut:            stats.Counter("dest=" + dest.Key + ".unit=Metric.direction=out"),
+		durationWrite:     stats.Timer("dest=" + dest.Key + ".what=durationWrite"),
+		durationTickFlush: stats.Timer("dest=" + dest.Key + ".what=durationFlush.type=ticker"),
+		durationManuFlush: stats.Timer("dest=" + dest.Key + ".what=durationFlush.type=manual"),
+		tickFlushSize:     stats.Histogram("dest=" + dest.Key + ".unit=B.what=FlushSize.type=ticker"),
+		manuFlushSize:     stats.Histogram("dest=" + dest.Key + ".unit=B.what=FlushSize.type=manual"),
+		numBuffered:       stats.Gauge("dest=" + dest.Key + ".unit=Metric.what=numBuffered"),
+		bufferSize:        stats.Gauge("dest=" + dest.Key + ".unit=Metric.what=bufferSize"),
+		numDropBadPickle:  stats.Counter("dest=" + dest.Key + ".unit=Metric.action=drop.reason=bad_pickle"),
 	}
 	connObj.bufferSize.Update(int64(connBufSize))
 
@@ -111,17 +109,17 @@ func (c *Conn) checkEOF() {
 	for {
 		num, err := c.conn.Read(b)
 		if err == io.EOF {
-			log.Notice("conn %s .conn.Read returned EOF -> conn is closed. closing conn explicitly", c.dest.Addr)
+			log.Notice("conn %s .conn.Read returned EOF -> conn is closed. closing conn explicitly", c.dest.Key)
 			c.Close()
 			return
 		}
 		// just in case i misunderstand something or the remote behaves badly
 		if num != 0 {
-			log.Debug("conn %s .conn.Read data? did not expect that.  data: %s\n", c.dest.Addr, b[:num])
+			log.Debug("conn %s .conn.Read data? did not expect that.  data: %s\n", c.dest.Key, b[:num])
 			continue
 		}
 		if err != io.EOF {
-			log.Error("conn %s checkEOF .conn.Read returned err != EOF, which is unexpected.  closing conn. error: %s\n", c.dest.Addr, err)
+			log.Error("conn %s checkEOF .conn.Read returned err != EOF, which is unexpected.  closing conn. error: %s\n", c.dest.Key, err)
 			c.Close()
 			return
 		}
@@ -154,9 +152,9 @@ func (c *Conn) HandleStatus() {
 		// so that you can call getRedo() and get the full picture
 		// this is actually not true yet.
 		case c.up = <-c.updateUp:
-			log.Debug("conn %s .up set to %v\n", c.dest.Addr, c.up)
+			log.Debug("conn %s .up set to %v\n", c.dest.Key, c.up)
 		case c.checkUp <- c.up:
-			log.Debug("conn %s .up query responded with %t", c.dest.Addr, c.up)
+			log.Debug("conn %s .up query responded with %t", c.dest.Key, c.up)
 		}
 	}
 }
@@ -180,14 +178,14 @@ func (c *Conn) HandleData() {
 			active = time.Now()
 			c.numBuffered.Dec(1)
 			action = "write"
-			log.Info("conn %s HandleData: writing %s\n", c.dest.Addr, buf)
+			log.Info("conn %s HandleData: writing %s\n", c.dest.Key, buf)
 			c.keepSafe.Add(buf)
 			n, err := c.Write(buf)
 			if err != nil {
-				log.Warning("conn %s write error: %s\n", c.dest.Addr, err)
-				log.Debug("conn %s setting up=false\n", c.dest.Addr)
+				log.Warning("conn %s write error: %s\n", c.dest.Key, err)
+				log.Debug("conn %s setting up=false\n", c.dest.Key)
 				c.updateUp <- false // assure In won't receive more data because every loop that writes to In reads this out
-				log.Debug("conn %s Closing\n", c.dest.Addr)
+				log.Debug("conn %s Closing\n", c.dest.Key)
 				go c.Close() // this can take a while but that's ok. this conn won't be used anymore
 				return
 			}
@@ -199,16 +197,16 @@ func (c *Conn) HandleData() {
 		case <-tickerFlush.C:
 			active = time.Now()
 			action = "auto-flush"
-			log.Debug("conn %s HandleData: c.buffered auto-flushing...\n", c.dest.Addr)
+			log.Debug("conn %s HandleData: c.buffered auto-flushing...\n", c.dest.Key)
 			err := c.buffered.Flush()
 			if err != nil {
-				log.Warning("conn %s HandleData c.buffered auto-flush done but with error: %s, closing\n", c.dest.Addr, err)
+				log.Warning("conn %s HandleData c.buffered auto-flush done but with error: %s, closing\n", c.dest.Key, err)
 				c.numErrFlush.Inc(1)
 				c.updateUp <- false
 				go c.Close()
 				return
 			}
-			log.Debug("conn %s HandleData c.buffered auto-flush done without error\n", c.dest.Addr)
+			log.Debug("conn %s HandleData c.buffered auto-flush done without error\n", c.dest.Key)
 			now = time.Now()
 			durationActive = now.Sub(active)
 			c.durationTickFlush.Update(durationActive)
@@ -217,27 +215,27 @@ func (c *Conn) HandleData() {
 		case <-c.flush:
 			active = time.Now()
 			action = "manual-flush"
-			log.Debug("conn %s HandleData: c.buffered manual flushing...\n", c.dest.Addr)
+			log.Debug("conn %s HandleData: c.buffered manual flushing...\n", c.dest.Key)
 			err := c.buffered.Flush()
 			c.flushErr <- err
 			if err != nil {
-				log.Warning("conn %s HandleData c.buffered manual flush done but witth error: %s, closing\n", c.dest.Addr, err)
+				log.Warning("conn %s HandleData c.buffered manual flush done but witth error: %s, closing\n", c.dest.Key, err)
 				// TODO instrument
 				c.updateUp <- false
 				go c.Close()
 				return
 			}
-			log.Notice("conn %s HandleData c.buffered manual flush done without error\n", c.dest.Addr)
+			log.Notice("conn %s HandleData c.buffered manual flush done without error\n", c.dest.Key)
 			now = time.Now()
 			durationActive = now.Sub(active)
 			c.durationManuFlush.Update(durationActive)
 			c.manuFlushSize.Update(flushSize)
 			flushSize = 0
 		case <-c.shutdown:
-			log.Debug("conn %s HandleData: shutdown received. returning.\n", c.dest.Addr)
+			log.Debug("conn %s HandleData: shutdown received. returning.\n", c.dest.Key)
 			return
 		}
-		log.Debug("conn %s HandleData %s %s (total iter %s) (use this to tune your In buffering)\n", c.dest.Addr, action, durationActive, now.Sub(start))
+		log.Debug("conn %s HandleData %s %s (total iter %s) (use this to tune your In buffering)\n", c.dest.Key, action, durationActive, now.Sub(start))
 	}
 }
 
@@ -273,18 +271,18 @@ func (c *Conn) Write(buf []byte) (int, error) {
 }
 
 func (c *Conn) Flush() error {
-	log.Debug("conn %s going to flush my buffer\n", c.dest.Addr)
+	log.Debug("conn %s going to flush my buffer\n", c.dest.Key)
 	c.flush <- true
-	log.Debug("conn %s waiting for flush, getting error.\n", c.dest.Addr)
+	log.Debug("conn %s waiting for flush, getting error.\n", c.dest.Key)
 	return <-c.flushErr
 }
 
 func (c *Conn) Close() error {
 	c.updateUp <- false // redundant in case HandleData() called us, but not if the dest called us
-	log.Debug("conn %s Close() called. sending shutdown\n", c.dest.Addr)
+	log.Debug("conn %s Close() called. sending shutdown\n", c.dest.Key)
 	c.shutdown <- true
-	log.Debug("conn %s c.conn.Close()\n", c.dest.Addr)
+	log.Debug("conn %s c.conn.Close()\n", c.dest.Key)
 	a := c.conn.Close()
-	log.Debug("conn %s c.conn is closed\n", c.dest.Addr)
+	log.Debug("conn %s c.conn is closed\n", c.dest.Key)
 	return a
 }
