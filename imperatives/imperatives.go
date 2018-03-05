@@ -952,8 +952,7 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool, routeKey s
 	if !allowMatcher && (prefix != "" || sub != "" || regex != "") {
 		return nil, fmt.Errorf("matching options (prefix, sub, and regex) not allowed for this route type")
 	}
-	routekey := routeKey
-	return destination.New(prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep, routekey)
+	return destination.New(routeKey, prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep)
 }
 
 func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {

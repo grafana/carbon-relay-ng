@@ -68,13 +68,13 @@ type Destination struct {
 }
 
 // New creates a destination object. Note that it still needs to be told to run via Run().
-func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration, routeName string) (*Destination, error) {
+func New(routeName, prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration) (*Destination, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
 	}
 	addr, instance := addrInstanceSplit(addr)
-	key := util.SpoolKeyAddrToPath(addr, routeName)
+	key := util.Key(routeName, addr)
 	dest := &Destination{
 		Matcher:              *m,
 		Addr:                 addr,
@@ -232,7 +232,7 @@ func (dest *Destination) updateConn(addr string) {
 		log.Notice("dest %v update address to %v)\n", dest.Key, addr)
 		dest.Addr = addr
 		dest.Instance = instance
-		dest.Key = util.SpoolKeyAddrToPath(addr, dest.RouteName)
+		dest.Key = util.Key(dest.RouteName, addr)
 		dest.setMetrics()
 	}
 	dest.connUpdates <- conn
