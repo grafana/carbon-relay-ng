@@ -8,8 +8,8 @@ package destination
 import (
 	"bytes"
 	"github.com/Dieterbe/go-metrics"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"github.com/op/go-logging"
+	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"io"
 	"time"
 )

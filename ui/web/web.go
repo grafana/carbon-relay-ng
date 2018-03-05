@@ -10,6 +10,7 @@ import (
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/mux"
+	logging "github.com/op/go-logging"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -17,7 +18,6 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
-	logging "github.com/op/go-logging"
 )
 
 var table *tbl.Table
@@ -195,6 +195,7 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 		time.Duration(req.spoolSyncPeriod)*time.Millisecond,
 		time.Duration(req.SpoolSleep)*time.Microsecond,
 		time.Duration(req.UnspoolSleep)*time.Microsecond,
+		req.Key,
 	)
 	if err != nil {
 		return nil, &handlerError{err, "unable to create destination", http.StatusBadRequest}
