@@ -9,12 +9,12 @@ import (
 	"math/big"
 	"net"
 
+	ogorek "github.com/kisielk/og-rek"
+	m20 "github.com/metrics20/go-metrics20/carbon20"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/validate"
-	ogorek "github.com/kisielk/og-rek"
-	m20 "github.com/metrics20/go-metrics20/carbon20"
 )
 
 type Pickle struct {
