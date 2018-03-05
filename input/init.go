@@ -4,8 +4,8 @@ import (
 	"net"
 
 	metrics "github.com/Dieterbe/go-metrics"
-	logging "github.com/op/go-logging"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
+	logging "github.com/op/go-logging"
 )
 
 var (

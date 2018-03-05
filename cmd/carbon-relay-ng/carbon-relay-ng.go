@@ -14,8 +14,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/go-metrics"
-	m20 "github.com/metrics20/go-metrics20/carbon20"
-	logging "github.com/op/go-logging"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -26,6 +24,8 @@ import (
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/ui/telnet"
 	"github.com/graphite-ng/carbon-relay-ng/ui/web"
+	m20 "github.com/metrics20/go-metrics20/carbon20"
+	logging "github.com/op/go-logging"
 
 	"strconv"
 	"strings"
