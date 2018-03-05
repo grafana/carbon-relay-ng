@@ -32,12 +32,12 @@ type Destination struct {
 	Addr         string `json:"address"`  // tcp dest
 	Instance     string `json:"instance"` // Optional carbon instance name, useful only with consistent hashing
 	SpoolDir     string // where to store spool files (if enabled)
+	Key          string // unique key per destination, based on routeName and destination addr/port combination
 	Spool        bool   `json:"spool"`        // spool metrics to disk while dest down?
 	Pickle       bool   `json:"pickle"`       // send in pickle format?
 	Online       bool   `json:"online"`       // state of connection online/offline.
 	SlowNow      bool   `json:"slowNow"`      // did we have to drop packets in current loop
 	SlowLastLoop bool   `json:"slowLastLoop"` // "" last loop
-	cleanAddr    string
 	periodFlush  time.Duration
 	periodReConn time.Duration
 	connBufSize  int // in metrics. (each metric line is typically about 70 bytes). default 30k. to make sure writes to In are fast until conn flushing can't keep up
@@ -49,6 +49,7 @@ type Destination struct {
 	SpoolSyncPeriod      time.Duration
 	SpoolSleep           time.Duration // how long to wait between stores to spool
 	UnspoolSleep         time.Duration // how long to wait between loads from spool
+	RouteName            string
 
 	// set in/via Run()
 	In                  chan []byte        `json:"-"` // incoming metrics
@@ -67,21 +68,21 @@ type Destination struct {
 }
 
 // New creates a destination object. Note that it still needs to be told to run via Run().
-func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration) (*Destination, error) {
+func New(routeName, prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration) (*Destination, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
 	}
 	addr, instance := addrInstanceSplit(addr)
-	cleanAddr := util.AddrToPath(addr)
+	key := util.Key(routeName, addr)
 	dest := &Destination{
 		Matcher:              *m,
 		Addr:                 addr,
 		Instance:             instance,
 		SpoolDir:             spoolDir,
+		Key:                  key,
 		Spool:                spool,
 		Pickle:               pickle,
-		cleanAddr:            cleanAddr,
 		periodFlush:          periodFlush,
 		periodReConn:         periodReConn,
 		connBufSize:          connBufSize,
@@ -92,15 +93,16 @@ func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFl
 		SpoolSyncPeriod:      spoolSyncPeriod,
 		SpoolSleep:           spoolSleep,
 		UnspoolSleep:         unspoolSleep,
+		RouteName:            routeName,
 	}
 	dest.setMetrics()
 	return dest, nil
 }
 
 func (dest *Destination) setMetrics() {
-	dest.numDropNoConnNoSpool = stats.Counter("dest=" + dest.cleanAddr + ".unit=Metric.action=drop.reason=conn_down_no_spool")
-	dest.numDropSlowSpool = stats.Counter("dest=" + dest.cleanAddr + ".unit=Metric.action=drop.reason=slow_spool")
-	dest.numDropSlowConn = stats.Counter("dest=" + dest.cleanAddr + ".unit=Metric.action=drop.reason=slow_conn")
+	dest.numDropNoConnNoSpool = stats.Counter("dest=" + dest.Key + ".unit=Metric.action=drop.reason=conn_down_no_spool")
+	dest.numDropSlowSpool = stats.Counter("dest=" + dest.Key + ".unit=Metric.action=drop.reason=slow_spool")
+	dest.numDropSlowConn = stats.Counter("dest=" + dest.Key + ".unit=Metric.action=drop.reason=slow_conn")
 }
 
 func (dest *Destination) Match(s []byte) bool {
@@ -163,19 +165,19 @@ func (dest *Destination) GetMatcher() matcher.Matcher {
 // a "basic" static copy of the dest, not actually running
 func (dest *Destination) Snapshot() *Destination {
 	return &Destination{
-		Matcher:   dest.GetMatcher(),
-		Addr:      dest.Addr,
-		SpoolDir:  dest.SpoolDir,
-		Spool:     dest.Spool,
-		Pickle:    dest.Pickle,
-		Online:    dest.Online,
-		cleanAddr: dest.cleanAddr,
+		Matcher:  dest.GetMatcher(),
+		Addr:     dest.Addr,
+		SpoolDir: dest.SpoolDir,
+		Spool:    dest.Spool,
+		Pickle:   dest.Pickle,
+		Online:   dest.Online,
+		Key:      dest.Key,
 	}
 }
 
 func (dest *Destination) Run() {
 	if dest.In != nil {
-		panic(fmt.Sprintf("Run() called on already running dest '%s'", dest.Addr))
+		panic(fmt.Sprintf("Run() called on already running dest '%s'", dest.Key))
 	}
 	dest.In = make(chan []byte)
 	dest.shutdown = make(chan bool)
@@ -187,7 +189,7 @@ func (dest *Destination) Run() {
 	if dest.Spool {
 		// TODO better naming for spool, because it won't update when addr changes
 		dest.spool = NewSpool(
-			dest.cleanAddr,
+			dest.Key,
 			dest.SpoolDir,
 			dest.SpoolBufSize,
 			dest.SpoolMaxBytesPerFile,
@@ -216,21 +218,21 @@ func (dest *Destination) Shutdown() error {
 }
 
 func (dest *Destination) updateConn(addr string) {
-	log.Debug("dest %v (re)connecting to %v\n", dest.Addr, addr)
+	log.Debug("dest %v (re)connecting to %v\n", dest.Key, addr)
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
 	addr, instance := addrInstanceSplit(addr)
 	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle, dest.connBufSize, dest.ioBufSize)
 	if err != nil {
-		log.Debug("dest %v: %v\n", dest.Addr, err.Error())
+		log.Debug("dest %v: %v\n", dest.Key, err.Error())
 		return
 	}
-	log.Debug("dest %v connected to %v\n", dest.Addr, addr)
-	if addr != dest.Addr {
-		log.Notice("dest %v update address to %v)\n", dest.Addr, addr)
+	log.Debug("dest %v connected to %v\n", dest.Key, addr)
+	if addr != dest.Key {
+		log.Notice("dest %v update address to %v)\n", dest.Key, addr)
 		dest.Addr = addr
 		dest.Instance = instance
-		dest.cleanAddr = util.AddrToPath(addr)
+		dest.Key = util.Key(dest.RouteName, addr)
 		dest.setMetrics()
 	}
 	dest.connUpdates <- conn
@@ -265,7 +267,7 @@ func (dest *Destination) relay() {
 		case conn.In <- buf:
 			conn.numBuffered.Inc(1)
 		default:
-			log.Info("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Addr, buf)
+			log.Info("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Key, buf)
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
@@ -279,9 +281,9 @@ func (dest *Destination) relay() {
 	nonBlockingSpool := func(buf []byte) {
 		select {
 		case dest.spool.InRT <- buf:
-			log.Info("dest %s %s nonBlockingSpool -> added to spool\n", dest.Addr, buf)
+			log.Info("dest %s %s nonBlockingSpool -> added to spool\n", dest.Key, buf)
 		default:
-			log.Info("dest %s %s nonBlockingSpool -> dropping due to slow spool\n", dest.Addr, buf)
+			log.Info("dest %s %s nonBlockingSpool -> dropping due to slow spool\n", dest.Key, buf)
 			dest.numDropSlowSpool.Inc(1)
 		}
 	}
@@ -306,7 +308,7 @@ func (dest *Destination) relay() {
 		} else {
 			toUnspool = nil
 		}
-		log.Debug("dest %v entering select. conn: %v spooling: %v slowLastloop: %v, slowNow: %v spoolQueue: %v", dest.Addr, conn != nil, dest.Spool, dest.SlowLastLoop, dest.SlowNow, toUnspool != nil)
+		log.Debug("dest %v entering select. conn: %v spooling: %v slowLastloop: %v, slowNow: %v spoolQueue: %v", dest.Key, conn != nil, dest.Spool, dest.SlowLastLoop, dest.SlowNow, toUnspool != nil)
 		select {
 		case sig := <-dest.setSignalConnOnline:
 			signalConnOnline = sig
@@ -319,7 +321,7 @@ func (dest *Destination) relay() {
 		// note: new conn can be nil and that's ok (it means we had to [re]connect but couldn't)
 		case conn = <-dest.connUpdates:
 			dest.Online = conn != nil
-			log.Notice("dest %s updating conn. online: %v\n", dest.Addr, dest.Online)
+			log.Notice("dest %s updating conn. online: %v\n", dest.Key, dest.Online)
 			if dest.Online {
 				// new conn? start with a clean slate!
 				dest.SlowLastLoop = false
@@ -341,7 +343,7 @@ func (dest *Destination) relay() {
 				dest.flushErr <- nil
 			}
 		case <-dest.shutdown:
-			log.Notice("dest %v shutting down. flushing and closing conn\n", dest.Addr)
+			log.Notice("dest %v shutting down. flushing and closing conn\n", dest.Key)
 			if conn != nil {
 				conn.Flush()
 				conn.Close()
@@ -352,17 +354,17 @@ func (dest *Destination) relay() {
 			return
 		case buf := <-toUnspool:
 			// we know that conn != nil here because toUnspool is set above
-			log.Info("dest %v %s received from spool -> nonBlockingSend\n", dest.Addr, buf)
+			log.Info("dest %v %s received from spool -> nonBlockingSend\n", dest.Key, buf)
 			nonBlockingSend(buf)
 		case buf := <-dest.In:
 			if conn != nil {
-				log.Info("dest %v %s received from In -> nonBlockingSend\n", dest.Addr, buf)
+				log.Info("dest %v %s received from In -> nonBlockingSend\n", dest.Key, buf)
 				nonBlockingSend(buf)
 			} else if dest.Spool {
-				log.Info("dest %v %s received from In -> nonBlockingSpool\n", dest.Addr, buf)
+				log.Info("dest %v %s received from In -> nonBlockingSpool\n", dest.Key, buf)
 				nonBlockingSpool(buf)
 			} else {
-				log.Info("dest %v %s received from In -> no conn no spool -> drop\n", dest.Addr, buf)
+				log.Info("dest %v %s received from In -> no conn no spool -> drop\n", dest.Key, buf)
 				dest.numDropNoConnNoSpool.Inc(1)
 			}
 		}

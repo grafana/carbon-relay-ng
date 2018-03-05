@@ -342,7 +342,7 @@ func readAddRoute(s *toki.Scanner, table Table, constructor func(key, prefix, su
 		return err
 	}
 
-	destinations, err := readDestinations(s, table, true)
+	destinations, err := readDestinations(s, table, true, key)
 	if err != nil {
 		return err
 	}
@@ -370,7 +370,7 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
 		return err
 	}
 
-	destinations, err := readDestinations(s, table, false)
+	destinations, err := readDestinations(s, table, false, key)
 	if err != nil {
 		return err
 	}
@@ -896,7 +896,7 @@ func readModRoute(s *toki.Scanner, table Table) error {
 // we should read and apply all destinations at once,
 // or at least make sure we apply them to the global datastruct at once,
 // otherwise we can destabilize things / send wrong traffic, etc
-func readDestinations(s *toki.Scanner, table Table, allowMatcher bool) (destinations []*destination.Destination, err error) {
+func readDestinations(s *toki.Scanner, table Table, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
 	t := s.Peek()
 	for t.Token != toki.EOF {
 		for t.Token == sep {
@@ -907,7 +907,7 @@ func readDestinations(s *toki.Scanner, table Table, allowMatcher bool) (destinat
 			break
 		}
 
-		dest, err := readDestination(s, table, allowMatcher)
+		dest, err := readDestination(s, table, allowMatcher, routeKey)
 		if err != nil {
 			return destinations, err
 		}
@@ -918,7 +918,7 @@ func readDestinations(s *toki.Scanner, table Table, allowMatcher bool) (destinat
 	return destinations, nil
 }
 
-func readDestination(s *toki.Scanner, table Table, allowMatcher bool) (dest *destination.Destination, err error) {
+func readDestination(s *toki.Scanner, table Table, allowMatcher bool, routeKey string) (dest *destination.Destination, err error) {
 	var prefix, sub, regex, addr, spoolDir string
 	var spool, pickle bool
 	flush := 1000
@@ -1072,16 +1072,15 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool) (dest *des
 	if !allowMatcher && (prefix != "" || sub != "" || regex != "") {
 		return nil, fmt.Errorf("matching options (prefix, sub, and regex) not allowed for this route type")
 	}
-
-	return destination.New(prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep)
+	return destination.New(routeKey, prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep)
 }
 
-func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bool) (destinations []*destination.Destination, err error) {
+func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
 	s := toki.NewScanner(tokens)
 	for _, destinationConfig := range destinationConfigs {
 		s.SetInput(destinationConfig)
 
-		dest, err := readDestination(s, table, allowMatcher)
+		dest, err := readDestination(s, table, allowMatcher, routeKey)
 		if err != nil {
 			return destinations, err
 		}

@@ -104,7 +104,7 @@ carbon-relay-ng (for now) focuses on staying up and not consuming much resources
 
 For carbon routes:
 if connection is up but slow, we drop the data 
-if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data
+if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data 
 if connection is down and spooling disabled -> drop the data
 
 kafka, Google PubSub, and grafanaNet have an in-memory buffer and can be configured to blocking or non-blocking mode when the buffer runs full.

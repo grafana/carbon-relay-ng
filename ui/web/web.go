@@ -178,6 +178,7 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 		return nil, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
 	}
 	dest, err := destination.New(
+		req.Key,
 		"",
 		"",
 		"",
