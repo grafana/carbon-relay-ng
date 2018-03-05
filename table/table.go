@@ -8,13 +8,13 @@ import (
 	"sync/atomic"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/scrichar/carbon-relay-ng/aggregator"
-	"github.com/scrichar/carbon-relay-ng/cfg"
-	"github.com/scrichar/carbon-relay-ng/imperatives"
-	"github.com/scrichar/carbon-relay-ng/matcher"
-	"github.com/scrichar/carbon-relay-ng/rewriter"
-	"github.com/scrichar/carbon-relay-ng/route"
-	"github.com/scrichar/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/aggregator"
+	"github.com/graphite-ng/carbon-relay-ng/cfg"
+	"github.com/graphite-ng/carbon-relay-ng/imperatives"
+	"github.com/graphite-ng/carbon-relay-ng/matcher"
+	"github.com/graphite-ng/carbon-relay-ng/rewriter"
+	"github.com/graphite-ng/carbon-relay-ng/route"
+	"github.com/graphite-ng/carbon-relay-ng/stats"
 )
 
 type TableConfig struct {

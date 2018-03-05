@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/scrichar/carbon-relay-ng/matcher"
-	"github.com/scrichar/carbon-relay-ng/stats"
-	"github.com/scrichar/carbon-relay-ng/util"
+	"github.com/graphite-ng/carbon-relay-ng/matcher"
+	"github.com/graphite-ng/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/util"
 )
 
 func addrInstanceSplit(addr string) (string, string) {

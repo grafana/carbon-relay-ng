@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/binary"
-	dest "github.com/scrichar/carbon-relay-ng/destination"
+	dest "github.com/graphite-ng/carbon-relay-ng/destination"
 	"sort"
 	"strconv"
 	"strings"

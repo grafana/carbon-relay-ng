@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/scrichar/carbon-relay-ng/nsqd"
-	"github.com/scrichar/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/nsqd"
+	"github.com/graphite-ng/carbon-relay-ng/stats"
 )
 
 // sits in front of nsqd diskqueue.

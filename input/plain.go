@@ -6,10 +6,10 @@ import (
 	"net"
 
 	m20 "github.com/metrics20/go-metrics20/carbon20"
-	"github.com/scrichar/carbon-relay-ng/badmetrics"
-	"github.com/scrichar/carbon-relay-ng/cfg"
-	"github.com/scrichar/carbon-relay-ng/table"
-	"github.com/scrichar/carbon-relay-ng/validate"
+	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
+	"github.com/graphite-ng/carbon-relay-ng/cfg"
+	"github.com/graphite-ng/carbon-relay-ng/table"
+	"github.com/graphite-ng/carbon-relay-ng/validate"
 )
 
 type Plain struct {

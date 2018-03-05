@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/scrichar/carbon-relay-ng/clock"
+	"github.com/graphite-ng/carbon-relay-ng/clock"
 )
 
 type Aggregator struct {

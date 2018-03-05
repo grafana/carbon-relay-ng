@@ -3,7 +3,7 @@ package route
 import (
 	"testing"
 
-	"github.com/scrichar/carbon-relay-ng/destination"
+	"github.com/graphite-ng/carbon-relay-ng/destination"
 )
 
 // just sending into route, no matching or sending to dest

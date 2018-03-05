@@ -1,7 +1,7 @@
 package cfg
 
 import (
-	"github.com/scrichar/carbon-relay-ng/validate"
+	"github.com/graphite-ng/carbon-relay-ng/validate"
 )
 
 type Config struct {

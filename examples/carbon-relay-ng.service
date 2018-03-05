@@ -1,6 +1,6 @@
 [Unit]
 Description=Starts and stops carbon-relay-ng on this system
-Documentation=https://github.com/scrichar/carbon-relay-ng/tree/master/docs
+Documentation=https://github.com/graphite-ng/carbon-relay-ng/tree/master/docs
 Wants=network-online.target
 After=network-online.target
 

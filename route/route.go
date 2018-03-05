@@ -6,8 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	dest "github.com/scrichar/carbon-relay-ng/destination"
-	"github.com/scrichar/carbon-relay-ng/matcher"
+	dest "github.com/graphite-ng/carbon-relay-ng/destination"
+	"github.com/graphite-ng/carbon-relay-ng/matcher"
 )
 
 type Config interface {

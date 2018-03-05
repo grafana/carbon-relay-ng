@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"github.com/Dieterbe/go-metrics"
 	"github.com/op/go-logging"
-	"github.com/scrichar/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"io"
 	"time"
 )

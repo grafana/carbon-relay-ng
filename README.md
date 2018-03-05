@@ -1,6 +1,6 @@
 [![Circle CI](https://circleci.com/gh/graphite-ng/carbon-relay-ng.svg?style=shield)](https://circleci.com/gh/graphite-ng/carbon-relay-ng)
-[![Go Report Card](https://goreportcard.com/badge/github.com/scrichar/carbon-relay-ng)](https://goreportcard.com/report/github.com/scrichar/carbon-relay-ng)
-[![GoDoc](https://godoc.org/github.com/scrichar/carbon-relay-ng?status.svg)](https://godoc.org/github.com/scrichar/carbon-relay-ng)
+[![Go Report Card](https://goreportcard.com/badge/github.com/graphite-ng/carbon-relay-ng)](https://goreportcard.com/report/github.com/graphite-ng/carbon-relay-ng)
+[![GoDoc](https://godoc.org/github.com/graphite-ng/carbon-relay-ng?status.svg)](https://godoc.org/github.com/graphite-ng/carbon-relay-ng)
 
 carbon-relay-ng
 ===============
@@ -30,14 +30,14 @@ Limitations
 
 * regex rewriter rules do not support limiting number of replacements, max must be set to -1
 * the web UI is not always reliable to make changes.  the config file and tcp interface are safer and more complete anyway.
-* internal metrics *must* be routed somewhere (e.g. into the relay itself) otherwise it'll [leak memory](https://github.com/scrichar/carbon-relay-ng/issues/50).
+* internal metrics *must* be routed somewhere (e.g. into the relay itself) otherwise it'll [leak memory](https://github.com/graphite-ng/carbon-relay-ng/issues/50).
   this is a silly bug but I haven't had time yet to fix it.
 
 
 Releases & versions
 -------------------
 
-see [https://github.com/scrichar/carbon-relay-ng/releases](https://github.com/scrichar/carbon-relay-ng/releases)
+see [https://github.com/graphite-ng/carbon-relay-ng/releases](https://github.com/graphite-ng/carbon-relay-ng/releases)
 
 
 Instrumentation
@@ -45,7 +45,7 @@ Instrumentation
 
 * Extensive performance variables are available in json at http://localhost:8081/debug/vars2 (update port if you change it in config)
 * You can also send metrics to graphite (or feed back into the relay), see config.
-* Comes with a [grafana dashboard](https://github.com/scrichar/carbon-relay-ng/blob/master/grafana-dashboard.json) which you can also [download from the grafana dashboards site](https://grafana.com/dashboards/338)
+* Comes with a [grafana dashboard](https://github.com/graphite-ng/carbon-relay-ng/blob/master/grafana-dashboard.json) which you can also [download from the grafana dashboards site](https://grafana.com/dashboards/338)
 
 ![grafana dashboard](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/screenshots/grafana-screenshot.png)
 
@@ -70,9 +70,9 @@ We use https://github.com/kardianos/govendor to manage vendoring 3rd party libra
 
     export GOPATH=/some/path/
     export PATH="$PATH:$GOPATH/bin"
-    go get -d github.com/scrichar/carbon-relay-ng
+    go get -d github.com/graphite-ng/carbon-relay-ng
     go get github.com/jteeuwen/go-bindata/...
-    cd "$GOPATH/src/github.com/scrichar/carbon-relay-ng"
+    cd "$GOPATH/src/github.com/graphite-ng/carbon-relay-ng"
     # optional: check out an older version: git checkout v0.5
     make
 
@@ -103,7 +103,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
 carbon-relay-ng (for now) focuses on staying up and not consuming much resources.
 
 For carbon routes:
-if connection is up but slow, we drop the data 
+if connection is up but slow, we drop the data
 if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data
 if connection is down and spooling disabled -> drop the data
 
@@ -200,7 +200,7 @@ Take a look at the included carbon-relay-ng.ini, which includes comments describ
 
 The major config sections are the `blacklist` array, and the `[[aggregation]]`, `[[rewriter]]` and `[[route]]` entries.
 
-[Overview of all routes/destinations config options and tuning options](https://github.com/scrichar/carbon-relay-ng/blob/master/docs/routes.md)
+[Overview of all routes/destinations config options and tuning options](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/routes.md)
 
 You can also create routes, populate the blacklist, etc via the `init` config array using the same commands as the telnet interface, detailed below.
 
