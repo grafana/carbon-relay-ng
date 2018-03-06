@@ -10,9 +10,8 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 
 	"github.com/aws/aws-sdk-go/aws"
-    "github.com/aws/aws-sdk-go/aws/session"
-    "github.com/aws/aws-sdk-go/service/cloudwatch"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"strings"
 	"strconv"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
@@ -96,15 +95,16 @@ func NewCloudWatch(key, prefix, sub, regex, awsProfile, awsRegion, awsNamespace 
 			Value: aws.String(dim[1])})
 	}
 
-    // Initialize a session that the SDK uses to load
-    // credentials from the shared credentials file ~/.aws/credentials
-    // and configuration from the shared configuration file ~/.aws/config.
+	// Initialize a session at AWS
     r.session = session.Must(session.NewSessionWithOptions(session.Options{
-        SharedConfigState: session.SharedConfigEnable,
-        AssumeRoleTokenProvider: stscreds.StdinTokenProvider,
-        Profile: r.awsProfile,
+    	// For local development:
+    	// credentials from the shared credentials file ~/.aws/credentials
+    	// and configuration from the shared configuration file ~/.aws/config.
+    	// SharedConfigState: session.SharedConfigEnable,
+    	// AssumeRoleTokenProvider: stscreds.StdinTokenProvider,
+    	// Profile: r.awsProfile,
         Config: aws.Config{
-            Region: aws.String(r.awsRegion),
+        	Region: aws.String(r.awsRegion),
         },
     }))
 
