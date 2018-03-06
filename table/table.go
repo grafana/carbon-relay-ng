@@ -723,6 +723,43 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
 			}
 			table.AddRoute(route)
+		case "cloudWatch":
+			var bufSize = int(1e7)     // since a message is typically around 100B this is 1GB
+			var flushMaxSize = int(20) // Amazon limits to 20 MetricDatum/PutMetricData request https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_limits.html
+			var flushMaxWait = 30000    // in ms
+			var awsProfile = ""
+			var awsRegion = ""
+			var awsNamespace = ""
+			var awsDimensions [][]string
+
+			if routeConfig.BufSize != 0 {
+				bufSize = routeConfig.BufSize
+			}
+			if routeConfig.FlushMaxSize != 0 {
+				flushMaxSize = routeConfig.FlushMaxSize
+			}
+			if routeConfig.FlushMaxWait != 0 {
+				flushMaxWait = routeConfig.FlushMaxWait
+			}
+			if routeConfig.Profile != "" {
+				awsProfile = routeConfig.Profile
+			}
+			if routeConfig.Region != "" {
+				awsRegion = routeConfig.Region
+			}
+			if routeConfig.Namespace != "" {
+				awsNamespace = routeConfig.Namespace
+			}
+			if len(routeConfig.Dimensions) > 0 {
+				awsDimensions = routeConfig.Dimensions
+			}
+
+			route, err := route.NewCloudWatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, awsProfile, awsRegion, awsNamespace, awsDimensions, bufSize, flushMaxSize, flushMaxWait, routeConfig.Blocking)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
+			}
+			table.AddRoute(route)
 		default:
 			return fmt.Errorf("unrecognized route type '%s'", routeConfig.Type)
 		}

@@ -73,6 +73,12 @@ type Route struct {
 	Project      string
 	Format       string
 	FlushMaxSize int
+
+	// CloudWatch
+	Profile 	string
+	Region 		string
+	Namespace	string
+	Dimensions [][]string
 }
 
 type Rewriter struct {
