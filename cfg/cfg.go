@@ -75,10 +75,10 @@ type Route struct {
 	FlushMaxSize int
 
 	// CloudWatch
-	Profile 	string
-	Region 		string
-	Namespace	string
-	Dimensions [][]string
+	Profile    string // For local development
+	Region     string
+	Namespace  string // For now fixed in config
+	Dimensions [][]string // For now fixed in config
 }
 
 type Rewriter struct {

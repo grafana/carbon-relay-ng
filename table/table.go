@@ -726,7 +726,7 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 		case "cloudWatch":
 			var bufSize = int(1e7)     // since a message is typically around 100B this is 1GB
 			var flushMaxSize = int(20) // Amazon limits to 20 MetricDatum/PutMetricData request https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_limits.html
-			var flushMaxWait = 30000    // in ms
+			var flushMaxWait = 10000   // in ms
 			var awsProfile = ""
 			var awsRegion = ""
 			var awsNamespace = ""
