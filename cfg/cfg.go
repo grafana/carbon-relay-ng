@@ -51,8 +51,8 @@ type Route struct {
 	SchemasFile  string
 	OrgId        int
 	BufSize      int
-	FlushMaxNum  int
-	FlushMaxWait int
+	FlushMaxNum  int // also used by CloudWatch
+	FlushMaxWait int // also used by CloudWatch
 	Timeout      int
 	Blocking     bool
 
