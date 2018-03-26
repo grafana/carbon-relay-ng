@@ -1,7 +1,7 @@
 The GrafanaNet route is a special route within carbon-relay-ng.
 
 It converts graphite (carbon) input into metrics2.0 form and submits it to a grafanaCloud metrics store.
-**Note: the hosted metrics store is currently not yet a public service.  Get in touch at hello@grafana.com if interested.**
+**Note: For more details on GrafanaCloud, head over to https://grafana.com/cloud/metrics**
 
 # The quick way
 
