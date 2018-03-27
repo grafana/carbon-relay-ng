@@ -5,6 +5,11 @@ import (
 	"math"
 )
 
+type processorResult struct {
+	functionName string
+	val          float64
+}
+
 // Avg aggregates to average
 type Avg struct {
 	sum float64
@@ -23,8 +28,10 @@ func (a *Avg) Add(val float64, ts uint32) {
 	a.cnt += 1
 }
 
-func (a *Avg) Flush() (float64, bool) {
-	return a.sum / float64(a.cnt), true
+func (a *Avg) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{functionName: "avg", val: a.sum / float64(a.cnt)},
+	}, true
 }
 
 // Delta aggregates to the difference between highest and lowest value seen
@@ -49,8 +56,10 @@ func (d *Delta) Add(val float64, ts uint32) {
 	}
 }
 
-func (d *Delta) Flush() (float64, bool) {
-	return d.max - d.min, true
+func (d *Delta) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{functionName: "delta", val: d.max - d.min},
+	}, true
 }
 
 // Derive aggregates to the derivative of the largest timeframe we get
@@ -81,11 +90,13 @@ func (d *Derive) Add(val float64, ts uint32) {
 	}
 }
 
-func (d *Derive) Flush() (float64, bool) {
+func (d *Derive) Flush() ([]processorResult, bool) {
 	if d.newestTs == d.oldestTs {
-		return 0, false
+		return nil, false
 	}
-	return (d.newestVal - d.oldestVal) / float64(d.newestTs-d.oldestTs), true
+	return []processorResult{
+		{functionName: "derive", val: (d.newestVal - d.oldestVal) / float64(d.newestTs-d.oldestTs)},
+	}, true
 }
 
 // Last aggregates to the last value seen
@@ -103,8 +114,10 @@ func (l *Last) Add(val float64, ts uint32) {
 	l.val = val
 }
 
-func (l *Last) Flush() (float64, bool) {
-	return l.val, true
+func (l *Last) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{functionName: "last", val: l.val},
+	}, true
 }
 
 // Max aggregates to the highest value seen
@@ -124,8 +137,10 @@ func (m *Max) Add(val float64, ts uint32) {
 	}
 }
 
-func (m *Max) Flush() (float64, bool) {
-	return m.val, true
+func (m *Max) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{functionName: "max", val: m.val},
+	}, true
 }
 
 // Min aggregates to the lowest value seen
@@ -145,8 +160,10 @@ func (m *Min) Add(val float64, ts uint32) {
 	}
 }
 
-func (m *Min) Flush() (float64, bool) {
-	return m.val, true
+func (m *Min) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{functionName: "min", val: m.val},
+	}, true
 }
 
 // Stdev aggregates to standard deviation
@@ -167,7 +184,7 @@ func (s *Stdev) Add(val float64, ts uint32) {
 	s.values = append(s.values, val)
 }
 
-func (s *Stdev) Flush() (float64, bool) {
+func (s *Stdev) Flush() ([]processorResult, bool) {
 	mean := s.sum / float64(len(s.values))
 
 	// Calculate the variance
@@ -178,7 +195,9 @@ func (s *Stdev) Flush() (float64, bool) {
 	variance /= float64(len(s.values))
 
 	// Calculate the standard deviation
-	return math.Sqrt(variance), true
+	return []processorResult{
+		{functionName: "stdev", val: math.Sqrt(variance)},
+	}, true
 }
 
 // Sum aggregates to average
@@ -196,17 +215,19 @@ func (s *Sum) Add(val float64, ts uint32) {
 	s.sum += val
 }
 
-func (s *Sum) Flush() (float64, bool) {
-	return s.sum, true
+func (s *Sum) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{functionName: "sum", val: s.sum},
+	}, true
 }
 
 type Processor interface {
 	// Add adds a point to aggregate
 	Add(val float64, ts uint32)
-	// Flush returns the aggregated value and true if it is valid
+	// Flush returns the aggregated value(s) and true if it is valid
 	// the only reason why it would be non-valid is for aggregators that need
 	// more than 1 value but they didn't have enough to produce a useful result.
-	Flush() (float64, bool)
+	Flush() ([]processorResult, bool)
 }
 
 func GetProcessorConstructor(fun string) (func(val float64, ts uint32) Processor, error) {

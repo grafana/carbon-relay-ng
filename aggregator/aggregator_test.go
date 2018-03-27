@@ -58,7 +58,7 @@ func TestScanner(t *testing.T) {
 			float64(4) / float64(7),
 		},
 	}
-	testCase := func(i int, name string, in []float64, ts []uint32, exp float64) {
+	testCase := func(i int, name string, in []float64, ts []uint32, exp map[string]float64) {
 		procConstr, err := GetProcessorConstructor(name)
 		if err != nil {
 			t.Fatalf("got err %q", err)
@@ -67,23 +67,30 @@ func TestScanner(t *testing.T) {
 		for i, v := range in[1:] {
 			p.Add(v, ts[i+1])
 		}
-		got, ok := p.Flush()
+		results, ok := p.Flush()
 		if !ok {
 			t.Fatalf("case %d %s - expected valid output, got null", i, name)
 		}
-		if got != exp {
-			t.Fatalf("case %d %s - expected %v, actual %v", i, name, exp, got)
+		for _,result := range results {
+			if expVal, ok := exp[result.functionName]; ok {
+				if result.val != expVal {
+					t.Fatalf("case %d %s - expected %v, actual %v", i, name, expVal, result.val)
+				}
+			} else {
+				t.Fatalf("case %d %s - function %v not in map of expected values", i, name, result.functionName)
+			}
 		}
+
 	}
 	for i, e := range cases {
-		testCase(i, "avg", e.in, e.ts, e.avg)
-		testCase(i, "delta", e.in, e.ts, e.delta)
-		testCase(i, "last", e.in, e.ts, e.last)
-		testCase(i, "max", e.in, e.ts, e.max)
-		testCase(i, "min", e.in, e.ts, e.min)
-		testCase(i, "stdev", e.in, e.ts, e.stdev)
-		testCase(i, "sum", e.in, e.ts, e.sum)
-		testCase(i, "derive", e.in, e.ts, e.deriv)
+		testCase(i, "avg", e.in, e.ts, map[string]float64{"avg": e.avg})
+		testCase(i, "delta", e.in, e.ts, map[string]float64{"delta": e.delta})
+		testCase(i, "last", e.in, e.ts, map[string]float64{"last": e.last})
+		testCase(i, "max", e.in, e.ts, map[string]float64{"max": e.max})
+		testCase(i, "min", e.in, e.ts, map[string]float64{"min": e.min})
+		testCase(i, "stdev", e.in, e.ts, map[string]float64{"stdev": e.stdev})
+		testCase(i, "sum", e.in, e.ts, map[string]float64{"sum": e.sum})
+		testCase(i, "derive", e.in, e.ts, map[string]float64{"derive": e.deriv})
 	}
 }
 
@@ -96,11 +103,11 @@ func BenchmarkProcessorMax(b *testing.B) {
 		for j := 0; j < 10; j++ {
 			proc.Add(float64(j), uint32(j))
 		}
-		res, ok := proc.Flush()
+		results, ok := proc.Flush()
 		if !ok {
 			panic("why would max produce an invalid output here?")
 		}
-		r = res
+		r = results[0].val
 	}
 }
 
