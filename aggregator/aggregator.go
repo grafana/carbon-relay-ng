@@ -151,7 +151,7 @@ func (a *Aggregator) Flush(ts uint) {
 			results, ok := proc.Flush()
 			if ok {
 				for _,result := range results {
-					metric := fmt.Sprintf("%s.%s %f %d", string(k.key), result.functionName, result.val, k.ts)
+					metric := fmt.Sprintf("%s.%s %f %d", string(k.key), result.fcnName, result.val, k.ts)
 					//		log.Debug("aggregator %s-%v-%v values %v -> result %q", a.Fun, a.Regex, a.OutFmt, agg, metric)
 					a.out <- []byte(metric)
 				}

@@ -9,17 +9,37 @@ import (
 
 func TestScanner(t *testing.T) {
 	cases := []struct {
-		in    []float64
-		ts    []uint32
-		avg   float64
-		delta float64
-		last  float64
-		max   float64
-		min   float64
-		stdev float64
-		sum   float64
-		deriv float64
+		in     []float64
+		ts     []uint32
+		avg    float64
+		delta  float64
+		last   float64
+		max    float64
+		min    float64
+		stdev  float64
+		sum    float64
+		deriv  float64
+		p25    float64
+		p50    float64
+		p75    float64
+		p90    float64
 	}{
+		{
+			[]float64{1,2,5,4,3},
+			[]uint32{1, 2, 3, 4, 5},
+			3,
+			4,
+			3,
+			5,
+			1,
+			1.4142135623730951,
+			15,
+			0.5,
+			2,
+			3,
+			4,
+			5,
+		},
 		{
 			[]float64{5, 4, 7, 4, 2, 5, 4, 9},
 			[]uint32{1, 2, 3, 4, 5, 6, 7, 8},
@@ -31,6 +51,10 @@ func TestScanner(t *testing.T) {
 			2,
 			40,
 			float64(4) / float64(7),
+			4,
+			4.5,
+			6,
+			9,
 		},
 		{
 			[]float64{6, 2, 3, 1},
@@ -43,6 +67,10 @@ func TestScanner(t *testing.T) {
 			1.8708286933869707,
 			12,
 			float64(-5) / float64(3),
+			1.5,
+			2.5,
+			4.5,
+			6,
 		},
 		// test out of order. this is the same dataset as the first one, but a bit shuffled
 		{
@@ -56,6 +84,10 @@ func TestScanner(t *testing.T) {
 			2,
 			40,
 			float64(4) / float64(7),
+			4,
+			4.5,
+			6,
+			9,
 		},
 	}
 	testCase := func(i int, name string, in []float64, ts []uint32, exp map[string]float64) {
@@ -71,13 +103,18 @@ func TestScanner(t *testing.T) {
 		if !ok {
 			t.Fatalf("case %d %s - expected valid output, got null", i, name)
 		}
-		for _,result := range results {
-			if expVal, ok := exp[result.functionName]; ok {
-				if result.val != expVal {
-					t.Fatalf("case %d %s - expected %v, actual %v", i, name, expVal, result.val)
+		for fcn, expVal := range exp {
+			fcnFound := false
+			for _,result := range results {
+				if result.fcnName == fcn {
+					fcnFound = true
+					if result.val != expVal {
+						t.Fatalf("case %d %s %s - expected %v, actual %v", i, name, result.fcnName, expVal, result.val)
+					}
 				}
-			} else {
-				t.Fatalf("case %d %s - function %v not in map of expected values", i, name, result.functionName)
+			}
+			if !fcnFound {
+				t.Fatalf("case %d %s - expected result of fcn %s not returned in results slice", i, name, fcn)
 			}
 		}
 
@@ -91,6 +128,7 @@ func TestScanner(t *testing.T) {
 		testCase(i, "stdev", e.in, e.ts, map[string]float64{"stdev": e.stdev})
 		testCase(i, "sum", e.in, e.ts, map[string]float64{"sum": e.sum})
 		testCase(i, "derive", e.in, e.ts, map[string]float64{"derive": e.deriv})
+		testCase(i, "percentiles", e.in, e.ts, map[string]float64{"p25": e.p25, "p50": e.p50, "p75": e.p75, "p90": e.p90})
 	}
 }
 
@@ -148,8 +186,8 @@ func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, cache
 			if bytes.HasPrefix(v, []byte("aggregated.totals.abc.ignoreme")) {
 				continue
 			}
-			if string(v[33:39]) != match {
-				b.Fatalf("expected 'aggregated.totals.abc.<10 random chars> %s... <ts>'. got: %q", match, v)
+			if string(v[37:43]) != match {
+				b.Fatalf("expected 'aggregated.totals.abc.<10 random chars>.sum %s... <ts>'. got: %q", match, v)
 			}
 			//	if count%100 == 0 {
 			//fmt.Println("got", string(v), "count is now", count)

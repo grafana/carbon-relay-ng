@@ -3,11 +3,12 @@ package aggregator
 import (
 	"fmt"
 	"math"
+	"sort"
 )
 
 type processorResult struct {
-	functionName string
-	val          float64
+	fcnName string
+	val     float64
 }
 
 // Avg aggregates to average
@@ -30,7 +31,7 @@ func (a *Avg) Add(val float64, ts uint32) {
 
 func (a *Avg) Flush() ([]processorResult, bool) {
 	return []processorResult{
-		{functionName: "avg", val: a.sum / float64(a.cnt)},
+		{fcnName: "avg", val: a.sum / float64(a.cnt)},
 	}, true
 }
 
@@ -58,7 +59,7 @@ func (d *Delta) Add(val float64, ts uint32) {
 
 func (d *Delta) Flush() ([]processorResult, bool) {
 	return []processorResult{
-		{functionName: "delta", val: d.max - d.min},
+		{fcnName: "delta", val: d.max - d.min},
 	}, true
 }
 
@@ -95,7 +96,7 @@ func (d *Derive) Flush() ([]processorResult, bool) {
 		return nil, false
 	}
 	return []processorResult{
-		{functionName: "derive", val: (d.newestVal - d.oldestVal) / float64(d.newestTs-d.oldestTs)},
+		{fcnName: "derive", val: (d.newestVal - d.oldestVal) / float64(d.newestTs-d.oldestTs)},
 	}, true
 }
 
@@ -116,7 +117,7 @@ func (l *Last) Add(val float64, ts uint32) {
 
 func (l *Last) Flush() ([]processorResult, bool) {
 	return []processorResult{
-		{functionName: "last", val: l.val},
+		{fcnName: "last", val: l.val},
 	}, true
 }
 
@@ -139,7 +140,7 @@ func (m *Max) Add(val float64, ts uint32) {
 
 func (m *Max) Flush() ([]processorResult, bool) {
 	return []processorResult{
-		{functionName: "max", val: m.val},
+		{fcnName: "max", val: m.val},
 	}, true
 }
 
@@ -162,7 +163,7 @@ func (m *Min) Add(val float64, ts uint32) {
 
 func (m *Min) Flush() ([]processorResult, bool) {
 	return []processorResult{
-		{functionName: "min", val: m.val},
+		{fcnName: "min", val: m.val},
 	}, true
 }
 
@@ -196,11 +197,71 @@ func (s *Stdev) Flush() ([]processorResult, bool) {
 
 	// Calculate the standard deviation
 	return []processorResult{
-		{functionName: "stdev", val: math.Sqrt(variance)},
+		{fcnName: "stdev", val: math.Sqrt(variance)},
 	}, true
 }
 
-// Sum aggregates to average
+// Percentiles aggregates to different percentiles
+type Percentiles struct {
+	percents map[string]float64
+	values []float64
+}
+
+func NewPercentiles(val float64, ts uint32) Processor {
+	return &Percentiles{
+		values: []float64{val},
+		percents: map[string]float64{
+			"p25": 25,
+			"p50": 50,
+			"p75": 75,
+			"p90": 90,
+		},
+	}
+}
+
+func (p *Percentiles) Add(val float64, ts uint32) {
+	p.values = append(p.values, val)
+}
+
+// Implementation inspired by github.com/montanaflynn/stats.
+// The Percentile interface of this lib computes a single percentile per call,
+// copying all values and sorting all values per call.
+// To increase performance, we want to compute multiple percentiles at once,
+// sorting values just once. Hence, the implementation below.
+func (p *Percentiles) Flush() ([]processorResult, bool) {
+
+	size := len(p.values)
+	if size == 0 {
+		return nil, false
+	}
+
+	var results []processorResult
+	sort.Float64s(p.values)
+
+	for fcnName, percent := range p.percents {
+		rank := (percent / 100) * float64(size)
+
+		if rank < 1 || rank > float64(size) {
+			log.Error("Percentile Processor index out of bounds")
+			return nil, false
+		}
+
+		// rank is a whole number
+		if rank == float64(int64(rank)){
+			i := int(rank) - 1 // offset to 0-index
+			percentile := (p.values[i] + p.values[i+1]) / 2
+			results = append(results, processorResult{fcnName: fcnName, val: percentile})
+		} else {
+			i := int(rank) + 1 - 1 // round up and offset to 0-index
+			percentile := p.values[i]
+			results = append(results, processorResult{fcnName: fcnName, val: percentile})
+		}
+	}
+
+	return results, true
+}
+
+// Sum aggregates to sum
 type Sum struct {
 	sum float64
 }
@@ -217,7 +278,7 @@ func (s *Sum) Add(val float64, ts uint32) {
 
 func (s *Sum) Flush() ([]processorResult, bool) {
 	return []processorResult{
-		{functionName: "sum", val: s.sum},
+		{fcnName: "sum", val: s.sum},
 	}, true
 }
 
@@ -248,6 +309,8 @@ func GetProcessorConstructor(fun string) (func(val float64, ts uint32) Processor
 		return NewSum, nil
 	case "derive":
 		return NewDerive, nil
+	case "percentiles":
+		return NewPercentiles, nil
 	}
 	return nil, fmt.Errorf("no such aggregation function '%s'", fun)
 }
