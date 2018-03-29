@@ -162,7 +162,7 @@ Note:
     if you set the interval to the period between each incoming packet of a given key, and the fmt yields the same key for different input metric keys
   - aggregation of individual metrics, i.e. packets for the same key, with different timestamps.  For example if you receive values for the same key every second, you can aggregate into minutely buckets by setting interval to 60, and have the fmt yield a unique key for every input metric key.  (~ graphite rollups)
   - the combination: compute aggregates from values seen with different keys, and at multiple points in time.
-* functions currently available: avg, delta, derive, last, max, min, stdev, sum
+* functions currently available: avg, delta, derive, last, max, min, stdev, sum, percentiles
 * aggregation output is routed via the routing table just like all other metrics.  Note that aggregation output will never go back into aggregators (to prevent loops) and also bypasses the validation and blacklist and rewriters.
 * see the included ini for examples
 * each aggregator can be configured to cache regex matches or not. there is no cache size limit because a limited size, under a typical workload where we see each metric key sequentially, in perpetual cycles, would just result in cache thrashing and wasting memory. If enabled, all matches are cached for at least 100 times the wait parameter. By default, the cache is enabled for aggregators set up via commands (init commands in the config) but disabled for aggregators configured via config sections (due to a limitation in our config library).  Basically enabling the cache means you trade in RAM for cpu.
