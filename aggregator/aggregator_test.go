@@ -23,6 +23,8 @@ func TestScanner(t *testing.T) {
 		p50    float64
 		p75    float64
 		p90    float64
+		p95    float64
+		p99    float64
 	}{
 		{
 			[]float64{1,2,5,4,3},
@@ -38,6 +40,8 @@ func TestScanner(t *testing.T) {
 			1.5,
 			3,
 			4.5,
+			5,
+			5,
 			5,
 		},
 		{
@@ -55,6 +59,8 @@ func TestScanner(t *testing.T) {
 			4.5,
 			6.5,
 			9,
+			9,
+			9,
 		},
 		{
 			[]float64{6, 2, 3, 1},
@@ -70,6 +76,8 @@ func TestScanner(t *testing.T) {
 			1.25,
 			2.5,
 			5.25,
+			6,
+			6,
 			6,
 		},
 		// test out of order. this is the same dataset as the first one, but a bit shuffled
@@ -88,6 +96,8 @@ func TestScanner(t *testing.T) {
 			4.5,
 			6.5,
 			9,
+			9,
+			9,
 		},
 		// Testing percentiles against NIST example from https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm
 		{
@@ -105,6 +115,8 @@ func TestScanner(t *testing.T) {
 			95.1579,
 			95.189575,
 			95.19807,
+			95.199,
+			95.199,
 		},
 	}
 	testCase := func(i int, name string, in []float64, ts []uint32, exp map[string]float64) {
@@ -145,7 +157,14 @@ func TestScanner(t *testing.T) {
 		testCase(i, "stdev", e.in, e.ts, map[string]float64{"stdev": e.stdev})
 		testCase(i, "sum", e.in, e.ts, map[string]float64{"sum": e.sum})
 		testCase(i, "derive", e.in, e.ts, map[string]float64{"derive": e.deriv})
-		testCase(i, "percentiles", e.in, e.ts, map[string]float64{"p25": e.p25, "p50": e.p50, "p75": e.p75, "p90": e.p90})
+		testCase(i, "percentiles", e.in, e.ts, map[string]float64{
+			"p25": e.p25,
+			"p50": e.p50,
+			"p75": e.p75,
+			"p90": e.p90,
+			"p95": e.p95,
+			"p99": e.p99,
+		})
 	}
 }
 

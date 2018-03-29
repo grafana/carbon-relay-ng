@@ -215,6 +215,8 @@ func NewPercentiles(val float64, ts uint32) Processor {
 			"p50": 50,
 			"p75": 75,
 			"p90": 90,
+			"p95": 95,
+			"p99": 99,
 		},
 	}
 }
@@ -224,9 +226,9 @@ func (p *Percentiles) Add(val float64, ts uint32) {
 }
 
 // Using the latest recommendation from NIST
-// https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm
+// See https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm
 // The method implemented corresponds to method R6 of Hyndman and Fan.
-// https://en.wikipedia.org/wiki/Percentile, Third variant
+// See https://en.wikipedia.org/wiki/Percentile, Third variant
 func (p *Percentiles) Flush() ([]processorResult, bool) {
 
 	size := len(p.values)
