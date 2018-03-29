@@ -223,11 +223,10 @@ func (p *Percentiles) Add(val float64, ts uint32) {
 	p.values = append(p.values, val)
 }
 
-// Implementation inspired by github.com/montanaflynn/stats.
-// The Percentile interface of this lib computes a single percentile per call,
-// copying all values and sorting all values per call.
-// To increase performance, we want to compute multiple percentiles at once,
-// sorting values just once. Hence, the implementation below.
+// Using the latest recommendation from NIST
+// https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm
+// The method implemented corresponds to method R6 of Hyndman and Fan.
+// https://en.wikipedia.org/wiki/Percentile, Third variant
 func (p *Percentiles) Flush() ([]processorResult, bool) {
 
 	size := len(p.values)
@@ -239,22 +238,18 @@ func (p *Percentiles) Flush() ([]processorResult, bool) {
 	sort.Float64s(p.values)
 
 	for fcnName, percent := range p.percents {
-		rank := (percent / 100) * float64(size)
+		rank := (percent / 100) * (float64(size) + 1)
+		floor := int(rank)
 
-		if rank < 1 || rank > float64(size) {
-			log.Error("Percentile Processor index out of bounds")
-			return nil, false
-		}
-
-		// rank is a whole number
-		if rank == float64(int64(rank)){
-			i := int(rank) - 1 // offset to 0-index
-			percentile := (p.values[i] + p.values[i+1]) / 2
-			results = append(results, processorResult{fcnName: fcnName, val: percentile})
+		if rank < 1 {
+			results = append(results, processorResult{fcnName, p.values[0]})
+		} else if floor >= size {
+			results = append(results, processorResult{fcnName, p.values[size-1]})
 		} else {
-			i := int(rank) + 1 - 1 // round up and offset to 0-index
-			percentile := p.values[i]
-			results = append(results, processorResult{fcnName: fcnName, val: percentile})
+			frac := rank - float64(floor)
+			upper := floor + 1
+			percentile := p.values[floor-1] + frac * (p.values[upper-1] - p.values[floor-1])
+			results = append(results, processorResult{fcnName, percentile})
 		}
 	}
 
