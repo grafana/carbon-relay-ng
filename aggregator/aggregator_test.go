@@ -222,8 +222,8 @@ func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, cache
 			if bytes.HasPrefix(v, []byte("aggregated.totals.abc.ignoreme")) {
 				continue
 			}
-			if string(v[37:43]) != match {
-				b.Fatalf("expected 'aggregated.totals.abc.<10 random chars>.sum %s... <ts>'. got: %q", match, v)
+			if string(v[33:39]) != match {
+				b.Fatalf("expected 'aggregated.totals.abc.<10 random chars> %s... <ts>'. got: %q", match, v)
 			}
 			//	if count%100 == 0 {
 			//fmt.Println("got", string(v), "count is now", count)

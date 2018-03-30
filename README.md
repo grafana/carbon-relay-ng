@@ -156,6 +156,8 @@ Note:
 * The interval parameter let's you quantize ("fix") timestamps, for example with an interval of 60 seconds, if you have incoming metrics for times that differ from each other, but all fall within the same minute, they will be counted together.
 * The wait parameter allows up to the specified amount of seconds to wait for values, With a wait of 120, metrics can come 2 minutes late and still be included in the aggregation results.
 * The fmt parameter dictates what the metric key of the aggregated metric will be.  use $1, $2, etc to refer to groups in the regex
+  Multi-value aggregators (currently only percentiles) add .pxx at the end of the various metrics they emit.
+  Single-value aggregators (currently all others) don't, allowing you to specify keywords like avg, sum, etc wherever into the fmt string you want.
 * Note that we direct incoming values to an aggregation bucket based on the interval the timestamp is in, and the output key it generates.
   This means that you can have 3 aggregation cases, based on how you set your regex, interval and fmt string.
   - aggregation of points with different metric keys, but with the same, or similar timestamps) into one outgoing value (~ carbon-aggregator).
