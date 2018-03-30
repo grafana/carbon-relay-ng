@@ -45,9 +45,9 @@ regex          |     N     |  string     | ""      |
 sslverify      |     N     |  true/false | true    |
 spool          |     N     |  true/false | false   | ** disk spooling. not implemented yet **
 blocking       |     N     |  true/false | false   | if false, full buffer drops data. if true, full buffer puts backpressure on the table, possibly affecting ingestion and other routes
-concurrency    |     N     |  int        | 10      | number of concurrent connections to ingestion endpoint
+concurrency    |     N     |  int        | 100     | number of concurrent connections to ingestion endpoint
 bufSize        |     N     |  int        | 10M     | buffer size. assume +- 100B per message, so 10M is about 1GB of RAM
-flushMaxNum    |     N     |  int        | 10k     | max number of metrics to buffer before triggering flush
+flushMaxNum    |     N     |  int        | 5000    | max number of metrics to buffer before triggering flush
 flushMaxWait   |     N     |  int (ms)   | 500     | max time to buffer before triggering flush
 timeout        |     N     |  int (ms)   | 10000   | abort and retry requests to api gateway if takes longer than this.
 orgId          |     N     |  int        | 1       |
