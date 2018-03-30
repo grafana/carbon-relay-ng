@@ -3,7 +3,13 @@ package aggregator
 import (
 	"fmt"
 	"math"
+	"sort"
 )
+
+type processorResult struct {
+	fcnName string
+	val     float64
+}
 
 // Avg aggregates to average
 type Avg struct {
@@ -23,8 +29,10 @@ func (a *Avg) Add(val float64, ts uint32) {
 	a.cnt += 1
 }
 
-func (a *Avg) Flush() (float64, bool) {
-	return a.sum / float64(a.cnt), true
+func (a *Avg) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{fcnName: "avg", val: a.sum / float64(a.cnt)},
+	}, true
 }
 
 // Delta aggregates to the difference between highest and lowest value seen
@@ -49,8 +57,10 @@ func (d *Delta) Add(val float64, ts uint32) {
 	}
 }
 
-func (d *Delta) Flush() (float64, bool) {
-	return d.max - d.min, true
+func (d *Delta) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{fcnName: "delta", val: d.max - d.min},
+	}, true
 }
 
 // Derive aggregates to the derivative of the largest timeframe we get
@@ -81,11 +91,13 @@ func (d *Derive) Add(val float64, ts uint32) {
 	}
 }
 
-func (d *Derive) Flush() (float64, bool) {
+func (d *Derive) Flush() ([]processorResult, bool) {
 	if d.newestTs == d.oldestTs {
-		return 0, false
+		return nil, false
 	}
-	return (d.newestVal - d.oldestVal) / float64(d.newestTs-d.oldestTs), true
+	return []processorResult{
+		{fcnName: "derive", val: (d.newestVal - d.oldestVal) / float64(d.newestTs-d.oldestTs)},
+	}, true
 }
 
 // Last aggregates to the last value seen
@@ -103,8 +115,10 @@ func (l *Last) Add(val float64, ts uint32) {
 	l.val = val
 }
 
-func (l *Last) Flush() (float64, bool) {
-	return l.val, true
+func (l *Last) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{fcnName: "last", val: l.val},
+	}, true
 }
 
 // Max aggregates to the highest value seen
@@ -124,8 +138,10 @@ func (m *Max) Add(val float64, ts uint32) {
 	}
 }
 
-func (m *Max) Flush() (float64, bool) {
-	return m.val, true
+func (m *Max) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{fcnName: "max", val: m.val},
+	}, true
 }
 
 // Min aggregates to the lowest value seen
@@ -145,8 +161,10 @@ func (m *Min) Add(val float64, ts uint32) {
 	}
 }
 
-func (m *Min) Flush() (float64, bool) {
-	return m.val, true
+func (m *Min) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{fcnName: "min", val: m.val},
+	}, true
 }
 
 // Stdev aggregates to standard deviation
@@ -167,7 +185,7 @@ func (s *Stdev) Add(val float64, ts uint32) {
 	s.values = append(s.values, val)
 }
 
-func (s *Stdev) Flush() (float64, bool) {
+func (s *Stdev) Flush() ([]processorResult, bool) {
 	mean := s.sum / float64(len(s.values))
 
 	// Calculate the variance
@@ -178,10 +196,69 @@ func (s *Stdev) Flush() (float64, bool) {
 	variance /= float64(len(s.values))
 
 	// Calculate the standard deviation
-	return math.Sqrt(variance), true
+	return []processorResult{
+		{fcnName: "stdev", val: math.Sqrt(variance)},
+	}, true
 }
 
-// Sum aggregates to average
+// Percentiles aggregates to different percentiles
+type Percentiles struct {
+	percents map[string]float64
+	values   []float64
+}
+
+func NewPercentiles(val float64, ts uint32) Processor {
+	return &Percentiles{
+		values: []float64{val},
+		percents: map[string]float64{
+			"p25": 25,
+			"p50": 50,
+			"p75": 75,
+			"p90": 90,
+			"p95": 95,
+			"p99": 99,
+		},
+	}
+}
+
+func (p *Percentiles) Add(val float64, ts uint32) {
+	p.values = append(p.values, val)
+}
+
+// Using the latest recommendation from NIST
+// See https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm
+// The method implemented corresponds to method R6 of Hyndman and Fan.
+// See https://en.wikipedia.org/wiki/Percentile, Third variant
+func (p *Percentiles) Flush() ([]processorResult, bool) {
+
+	size := len(p.values)
+	if size == 0 {
+		return nil, false
+	}
+
+	var results []processorResult
+	sort.Float64s(p.values)
+
+	for fcnName, percent := range p.percents {
+		rank := (percent / 100) * (float64(size) + 1)
+		floor := int(rank)
+
+		if rank < 1 {
+			results = append(results, processorResult{fcnName, p.values[0]})
+		} else if floor >= size {
+			results = append(results, processorResult{fcnName, p.values[size-1]})
+		} else {
+			frac := rank - float64(floor)
+			upper := floor + 1
+			percentile := p.values[floor-1] + frac*(p.values[upper-1]-p.values[floor-1])
+			results = append(results, processorResult{fcnName, percentile})
+		}
+	}
+
+	return results, true
+}
+
+// Sum aggregates to sum
 type Sum struct {
 	sum float64
 }
@@ -196,17 +273,19 @@ func (s *Sum) Add(val float64, ts uint32) {
 	s.sum += val
 }
 
-func (s *Sum) Flush() (float64, bool) {
-	return s.sum, true
+func (s *Sum) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{fcnName: "sum", val: s.sum},
+	}, true
 }
 
 type Processor interface {
 	// Add adds a point to aggregate
 	Add(val float64, ts uint32)
-	// Flush returns the aggregated value and true if it is valid
+	// Flush returns the aggregated value(s) and true if it is valid
 	// the only reason why it would be non-valid is for aggregators that need
 	// more than 1 value but they didn't have enough to produce a useful result.
-	Flush() (float64, bool)
+	Flush() ([]processorResult, bool)
 }
 
 func GetProcessorConstructor(fun string) (func(val float64, ts uint32) Processor, error) {
@@ -227,6 +306,8 @@ func GetProcessorConstructor(fun string) (func(val float64, ts uint32) Processor
 		return NewSum, nil
 	case "derive":
 		return NewDerive, nil
+	case "percentiles":
+		return NewPercentiles, nil
 	}
 	return nil, fmt.Errorf("no such aggregation function '%s'", fun)
 }

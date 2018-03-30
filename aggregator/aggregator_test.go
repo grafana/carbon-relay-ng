@@ -19,7 +19,31 @@ func TestScanner(t *testing.T) {
 		stdev float64
 		sum   float64
 		deriv float64
+		p25   float64
+		p50   float64
+		p75   float64
+		p90   float64
+		p95   float64
+		p99   float64
 	}{
+		{
+			[]float64{1, 2, 5, 4, 3},
+			[]uint32{1, 2, 3, 4, 5},
+			3,
+			4,
+			3,
+			5,
+			1,
+			1.4142135623730951,
+			15,
+			0.5,
+			1.5,
+			3,
+			4.5,
+			5,
+			5,
+			5,
+		},
 		{
 			[]float64{5, 4, 7, 4, 2, 5, 4, 9},
 			[]uint32{1, 2, 3, 4, 5, 6, 7, 8},
@@ -31,6 +55,12 @@ func TestScanner(t *testing.T) {
 			2,
 			40,
 			float64(4) / float64(7),
+			4,
+			4.5,
+			6.5,
+			9,
+			9,
+			9,
 		},
 		{
 			[]float64{6, 2, 3, 1},
@@ -43,6 +73,12 @@ func TestScanner(t *testing.T) {
 			1.8708286933869707,
 			12,
 			float64(-5) / float64(3),
+			1.25,
+			2.5,
+			5.25,
+			6,
+			6,
+			6,
 		},
 		// test out of order. this is the same dataset as the first one, but a bit shuffled
 		{
@@ -56,9 +92,34 @@ func TestScanner(t *testing.T) {
 			2,
 			40,
 			float64(4) / float64(7),
+			4,
+			4.5,
+			6.5,
+			9,
+			9,
+			9,
+		},
+		// Testing percentiles against NIST example from https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm
+		{
+			[]float64{95.1772, 95.1567, 95.1937, 95.1959, 95.1442, 95.0610, 95.1591, 95.1195, 95.1065, 95.0925, 95.1990, 95.1682},
+			[]uint32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+			95.14779166666666,
+			0.13799999999999102,
+			95.1682,
+			95.1990,
+			95.0610,
+			0.04246679994091972,
+			1141.7735,
+			-0.0008181818181818492,
+			95.10974999999999,
+			95.1579,
+			95.189575,
+			95.19807,
+			95.199,
+			95.199,
 		},
 	}
-	testCase := func(i int, name string, in []float64, ts []uint32, exp float64) {
+	testCase := func(i int, name string, in []float64, ts []uint32, exp map[string]float64) {
 		procConstr, err := GetProcessorConstructor(name)
 		if err != nil {
 			t.Fatalf("got err %q", err)
@@ -67,23 +128,43 @@ func TestScanner(t *testing.T) {
 		for i, v := range in[1:] {
 			p.Add(v, ts[i+1])
 		}
-		got, ok := p.Flush()
+		results, ok := p.Flush()
 		if !ok {
 			t.Fatalf("case %d %s - expected valid output, got null", i, name)
 		}
-		if got != exp {
-			t.Fatalf("case %d %s - expected %v, actual %v", i, name, exp, got)
+		for fcn, expVal := range exp {
+			fcnFound := false
+			for _, result := range results {
+				if result.fcnName == fcn {
+					fcnFound = true
+					if result.val != expVal {
+						t.Fatalf("case %d %s %s - expected %v, actual %v", i, name, result.fcnName, expVal, result.val)
+					}
+				}
+			}
+			if !fcnFound {
+				t.Fatalf("case %d %s - expected result of fcn %s not returned in results slice", i, name, fcn)
+			}
 		}
+
 	}
 	for i, e := range cases {
-		testCase(i, "avg", e.in, e.ts, e.avg)
-		testCase(i, "delta", e.in, e.ts, e.delta)
-		testCase(i, "last", e.in, e.ts, e.last)
-		testCase(i, "max", e.in, e.ts, e.max)
-		testCase(i, "min", e.in, e.ts, e.min)
-		testCase(i, "stdev", e.in, e.ts, e.stdev)
-		testCase(i, "sum", e.in, e.ts, e.sum)
-		testCase(i, "derive", e.in, e.ts, e.deriv)
+		testCase(i, "avg", e.in, e.ts, map[string]float64{"avg": e.avg})
+		testCase(i, "delta", e.in, e.ts, map[string]float64{"delta": e.delta})
+		testCase(i, "last", e.in, e.ts, map[string]float64{"last": e.last})
+		testCase(i, "max", e.in, e.ts, map[string]float64{"max": e.max})
+		testCase(i, "min", e.in, e.ts, map[string]float64{"min": e.min})
+		testCase(i, "stdev", e.in, e.ts, map[string]float64{"stdev": e.stdev})
+		testCase(i, "sum", e.in, e.ts, map[string]float64{"sum": e.sum})
+		testCase(i, "derive", e.in, e.ts, map[string]float64{"derive": e.deriv})
+		testCase(i, "percentiles", e.in, e.ts, map[string]float64{
+			"p25": e.p25,
+			"p50": e.p50,
+			"p75": e.p75,
+			"p90": e.p90,
+			"p95": e.p95,
+			"p99": e.p99,
+		})
 	}
 }
 
@@ -96,11 +177,11 @@ func BenchmarkProcessorMax(b *testing.B) {
 		for j := 0; j < 10; j++ {
 			proc.Add(float64(j), uint32(j))
 		}
-		res, ok := proc.Flush()
+		results, ok := proc.Flush()
 		if !ok {
 			panic("why would max produce an invalid output here?")
 		}
-		r = res
+		r = results[0].val
 	}
 }
 

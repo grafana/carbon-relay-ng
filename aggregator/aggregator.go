@@ -148,11 +148,15 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 func (a *Aggregator) Flush(ts uint) {
 	for k, proc := range a.aggregations {
 		if k.ts < ts {
-			result, ok := proc.Flush()
+			results, ok := proc.Flush()
 			if ok {
-				metric := fmt.Sprintf("%s %f %d", string(k.key), result, k.ts)
-				//		log.Debug("aggregator %s-%v-%v values %v -> result %q", a.Fun, a.Regex, a.OutFmt, agg, metric)
-				a.out <- []byte(metric)
+				if len(results) == 1 {
+					a.out <- []byte(fmt.Sprintf("%s %f %d", k.key, results[0].val, k.ts))
+				} else {
+					for _, result := range results {
+						a.out <- []byte(fmt.Sprintf("%s.%s %f %d", k.key, result.fcnName, result.val, k.ts))
+					}
+				}
 			}
 			delete(a.aggregations, k)
 		}
