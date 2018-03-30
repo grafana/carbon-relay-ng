@@ -204,7 +204,7 @@ func (s *Stdev) Flush() ([]processorResult, bool) {
 // Percentiles aggregates to different percentiles
 type Percentiles struct {
 	percents map[string]float64
-	values []float64
+	values   []float64
 }
 
 func NewPercentiles(val float64, ts uint32) Processor {
@@ -250,7 +250,7 @@ func (p *Percentiles) Flush() ([]processorResult, bool) {
 		} else {
 			frac := rank - float64(floor)
 			upper := floor + 1
-			percentile := p.values[floor-1] + frac * (p.values[upper-1] - p.values[floor-1])
+			percentile := p.values[floor-1] + frac*(p.values[upper-1]-p.values[floor-1])
 			results = append(results, processorResult{fcnName, percentile})
 		}
 	}

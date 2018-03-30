@@ -9,25 +9,25 @@ import (
 
 func TestScanner(t *testing.T) {
 	cases := []struct {
-		in     []float64
-		ts     []uint32
-		avg    float64
-		delta  float64
-		last   float64
-		max    float64
-		min    float64
-		stdev  float64
-		sum    float64
-		deriv  float64
-		p25    float64
-		p50    float64
-		p75    float64
-		p90    float64
-		p95    float64
-		p99    float64
+		in    []float64
+		ts    []uint32
+		avg   float64
+		delta float64
+		last  float64
+		max   float64
+		min   float64
+		stdev float64
+		sum   float64
+		deriv float64
+		p25   float64
+		p50   float64
+		p75   float64
+		p90   float64
+		p95   float64
+		p99   float64
 	}{
 		{
-			[]float64{1,2,5,4,3},
+			[]float64{1, 2, 5, 4, 3},
 			[]uint32{1, 2, 3, 4, 5},
 			3,
 			4,
@@ -101,8 +101,8 @@ func TestScanner(t *testing.T) {
 		},
 		// Testing percentiles against NIST example from https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm
 		{
-			[]float64{95.1772,95.1567,95.1937,95.1959,95.1442,95.0610,95.1591,95.1195,95.1065,95.0925,95.1990,95.1682},
-			[]uint32{1,2,3,4,5,6,7,8,9,10,11,12},
+			[]float64{95.1772, 95.1567, 95.1937, 95.1959, 95.1442, 95.0610, 95.1591, 95.1195, 95.1065, 95.0925, 95.1990, 95.1682},
+			[]uint32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
 			95.14779166666666,
 			0.13799999999999102,
 			95.1682,
@@ -134,7 +134,7 @@ func TestScanner(t *testing.T) {
 		}
 		for fcn, expVal := range exp {
 			fcnFound := false
-			for _,result := range results {
+			for _, result := range results {
 				if result.fcnName == fcn {
 					fcnFound = true
 					if result.val != expVal {
