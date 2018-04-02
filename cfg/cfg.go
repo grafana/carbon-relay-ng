@@ -77,7 +77,7 @@ type Route struct {
 	// CloudWatch
 	Profile    string // For local development
 	Region     string
-	Namespace  string // For now fixed in config
+	Namespace  string     // For now fixed in config
 	Dimensions [][]string // For now fixed in config
 }
 
