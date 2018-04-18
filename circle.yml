@@ -36,6 +36,7 @@ test:
 general:
   artifacts:
     - build
+    - carbon-relay-ng.exe
 deployment:
   production:
     branch: master
