@@ -33,6 +33,7 @@ test:
     # but because git checkout will change the timestamps and mode, it'll generate slight differences, and it's hard to filter those out
     # so for now, we just let it slip and assume devs will do a good enough job maintaining the generated data
     # - git diff --exit-code
+    - cd $REPO && make build-win
 general:
   artifacts:
     - build
