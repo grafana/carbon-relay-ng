@@ -27,6 +27,7 @@ type Aggregator struct {
 	reCache      map[string]CacheEntry
 	Interval     uint                 // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
 	Wait         uint                 // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
+	DropRaw      bool                 // drop raw values "consumed" by this aggregator?
 	aggregations map[aggkey]Processor // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
 	snapReq      chan bool            // chan to issue snapshot requests on
 	snapResp     chan *Aggregator     // chan on which snapshot response gets sent
@@ -71,11 +72,11 @@ func regexToPrefix(regex string) []byte {
 }
 
 // New creates an aggregator
-func New(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, out chan []byte) (*Aggregator, error) {
-	return NewMocked(fun, regex, prefix, sub, outFmt, cache, interval, wait, out, 2000, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
+func New(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte) (*Aggregator, error) {
+	return NewMocked(fun, regex, prefix, sub, outFmt, cache, interval, wait, dropRaw, out, 2000, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
 }
 
-func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
+func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
 	regexObj, err := regexp.Compile(regex)
 	if err != nil {
 		return nil, err
@@ -112,6 +113,7 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 		reCache,
 		interval,
 		wait,
+		dropRaw,
 		make(map[aggkey]Processor),
 		make(chan bool),
 		make(chan *Aggregator),
@@ -169,14 +171,25 @@ func (a *Aggregator) Shutdown() {
 	a.wg.Wait()
 }
 
-func (a *Aggregator) AddMaybe(buf [][]byte, val float64, ts uint32) {
-	if a.PreMatch(buf[0]) {
-		a.in <- msg{
-			buf,
-			val,
-			ts,
+func (a *Aggregator) AddMaybe(buf [][]byte, val float64, ts uint32) bool {
+	if !a.PreMatch(buf[0]) {
+		return false
+	}
+
+	if a.DropRaw {
+		_, ok := a.matchWithCache(buf[0])
+		if !ok {
+			return false
 		}
 	}
+
+	a.in <- msg{
+		buf,
+		val,
+		ts,
+	}
+
+	return a.DropRaw
 }
 
 //PreMatch checks if the specified metric matches the specified prefix and/or substring
@@ -199,8 +212,7 @@ type CacheEntry struct {
 }
 
 //
-func (a *Aggregator) match(m msg) (string, bool) {
-	key := m.buf[0]
+func (a *Aggregator) match(key []byte) (string, bool) {
 	var dst []byte
 	matches := a.regex.FindSubmatchIndex(key)
 	if matches == nil {
@@ -209,39 +221,43 @@ func (a *Aggregator) match(m msg) (string, bool) {
 	return string(a.regex.Expand(dst, a.outFmt, key, matches)), true
 }
 
+func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
+	if a.reCache == nil {
+		return a.match(key)
+	}
+
+	var outKey string
+	var ok bool
+	entry, ok := a.reCache[string(key)]
+	if ok {
+		entry.seen = uint32(a.now().Unix())
+		a.reCache[string(key)] = entry
+
+		if !entry.match {
+			return "", false
+		}
+		return entry.key, true
+	}
+
+	outKey, ok = a.match(key)
+
+	a.reCache[string(key)] = CacheEntry{
+		ok,
+		outKey,
+		uint32(a.now().Unix()),
+	}
+
+	return outKey, ok
+}
+
 func (a *Aggregator) run() {
 	for {
 		select {
 		case msg := <-a.in:
 			// note, we rely here on the fact that the packet has already been validated
-			key := msg.buf[0]
-			var outKey string
-			var ok bool
-			if a.reCache != nil {
-				entry, ok := a.reCache[string(key)]
-				if ok {
-					entry.seen = uint32(a.now().Unix())
-					a.reCache[string(key)] = entry
-					if !entry.match {
-						continue
-					}
-					outKey = entry.key
-				} else {
-					outKey, ok = a.match(msg)
-					a.reCache[string(key)] = CacheEntry{
-						ok,
-						outKey,
-						uint32(a.now().Unix()),
-					}
-					if !ok {
-						continue
-					}
-				}
-			} else {
-				outKey, ok = a.match(msg)
-				if !ok {
-					continue
-				}
+			outKey, ok := a.matchWithCache(msg.buf[0])
+			if !ok {
+				continue
 			}
 			ts := uint(msg.ts)
 			quantized := ts - (ts % a.Interval)
@@ -288,6 +304,7 @@ func (a *Aggregator) run() {
 				nil,
 				a.Interval,
 				a.Wait,
+				a.DropRaw,
 				aggs,
 				nil,
 				nil,

@@ -291,7 +291,7 @@ func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, cache
 	clock.AddTick(tick)
 	bufSize := 2 * aggregates * pointsPerAggregate
 
-	agg, err := NewMocked("sum", regex, "", "", outFmt, cache, 10, 30, out, bufSize, clock.Now, tick.C)
+	agg, err := NewMocked("sum", regex, "", "", outFmt, cache, 10, 30, false, out, bufSize, clock.Now, tick.C)
 	if err != nil {
 		b.Fatalf("couldn't create aggregation: %q", err)
 	}

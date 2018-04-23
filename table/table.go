@@ -90,6 +90,7 @@ func (table *Table) Dispatch(buf []byte, val float64, ts uint32) {
 	for _, matcher := range conf.blacklist {
 		if matcher.Match(fields[0]) {
 			table.numBlacklist.Inc(1)
+			log.Debug("table dropped %s, matched blacklist entry %s", buf_copy, matcher)
 			return
 		}
 	}
@@ -100,7 +101,11 @@ func (table *Table) Dispatch(buf []byte, val float64, ts uint32) {
 
 	for _, aggregator := range conf.aggregators {
 		// we rely on incoming metrics already having been validated
-		aggregator.AddMaybe(fields, val, ts)
+		dropRaw := aggregator.AddMaybe(fields, val, ts)
+		if dropRaw {
+			log.Debug("table dropped %s, matched dropRaw aggregator %s", buf_copy, aggregator.Regex)
+			return
+		}
 	}
 
 	final := bytes.Join(fields, []byte(" "))
@@ -126,6 +131,7 @@ func (table *Table) Dispatch(buf []byte, val float64, ts uint32) {
 func (table *Table) DispatchAggregate(buf []byte) {
 	conf := table.config.Load().(TableConfig)
 	routed := false
+	log.Debug("table received aggregate packet %s", buf)
 
 	for _, route := range conf.routes {
 		if route.Match(buf) {
@@ -407,8 +413,8 @@ func (table *Table) Print() (str string) {
 	rowFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%dd\n", maxRWOld, maxRWNew, maxRWMax)
 	heaFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBSub, maxBRegex)
 	rowFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBSub, maxBRegex)
-	heaFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-%ds  %%-%ds\n", maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
-	rowFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5t  %%-%dd  %%-%dd\n", maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
+	heaFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-%ds  %%-%ds %%-7s\n", maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
+	rowFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5t  %%-%dd  %%-%dd %%-7t\n", maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
 	heaFmtR := fmt.Sprintf("  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRType, maxRKey, maxRPrefix, maxRSub, maxRRegex)
 	rowFmtR := fmt.Sprintf("> %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRType, maxRKey, maxRPrefix, maxRSub, maxRRegex)
 	heaFmtD := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-6s  %%-6s\n", maxDPrefix, maxDSub, maxDRegex, maxDAddr, maxDSpoolDir)
@@ -433,10 +439,10 @@ func (table *Table) Print() (str string) {
 	}
 
 	str += "\n## Aggregations:\n"
-	cols = fmt.Sprintf(heaFmtA, "func", "regex", "prefix", "substr", "outFmt", "cache", "interval", "wait")
+	cols = fmt.Sprintf(heaFmtA, "func", "regex", "prefix", "substr", "outFmt", "cache", "interval", "wait", "dropRaw")
 	str += cols + underscore(len(cols)-1)
 	for _, agg := range t.Aggregators {
-		str += fmt.Sprintf(rowFmtA, agg.Fun, agg.Regex, agg.Prefix, agg.Sub, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait)
+		str += fmt.Sprintf(rowFmtA, agg.Fun, agg.Regex, agg.Prefix, agg.Sub, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait, agg.DropRaw)
 	}
 
 	str += "\n## Routes:\n"
@@ -547,7 +553,7 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 
 func (table *Table) InitAggregation(config cfg.Config) error {
 	for i, aggConfig := range config.Aggregation {
-		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.Prefix, aggConfig.Substr, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), table.In)
+		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.Prefix, aggConfig.Substr, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), aggConfig.DropRaw, table.In)
 		if err != nil {
 			log.Error(err.Error())
 			return fmt.Errorf("could not add aggregation #%d", i+1)

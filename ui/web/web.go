@@ -224,6 +224,7 @@ func parseAggregateRequest(r *http.Request) (*aggregator.Aggregator, *handlerErr
 		Cache     bool
 		Interval  uint
 		Wait      uint
+		DropRaw   bool
 		Regex     string
 		Prefix    string `json:"omitempty"`
 		Substring string `json:"omitempty"`
@@ -231,7 +232,7 @@ func parseAggregateRequest(r *http.Request) (*aggregator.Aggregator, *handlerErr
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
 	}
-	aggregate, err := aggregator.New(request.Fun, request.Regex, request.Prefix, request.Substring, request.OutFmt, request.Cache, request.Interval, request.Wait, table.In)
+	aggregate, err := aggregator.New(request.Fun, request.Regex, request.Prefix, request.Substring, request.OutFmt, request.Cache, request.Interval, request.Wait, request.DropRaw, table.In)
 	if err != nil {
 		return nil, &handlerError{err, "Couldn't create aggregator", http.StatusBadRequest}
 	}

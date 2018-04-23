@@ -37,6 +37,7 @@ type Aggregation struct {
 	Cache    bool
 	Interval int
 	Wait     int
+	DropRaw  bool
 }
 
 type Route struct {
