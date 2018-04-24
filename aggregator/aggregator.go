@@ -27,7 +27,7 @@ type Aggregator struct {
 	reCache      map[string]CacheEntry
 	Interval     uint                 // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
 	Wait         uint                 // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
-	DropRaw      bool                 // drop raw values "consumed" by this aggregator?
+	DropRaw      bool                 // drop raw values "consumed" by this aggregator
 	aggregations map[aggkey]Processor // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
 	snapReq      chan bool            // chan to issue snapshot requests on
 	snapResp     chan *Aggregator     // chan on which snapshot response gets sent
