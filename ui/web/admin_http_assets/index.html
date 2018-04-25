@@ -143,6 +143,7 @@
                   <th>Cache</th>
                   <th>Interval (sec)</th>
                   <th>Wait (sec)</th>
+                  <th>DropRaw</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -154,8 +155,8 @@
                     <td>{{a.Cache}}</td>
                     <td>{{a.Interval}}</td>
                     <td>{{a.Wait}}</td>
+                    <td>{{a.DropRaw}}</td>
                     <td class="text-center"><a ng-click="removeAggregator($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
-
                 </tr>
                 </tbody>
                 <tbody>
@@ -189,6 +190,9 @@
                         <div ng-show="aggForm.wait.$invalid">
                             <span ng-show="aggForm.wait.$error.pattern">Expected a number (in seconds) to denote max wait</span>
                         </div>
+                    </td>
+                    <td class="form-group has-feedback">
+                      <input type="checkbox" ng-model="newAgg.DropRaw" name="Drop Raw" class="form-control">
                     </td>
                     <td>
                     <button class="btn btn-sm btn-primary btn-block" type="submit" ng-disabled="aggForm.$invalid">Add</button>

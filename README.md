@@ -103,9 +103,9 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
 carbon-relay-ng (for now) focuses on staying up and not consuming much resources.
 
 For carbon routes:
-if connection is up but slow, we drop the data 
-if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data 
-if connection is down and spooling disabled -> drop the data
+* if connection is up but slow, we drop the data
+* if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data
+* if connection is down and spooling disabled -> drop the data
 
 kafka, Google PubSub, and grafanaNet have an in-memory buffer and can be configured to blocking or non-blocking mode when the buffer runs full.
 
@@ -169,6 +169,7 @@ Note:
 * see the included ini for examples
 * each aggregator can be configured to cache regex matches or not. there is no cache size limit because a limited size, under a typical workload where we see each metric key sequentially, in perpetual cycles, would just result in cache thrashing and wasting memory. If enabled, all matches are cached for at least 100 times the wait parameter. By default, the cache is enabled for aggregators set up via commands (init commands in the config) but disabled for aggregators configured via config sections (due to a limitation in our config library).  Basically enabling the cache means you trade in RAM for cpu.
 * each aggregator may have a prefix and/or substring specified, these are used to reduce overhead by pre-filtering the metrics before they are matched against the regex (if not specified the prefix will be derived from the regex where possible).
+* an aggregator may be configured with `dropRaw=true`, which will prevent any further processing of the raw series "consumed" by that aggregator (including by other aggregators).  This can be useful for managing cardinality and for quantizing metrics sent at odd intervals.  When using `dropRaw` an aggregator may produce a series with the same name as the input series.
 
 Rewriting
 ---------

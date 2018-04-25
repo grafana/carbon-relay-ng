@@ -43,6 +43,7 @@ const (
 	optPrefix
 	optAddr
 	optCache
+	optDropRaw
 	optBlocking
 	optSub
 	optRegex
@@ -95,6 +96,7 @@ var tokens = []toki.Def{
 	{Token: optPrefix, Pattern: "prefix="},
 	{Token: optAddr, Pattern: "addr="},
 	{Token: optCache, Pattern: "cache="},
+	{Token: optDropRaw, Pattern: "dropRaw="},
 	{Token: optBlocking, Pattern: "blocking="},
 	{Token: optSub, Pattern: "sub="},
 	{Token: optRegex, Pattern: "regex="},
@@ -141,7 +143,7 @@ var tokens = []toki.Def{
 // note the two spaces between a route and endpoints
 // match options can't have spaces for now. sorry
 var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
-var errFmtAddAgg = errors.New("addAgg <avg|delta|derive|last|max|min|stdev|sum> [prefix/sub/regex=,..] <fmt> <interval> <wait> [cache=true/false]")
+var errFmtAddAgg = errors.New("addAgg <avg|delta|derive|last|max|min|stdev|sum> [prefix/sub/regex=,..] <fmt> <interval> <wait> [cache=true/false] [dropRaw=true/false]")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
 var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/sub/regex=,...]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int concurrency=int orgId=int]")
 var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex=,...]  broker topic codec schemasFile partitionBy orgId [blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
@@ -265,6 +267,7 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 	}
 
 	cache := true
+	dropRaw := false
 
 	t = s.Next()
 	for ; t.Token != toki.EOF; t = s.Next() {
@@ -279,12 +282,22 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 			} else {
 				return errFmtAddAgg
 			}
+		case optDropRaw:
+			t = s.Next()
+			if t.Token == optTrue || t.Token == optFalse {
+				dropRaw, err = strconv.ParseBool(string(t.Value))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddAgg
+			}
 		default:
 			return fmt.Errorf("unexpected token %d %q", t.Token, t.Value)
 		}
 	}
 
-	agg, err := aggregator.New(fun, regex, prefix, sub, outFmt, cache, uint(interval), uint(wait), table.GetIn())
+	agg, err := aggregator.New(fun, regex, prefix, sub, outFmt, cache, uint(interval), uint(wait), dropRaw, table.GetIn())
 	if err != nil {
 		return err
 	}

@@ -92,7 +92,7 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   $scope.addAggregator = function() {
     $scope.alerts = [];
     $scope.newAgg.$save().then(function(resp) {
-      $scope.newAdd = new Aggregator({Type: "agg", Interval:60, Wait: 120});
+      $scope.newAgg = new Aggregator({Type: "agg", Interval:60, Wait: 120});
       $scope.list();
     },function(err) {
       $scope.alerts = [{msg: err.data.error}];
