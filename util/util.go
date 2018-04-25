@@ -1,6 +1,9 @@
 package util
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // some.host:2003 -> some_host_2003
 // http://some.host:8080 -> http_some_host_8080
@@ -14,4 +17,14 @@ func AddrToPath(s string) string {
 // http://some.host:8080, kafkaRoute -> kafkaRoute_http_some_host_8080
 func Key(routeName, addr string) string {
 	return routeName + "_" + AddrToPath(addr)
+}
+
+type Point struct {
+	Key []byte
+	Val float64
+	TS  uint32
+}
+
+func (point *Point) String() string {
+	return fmt.Sprintf("%s %f %d", point.Key, point.Val, point.TS)
 }
