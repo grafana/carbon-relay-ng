@@ -169,7 +169,7 @@ Note:
 * see the included ini for examples
 * each aggregator can be configured to cache regex matches or not. there is no cache size limit because a limited size, under a typical workload where we see each metric key sequentially, in perpetual cycles, would just result in cache thrashing and wasting memory. If enabled, all matches are cached for at least 100 times the wait parameter. By default, the cache is enabled for aggregators set up via commands (init commands in the config) but disabled for aggregators configured via config sections (due to a limitation in our config library).  Basically enabling the cache means you trade in RAM for cpu.
 * each aggregator may have a prefix and/or substring specified, these are used to reduce overhead by pre-filtering the metrics before they are matched against the regex (if not specified the prefix will be derived from the regex where possible).
-* an aggregator may be configured with `dropRaw=true`, which will prevent any further processing of the raw series "consumed" by that aggregator (including by other aggregators).  This can be useful for managing cardinality and for quantizing metrics sent at odd intervals.  When using `dropRaw` an aggregator may produce a series with the same name as the input series.
+* an aggregator may be configured with `dropRaw=true`, which will prevent any further processing of the raw series "consumed" by that aggregator (including by other aggregators).  This can be useful for managing cardinality and for quantizing metrics sent at odd intervals.  When using `dropRaw` an aggregator may produce a series with the same name as the input series. Note that this option may slow down table processing, especially with a cold or disable aggregator cache.
 
 Rewriting
 ---------
