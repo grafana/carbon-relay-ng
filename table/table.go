@@ -91,12 +91,14 @@ func (table *Table) GetSpoolDir() string {
 // it dispatches incoming metrics into matching aggregators and routes,
 // after checking against the blacklist
 // key is assumed to have no whitespace at the end
-func (table *Table) Dispatch(key []byte, val float64, ts uint32) {
+func (table *Table) Dispatch(buf []byte, val float64, ts uint32) {
+	key := make([]byte, len(buf))
+	copy(key, buf)
 	table.In <- &util.Point{key, val, ts}
 }
 
 func (table *Table) DispatchIn(point *util.Point) {
-	log.Debug("table received point %s", point)
+	log.Debug("table received point '%s'", point)
 
 	conf := table.config.Load().(TableConfig)
 

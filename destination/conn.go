@@ -17,7 +17,7 @@ var keepsafe_initial_cap = 100000 // not very important
 // (endpoint down, delayed timeout, etc), so it should be at least as long as the flush interval
 var keepsafe_keep_duration = time.Duration(10 * time.Second)
 
-var newLine = []byte{'\n'}
+var newLine = "\n"
 
 // Conn represents a connection to a tcp endpoint
 type Conn struct {
@@ -178,7 +178,7 @@ func (c *Conn) HandleData() {
 			active = time.Now()
 			c.numBuffered.Dec(1)
 			action = "write"
-			log.Info("conn %s HandleData: writing %s\n", c.dest.Key, point)
+			log.Debug("conn %s HandleData: writing '%s'\n", c.dest.Key, point)
 			c.keepSafe.Add(point)
 			n, err := c.Write(point)
 			if err != nil {
@@ -246,21 +246,15 @@ func (c *Conn) Write(point *util.Point) (int, error) {
 	if c.pickle {
 		buf = Pickle(point)
 	} else {
-		buf = []byte(point.String())
+		buf = []byte(point.String() + newLine)
 	}
 	written := 0
 	size := len(buf)
 	n, err := c.buffered.Write(buf)
 	written += n
-	if err == nil && size == n && !c.pickle {
-		size = 1
-		n, err = c.buffered.Write(newLine)
-		written += n
-	}
 	if err != nil {
 		c.numErrWrite.Inc(1)
-	}
-	if err == nil && size != n {
+	} else if size != n {
 		c.numErrTruncated.Inc(1)
 		err = fmt.Errorf("truncated write: %s", buf)
 	}
