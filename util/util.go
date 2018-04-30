@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -26,5 +27,5 @@ type Point struct {
 }
 
 func (point *Point) String() string {
-	return fmt.Sprintf("%s %f %d", point.Key, point.Val, point.TS)
+	return fmt.Sprintf("%s %s %d", point.Key, strconv.FormatFloat(point.Val, 'f', -1, 64), point.TS)
 }
