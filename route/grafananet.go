@@ -152,7 +152,7 @@ func (route *GrafanaNet) run(in chan []byte) {
 	var metrics []*schema.MetricData
 	buffer := new(bytes.Buffer)
 
-	ticker := time.NewTicker(route.flushMaxWait)
+	timer := time.NewTimer(route.flushMaxWait)
 	for {
 		select {
 		case buf := <-in:
@@ -167,8 +167,14 @@ func (route *GrafanaNet) run(in chan []byte) {
 
 			if len(metrics) == route.flushMaxNum {
 				metrics = route.retryFlush(metrics, buffer)
+				// reset our timer
+				if !timer.Stop() {
+					<-timer.C
+				}
+				timer.Reset(route.flushMaxWait)
 			}
-		case <-ticker.C:
+		case <-timer.C:
+			timer.Reset(route.flushMaxWait)
 			metrics = route.retryFlush(metrics, buffer)
 		case <-route.shutdown:
 			metrics = route.retryFlush(metrics, buffer)
