@@ -3,6 +3,8 @@ package route
 import (
 	"bytes"
 	"crypto/tls"
+	"fmt"
+	"hash"
 	"hash/fnv"
 	"io/ioutil"
 	"net"
@@ -28,7 +30,6 @@ type GrafanaNet struct {
 	baseRoute
 	addr    string
 	apiKey  string
-	buf     chan []byte
 	schemas persister.WhisperSchemas
 
 	bufSize      int // amount of messages we can buffer up. each message is about 100B. so 1e7 is about 1GB.
@@ -40,7 +41,8 @@ type GrafanaNet struct {
 	dispatch     func(chan []byte, []byte, metrics.Gauge, metrics.Counter)
 	concurrency  int
 	orgId        int
-	writeQueues  []chan []byte
+	hasher       hash.Hash32
+	in           []chan []byte
 	shutdown     chan struct{}
 	wg           *sync.WaitGroup
 	client       *http.Client
@@ -75,7 +77,6 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		baseRoute: baseRoute{sync.Mutex{}, atomic.Value{}, key},
 		addr:      addr,
 		apiKey:    apiKey,
-		buf:       make(chan []byte, bufSize), // takes about 228MB on 64bit
 		schemas:   schemas,
 
 		bufSize:      bufSize,
@@ -86,7 +87,8 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		blocking:     blocking,
 		concurrency:  concurrency,
 		orgId:        orgId,
-		writeQueues:  make([]chan []byte, concurrency),
+		hasher:       fnv.New32a(),
+		in:           make([]chan []byte, concurrency),
 		shutdown:     make(chan struct{}),
 		wg:           new(sync.WaitGroup),
 
@@ -109,8 +111,10 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		r.dispatch = dispatchNonBlocking
 	}
 
+	r.wg.Add(r.concurrency)
 	for i := 0; i < r.concurrency; i++ {
-		r.writeQueues[i] = make(chan []byte)
+		r.in[i] = make(chan []byte, bufSize/r.concurrency)
+		go r.run(r.in[i])
 	}
 	r.config.Store(baseConfig{*m, make([]*dest.Destination, 0)})
 
@@ -143,41 +147,18 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		Transport: transport,
 	}
 
-	go r.run()
 	return r, nil
 }
 
-func (route *GrafanaNet) run() {
-	metrics := make([][]*schema.MetricData, route.concurrency)
-	route.wg.Add(route.concurrency)
-	for i := 0; i < route.concurrency; i++ {
-		metrics[i] = make([]*schema.MetricData, 0, route.flushMaxNum)
-
-		// start up our goroutines for writing data to tsdb-gw
-		go route.flush(i)
-	}
-
-	flush := func(shard int) {
-		if len(metrics[shard]) == 0 {
-			return
-		}
-		mda := schema.MetricDataArray(metrics[shard])
-		data, err := msg.CreateMsg(mda, 0, msg.FormatMetricDataArrayMsgp)
-		if err != nil {
-			panic(err)
-		}
-		route.writeQueues[shard] <- data
-		route.numOut.Inc(int64(len(metrics[shard])))
-		metrics[shard] = metrics[shard][:0]
-
-	}
-
-	hasher := fnv.New32a()
+// runs manages incoming and outgoing data for a shard
+func (route *GrafanaNet) run(in chan []byte) {
+	var metrics []*schema.MetricData
+	buffer := new(bytes.Buffer)
 
 	ticker := time.NewTicker(route.flushMaxWait)
 	for {
 		select {
-		case buf := <-route.buf:
+		case buf := <-in:
 			route.numBuffered.Dec(1)
 			md, err := parseMetric(buf, route.schemas, route.orgId)
 			if err != nil {
@@ -185,88 +166,97 @@ func (route *GrafanaNet) run() {
 				continue
 			}
 			md.SetId()
+			metrics = append(metrics, md)
 
-			//re-use our []byte slice to save an allocation.
-			buf = md.KeyBySeries(buf[:0])
-			hasher.Reset()
-			hasher.Write(buf)
-			shard := int(hasher.Sum32() % uint32(route.concurrency))
-			metrics[shard] = append(metrics[shard], md)
-			if len(metrics[shard]) == route.flushMaxNum {
-				flush(shard)
+			if len(metrics) == route.flushMaxNum {
+				metrics = route.retryFlush(metrics, buffer)
 			}
 		case <-ticker.C:
-			for shard := 0; shard < route.concurrency; shard++ {
-				flush(shard)
-			}
+			metrics = route.retryFlush(metrics, buffer)
 		case <-route.shutdown:
-			for shard := 0; shard < route.concurrency; shard++ {
-				flush(shard)
-				close(route.writeQueues[shard])
-			}
+			metrics = route.retryFlush(metrics, buffer)
 			return
-		}
-	}
-}
-
-func (route *GrafanaNet) flush(shard int) {
-	b := &backoff.Backoff{
-		Min:    100 * time.Millisecond,
-		Max:    time.Minute,
-		Factor: 1.5,
-		Jitter: true,
-	}
-	body := new(bytes.Buffer)
-	for data := range route.writeQueues[shard] {
-		for {
-			pre := time.Now()
-			body.Reset()
-			snappyBody := snappy.NewWriter(body)
-			snappyBody.Write(data)
-			snappyBody.Close()
-			req, err := http.NewRequest("POST", route.addr, body)
-			if err != nil {
-				panic(err)
-			}
-			req.Header.Add("Authorization", "Bearer "+route.apiKey)
-			req.Header.Add("Content-Type", "rt-metric-binary-snappy")
-			resp, err := route.client.Do(req)
-			diff := time.Since(pre)
-			if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
-				b.Reset()
-				log.Info("GrafanaNet sent metrics in %s -msg size %d", diff, len(data))
-
-				route.tickFlushSize.Update(int64(len(data)))
-				route.durationTickFlush.Update(diff)
-
-				ioutil.ReadAll(resp.Body)
-				resp.Body.Close()
-				break
-			}
-			route.numErrFlush.Inc(1)
-			dur := b.Duration()
-			if err != nil {
-				log.Warning("GrafanaNet failed to submit data: %s will try again in %s (this attempt took %s)", err, dur, diff)
-			} else {
-				buf := make([]byte, 300)
-				n, _ := resp.Body.Read(buf)
-				log.Warning("GrafanaNet failed to submit data: http %d - %s will try again in %s (this attempt took %s)", resp.StatusCode, buf[:n], dur, diff)
-
-				ioutil.ReadAll(resp.Body)
-				resp.Body.Close()
-			}
-
-			time.Sleep(dur)
 		}
 	}
 	route.wg.Done()
 }
 
+func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.Buffer) []*schema.MetricData {
+	if len(metrics) == 0 {
+		return metrics
+	}
+
+	mda := schema.MetricDataArray(metrics)
+	data, err := msg.CreateMsg(mda, 0, msg.FormatMetricDataArrayMsgp)
+	if err != nil {
+		panic(err)
+	}
+	route.numOut.Inc(int64(len(metrics)))
+
+	buffer.Reset()
+	snappyBody := snappy.NewWriter(buffer)
+	snappyBody.Write(data)
+	snappyBody.Close()
+	req, err := http.NewRequest("POST", route.addr, buffer)
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Add("Authorization", "Bearer "+route.apiKey)
+	req.Header.Add("Content-Type", "rt-metric-binary-snappy")
+	boff := &backoff.Backoff{
+		Min:    100 * time.Millisecond,
+		Max:    time.Minute,
+		Factor: 1.5,
+		Jitter: true,
+	}
+	var dur time.Duration
+	for dur, err = route.flush(req); err != nil; {
+		route.numErrFlush.Inc(1)
+		b := boff.Duration()
+		log.Warning("GrafanaNet failed to submit data: %s - will try again in %s (this attempt took %s)", err.Error(), b, dur)
+		time.Sleep(b)
+	}
+	log.Info("GrafanaNet sent metrics in %s -msg size %d", dur, len(metrics))
+	route.durationTickFlush.Update(dur)
+	route.tickFlushSize.Update(int64(len(metrics)))
+	return metrics[:0]
+}
+
+func (route *GrafanaNet) flush(req *http.Request) (time.Duration, error) {
+	pre := time.Now()
+	resp, err := route.client.Do(req)
+	dur := time.Since(pre)
+	if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		return dur, nil
+	}
+	if err != nil {
+		return dur, err
+	}
+	buf := make([]byte, 300)
+	n, _ := resp.Body.Read(buf)
+	ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	return dur, fmt.Errorf("http %d - %s", resp.StatusCode, buf[:n])
+}
+
+// Dispatch takes in the requested buf or drops it if blocking mode and queue of the shard is full
 func (route *GrafanaNet) Dispatch(buf []byte) {
-	//conf := route.config.Load().(Config)
 	// should return as quickly as possible
 	log.Info("route %s sending to dest %s: %s", route.key, route.addr, buf)
-	route.dispatch(route.buf, buf, route.numBuffered, route.numDropBuffFull)
+	buf = bytes.TrimSpace(buf)
+	index := bytes.Index(buf, []byte(" "))
+	if index == -1 {
+		log.Error("RouteGrafanaNet: invalid message")
+		return
+	}
+
+	key := buf[:index]
+	route.hasher.Reset()
+	route.hasher.Write(key)
+	shard := int(route.hasher.Sum32() % uint32(route.concurrency))
+	route.dispatch(route.in[shard], buf, route.numBuffered, route.numDropBuffFull)
 }
 
 func (route *GrafanaNet) Flush() error {
