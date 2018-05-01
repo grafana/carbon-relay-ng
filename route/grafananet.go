@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"hash"
 	"hash/fnv"
 	"io/ioutil"
 	"net"
@@ -41,7 +40,6 @@ type GrafanaNet struct {
 	dispatch     func(chan []byte, []byte, metrics.Gauge, metrics.Counter)
 	concurrency  int
 	orgId        int
-	hasher       hash.Hash32
 	in           []chan []byte
 	shutdown     chan struct{}
 	wg           *sync.WaitGroup
@@ -87,7 +85,6 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 		blocking:     blocking,
 		concurrency:  concurrency,
 		orgId:        orgId,
-		hasher:       fnv.New32a(),
 		in:           make([]chan []byte, concurrency),
 		shutdown:     make(chan struct{}),
 		wg:           new(sync.WaitGroup),
@@ -253,9 +250,9 @@ func (route *GrafanaNet) Dispatch(buf []byte) {
 	}
 
 	key := buf[:index]
-	route.hasher.Reset()
-	route.hasher.Write(key)
-	shard := int(route.hasher.Sum32() % uint32(route.concurrency))
+	hasher := fnv.New32a()
+	hasher.Write(key)
+	shard := int(hasher.Sum32() % uint32(route.concurrency))
 	route.dispatch(route.in[shard], buf, route.numBuffered, route.numDropBuffFull)
 }
 
