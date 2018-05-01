@@ -213,7 +213,11 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 		Jitter: true,
 	}
 	var dur time.Duration
-	for dur, err = route.flush(req); err != nil; {
+	for {
+		dur, err = route.flush(req)
+		if err == nil {
+			break
+		}
 		route.numErrFlush.Inc(1)
 		b := boff.Duration()
 		log.Warning("GrafanaNet failed to submit data: %s - will try again in %s (this attempt took %s)", err.Error(), b, dur)
