@@ -203,13 +203,10 @@ func (z *MetricData) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "Id"
 	o = append(o, 0x8a, 0xa2, 0x49, 0x64)
 	o = msgp.AppendString(o, z.Id)
-	// string "OrgId"
-	o = append(o, 0xa5, 0x4f, 0x72, 0x67, 0x49, 0x64)
-	o = msgp.AppendInt(o, z.OrgId)
 	// string "Name"
 	o = append(o, 0xa4, 0x4e, 0x61, 0x6d, 0x65)
 	o = msgp.AppendString(o, z.Name)
-	// string "Metric"
+	// string "Metric". for now, must be kept. can be removed soon.
 	o = append(o, 0xa6, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63)
 	o = msgp.AppendString(o, z.Metric)
 	// string "Interval"
@@ -218,20 +215,19 @@ func (z *MetricData) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "Value"
 	o = append(o, 0xa5, 0x56, 0x61, 0x6c, 0x75, 0x65)
 	o = msgp.AppendFloat64(o, z.Value)
-	// string "Unit"
+	// string "Unit" - "unknown", technically can be removed but tsdbgw doesn't fill it in yet. let's keep for now
 	o = append(o, 0xa4, 0x55, 0x6e, 0x69, 0x74)
 	o = msgp.AppendString(o, z.Unit)
 	// string "Time"
 	o = append(o, 0xa4, 0x54, 0x69, 0x6d, 0x65)
 	o = msgp.AppendInt64(o, z.Time)
-	// string "Mtype"
-	o = append(o, 0xa5, 0x4d, 0x74, 0x79, 0x70, 0x65)
-	o = msgp.AppendString(o, z.Mtype)
-	// string "Tags"
-	o = append(o, 0xa4, 0x54, 0x61, 0x67, 0x73)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.Tags)))
-	for zxvk := range z.Tags {
-		o = msgp.AppendString(o, z.Tags[zxvk])
+	if len(z.Tags) > 0 {
+		// string "Tags"
+		o = append(o, 0xa4, 0x54, 0x61, 0x67, 0x73)
+		o = msgp.AppendArrayHeader(o, uint32(len(z.Tags)))
+		for zxvk := range z.Tags {
+			o = msgp.AppendString(o, z.Tags[zxvk])
+		}
 	}
 	return
 }
