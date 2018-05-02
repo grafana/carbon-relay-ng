@@ -25,6 +25,7 @@ type Aggregator struct {
 	outFmt       []byte
 	Cache        bool
 	reCache      map[string]CacheEntry
+	reCacheMutex sync.Mutex
 	Interval     uint                 // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
 	Wait         uint                 // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
 	DropRaw      bool                 // drop raw values "consumed" by this aggregator
@@ -85,42 +86,38 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 	if err != nil {
 		return nil, err
 	}
-	var reCache map[string]CacheEntry
-	if cache {
-		reCache = make(map[string]CacheEntry)
-	}
-	var prefixBytes []byte
-	if prefix != "" {
-		prefixBytes = []byte(prefix)
-	} else {
-		prefixBytes = regexToPrefix(regex)
-	}
 
 	a := &Aggregator{
-		fun,
-		procConstr,
-		make(chan msg, inBuf),
-		out,
-		regex,
-		string(prefixBytes),
-		sub,
-		regexObj,
-		prefixBytes,
-		[]byte(sub),
-		outFmt,
-		[]byte(outFmt),
-		cache,
-		reCache,
-		interval,
-		wait,
-		dropRaw,
-		make(map[aggkey]Processor),
-		make(chan bool),
-		make(chan *Aggregator),
-		make(chan struct{}),
-		sync.WaitGroup{},
-		now,
-		tick,
+		Fun:          fun,
+		procConstr:   procConstr,
+		in:           make(chan msg, inBuf),
+		out:          out,
+		Regex:        regex,
+		Sub:          sub,
+		regex:        regexObj,
+		substring:    []byte(sub),
+		OutFmt:       outFmt,
+		outFmt:       []byte(outFmt),
+		Cache:        cache,
+		Interval:     interval,
+		Wait:         wait,
+		DropRaw:      dropRaw,
+		aggregations: make(map[aggkey]Processor),
+		snapReq:      make(chan bool),
+		snapResp:     make(chan *Aggregator),
+		shutdown:     make(chan struct{}),
+		now:          now,
+		tick:         tick,
+	}
+	if prefix != "" {
+		a.prefix = []byte(prefix)
+		a.Prefix = prefix
+	} else {
+		a.prefix = regexToPrefix(regex)
+		a.Prefix = string(a.prefix)
+	}
+	if cache {
+		a.reCache = make(map[string]CacheEntry)
 	}
 	a.wg.Add(1)
 	go a.run()
@@ -221,10 +218,13 @@ func (a *Aggregator) match(key []byte) (string, bool) {
 	return string(a.regex.Expand(dst, a.outFmt, key, matches)), true
 }
 
+// matchWithCache returns whether there was a match, and under which key, if so.
 func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
 	if a.reCache == nil {
 		return a.match(key)
 	}
+
+	a.reCacheMutex.Lock()
 
 	var outKey string
 	var ok bool
@@ -232,11 +232,8 @@ func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
 	if ok {
 		entry.seen = uint32(a.now().Unix())
 		a.reCache[string(key)] = entry
-
-		if !entry.match {
-			return "", false
-		}
-		return entry.key, true
+		a.reCacheMutex.Unlock()
+		return entry.key, entry.match
 	}
 
 	outKey, ok = a.match(key)
@@ -246,6 +243,7 @@ func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
 		outKey,
 		uint32(a.now().Unix()),
 	}
+	a.reCacheMutex.Unlock()
 
 	return outKey, ok
 }
@@ -275,12 +273,14 @@ func (a *Aggregator) run() {
 			// the entire keyspace. This may stop working properly with future go releases.  Will need to come up with smth better.
 			cutoff := uint32(now.Add(-100 * time.Duration(a.Wait) * time.Second).Unix())
 			if a.reCache != nil {
+				a.reCacheMutex.Lock()
 				for k, v := range a.reCache {
 					if v.seen < cutoff {
 						delete(a.reCache, k)
 					}
 					break // stop looking when we don't see old entries. we'll look again soon enough.
 				}
+				a.reCacheMutex.Unlock()
 			}
 		case <-a.snapReq:
 			aggs := make(map[aggkey]Processor)
@@ -288,32 +288,21 @@ func (a *Aggregator) run() {
 				aggs[k] = nil
 			}
 			s := &Aggregator{
-				a.Fun,
-				a.procConstr,
-				nil,
-				nil,
-				a.Regex,
-				a.Prefix,
-				a.Sub,
-				nil,
-				a.prefix,
-				a.substring,
-				a.OutFmt,
-				nil,
-				a.Cache,
-				nil,
-				a.Interval,
-				a.Wait,
-				a.DropRaw,
-				aggs,
-				nil,
-				nil,
-				nil,
-				sync.WaitGroup{},
-				time.Now,
-				nil,
+				Fun:          a.Fun,
+				procConstr:   a.procConstr,
+				Regex:        a.Regex,
+				Prefix:       a.Prefix,
+				Sub:          a.Sub,
+				prefix:       a.prefix,
+				substring:    a.substring,
+				OutFmt:       a.OutFmt,
+				Cache:        a.Cache,
+				Interval:     a.Interval,
+				Wait:         a.Wait,
+				DropRaw:      a.DropRaw,
+				aggregations: aggs,
+				now:          time.Now,
 			}
-
 			a.snapResp <- s
 		case <-a.shutdown:
 			thresh := a.now().Add(-time.Duration(a.Wait) * time.Second)
