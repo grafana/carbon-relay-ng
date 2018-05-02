@@ -147,7 +147,7 @@ func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, sp
 	return r, nil
 }
 
-// runs manages incoming and outgoing data for a shard
+// run manages incoming and outgoing data for a shard
 func (route *GrafanaNet) run(in chan []byte) {
 	var metrics []*schema.MetricData
 	buffer := new(bytes.Buffer)
@@ -233,13 +233,13 @@ func (route *GrafanaNet) flush(req *http.Request) (time.Duration, error) {
 	pre := time.Now()
 	resp, err := route.client.Do(req)
 	dur := time.Since(pre)
-	if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	if err != nil {
+		return dur, err
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		return dur, nil
-	}
-	if err != nil {
-		return dur, err
 	}
 	buf := make([]byte, 300)
 	n, _ := resp.Body.Read(buf)
