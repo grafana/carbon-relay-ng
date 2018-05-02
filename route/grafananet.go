@@ -200,7 +200,8 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 	snappyBody := snappy.NewWriter(buffer)
 	snappyBody.Write(data)
 	snappyBody.Close()
-	req, err := http.NewRequest("POST", route.addr, buffer)
+	body := buffer.Bytes()
+	req, err := http.NewRequest("POST", route.addr, bytes.NewReader(body))
 	if err != nil {
 		panic(err)
 	}
@@ -222,6 +223,8 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 		b := boff.Duration()
 		log.Warning("GrafanaNet failed to submit data: %s - will try again in %s (this attempt took %s)", err.Error(), b, dur)
 		time.Sleep(b)
+		// re-instantiate body, since the previous .Do() attempt would have Read it all the way
+		req.Body = ioutil.NopCloser(bytes.NewReader(body))
 	}
 	log.Info("GrafanaNet sent metrics in %s -msg size %d", dur, len(metrics))
 	route.durationTickFlush.Update(dur)
