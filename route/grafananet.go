@@ -209,7 +209,7 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 	req.Header.Add("Content-Type", "rt-metric-binary-snappy")
 	boff := &backoff.Backoff{
 		Min:    100 * time.Millisecond,
-		Max:    time.Minute,
+		Max:    30 * time.Second,
 		Factor: 1.5,
 		Jitter: true,
 	}
