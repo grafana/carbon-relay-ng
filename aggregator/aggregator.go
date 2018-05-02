@@ -25,6 +25,7 @@ type Aggregator struct {
 	outFmt       []byte
 	Cache        bool
 	reCache      map[string]CacheEntry
+	reCacheMutex *sync.Mutex
 	Interval     uint                 // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
 	Wait         uint                 // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
 	DropRaw      bool                 // drop raw values "consumed" by this aggregator
@@ -86,8 +87,10 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 		return nil, err
 	}
 	var reCache map[string]CacheEntry
+	var reCacheMutex *sync.Mutex
 	if cache {
 		reCache = make(map[string]CacheEntry)
+		reCacheMutex = &sync.Mutex{}
 	}
 	var prefixBytes []byte
 	if prefix != "" {
@@ -111,6 +114,7 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 		[]byte(outFmt),
 		cache,
 		reCache,
+		reCacheMutex,
 		interval,
 		wait,
 		dropRaw,
@@ -226,12 +230,15 @@ func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
 		return a.match(key)
 	}
 
+	a.reCacheMutex.Lock()
+
 	var outKey string
 	var ok bool
 	entry, ok := a.reCache[string(key)]
 	if ok {
 		entry.seen = uint32(a.now().Unix())
 		a.reCache[string(key)] = entry
+		a.reCacheMutex.Unlock()
 
 		if !entry.match {
 			return "", false
@@ -246,6 +253,7 @@ func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
 		outKey,
 		uint32(a.now().Unix()),
 	}
+	a.reCacheMutex.Unlock()
 
 	return outKey, ok
 }
@@ -275,12 +283,14 @@ func (a *Aggregator) run() {
 			// the entire keyspace. This may stop working properly with future go releases.  Will need to come up with smth better.
 			cutoff := uint32(now.Add(-100 * time.Duration(a.Wait) * time.Second).Unix())
 			if a.reCache != nil {
+				a.reCacheMutex.Lock()
 				for k, v := range a.reCache {
 					if v.seen < cutoff {
 						delete(a.reCache, k)
 					}
 					break // stop looking when we don't see old entries. we'll look again soon enough.
 				}
+				a.reCacheMutex.Unlock()
 			}
 		case <-a.snapReq:
 			aggs := make(map[aggkey]Processor)
@@ -301,6 +311,7 @@ func (a *Aggregator) run() {
 				a.OutFmt,
 				nil,
 				a.Cache,
+				nil,
 				nil,
 				a.Interval,
 				a.Wait,
