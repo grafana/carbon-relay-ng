@@ -218,6 +218,7 @@ func (a *Aggregator) match(key []byte) (string, bool) {
 	return string(a.regex.Expand(dst, a.outFmt, key, matches)), true
 }
 
+// matchWithCache returns whether there was a match, and under which key, if so.
 func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
 	if a.reCache == nil {
 		return a.match(key)
@@ -232,11 +233,7 @@ func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
 		entry.seen = uint32(a.now().Unix())
 		a.reCache[string(key)] = entry
 		a.reCacheMutex.Unlock()
-
-		if !entry.match {
-			return "", false
-		}
-		return entry.key, true
+		return entry.key, entry.match
 	}
 
 	outKey, ok = a.match(key)
