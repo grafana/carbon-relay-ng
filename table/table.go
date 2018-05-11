@@ -730,9 +730,10 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 			}
 			table.AddRoute(route)
 		case "cloudWatch":
-			var bufSize = int(1e7)     // since a message is typically around 100B this is 1GB
-			var flushMaxSize = int(20) // Amazon limits to 20 MetricDatum/PutMetricData request https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_limits.html
-			var flushMaxWait = 10000   // in ms
+			var bufSize = int(1e7)            // since a message is typically around 100B this is 1GB
+			var flushMaxSize = int(20)        // Amazon limits to 20 MetricDatum/PutMetricData request https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_limits.html
+			var flushMaxWait = 10000          // in ms
+			var storageResolution = int64(60) // Default CloudWatch resolution is 60s
 			var awsProfile = ""
 			var awsRegion = ""
 			var awsNamespace = ""
@@ -759,8 +760,11 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 			if len(routeConfig.Dimensions) > 0 {
 				awsDimensions = routeConfig.Dimensions
 			}
+			if routeConfig.StorageResolution != 0 {
+				storageResolution = routeConfig.StorageResolution
+			}
 
-			route, err := route.NewCloudWatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, awsProfile, awsRegion, awsNamespace, awsDimensions, bufSize, flushMaxSize, flushMaxWait, routeConfig.Blocking)
+			route, err := route.NewCloudWatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, awsProfile, awsRegion, awsNamespace, awsDimensions, bufSize, flushMaxSize, flushMaxWait, storageResolution, routeConfig.Blocking)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
