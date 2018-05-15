@@ -199,13 +199,7 @@ addRewriter /server\.([^.]+)/ servers.${1}.collectd -1
 Configuration
 -------------
 
-Take a look at the included carbon-relay-ng.ini, which includes comments describing the available options.
-
-The major config sections are the `blacklist` array, and the `[[aggregation]]`, `[[rewriter]]` and `[[route]]` entries.
-
-[Overview of all routes/destinations config options and tuning options](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/routes.md)
-
-You can also create routes, populate the blacklist, etc via the `init` config array using the same commands as the telnet interface, detailed below.
+[See our configuration docs](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/routes.md)
 
 TCP interface
 -------------
