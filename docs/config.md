@@ -162,17 +162,17 @@ addr = 'your-base-url/metrics'
 apikey = 'your-grafana.net-api-key'
 schemasFile = 'examples/storage-schemas.conf'
 # require the destination address to have a valid SSL certificate
-sslverify=true
+#sslverify=true
 # Number of metrics to spool in in-memory buffer. since a message is typically around 100B this is 1GB
-bufSize=10000000
+#bufSize=10000000
 # When the in-memory buffer reaches capacity we can either "block" ingestion or "drop" metrics.
-blocking=false
+#blocking=false
 # maximum number of metrics to send in a single batch to grafanaCloud
-flushMaxNum=5000
+#flushMaxNum=5000
 # maximum time in ms that metrics can wait in buffers before being sent.
-flushMaxWait=500
+#flushMaxWait=500
 # time in ms, before giving up trying to send a batch of data to grafanaCloud.
-timeout=10000
+#timeout=10000
 # number of concurrent connections to use for sending data.
 concurrency=100
 ```
