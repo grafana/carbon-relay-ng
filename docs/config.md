@@ -215,7 +215,21 @@ flushMaxWait   |     N     |  int (ms)   | 1000          | max time to buffer be
 
 ## Cloudwatch
 
-TODO table of defaults
+setting          | mandatory | values      | default       | description 
+-----------------|-----------|-------------|---------------|------------
+key              |     Y     |  string     | N/A           |
+profile          |     N     |  string     | N/A           | The Amazon CloudWatch profile to use. For local development needed only. In the cloud, the profile is known.
+region           |     Y     |  string     | N/A           | The Amazon Geo region to send metrics into.
+prefix           |     N     |  string     | ""            |
+sub              |     N     |  string     | ""            |
+regex            |     N     |  string     | ""            |
+blocking         |     N     |  true/false | false         | if false, full buffer drops data. if true, full buffer puts backpressure on the table, possibly affecting ingestion and other routes.
+bufSize          |     N     |  int        | 10M           | buffer size. assume +- 100B per message, so 10M is about 1GB of RAM.
+flushMaxSize     |     N     |  int        | 20            | max MetricDatum objects in slice before triggering flush. 20 is currently the CloudWatch max.
+flushMaxWait     |     N     |  int (ms)   | 10000         | max time to buffer before triggering flush.
+storageResolution|     N     |  int (s)    | 60            | either 1 or 60. 1 = high resolution metrics, 60 = regular metrics.
+namespace        |     Y     |  string     | N/A           | The CloudWatch namespace to publish metrics into.
+dimensions       |     N     |  []string   | N/A           | CloudWatch Dimensions that are attached to all metrics.
 
 #### Examples
 
@@ -232,6 +246,7 @@ namespace = 'MyNamespace'
 dimensions = [
    ['myDimension', 'myDimensionVal'],
 ]
+storageResolution = 1
 ```
 
 ## Imperatives
