@@ -23,6 +23,7 @@ type CloudWatch struct {
 	awsRegion          string
 	awsNamespace       string
 	awsDimensions      []*cloudwatch.Dimension
+	storageResolution  int64
 	session            *session.Session
 	client             *cloudwatch.CloudWatch
 	putMetricDataInput cloudwatch.PutMetricDataInput
@@ -49,7 +50,7 @@ type CloudWatch struct {
 
 // NewCloudWatch creates a route that writes metrics to the AWS service CloudWatch
 // We will automatically run the route and the destination
-func NewCloudWatch(key, prefix, sub, regex, awsProfile, awsRegion, awsNamespace string, awsDimensions [][]string, bufSize, flushMaxSize, flushMaxWait int, blocking bool) (Route, error) {
+func NewCloudWatch(key, prefix, sub, regex, awsProfile, awsRegion, awsNamespace string, awsDimensions [][]string, bufSize, flushMaxSize, flushMaxWait int, storageResolution int64, blocking bool) (Route, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -59,6 +60,7 @@ func NewCloudWatch(key, prefix, sub, regex, awsProfile, awsRegion, awsNamespace 
 		awsProfile:         awsProfile,
 		awsRegion:          awsRegion,
 		awsNamespace:       awsNamespace,
+		storageResolution:  storageResolution,
 		putMetricDataInput: cloudwatch.PutMetricDataInput{Namespace: aws.String(awsNamespace)},
 		baseRoute:          baseRoute{sync.Mutex{}, atomic.Value{}, key},
 		buf:                make(chan []byte, bufSize),
@@ -100,9 +102,9 @@ func NewCloudWatch(key, prefix, sub, regex, awsProfile, awsRegion, awsNamespace 
 		// For local development:
 		// credentials from the shared credentials file ~/.aws/credentials
 		// and configuration from the shared configuration file ~/.aws/config.
-		// SharedConfigState: session.SharedConfigEnable,
+		// SharedConfigState:       session.SharedConfigEnable,
 		// AssumeRoleTokenProvider: stscreds.StdinTokenProvider,
-		// Profile: r.awsProfile,
+		// Profile:                 r.awsProfile,
 		Config: aws.Config{
 			Region: aws.String(r.awsRegion),
 		},
@@ -155,9 +157,10 @@ func (r *CloudWatch) run() {
 
 			// Write new metric data to slice
 			newDatum := &cloudwatch.MetricDatum{
-				MetricName: aws.String(elements[0]),
-				Timestamp:  aws.Time(time.Unix(timestamp, 0)),
-				Value:      aws.Float64(val),
+				MetricName:        aws.String(elements[0]),
+				Timestamp:         aws.Time(time.Unix(timestamp, 0)),
+				Value:             aws.Float64(val),
+				StorageResolution: aws.Int64(r.storageResolution),
 			}
 			if len(r.awsDimensions) > 0 {
 				newDatum.Dimensions = r.awsDimensions

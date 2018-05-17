@@ -11,7 +11,7 @@ Like carbon-relay from the graphite project, except it:
  * performs better: should be able to do about 100k ~ 1M million metrics per second depending on configuration and CPU speed.
  * you can adjust the routing table at runtime, in real time using the web or telnet interface (though they may have some rough edges)
  * has aggregator functionality built-in for cross-series, cross-time and cross-time-and-series aggregations.
- * supports plaintext and pickle graphite routes (output) and metrics2.0/grafana.net, as well as kafka and Google PubSub.
+ * supports plaintext and pickle graphite routes (output) and metrics2.0/grafana.net, as well as kafka, Google PubSub and Amazon CloudWatch.
  * graphite routes supports a per-route spooling policy.
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
  * performs validation on all incoming metrics (see below)
