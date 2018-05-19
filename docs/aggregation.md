@@ -23,6 +23,7 @@ The output of the aggregation bucket (after the wait timer expires) is then 1 po
 ## functions
 
 Available functions: 
+
 function       | output
 ---------------|----------------------------------------------
 avg            | average (mean)
