@@ -199,7 +199,7 @@ addRewriter /server\.([^.]+)/ servers.${1}.collectd -1
 Configuration
 -------------
 
-[See our configuration docs](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/routes.md)
+[See our configuration docs](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/config.md)
 
 TCP interface
 -------------
