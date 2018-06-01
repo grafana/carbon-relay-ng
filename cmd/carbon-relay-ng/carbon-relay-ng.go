@@ -147,6 +147,7 @@ func main() {
 	}
 
 	input.InitMetrics()
+	aggregator.InitMetrics()
 
 	go func() {
 		sys := stats.Gauge("what=virtual_memory.unit=Byte")

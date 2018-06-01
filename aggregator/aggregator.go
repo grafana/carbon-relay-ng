@@ -134,12 +134,23 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 		key,
 		quantized,
 	}
+	rangeTracker.Sample(ts)
 	proc, ok := a.aggregations[k]
 	if ok {
 		proc.Add(value, ts)
-	} else if quantized > uint(a.now().Unix())-a.Wait {
-		proc = a.procConstr(value, ts)
-		a.aggregations[k] = proc
+	} else {
+		// note, we only flush where for a given value of now, quantized < now-wait
+		// this means that as long as the clock doesn't go back in time
+		// we never recreate a previously created bucket (and reflush with same key and ts)
+		// a consequence of this is, that if your data stream runs consistently significantly behind
+		// real time, it may never be included in aggregates, but it's up to you to configure your wait
+		// parameter properly. You can use the rangeTracker and numTooOld metrics to help with this
+		if quantized > uint(a.now().Unix())-a.Wait {
+			proc = a.procConstr(value, ts)
+			a.aggregations[k] = proc
+			return
+		}
+		numTooOld.Inc(1)
 	}
 }
 
