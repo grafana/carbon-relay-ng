@@ -247,7 +247,7 @@ func parseRewriterRequest(r *http.Request) (rewriter.RW, *handlerError) {
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return rewriter.RW{}, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
 	}
-	rw, err := rewriter.New(request.Old, request.New, request.Max)
+	rw, err := rewriter.New(request.Old, request.New, "", request.Max)
 	if err != nil {
 		return rewriter.RW{}, &handlerError{err, "Couldn't create rewriter", http.StatusBadRequest}
 	}

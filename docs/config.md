@@ -60,6 +60,7 @@ example:
 # rewrite all instances of testold to testnew
 old = 'testold'
 new = 'testnew'
+not = ''
 max = -1
 ```
 

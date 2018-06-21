@@ -781,11 +781,11 @@ func readAddRewriter(s *toki.Scanner, table Table) error {
 	if t = s.Next(); t.Token != word {
 		return errFmtAddRewriter
 	}
-	old := t.Value
+	old := string(t.Value)
 	if t = s.Next(); t.Token != word {
 		return errFmtAddRewriter
 	}
-	new := t.Value
+	new := string(t.Value)
 
 	// token can be a word if it's a negative number. we should probably not have a separate number token, since numbers could be in so many formats
 	// and we try out Atoi (or whatever fits) anyway.
@@ -797,7 +797,7 @@ func readAddRewriter(s *toki.Scanner, table Table) error {
 		return errFmtAddRewriter
 	}
 
-	rw, err := rewriter.NewFromByte(old, new, max)
+	rw, err := rewriter.New(old, new, "", max)
 	if err != nil {
 		return err
 	}
