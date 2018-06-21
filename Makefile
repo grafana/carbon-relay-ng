@@ -101,7 +101,7 @@ rpm: build
 
 rpm-centos6: build
 	mkdir build/centos-6
-	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/etc/init
+	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/etc/init redhat/etc/init.d
 	install carbon-relay-ng redhat/usr/bin
 	install man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
 	install examples/carbon-relay-ng.ini redhat/etc/carbon-relay-ng/carbon-relay-ng.conf
