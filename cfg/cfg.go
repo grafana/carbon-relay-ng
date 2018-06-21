@@ -86,6 +86,7 @@ type Route struct {
 type Rewriter struct {
 	Old string
 	New string
+	Not string
 	Max int
 }
 

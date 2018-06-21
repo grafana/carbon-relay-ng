@@ -373,12 +373,14 @@ func (table *Table) Print() (str string) {
 
 	maxRWOld := 3
 	maxRWNew := 3
+	maxRWNot := 3
 	maxRWMax := 3
 
 	t := table.Snapshot()
 	for _, rw := range t.Rewriters {
 		maxRWOld = max(maxRWOld, len(rw.Old))
 		maxRWNew = max(maxRWNew, len(rw.New))
+		maxRWNot = max(maxRWNot, len(rw.Not))
 		maxRWMax = max(maxRWMax, len(fmt.Sprintf("%d", rw.Max)))
 	}
 	for _, black := range t.Blacklist {
@@ -409,8 +411,8 @@ func (table *Table) Print() (str string) {
 			maxDSpoolDir = max(maxDSpoolDir, len(dest.SpoolDir))
 		}
 	}
-	heaFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxRWOld, maxRWNew, maxRWMax)
-	rowFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%dd\n", maxRWOld, maxRWNew, maxRWMax)
+	heaFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRWOld, maxRWNew, maxRWNot, maxRWMax)
+	rowFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%dd\n", maxRWOld, maxRWNew, maxRWNot, maxRWMax)
 	heaFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBSub, maxBRegex)
 	rowFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBSub, maxBRegex)
 	heaFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-%ds  %%-%ds %%-7s\n", maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
@@ -425,10 +427,10 @@ func (table *Table) Print() (str string) {
 	}
 
 	str += "\n## Rewriters:\n"
-	cols := fmt.Sprintf(heaFmtRW, "old", "new", "max")
+	cols := fmt.Sprintf(heaFmtRW, "old", "new", "not", "max")
 	str += cols + underscore(len(cols)-1)
 	for _, rw := range t.Rewriters {
-		str += fmt.Sprintf(rowFmtRW, rw.Old, rw.New, rw.Max)
+		str += fmt.Sprintf(rowFmtRW, rw.Old, rw.New, rw.Not, rw.Max)
 	}
 
 	str += "\n## Blacklist:\n"
@@ -567,7 +569,7 @@ func (table *Table) InitAggregation(config cfg.Config) error {
 
 func (table *Table) InitRewrite(config cfg.Config) error {
 	for i, rewriterConfig := range config.Rewriter {
-		rw, err := rewriter.New(rewriterConfig.Old, rewriterConfig.New, rewriterConfig.Max)
+		rw, err := rewriter.New(rewriterConfig.Old, rewriterConfig.New, rewriterConfig.Not, rewriterConfig.Max)
 		if err != nil {
 			log.Error(err.Error())
 			return fmt.Errorf("could not add rewriter #%d", i+1)
