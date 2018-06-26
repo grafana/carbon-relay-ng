@@ -2,7 +2,6 @@ package input
 
 import (
 	"bufio"
-	"io"
 	"net"
 
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
@@ -31,24 +30,14 @@ func NewPlain(config cfg.Config, addr string, tbl *table.Table, badMetrics *badm
 func (p *Plain) Handle(c net.Conn) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
-	r := bufio.NewReaderSize(c, 4096)
-	for {
-
+	scanner := bufio.NewScanner(c)
+	for scanner.Scan() {
 		// Note that everything in this loop should proceed as fast as it can
 		// so we're not blocked and can keep processing
 		// so the validation, the pipeline initiated via table.Dispatch(), etc
 		// must never block.
 
-		// note that we don't support lines longer than 4096B. that seems very reasonable..
-		buf, _, err := r.ReadLine()
-
-		if err != nil {
-			if io.EOF != err {
-				log.Error(err.Error())
-			}
-			break
-		}
-
+		buf := scanner.Bytes()
 		numIn.Inc(1)
 
 		key, val, ts, err := m20.ValidatePacket(buf, p.config.Validation_level_legacy.Level, p.config.Validation_level_m20.Level)
@@ -68,5 +57,8 @@ func (p *Plain) Handle(c net.Conn) {
 		}
 
 		p.table.Dispatch(buf, val, ts)
+	}
+	if err := scanner.Err(); err != nil {
+		log.Error(err.Error())
 	}
 }
