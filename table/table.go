@@ -122,7 +122,7 @@ func (table *Table) Dispatch(buf []byte, val float64, ts uint32) {
 
 	if !routed {
 		table.numUnroutable.Inc(1)
-		log.Info("unrouteable: %s\n", final)
+		log.Debug("unrouteable: %s\n", final)
 	}
 }
 
@@ -136,14 +136,14 @@ func (table *Table) DispatchAggregate(buf []byte) {
 	for _, route := range conf.routes {
 		if route.Match(buf) {
 			routed = true
-			log.Info("table sending to route: %s", buf)
+			log.Debug("table sending to route: %s", buf)
 			route.Dispatch(buf)
 		}
 	}
 
 	if !routed {
 		table.numUnroutable.Inc(1)
-		log.Info("unrouteable: %s\n", buf)
+		log.Debug("unrouteable: %s\n", buf)
 	}
 
 }
