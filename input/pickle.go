@@ -58,26 +58,32 @@ ReadLoop:
 
 		lengthTotal := int(length)
 		lengthRead := 0
-		payload := make([]byte, lengthTotal, lengthTotal)
+		chunkLength := 4096
+		if chunkLength > lengthTotal {
+			chunkLength = lengthTotal
+		}
+		chunk := make([]byte, chunkLength, chunkLength)
+		var payload bytes.Buffer
 		for {
 			log.Debug("pickle.go: reading payload...")
-			tmpLengthRead, err := r.Read(payload[lengthRead:])
+			tmpLengthRead, err := r.Read(chunk)
 			if err != nil {
 				log.Error("couldn't read payload: " + err.Error())
 				break ReadLoop
 			}
 			lengthRead += tmpLengthRead
-			if lengthRead == lengthTotal {
-				log.Debug("pickle.go: done reading payload")
-				break
-			}
 			if lengthRead > lengthTotal {
 				log.Error(fmt.Sprintf("expected to read %d bytes, but read %d", length, lengthRead))
 				break ReadLoop
 			}
+			payload.Write(chunk[:tmpLengthRead])
+			if lengthRead == lengthTotal {
+				log.Debug("pickle.go: done reading payload")
+				break
+			}
 		}
 
-		decoder := ogorek.NewDecoder(bytes.NewReader(payload))
+		decoder := ogorek.NewDecoder(&payload)
 
 		log.Debug("pickle.go: decoding pickled data...")
 		rawDecoded, err := decoder.Decode()
