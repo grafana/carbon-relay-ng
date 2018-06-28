@@ -34,7 +34,9 @@ func NewPickle(config cfg.Config, addr string, tbl *table.Table, bad *badmetrics
 func (p *Pickle) Handle(c net.Conn) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
-	r := bufio.NewReader(c)
+	r := bufio.NewReaderSize(c, 4096)
+	// 500MB max payload size per pickle body
+	maxLength := 500 * 1024 * 1024
 	log.Debug("pickle.go: entering ReadLoop...")
 ReadLoop:
 	for {
@@ -57,6 +59,12 @@ ReadLoop:
 		log.Debug(fmt.Sprintf("pickle.go: done detecting payload length with binary.Read, length is %d", int(length)))
 
 		lengthTotal := int(length)
+		if lengthTotal > maxLength {
+			log.Error(fmt.Sprintf("pickle payload length of %d is more than the supported maximum %d", lengthTotal, maxLength))
+			break ReadLoop
+		}
+
+		log.Debug("pickle.go: reading payload...")
 		lengthRead := 0
 		chunkLength := 4096
 		if chunkLength > lengthTotal {
@@ -65,17 +73,16 @@ ReadLoop:
 		chunk := make([]byte, chunkLength, chunkLength)
 		var payload bytes.Buffer
 		for {
-			log.Debug("pickle.go: reading payload...")
-			tmpLengthRead, err := r.Read(chunk)
+			toRead := lengthTotal - lengthRead
+			if toRead > chunkLength {
+				toRead = chunkLength
+			}
+			tmpLengthRead, err := r.Read(chunk[:toRead])
 			if err != nil {
 				log.Error("couldn't read payload: " + err.Error())
 				break ReadLoop
 			}
 			lengthRead += tmpLengthRead
-			if lengthRead > lengthTotal {
-				log.Error(fmt.Sprintf("expected to read %d bytes, but read %d", length, lengthRead))
-				break ReadLoop
-			}
 			payload.Write(chunk[:tmpLengthRead])
 			if lengthRead == lengthTotal {
 				log.Debug("pickle.go: done reading payload")
