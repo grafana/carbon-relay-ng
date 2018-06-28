@@ -34,7 +34,7 @@ func NewPickle(config cfg.Config, addr string, tbl *table.Table, bad *badmetrics
 func (p *Pickle) Handle(c net.Conn) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
-	r := bufio.NewReaderSize(c, 4096)
+	r := bufio.NewReader(c)
 	log.Debug("pickle.go: entering ReadLoop...")
 ReadLoop:
 	for {
@@ -77,7 +77,7 @@ ReadLoop:
 			}
 		}
 
-		decoder := ogorek.NewDecoder(bytes.NewBuffer(payload))
+		decoder := ogorek.NewDecoder(bytes.NewReader(payload))
 
 		log.Debug("pickle.go: decoding pickled data...")
 		rawDecoded, err := decoder.Decode()
