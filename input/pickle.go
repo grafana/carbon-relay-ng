@@ -52,8 +52,9 @@ ReadLoop:
 		if err != nil {
 			if io.EOF != err {
 				log.Error("couldn't read payload length: " + err.Error())
+			} else {
+				log.Debug("pickle.go: detected EOF while detecting payload length with binary.Read, nothing more to read, breaking")
 			}
-			log.Debug("pickle.go: detected EOF while detecting payload length with binary.Read, nothing more to read, breaking")
 			break
 		}
 		log.Debug(fmt.Sprintf("pickle.go: done detecting payload length with binary.Read, length is %d", int(length)))
@@ -61,7 +62,23 @@ ReadLoop:
 		lengthTotal := int(length)
 		if lengthTotal > maxLength {
 			log.Error(fmt.Sprintf("pickle payload length of %d is more than the supported maximum %d", lengthTotal, maxLength))
-			break ReadLoop
+			break
+		}
+
+		prefix, err := r.Peek(3)
+		if err != nil {
+			if io.EOF != err {
+				log.Error("couldn't read payload prefix: " + err.Error())
+			} else {
+				log.Debug("pickle.go: detected EOF while checking payload prefix, nothing more to read, breaking")
+			}
+			break
+		}
+
+		// payload must start with opProto, <version>, opEmptyList
+		if prefix[0] != '\x80' || prefix[2] != ']' {
+			log.Error("invalid payload prefix")
+			break
 		}
 
 		log.Debug("pickle.go: reading payload...")
