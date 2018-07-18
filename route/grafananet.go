@@ -238,6 +238,7 @@ func (route *GrafanaNet) flush(shard int) {
 				route.tickFlushSize.Update(int64(len(data)))
 				route.durationTickFlush.Update(diff)
 
+				ioutil.ReadAll(resp.Body)
 				resp.Body.Close()
 				break
 			}
