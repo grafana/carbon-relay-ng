@@ -35,6 +35,8 @@ func (p *Pickle) Handle(c net.Conn) {
 	defer c.Close()
 	// TODO c.SetTimeout(60e9)
 	r := bufio.NewReaderSize(c, 4096)
+	// 500MB max payload size per pickle body
+	maxLength := 500 * 1024 * 1024
 	log.Debug("pickle.go: entering ReadLoop...")
 ReadLoop:
 	for {
@@ -49,41 +51,65 @@ ReadLoop:
 		err := binary.Read(r, binary.BigEndian, &length)
 		if err != nil {
 			if io.EOF != err {
-				log.Error("couldn't read payload length: " + err.Error())
+				log.Error("pickle.go: couldn't read payload length: " + err.Error())
+			} else {
+				log.Debug("pickle.go: EOF while detecting payload length")
 			}
-			log.Debug("pickle.go: detected EOF while detecting payload length with binary.Read, nothing more to read, breaking")
 			break
 		}
 		log.Debug(fmt.Sprintf("pickle.go: done detecting payload length with binary.Read, length is %d", int(length)))
 
 		lengthTotal := int(length)
+		if lengthTotal > maxLength {
+			log.Error(fmt.Sprintf("pickle.go: payload length of %d is more than the supported maximum %d", lengthTotal, maxLength))
+			break
+		}
+
+		prefix, err := r.Peek(3)
+		if err != nil {
+			log.Error("pickle.go: couldn't read payload prefix: " + err.Error())
+			break
+		}
+
+		// payload must start with opProto, <version>, opEmptyList
+		if prefix[0] != '\x80' || prefix[2] != ']' {
+			log.Error("pickle.go: invalid payload prefix")
+			break
+		}
+
+		log.Debug("pickle.go: reading payload...")
 		lengthRead := 0
-		payload := make([]byte, lengthTotal, lengthTotal)
+		chunkLength := 4096
+		if chunkLength > lengthTotal {
+			chunkLength = lengthTotal
+		}
+		chunk := make([]byte, chunkLength, chunkLength)
+		var payload bytes.Buffer
 		for {
-			log.Debug("pickle.go: reading payload...")
-			tmpLengthRead, err := r.Read(payload[lengthRead:])
+			toRead := lengthTotal - lengthRead
+			if toRead > chunkLength {
+				toRead = chunkLength
+			}
+			tmpLengthRead, err := r.Read(chunk[:toRead])
 			if err != nil {
-				log.Error("couldn't read payload: " + err.Error())
+				log.Error("pickle.go: couldn't read payload: " + err.Error())
 				break ReadLoop
 			}
 			lengthRead += tmpLengthRead
+			payload.Write(chunk[:tmpLengthRead])
 			if lengthRead == lengthTotal {
 				log.Debug("pickle.go: done reading payload")
 				break
 			}
-			if lengthRead > lengthTotal {
-				log.Error(fmt.Sprintf("expected to read %d bytes, but read %d", length, lengthRead))
-				break ReadLoop
-			}
 		}
 
-		decoder := ogorek.NewDecoder(bytes.NewBuffer(payload))
+		decoder := ogorek.NewDecoder(&payload)
 
 		log.Debug("pickle.go: decoding pickled data...")
 		rawDecoded, err := decoder.Decode()
 		if err != nil {
 			if io.ErrUnexpectedEOF != err {
-				log.Error("error reading pickled data " + err.Error())
+				log.Error("pickle.go: error reading pickled data " + err.Error())
 			}
 			log.Debug("pickle.go: detected ErrUnexpectedEOF while decoding pickled data, nothing more to decode, breaking")
 			break
@@ -93,7 +119,7 @@ ReadLoop:
 		log.Debug("pickle.go: checking the type of pickled data...")
 		decoded, ok := rawDecoded.([]interface{})
 		if !ok {
-			log.Error(fmt.Sprintf("Unrecognized type %T for pickled data", rawDecoded))
+			log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for pickled data", rawDecoded))
 			break
 		}
 		log.Debug("pickle.go: done checking the type of pickled data")
@@ -107,31 +133,31 @@ ReadLoop:
 			log.Debug("pickle.go: doing high-level validation of unpickled item and data...")
 			item, ok := rawItem.(ogorek.Tuple)
 			if !ok {
-				log.Error(fmt.Sprintf("Unrecognized type %T for item", rawItem))
+				log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for item", rawItem))
 				numInvalid.Inc(1)
 				continue
 			}
 			if len(item) != 2 {
-				log.Error(fmt.Sprintf("item length must be 2, got %d", len(item)))
+				log.Error(fmt.Sprintf("pickle.go: item length must be 2, got %d", len(item)))
 				numInvalid.Inc(1)
 				continue
 			}
 
 			metric, ok := item[0].(string)
 			if !ok {
-				log.Error(fmt.Sprintf("item metric must be a string, got %T", item[0]))
+				log.Error(fmt.Sprintf("pickle.go: item metric must be a string, got %T", item[0]))
 				numInvalid.Inc(1)
 				continue
 			}
 
 			data, ok := item[1].(ogorek.Tuple)
 			if !ok {
-				log.Error(fmt.Sprintf("item data must be an array, got %T", item[1]))
+				log.Error(fmt.Sprintf("pickle.go: item data must be an array, got %T", item[1]))
 				numInvalid.Inc(1)
 				continue
 			}
 			if len(data) != 2 {
-				log.Error(fmt.Sprintf("item data length must be 2, got %d", len(data)))
+				log.Error(fmt.Sprintf("pickle.go: item data length must be 2, got %d", len(data)))
 				numInvalid.Inc(1)
 				continue
 			}
@@ -146,7 +172,7 @@ ReadLoop:
 			case float32, float64:
 				value = fmt.Sprintf("%f", data[1])
 			default:
-				log.Error(fmt.Sprintf("Unrecognized type %T for value", data[1]))
+				log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for value", data[1]))
 				numInvalid.Inc(1)
 				continue ItemLoop
 			}
@@ -160,7 +186,7 @@ ReadLoop:
 			case float32, float64:
 				timestamp = fmt.Sprintf("%.0f", data[0])
 			default:
-				log.Error(fmt.Sprintf("Unrecognized type %T for timestamp", data[0]))
+				log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for timestamp", data[0]))
 				numInvalid.Inc(1)
 				continue ItemLoop
 			}
