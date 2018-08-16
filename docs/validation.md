@@ -15,7 +15,7 @@ Let's clarify step 2 and 3.
 
 We first validate:
 
-* the message has 3 fields
+* the message has 3 fields with a non-empty key
 * the value parses to an int or float
 * the timestamp is a unix timestamp
 
@@ -25,11 +25,20 @@ First of all, if the key contains `=` or `_is_` we validate the key as metric2.0
 
 #### standard carbon key
 
-| Level            | Description                                                                                           |
-|------------------+-------------------------------------------------------------------------------------------------------|
-| none             | no validation                                                                                         |
-| medium (default) | ensure characters are 8-bit clean and not NULL                                                        |
-| strict           | block anything that can upset graphite: valid characters are `[A-Za-z0-9_-.]` and no consecutive dots |
+| Level            | Description                                                                                                                     |
+|------------------+---------------------------------------------------------------------------------------------------------------------------------|
+| none             | no validation                                                                                                                   |
+| medium (default) | ensure characters are 8-bit clean and not NULL. Optional tag appendix: see below                                                |
+| strict           | medium + before appendix: block anything that can upset graphite: valid characters are `[A-Za-z0-9_-.]` and no consecutive dots |
+
+
+###### tag appendix validation
+
+The tag appendix is more clearly defined [in the graphite docs](https://graphite.readthedocs.io/en/latest/tags.html)
+The rules are :
+* to separate tags from each other and from the metric name: `;`
+* each tag is a non-empty key and value string, separated by `=`. Keys and values may not contain `;`. The key may not contain `!`.
+We also add the 8-bit cleanness and not-NULL check on the appendix
 
 Can be changed with `legacy_metric_validation` configuration parameter
 
