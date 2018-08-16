@@ -14,10 +14,12 @@ var errWrongNumFields = errors.New("packet must consist of 3 fields")
 var errValNotNumber = errors.New("value field is not a float or int")
 var errTsNotTs = errors.New("timestamp field is not a unix timestamp")
 var errEmptyNode = errors.New("empty node")
+var errEmptyKey = errors.New("empty key")
 var errMixEqualsTypes = errors.New("both = and _is_")
 var errNoUnit = errors.New("no unit tag")
 var errNoMType = errors.New("no mtype tag")
 var errNotEnoughTags = errors.New("must have at least 1 tag beyond unit and mtype")
+var errInvalidTagAppendix = errors.New("invalid tag appendix")
 
 var errFmtNullAt = "null byte at position %d"
 var errFmtIllegalChar = "illegal char %q"
@@ -83,20 +85,39 @@ func validateNotNullAsciiChars(metric_id []byte) error {
 
 // public functions
 
-// ValidateKey checks the basic form of metric keys
+// ValidateKeyLegacy checks the basic form of metric keys
 func ValidateKeyLegacy(metric_id string, level ValidationLevelLegacy) error {
+	if level == NoneLegacy {
+		return nil
+	}
+	// find tag appendix and validate it, if any.
+	key := metric_id
+	for pos, char := range metric_id {
+		if char == ';' {
+			if pos == 0 {
+				return errEmptyKey
+			}
+			key = metric_id[:pos]
+			appendix := metric_id[pos:]
+			err := ValidateTagAppendixB([]byte(appendix))
+			if err != nil {
+				return err
+			}
+			break
+		}
+	}
 	if level == StrictLegacy {
 		// if the metric contains no = or _is_, in theory we don't really care what it does contain.  it can be whatever.
 		// in practice, graphite alters (removes a dot) the metric id when this happens:
-		if strings.Contains(metric_id, "..") {
+		if strings.Contains(key, "..") {
 			return errEmptyNode
 		}
-		return validateSensibleChars(metric_id)
-
-	} else if level == MediumLegacy {
-		return validateNotNullAsciiChars([]byte(metric_id))
+		err := validateSensibleChars(key)
+		if err != nil {
+			return err
+		}
 	}
-	return nil
+	return validateNotNullAsciiChars([]byte(metric_id)) // including the appendix
 }
 func ValidateKeyM20(metric_id string, level ValidationLevelM20) error {
 	if level == NoneM20 {
@@ -154,16 +175,37 @@ var (
 
 // ValidateKeyB is like ValidateKey but for byte array inputs.
 func ValidateKeyLegacyB(metric_id []byte, level ValidationLevelLegacy) error {
+	if level == NoneLegacy {
+		return nil
+	}
+	// find tag appendix and validate it, if any.
+	key := metric_id
+	for pos, char := range metric_id {
+		if char == ';' {
+			if pos == 0 {
+				return errEmptyKey
+			}
+			key = metric_id[:pos]
+			appendix := metric_id[pos:]
+			err := ValidateTagAppendixB(appendix)
+			if err != nil {
+				return err
+			}
+			break
+		}
+	}
 	if level == StrictLegacy {
-		if bytes.Contains(metric_id, doubleDot) {
+		if bytes.Contains(key, doubleDot) {
 			return errEmptyNode
 		}
-		return validateSensibleCharsB(metric_id)
-	} else if level == MediumLegacy {
-		return validateNotNullAsciiChars(metric_id)
+		err := validateSensibleCharsB(key)
+		if err != nil {
+			return err
+		}
 	}
-	return nil
+	return validateNotNullAsciiChars([]byte(metric_id)) // including the appendix
 }
+
 func ValidateKeyM20B(metric_id []byte, level ValidationLevelM20) error {
 	if level == NoneM20 {
 		return nil
@@ -244,4 +286,67 @@ func ValidatePacket(buf []byte, levelLegacy ValidationLevelLegacy, levelM20 Vali
 	}
 
 	return fields[0], val, uint32(ts), nil
+}
+
+// ValidateTagAppendix returns whether a tags appendix is in a valid format.
+// The tag appendix is more clearly defined [in the graphite docs](https://graphite.readthedocs.io/en/latest/tags.html)
+// The rules are :
+// * to separate tags from each other and from the metric name: `;`
+// * each tag is a non-empty key and value string, separated by `=`. Keys and values may not contain `;`. The key may not contain `!`.
+// it is assumed that we're passed the slice starting at the first ';'
+func ValidateTagAppendixB(tags []byte) error {
+	for {
+		// each tag section must consist of
+		// a ';' prefix, a non-empty key, a '=' separator, and a non-empty val
+		// so we need need at least 4 chars
+		if len(tags) < 4 {
+			return errInvalidTagAppendix
+		}
+		// each tag section must start with ';'
+		if tags[0] != ';' {
+			return errInvalidTagAppendix
+		}
+		// validate key: it must be a non-empty string until the next '=' and not contain ';' or '!'
+		if tags[1] == '=' {
+			return errInvalidTagAppendix
+		}
+		var foundEquals bool
+		pos := 1
+		var char byte
+		for ; pos < len(tags); pos++ {
+			char = tags[pos]
+			if char == '=' {
+				foundEquals = true
+				break
+			}
+			if char == ';' || char == '!' {
+				return errInvalidTagAppendix
+			}
+		}
+		if !foundEquals {
+			return errInvalidTagAppendix
+		}
+		// validate value: it must be non-empty
+		pos += 1
+		if pos == len(tags) || tags[pos] == ';' {
+			return errInvalidTagAppendix
+		}
+		for ; pos < len(tags); pos++ {
+			char = tags[pos]
+			if char == ';' {
+				break
+			}
+			if char == '=' {
+				return errInvalidTagAppendix
+			}
+		}
+		if char != ';' {
+			// we reached the end of the entire appendix
+			// did not encounter any problem
+			return nil
+		}
+		// we reached ';', so here begins a new tag section
+		tags = tags[pos:]
+	}
+
 }
