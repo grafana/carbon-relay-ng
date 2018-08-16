@@ -26,7 +26,7 @@ First of all, if the key contains `=` or `_is_` we validate the key as metric2.0
 #### standard carbon key
 
 | Level            | Description                                                                                                                     |
-|------------------+---------------------------------------------------------------------------------------------------------------------------------|
+|------------------|---------------------------------------------------------------------------------------------------------------------------------|
 | none             | no validation                                                                                                                   |
 | medium (default) | ensure characters are 8-bit clean and not NULL. Optional tag appendix: see below                                                |
 | strict           | medium + before appendix: block anything that can upset graphite: valid characters are `[A-Za-z0-9_-.]` and no consecutive dots |
@@ -45,7 +45,7 @@ Can be changed with `legacy_metric_validation` configuration parameter
 #### metrics2.0
 
 | Level            | Description                                                                |
-|------------------+----------------------------------------------------------------------------|
+|------------------|----------------------------------------------------------------------------|
 | none             | no validation                                                              |
 | medium (default) | unit, mtype tag set. no mixing of `=` and `_is_` styles. at least two tags |
 | strict           | reserved for future                                                        |
