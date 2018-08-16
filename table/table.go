@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -475,7 +476,7 @@ func (table *Table) Print() (str string) {
 	return
 }
 
-func InitFromConfig(config cfg.Config) (*Table, error) {
+func InitFromConfig(config cfg.Config, meta toml.MetaData) (*Table, error) {
 	table := New(config.Spool_dir)
 
 	err := table.InitCmd(config)
@@ -498,7 +499,7 @@ func InitFromConfig(config cfg.Config) (*Table, error) {
 		return table, err
 	}
 
-	err = table.InitRoutes(config)
+	err = table.InitRoutes(config, meta)
 	if err != nil {
 		return table, err
 	}
@@ -581,7 +582,7 @@ func (table *Table) InitRewrite(config cfg.Config) error {
 	return nil
 }
 
-func (table *Table) InitRoutes(config cfg.Config) error {
+func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 	for _, routeConfig := range config.Route {
 		switch routeConfig.Type {
 		case "sendAllMatch":
@@ -642,11 +643,32 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 			var concurrency = 100  // number of concurrent connections to tsdb-gw
 			var orgId = 1
 
+			// by merely looking at routeConfig.SslVerify we can't differentiate between the user not specifying the property
+			// (which should default to false) vs specifying it as false explicitly (which should set it to false), as in both
+			// cases routeConfig.SslVerify would simply be set to false.
+			// So, we must look at the metadata returned by the config parser.
+
+			routeMeta := meta.Mapping["route"].([]map[string]interface{})
+
+			// Note: toml library allows arbitrary casing of properties,
+			// and the map keys are these properties as specified by user
+			// so we can't look up directly
+		OuterLoop:
+			for _, routemeta := range routeMeta {
+				for k, v := range routemeta {
+					if strings.ToLower(k) == "key" && v == routeConfig.Key {
+						for k2, v2 := range routemeta {
+							if strings.ToLower(k2) == "sslverify" {
+								sslVerify = v2.(bool)
+								break OuterLoop
+							}
+						}
+					}
+				}
+			}
+
 			if routeConfig.Spool {
 				spool = routeConfig.Spool
-			}
-			if routeConfig.SslVerify == false {
-				sslVerify = routeConfig.SslVerify
 			}
 			if routeConfig.BufSize != 0 {
 				bufSize = routeConfig.BufSize
