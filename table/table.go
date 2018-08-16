@@ -678,6 +678,7 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 			var flushMaxNum = 10000 // number of metrics
 			var flushMaxWait = 500  // in ms
 			var timeout = 2000      // in ms
+			var orgId = 1
 
 			if routeConfig.PartitionBy != "byOrg" && routeConfig.PartitionBy != "bySeries" {
 				return fmt.Errorf("invalid partitionBy for route '%s'", routeConfig.Key)
@@ -695,8 +696,11 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 			if routeConfig.Timeout != 0 {
 				timeout = routeConfig.Timeout
 			}
+			if routeConfig.OrgId != 0 {
+				orgId = routeConfig.OrgId
+			}
 
-			route, err := route.NewKafkaMdm(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, routeConfig.OrgId, flushMaxNum, flushMaxWait, timeout, routeConfig.Blocking)
+			route, err := route.NewKafkaMdm(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, routeConfig.Blocking)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
