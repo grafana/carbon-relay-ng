@@ -1,6 +1,7 @@
 package route
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -22,6 +23,11 @@ func getSchemas(file string) (persister.WhisperSchemas, error) {
 		}
 		if len(schema.Retentions) == 0 {
 			return nil, fmt.Errorf("retention setting cannot be empty")
+		}
+		for _, ret := range schema.Retentions {
+			if ret.SecondsPerPoint() == 0 {
+				return nil, errors.New("cannot have interval 0")
+			}
 		}
 	}
 	if !defaultFound {

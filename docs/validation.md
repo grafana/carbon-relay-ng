@@ -1,29 +1,62 @@
+# Validation
 
-Validation
-----------
+Incoming metrics are validated in multiple steps:
 
-All incoming metrics undergo some basic sanity checks before the metrics go into the routing table.  We always check the following:
+1. for pickle: protocol-level checks
+2. message validation
+3. order validation
 
+Invalid metrics are dropped and - provided the message could be parsed - can be seen at /badMetrics/timespec.json where timespec is something like 30s, 10m, 24h, etc.
+Carbon-relay-ng exports counters for invalid and out of order metrics (see [monitoring](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/monitoring.md))
+
+Let's clarify step 2 and 3.
+
+## Message validation
+
+We first validate:
+
+* the message has 3 fields with a non-empty key
 * the value parses to an int or float
 * the timestamp is a unix timestamp
 
-By default, we also apply the following checks to the metric name:
+Validation of the keys is a bit trickier, because the graphite project doesn't clearly specify what is valid and what is not.
+So carbon-relay-ng provides a few options.
+First of all, if the key contains `=` or `_is_` we validate the key as metric2.0, otherwise as a standard carbon metric.
 
-* has 3 fields
-* the key has no characters beside `a-z A-Z _ - . =` (fairly strict but graphite causes problems with various other characters)
-* has no empty node (like field1.field2..field4)
+#### standard carbon key
 
-However, for legacy metrics, the `legacy_metric_validation` configuration parameter can be used to loosen the metric name checks. This can be useful when needing to forward metrics whose names you do not control.
-The following are valid values for the `legacy_metric_validation` field:
+| Level            | Description                                                                                                                     |
+|------------------+---------------------------------------------------------------------------------------------------------------------------------|
+| none             | no validation                                                                                                                   |
+| medium (default) | ensure characters are 8-bit clean and not NULL. Optional tag appendix: see below                                                |
+| strict           | medium + before appendix: block anything that can upset graphite: valid characters are `[A-Za-z0-9_-.]` and no consecutive dots |
 
-* `strict` -- All checks described above are in force. This is the default.
-* `medium` -- We validate that the metric name has only ASCII characters and no embedded NULLs.
-* `none` -- No metric name checks are performed.
 
-If we detect the metric is in metrics2.0 format we also check proper formatting, and unit and mtype are set.
+###### tag appendix validation
 
-Invalid metrics are dropped and can be seen at /badMetrics/timespec.json where timespec is something like 30s, 10m, 24h, etc.
-(the counters are also exported.  See instrumentation section)
+The tag appendix is more clearly defined [in the graphite docs](https://graphite.readthedocs.io/en/latest/tags.html)
+The rules are :
+* to separate tags from each other and from the metric name: `;`
+* each tag is a non-empty key and value string, separated by `=`. Keys and values may not contain `;`. The key may not contain `!`.
+We also add the 8-bit cleanness and not-NULL check on the appendix
 
-You can also validate that for each series, each point is older than the previous. using the validate_order option.  This is helpful for some backends like grafana.net
+Can be changed with `legacy_metric_validation` configuration parameter
+
+#### metrics2.0
+
+| Level            | Description                                                                |
+|------------------+----------------------------------------------------------------------------|
+| none             | no validation                                                              |
+| medium (default) | unit, mtype tag set. no mixing of `=` and `_is_` styles. at least two tags |
+| strict           | reserved for future                                                        |
+
+
+Can be changed with `validation_level_m20` configuration parameter
+
+## Order validation
+
+Rejects points if the timestamp is not newer than a previous point for the same metric key.
+useful for some backends like grafana.net that may reject out-of-order data (based on configuration).
+
+Default: disabled. enable with `validate_order` option.
 

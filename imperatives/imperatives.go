@@ -152,6 +152,7 @@ var errFmtAddDest = errors.New("addDest <routeKey> <dest>") // not implemented y
 var errFmtAddRewriter = errors.New("addRewriter <old> <new> <max>")
 var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex=>") // one or more can be specified at once
 var errFmtModRoute = errors.New("modRoute <routeKey> <prefix/sub/regex=>")           // one or more can be specified at once
+var errOrgId0 = errors.New("orgId must be a number > 0")
 
 type Table interface {
 	AddAggregator(agg *aggregator.Aggregator)
@@ -527,6 +528,9 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 				if err != nil {
 					return err
 				}
+				if orgId < 1 {
+					return errOrgId0
+				}
 			} else {
 				return errFmtAddRouteGrafanaNet
 			}
@@ -597,6 +601,9 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 	orgId, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
 	if err != nil {
 		return errFmtAddRouteKafkaMdm
+	}
+	if orgId < 1 {
+		return errOrgId0
 	}
 
 	var bufSize = int(1e7)  // since a message is typically around 100B this is 1GB

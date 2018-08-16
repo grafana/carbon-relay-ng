@@ -47,12 +47,12 @@ You have 1 master routing table.  This table contains 0-N routes.  Each carbon r
 First: "matching": you can match metrics on one or more of: prefix, substring, or regex.  All 3 default to "" (empty string, i.e. allow all).
 The conditions are AND-ed.  Regexes are more resource intensive and hence should - and often can be - avoided.
 
-* All incoming metrics are validated and go into the table when valid.
-* The table will then check metrics against the blacklist and discard when appropriate.
-* Then metrics pass through the rewriters and are modified if applicable.  Rewrite rules wrapped with forward slashes are interpreted as regular expressions.
+* All incoming metrics are [validated](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/validation.md) and go into the table when valid.
+* The table will then check metrics against the [blacklist](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/config.md#blacklist) and discard when appropriate.
+* Then metrics pass through the [rewriters](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/rewriting.md) and are modified if applicable.  Rewrite rules wrapped with forward slashes are interpreted as regular expressions.
 * The table sends the metric to:
-  * the aggregators, who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below for details.
-  * any routes that matches
+  * the [aggregators](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/aggregation.md), who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below for details.
+  * any [routes](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/config.md#routes) that matches
 * The route can have different behaviors, based on its type:
 
   * for grafanaNet / kafkaMdm / Google PubSub routes, there is only a single endpoint so that's where the data goes.  For standard/carbon routes you can control how data gets routed into destinations:
