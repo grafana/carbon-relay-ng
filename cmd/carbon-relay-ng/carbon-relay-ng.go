@@ -90,7 +90,8 @@ func main() {
 		config_file = val
 	}
 
-	if _, err := toml.DecodeFile(config_file, &config); err != nil {
+	meta, err := toml.DecodeFile(config_file, &config)
+	if err != nil {
 		log.Error("Cannot use config file '%s':\n", config_file)
 		log.Error(err.Error())
 		usage()
@@ -180,7 +181,7 @@ func main() {
 
 	log.Notice("initializing routing table...")
 
-	table, err := tbl.InitFromConfig(config)
+	table, err := tbl.InitFromConfig(config, meta)
 	if err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
