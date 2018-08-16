@@ -9,81 +9,103 @@ import (
 )
 
 // DeriveCount represents a derive from counter to rate per second
-func DeriveCount(metric_in, m1Prefix string, m1Legacy bool) (metric_out string) {
-	if IsMetric20(metric_in) {
-		parts := strings.Split(metric_in, ".")
+func DeriveCount(in, p1, p2, p2ne string, m1Legacy bool) (out string) {
+	ver := GetVersion(in)
+	switch ver {
+	case Legacy:
+		if m1Legacy {
+			return p1 + in
+		}
+		out = p1 + in + ".rate"
+	case M20:
+		parts := strings.Split(in, ".")
 		for i, part := range parts {
-			if strings.HasPrefix(part, "unit=") || strings.HasPrefix(part, "unit_is_") {
+			if strings.HasPrefix(part, "unit=") {
 				parts[i] = part + "ps"
 			}
 		}
-		metric_out = strings.Join(parts, ".")
-		metric_out = strings.Replace(metric_out, "mtype=count", "mtype=rate", 1)
-		metric_out = strings.Replace(metric_out, "mtype_is_count", "mtype_is_rate", 1)
-		return
+		out = strings.Join(parts, ".")
+		out = p2 + strings.Replace(out, "mtype=count", "mtype=rate", 1)
+	case M20NoEquals:
+		parts := strings.Split(in, ".")
+		for i, part := range parts {
+			if strings.HasPrefix(part, "unit_is_") {
+				parts[i] = part + "ps"
+			}
+		}
+		out = strings.Join(parts, ".")
+		out = p2ne + strings.Replace(out, "mtype_is_count", "mtype_is_rate", 1)
 	}
-	if m1Legacy {
-		return m1Prefix + metric_in
-	}
-	return m1Prefix + metric_in + ".rate"
+	return
 }
 
-// Gauge doesn't really represent a change in data format, so for metrics 2.0 it doesn't change anything
-func Gauge(metric_in, m1Prefix string) (metric_out string) {
-	if IsMetric20(metric_in) {
-		return metric_in
+// Gauge doesn't really represent a change in data format, so only apply the prefix.
+func Gauge(in, p1, p2, p2ne string) (out string) {
+	ver := GetVersion(in)
+	switch ver {
+	case Legacy:
+		out = p1 + in
+	case M20:
+		out = p2 + in
+	case M20NoEquals:
+		out = p2ne + in
 	}
-	return m1Prefix + metric_in
+	return
 }
 
 // simpleStat is a helper function to help express some common statistical aggregations using the stat tag
 // with an optional percentile or timespec specifier. underscores added automatically
-func simpleStat(metric_in, m1Prefix, stat1, stat2, percentile, timespec string) (metric_out string) {
+func simpleStat(in, p1, p2, p2ne, stat1, stat2, percentile, timespec string) (out string) {
 	if percentile != "" {
 		percentile = "_" + percentile
 	}
 	if timespec != "" {
 		timespec = "__" + timespec
 	}
-	v := GetVersion(metric_in)
-	if v == M20 {
-		return metric_in + ".stat=" + stat2 + percentile + timespec
+	ver := GetVersion(in)
+	switch ver {
+	case Legacy:
+		out = p1 + in + "." + stat1 + percentile + timespec
+	case M20:
+		out = p2 + in + ".stat=" + stat2 + percentile + timespec
+	case M20NoEquals:
+		out = p2ne + in + ".stat_is_" + stat2 + percentile + timespec
 	}
-	if v == M20NoEquals {
-		return metric_in + ".stat_is_" + stat2 + percentile + timespec
-	}
-	return m1Prefix + metric_in + "." + stat1 + percentile + timespec
+	return
 }
 
-func Max(metric_in, m1Prefix, percentile, timespec string) (metric_out string) {
-	return simpleStat(metric_in, m1Prefix, "upper", "max", percentile, timespec)
+func Max(in, p1, p2, p2ne, percentile, timespec string) (out string) {
+	return simpleStat(in, p1, p2, p2ne, "upper", "max", percentile, timespec)
 }
 
-func Min(metric_in, m1Prefix, percentile, timespec string) (metric_out string) {
-	return simpleStat(metric_in, m1Prefix, "lower", "min", percentile, timespec)
+func Min(in, p1, p2, p2ne, percentile, timespec string) (out string) {
+	return simpleStat(in, p1, p2, p2ne, "lower", "min", percentile, timespec)
 }
 
-func Mean(metric_in, m1Prefix, percentile, timespec string) (metric_out string) {
-	return simpleStat(metric_in, m1Prefix, "mean", "mean", percentile, timespec)
+func Mean(in, p1, p2, p2ne, percentile, timespec string) (out string) {
+	return simpleStat(in, p1, p2, p2ne, "mean", "mean", percentile, timespec)
 }
 
-func Sum(metric_in, m1Prefix, percentile, timespec string) (metric_out string) {
-	return simpleStat(metric_in, m1Prefix, "sum", "sum", percentile, timespec)
+func Sum(in, p1, p2, p2ne, percentile, timespec string) (out string) {
+	return simpleStat(in, p1, p2, p2ne, "sum", "sum", percentile, timespec)
 }
 
-func Median(metric_in, m1Prefix string, percentile, timespec string) (metric_out string) {
-	return simpleStat(metric_in, m1Prefix, "median", "median", percentile, timespec)
+func Median(in, p1, p2, p2ne string, percentile, timespec string) (out string) {
+	return simpleStat(in, p1, p2, p2ne, "median", "median", percentile, timespec)
 }
 
-func Std(metric_in, m1Prefix string, percentile, timespec string) (metric_out string) {
-	return simpleStat(metric_in, m1Prefix, "std", "std", percentile, timespec)
+func Std(in, p1, p2, p2ne string, percentile, timespec string) (out string) {
+	return simpleStat(in, p1, p2, p2ne, "std", "std", percentile, timespec)
 }
 
 // CountPckt reflects counting the amount of packets received for a given thing
-func CountPckt(metric_in, m1Prefix string) (metric_out string) {
-	v := GetVersion(metric_in)
-	if v == M20 {
-		parts := strings.Split(metric_in, ".")
+func CountPckt(in, p1, p2, p2ne string) (out string) {
+	ver := GetVersion(in)
+	switch ver {
+	case Legacy:
+		out = p1 + in + ".count"
+	case M20:
+		parts := strings.Split(in, ".")
 		for i, part := range parts {
 			if strings.HasPrefix(part, "unit=") {
 				parts[i] = "unit=Pckt"
@@ -95,9 +117,9 @@ func CountPckt(metric_in, m1Prefix string) (metric_out string) {
 		}
 		parts = append(parts, "pckt_type=sent")
 		parts = append(parts, "direction=in")
-		metric_out = strings.Join(parts, ".")
-	} else if v == M20NoEquals {
-		parts := strings.Split(metric_in, ".")
+		out = p2 + strings.Join(parts, ".")
+	case M20NoEquals:
+		parts := strings.Split(in, ".")
 		for i, part := range parts {
 			if strings.HasPrefix(part, "unit_is_") {
 				parts[i] = "unit_is_Pckt"
@@ -109,18 +131,19 @@ func CountPckt(metric_in, m1Prefix string) (metric_out string) {
 		}
 		parts = append(parts, "pckt_type_is_sent")
 		parts = append(parts, "direction_is_in")
-		metric_out = strings.Join(parts, ".")
-	} else {
-		metric_out = m1Prefix + metric_in + ".count"
+		out = p2ne + strings.Join(parts, ".")
 	}
 	return
 }
 
 // CountMetric reflects counting how many metrics were received
-func CountMetric(metric_in, m1Prefix string) (metric_out string) {
-	v := GetVersion(metric_in)
-	if v == M20 {
-		parts := strings.Split(metric_in, ".")
+func CountMetric(in, p1, p2, p2ne string) (out string) {
+	ver := GetVersion(in)
+	switch ver {
+	case Legacy:
+		out = p1 + in + ".count"
+	case M20:
+		parts := strings.Split(in, ".")
 		for i, part := range parts {
 			if strings.HasPrefix(part, "unit=") {
 				parts[i] = "unit=Metric"
@@ -130,9 +153,9 @@ func CountMetric(metric_in, m1Prefix string) (metric_out string) {
 				parts[i] = "mtype=count"
 			}
 		}
-		metric_out = strings.Join(parts, ".")
-	} else if v == M20NoEquals {
-		parts := strings.Split(metric_in, ".")
+		out = p2 + strings.Join(parts, ".")
+	case M20NoEquals:
+		parts := strings.Split(in, ".")
 		for i, part := range parts {
 			if strings.HasPrefix(part, "unit_is_") {
 				parts[i] = "unit_is_Metric"
@@ -142,18 +165,23 @@ func CountMetric(metric_in, m1Prefix string) (metric_out string) {
 				parts[i] = "mtype_is_count"
 			}
 		}
-		metric_out = strings.Join(parts, ".")
-	} else {
-		metric_out = m1Prefix + metric_in + ".count"
+		out = p2ne + strings.Join(parts, ".")
 	}
 	return
 }
 
 // Count just reflects counting something each interval, keeping the unit
-func Count(metric_in, m1Prefix string, m1Legacy bool) (metric_out string) {
-	v := GetVersion(metric_in)
-	if v == M20 {
-		parts := strings.Split(metric_in, ".")
+func Count(in, p1, p2, p2ne string, m1Legacy bool) (out string) {
+	ver := GetVersion(in)
+	switch ver {
+	case Legacy:
+		if m1Legacy {
+			out = p1 + in
+		} else {
+			out = p1 + in + ".count"
+		}
+	case M20:
+		parts := strings.Split(in, ".")
 		ttSeen := false
 		for i, part := range parts {
 			if strings.HasPrefix(part, "mtype=") {
@@ -164,9 +192,9 @@ func Count(metric_in, m1Prefix string, m1Legacy bool) (metric_out string) {
 		if !ttSeen {
 			parts = append(parts, "mtype=count")
 		}
-		metric_out = strings.Join(parts, ".")
-	} else if v == M20NoEquals {
-		parts := strings.Split(metric_in, ".")
+		out = p2 + strings.Join(parts, ".")
+	case M20NoEquals:
+		parts := strings.Split(in, ".")
 		ttSeen := false
 		for i, part := range parts {
 			if strings.HasPrefix(part, "mtype_is_") {
@@ -177,20 +205,16 @@ func Count(metric_in, m1Prefix string, m1Legacy bool) (metric_out string) {
 		if !ttSeen {
 			parts = append(parts, "mtype_is_count")
 		}
-		metric_out = strings.Join(parts, ".")
-	} else if m1Legacy {
-		metric_out = m1Prefix + metric_in
-	} else {
-		metric_out = m1Prefix + metric_in + ".count"
+		out = p2ne + strings.Join(parts, ".")
 	}
 	return
 }
 
 // Counter just reflects counting something across time, keeping the unit
-func Counter(metric_in, m1Prefix string) (metric_out string) {
-	v := GetVersion(metric_in)
-	if v == M20 {
-		parts := strings.Split(metric_in, ".")
+func Counter(in, p1, p2, p2ne string) (out string) {
+	ver := GetVersion(in)
+	if ver == M20 {
+		parts := strings.Split(in, ".")
 		ttSeen := false
 		for i, part := range parts {
 			if strings.HasPrefix(part, "mtype=") {
@@ -201,9 +225,9 @@ func Counter(metric_in, m1Prefix string) (metric_out string) {
 		if !ttSeen {
 			parts = append(parts, "mtype=counter")
 		}
-		metric_out = strings.Join(parts, ".")
-	} else if v == M20NoEquals {
-		parts := strings.Split(metric_in, ".")
+		out = p2 + strings.Join(parts, ".")
+	} else if ver == M20NoEquals {
+		parts := strings.Split(in, ".")
 		ttSeen := false
 		for i, part := range parts {
 			if strings.HasPrefix(part, "mtype_is_") {
@@ -214,17 +238,17 @@ func Counter(metric_in, m1Prefix string) (metric_out string) {
 		if !ttSeen {
 			parts = append(parts, "mtype_is_counter")
 		}
-		metric_out = strings.Join(parts, ".")
+		out = p2ne + strings.Join(parts, ".")
 	} else {
-		metric_out = m1Prefix + metric_in + ".counter"
+		out = p1 + in + ".counter"
 	}
 	return
 }
 
-func RatePckt(metric_in, m1Prefix string) (metric_out string) {
-	v := GetVersion(metric_in)
-	if v == M20 {
-		parts := strings.Split(metric_in, ".")
+func RatePckt(in, p1, p2, p2ne string) (out string) {
+	ver := GetVersion(in)
+	if ver == M20 {
+		parts := strings.Split(in, ".")
 		for i, part := range parts {
 			if strings.HasPrefix(part, "unit=") {
 				parts[i] = "unit=Pcktps"
@@ -236,9 +260,9 @@ func RatePckt(metric_in, m1Prefix string) (metric_out string) {
 		}
 		parts = append(parts, "pckt_type=sent")
 		parts = append(parts, "direction=in")
-		metric_out = strings.Join(parts, ".")
-	} else if v == M20NoEquals {
-		parts := strings.Split(metric_in, ".")
+		out = p2 + strings.Join(parts, ".")
+	} else if ver == M20NoEquals {
+		parts := strings.Split(in, ".")
 		for i, part := range parts {
 			if strings.HasPrefix(part, "unit_is_") {
 				parts[i] = "unit_is_Pcktps"
@@ -250,9 +274,9 @@ func RatePckt(metric_in, m1Prefix string) (metric_out string) {
 		}
 		parts = append(parts, "pckt_type_is_sent")
 		parts = append(parts, "direction_is_in")
-		metric_out = strings.Join(parts, ".")
+		out = p2ne + strings.Join(parts, ".")
 	} else {
-		metric_out = m1Prefix + metric_in + ".count_ps"
+		out = p1 + in + ".count_ps"
 	}
 	return
 }
