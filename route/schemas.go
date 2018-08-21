@@ -67,11 +67,9 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas, orgId int) (*sche
 
 	// skip over all leading dots, like graphite does
 	// if the key is nothing but dots, it's invalid
-	for elements[0][0] == '.' {
-		if len(elements[0]) == 1 {
-			return nil, errInvalidKey
-		}
-		elements[0] = elements[0][1:]
+	elements[0] = strings.TrimLeft(elements[0], ".")
+	if len(elements[0]) == 0 {
+		return nil, errInvalidKey
 	}
 
 	nameWithTags := elements[0]
