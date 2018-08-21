@@ -1,31 +1,65 @@
 version: 2
 jobs:
+  test:
+    working_directory: /go/src/github.com/graphite-ng/carbon-relay-ng
+    docker:
+      - image: circleci/golang:1.10.3
+    steps:
+      - checkout
+      - run: go test -v -race ./...
+
   build:
     working_directory: /go/src/github.com/graphite-ng/carbon-relay-ng
     docker:
       - image: circleci/golang:1.10.3
     steps:
       - checkout
-      - run: go test -v -race $(go list ./... | grep -v /vendor/)
-      - run: sudo apt-get install ruby-dev rpm
-      - run: sudo gem install package_cloud
-      - run: sudo gem install fpm
       - run: go get github.com/jteeuwen/go-bindata/...
-      - run: make packages docker # note, this runs go-bindata again
+      - run: make build-linux # note, this runs go-bindata again
       # ideally we'd make sure that if go-bindata generated new content, we fail.
       # because devs should have run go-bindata and checked in changes already.
       # but because git checkout will change the timestamps and mode, it'll generate slight differences, and it's hard to filter those out
       # so for now, we just let it slip and assume devs will do a good enough job maintaining the generated data
       # - git diff --exit-code
       - run: make build-win
+      - persist_to_workspace:
+          root: .
+          paths:
+            - carbon-relay-ng
+            - carbon-relay-ng.exe
+
+  package:
+    docker:
+      - image: circleci/ruby:2.3
+    steps:
+      - run: sudo apt-get install rpm
+      - checkout
+      - attach_workspace:
+          at: .
+      - run: gem install fpm
+      - run: make packages 
+      - setup_remote_docker
+      - run: make docker
+      - run: docker save -o build/carbon-relay-ng.tar raintank/carbon-relay-ng
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build
+
+  deploy:
+    docker:
+      - image: circleci/ruby:2.3
+    steps:
+      - setup_remote_docker
+      - attach_workspace:
+          at: .
+      - run: gem install package_cloud
       - store_artifacts:
           path: build
       - store_artifacts:
           path: carbon-relay-ng.exe
-  deploy:
-    docker:
-      - image: circleci/golang:1.10.3
-    steps:
+      - store_artifacts:
+          path: carbon-relay-ng
       - deploy:
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
@@ -38,6 +72,21 @@ jobs:
                package_cloud push ${PACKAGECLOUD_REPO}/debian/buster build/deb-systemd/carbon-relay-ng-*.deb
                package_cloud push ${PACKAGECLOUD_REPO}/el/6          build/centos-6/carbon-relay-ng-*.el6.*.rpm
                package_cloud push ${PACKAGECLOUD_REPO}/el/7          build/centos-7/carbon-relay-ng-*.el7.*.rpm
+               docker load -i build/carbon-relay-ng.tar
                docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_KEY
                ./deploy-docker.sh
             fi
+workflows:
+  version: 2
+  build_accept_deploy:
+    jobs:
+      - test
+      - build
+      - package:
+          requires:
+            - build
+      - deploy:
+          requires:
+            - test
+            - build
+            - package
