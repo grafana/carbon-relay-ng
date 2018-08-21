@@ -11,6 +11,8 @@ import (
 	"gopkg.in/raintank/schema.v1"
 )
 
+var errInvalidKey = errors.New("invalid metric key")
+
 func getSchemas(file string) (persister.WhisperSchemas, error) {
 	schemas, err := persister.ReadWhisperSchemas(file)
 	if err != nil {
@@ -61,6 +63,15 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas, orgId int) (*sche
 	timestamp, err := strconv.ParseUint(elements[2], 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf(errFmt, msg, err)
+	}
+
+	// skip over all leading dots, like graphite does
+	// if the key is nothing but dots, it's invalid
+	for elements[0][0] == '.' {
+		if len(elements[0]) == 1 {
+			return nil, errInvalidKey
+		}
+		elements[0] = elements[0][1:]
 	}
 
 	nameWithTags := elements[0]
