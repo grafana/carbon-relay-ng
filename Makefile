@@ -6,12 +6,16 @@ build:
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
 
-build-win:
+build-win: carbon-relay-ng.exe
+
+carbon-relay-ng.exe:
 	cd ui/web && go-bindata -pkg web admin_http_assets
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" -o carbon-relay-ng.exe ./cmd/carbon-relay-ng
 
-build-linux:
+build-linux: carbon-relay-ng
+
+carbon-relay-ng:
 	cd ui/web && go-bindata -pkg web admin_http_assets
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
@@ -25,7 +29,7 @@ docker: build-linux
 
 all:
 
-deb: build
+deb: build-linux
 	mkdir -p build/deb-systemd
 	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng debian/lib/systemd/system debian/var/run/carbon-relay-ng debian/usr/lib/tmpfiles.d
 	install carbon-relay-ng debian/usr/bin
@@ -42,7 +46,7 @@ deb: build
 		-a native \
 		--config-files etc/carbon-relay-ng/carbon-relay-ng.conf \
 		-p build/deb-systemd/carbon-relay-ng-VERSION_ARCH.deb \
-		-m "Dieter Plaetinck <dieter@raintank.io>" \
+		-m "Dieter Plaetinck <dieter@grafana.com>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/graphite-ng/carbon-relay-ng \
@@ -50,7 +54,7 @@ deb: build
 		-C debian .
 	rm -rf debian
 
-deb-upstart: build
+deb-upstart: build-linux
 	mkdir build/deb-upstart
 	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng
 	install carbon-relay-ng debian/usr/bin
@@ -66,14 +70,14 @@ deb-upstart: build
 		--config-files etc/carbon-relay-ng/carbon-relay-ng.conf \
 		-p build/deb-upstart/carbon-relay-ng-VERSION_ARCH.deb \
 		--deb-upstart examples/carbon-relay-ng.upstart \
-		-m "Dieter Plaetinck <dieter@raintank.io>" \
+		-m "Dieter Plaetinck <dieter@grafana.com>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/graphite-ng/carbon-relay-ng \
 		-C debian .
 	rm -rf debian
 
-rpm: build
+rpm: build-linux
 	mkdir -p build/centos-7
 	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/lib/systemd/system redhat/var/run/carbon-relay-ng redhat/etc/tmpfiles.d
 	install carbon-relay-ng redhat/usr/bin
@@ -91,7 +95,7 @@ rpm: build
 		-a native \
 		--config-files etc/carbon-relay-ng/carbon-relay-ng.conf \
 		-p build/centos-7/carbon-relay-ng-VERSION.el7.ARCH.rpm \
-		-m "Dieter Plaetinck <dieter@raintank.io>" \
+		-m "Dieter Plaetinck <dieter@grafana.com>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/graphite-ng/carbon-relay-ng \
@@ -99,7 +103,7 @@ rpm: build
 		-C redhat .
 	rm -rf redhat
 
-rpm-centos6: build
+rpm-centos6: build-linux
 	mkdir build/centos-6
 	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/etc/init redhat/etc/init.d
 	install carbon-relay-ng redhat/usr/bin
@@ -117,7 +121,7 @@ rpm-centos6: build
 		-a native \
 		--config-files etc/carbon-relay-ng/carbon-relay-ng.conf \
 		-p build/centos-6/carbon-relay-ng-VERSION.el6.ARCH.rpm \
-		-m "Dieter Plaetinck <dieter@raintank.io>" \
+		-m "Dieter Plaetinck <dieter@grafana.com>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/graphite-ng/carbon-relay-ng \
@@ -149,4 +153,7 @@ run: build
 run-docker:
 	docker run --rm -p 2003:2003 -p 2004:2004 -p 8081:8081 -v $(pwd)/examples:/conf -v $(pwd)/spool:/spool raintank/carbon-relay-ng
 
-.PHONY: all deb gh-pages install man test build
+clean:
+	rm -f carbon-relay-ng carbon-relay-ng.exe
+
+.PHONY: all deb gh-pages install man test build clean build-linux
