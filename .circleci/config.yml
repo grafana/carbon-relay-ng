@@ -73,7 +73,7 @@ jobs:
                package_cloud push ${PACKAGECLOUD_REPO}/el/6          build/centos-6/carbon-relay-ng-*.el6.*.rpm
                package_cloud push ${PACKAGECLOUD_REPO}/el/7          build/centos-7/carbon-relay-ng-*.el7.*.rpm
                docker load -i build/carbon-relay-ng.tar
-               docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_KEY
+               docker login -u $DOCKER_USER -p $DOCKER_KEY
                ./deploy-docker.sh
             fi
 workflows:
