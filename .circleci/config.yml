@@ -74,7 +74,9 @@ jobs:
                package_cloud push ${PACKAGECLOUD_REPO}/el/7          build/centos-7/carbon-relay-ng-*.el7.*.rpm
                docker load -i build/carbon-relay-ng.tar
                docker login -u $DOCKER_USER -p $DOCKER_KEY
-               ./deploy-docker.sh
+               VERSION=$(git describe --tags --always | sed 's/^v//')
+               docker push raintank/carbon-relay-ng:$VERSION
+               docker push raintank/carbon-relay-ng:latest
             fi
 workflows:
   version: 2
