@@ -9,6 +9,7 @@ import (
 	"time"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
@@ -321,7 +322,8 @@ func Start(addr string, c cfg.Config, t *tbl.Table, bad *badmetrics.BadMetrics) 
 	router.Handle("/routes/{key}/destinations/{index}", handler(removeDestination)).Methods("DELETE")
 
 	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo, Prefix: "admin_http_assets/"}))
-	http.Handle("/", router)
+	loggedRouter := handlers.CombinedLoggingHandler(os.Stdout, router)
+	http.Handle("/", loggedRouter)
 
 	log.Notice("admin HTTP listener starting on %v", addr)
 	err := http.ListenAndServe(addr, nil)
