@@ -20,7 +20,7 @@ We use https://github.com/kardianos/govendor to manage vendoring 3rd party libra
     export GOPATH=/some/path/
     export PATH="$PATH:$GOPATH/bin"
     go get -d github.com/graphite-ng/carbon-relay-ng
-    go get github.com/jteeuwen/go-bindata/...
+    go get github.com/shuLhan/go-bindata/cmd/go-bindata
     cd "$GOPATH/src/github.com/graphite-ng/carbon-relay-ng"
     # optional: check out an older version: git checkout v0.5
     make

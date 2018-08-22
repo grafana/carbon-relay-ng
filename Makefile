@@ -2,21 +2,21 @@ VERSION=$(shell git describe --tags --always | sed 's/^v//')
 
 
 build:
-	cd ui/web && go-bindata -pkg web admin_http_assets
+	cd ui/web && go-bindata -pkg web admin_http_assets/...
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
 
 build-win: carbon-relay-ng.exe
 
 carbon-relay-ng.exe:
-	cd ui/web && go-bindata -pkg web admin_http_assets
+	cd ui/web && go-bindata -pkg web admin_http_assets/...
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" -o carbon-relay-ng.exe ./cmd/carbon-relay-ng
 
 build-linux: carbon-relay-ng
 
 carbon-relay-ng:
-	cd ui/web && go-bindata -pkg web admin_http_assets
+	cd ui/web && go-bindata -pkg web admin_http_assets/...
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
 

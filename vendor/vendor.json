@@ -405,6 +405,12 @@
 			"revisionTime": "2014-12-17T16:02:51Z"
 		},
 		{
+			"checksumSHA1": "22kXObb09lweSbdIjPZGeLBjnkg=",
+			"path": "github.com/gorilla/handlers",
+			"revision": "7e0847f9db758cdebd26c149d0ae9d5d0b9c98ce",
+			"revisionTime": "2018-07-27T23:06:46Z"
+		},
+		{
 			"checksumSHA1": "oKhpvaXBVmGKk8dvCXXzUtPqyMM=",
 			"path": "github.com/gorilla/mux",
 			"revision": "14cafe28513321476c73967a5a4f3454b6129c46",
