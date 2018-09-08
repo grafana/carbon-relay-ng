@@ -2,7 +2,7 @@ package input
 
 import (
 	"bufio"
-	"net"
+	"io"
 
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -17,18 +17,11 @@ type Plain struct {
 	table  *table.Table
 }
 
-func NewPlain(config cfg.Config, addr string, tbl *table.Table, badMetrics *badmetrics.BadMetrics) (net.Listener, error) {
-	plain := &Plain{config, badMetrics, tbl}
-	l, err := listen(addr, plain)
-	if err != nil {
-		return nil, err
-	}
-
-	return l, nil
+func NewPlain(config cfg.Config, addr string, tbl *table.Table, badMetrics *badmetrics.BadMetrics) error {
+	return listen(addr, &Plain{config, badMetrics, tbl})
 }
 
-func (p *Plain) Handle(c net.Conn) {
-	defer c.Close()
+func (p *Plain) Handle(c io.Reader) {
 	// TODO c.SetTimeout(60e9)
 	scanner := bufio.NewScanner(c)
 	for scanner.Scan() {
@@ -42,6 +35,7 @@ func (p *Plain) Handle(c net.Conn) {
 
 		key, val, ts, err := m20.ValidatePacket(buf, p.config.Validation_level_legacy.Level, p.config.Validation_level_m20.Level)
 		if err != nil {
+			log.Debug("plain.go: Bad Line: '%s'", buf)
 			p.bad.Add(key, buf, err)
 			numInvalid.Inc(1)
 			continue
@@ -50,11 +44,14 @@ func (p *Plain) Handle(c net.Conn) {
 		if p.config.Validate_order {
 			err = validate.Ordered(key, ts)
 			if err != nil {
+				log.Debug("plain.go: Out of Order Line: '%s'", buf)
 				p.bad.Add(key, buf, err)
 				numOutOfOrder.Inc(1)
 				continue
 			}
 		}
+
+		log.Debug("plain.go: Received Line: '%s'", buf)
 
 		p.table.Dispatch(buf, val, ts)
 	}

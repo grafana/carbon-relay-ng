@@ -1,7 +1,7 @@
 package input
 
 import (
-	"net"
+	"io"
 
 	metrics "github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
@@ -26,5 +26,5 @@ func SetLogger(l *logging.Logger) {
 }
 
 type Handler interface {
-	Handle(net.Conn)
+	Handle(io.Reader)
 }
