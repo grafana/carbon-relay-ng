@@ -49,14 +49,16 @@ func acceptTcpConn(c net.Conn, handler Handler) {
 }
 
 func acceptUdp(l *net.UDPConn, handler Handler) {
+	buffer := make([]byte, 65535)
 	for {
-		buffer := make([]byte, 4096)
 		b, addr, err := l.ReadFrom(buffer)
 		if err != nil {
 			log.Error(err.Error())
 			break
 		}
-		log.Debug("listen.go: udp packet from %v", addr)
-		go handler.Handle(bytes.NewReader(buffer[:b]))
+		log.Debug("listen.go: udp packet from %v (Length: %d)", addr, b)
+		packet := make([]byte, b)
+		copy(packet, buffer[:b])
+		go handler.Handle(bytes.NewReader(packet))
 	}
 }
