@@ -57,8 +57,6 @@ func acceptUdp(l *net.UDPConn, handler Handler) {
 			break
 		}
 		log.Debug("listen.go: udp packet from %v (Length: %d)", addr, b)
-		packet := make([]byte, b)
-		copy(packet, buffer[:b])
-		go handler.Handle(bytes.NewReader(packet))
+		handler.Handle(bytes.NewReader(buffer[:b]))
 	}
 }
