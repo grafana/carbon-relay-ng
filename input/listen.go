@@ -33,30 +33,34 @@ func listen(addr string, handler Handler) error {
 
 func acceptTcp(l *net.TCPListener, handler Handler) {
 	for {
+		// wait for a tcp connection
 		c, err := l.AcceptTCP()
 		if err != nil {
 			log.Error(err.Error())
 			break
 		}
+		log.Debug("listen.go: tcp connection from %v", c.RemoteAddr())
+		// handle the connection
 		go acceptTcpConn(c, handler)
 	}
 }
 
 func acceptTcpConn(c net.Conn, handler Handler) {
 	defer c.Close()
-	log.Debug("listen.go: tcp connection from %v", c.RemoteAddr())
 	handler.Handle(c)
 }
 
 func acceptUdp(l *net.UDPConn, handler Handler) {
 	buffer := make([]byte, 65535)
 	for {
+		// read a packet into buffer
 		b, addr, err := l.ReadFrom(buffer)
 		if err != nil {
 			log.Error(err.Error())
 			break
 		}
-		log.Debug("listen.go: udp packet from %v (Length: %d)", addr, b)
+		log.Debug("listen.go: udp packet from %v (length: %d)", addr, b)
+		// handle the packet
 		handler.Handle(bytes.NewReader(buffer[:b]))
 	}
 }

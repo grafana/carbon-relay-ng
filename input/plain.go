@@ -22,7 +22,6 @@ func NewPlain(config cfg.Config, addr string, tbl *table.Table, badMetrics *badm
 }
 
 func (p *Plain) Handle(c io.Reader) {
-	// TODO c.SetTimeout(60e9)
 	scanner := bufio.NewScanner(c)
 	for scanner.Scan() {
 		// Note that everything in this loop should proceed as fast as it can
@@ -35,7 +34,7 @@ func (p *Plain) Handle(c io.Reader) {
 
 		key, val, ts, err := m20.ValidatePacket(buf, p.config.Validation_level_legacy.Level, p.config.Validation_level_m20.Level)
 		if err != nil {
-			log.Debug("plain.go: Bad Line: '%s'", buf)
+			log.Debug("plain.go: Bad Line: %q", buf)
 			p.bad.Add(key, buf, err)
 			numInvalid.Inc(1)
 			continue
@@ -44,14 +43,14 @@ func (p *Plain) Handle(c io.Reader) {
 		if p.config.Validate_order {
 			err = validate.Ordered(key, ts)
 			if err != nil {
-				log.Debug("plain.go: Out of Order Line: '%s'", buf)
+				log.Debug("plain.go: Out of Order Line: %q", buf)
 				p.bad.Add(key, buf, err)
 				numOutOfOrder.Inc(1)
 				continue
 			}
 		}
 
-		log.Debug("plain.go: Received Line: '%s'", buf)
+		log.Debug("plain.go: Received Line: %q", buf)
 
 		p.table.Dispatch(buf, val, ts)
 	}
