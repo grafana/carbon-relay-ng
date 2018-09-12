@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"net"
 
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -23,17 +22,11 @@ type Pickle struct {
 	table  *table.Table
 }
 
-func NewPickle(config cfg.Config, addr string, tbl *table.Table, bad *badmetrics.BadMetrics) (net.Listener, error) {
-	l, err := listen(addr, &Pickle{config, bad, tbl})
-	if err != nil {
-		return nil, err
-	}
-	return l, nil
+func NewPickle(config cfg.Config, addr string, tbl *table.Table, bad *badmetrics.BadMetrics) error {
+	return listen(addr, &Pickle{config, bad, tbl})
 }
 
-func (p *Pickle) Handle(c net.Conn) {
-	defer c.Close()
-	// TODO c.SetTimeout(60e9)
+func (p *Pickle) Handle(c io.Reader) {
 	r := bufio.NewReaderSize(c, 4096)
 	// 500MB max payload size per pickle body
 	maxLength := 500 * 1024 * 1024

@@ -196,7 +196,7 @@ func main() {
 	}
 
 	if config.Listen_addr != "" {
-		_, err = input.NewPlain(config, config.Listen_addr, table, badMetrics)
+		err = input.NewPlain(config, config.Listen_addr, table, badMetrics)
 		if err != nil {
 			log.Error(err.Error())
 			os.Exit(1)
@@ -204,7 +204,7 @@ func main() {
 	}
 
 	if config.Pickle_addr != "" {
-		_, err = input.NewPickle(config, config.Pickle_addr, table, badMetrics)
+		err = input.NewPickle(config, config.Pickle_addr, table, badMetrics)
 		if err != nil {
 			log.Error(err.Error())
 			os.Exit(1)

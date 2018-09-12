@@ -3,7 +3,6 @@ package input
 import (
 	"bufio"
 	"io"
-	"net"
 
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -18,41 +17,24 @@ type Plain struct {
 	table  *table.Table
 }
 
-func NewPlain(config cfg.Config, addr string, tbl *table.Table, badMetrics *badmetrics.BadMetrics) (net.Listener, error) {
-	plain := &Plain{config, badMetrics, tbl}
-	l, err := listen(addr, plain)
-	if err != nil {
-		return nil, err
-	}
-
-	return l, nil
+func NewPlain(config cfg.Config, addr string, tbl *table.Table, badMetrics *badmetrics.BadMetrics) error {
+	return listen(addr, &Plain{config, badMetrics, tbl})
 }
 
-func (p *Plain) Handle(c net.Conn) {
-	defer c.Close()
-	// TODO c.SetTimeout(60e9)
-	r := bufio.NewReaderSize(c, 4096)
-	for {
-
+func (p *Plain) Handle(c io.Reader) {
+	scanner := bufio.NewScanner(c)
+	for scanner.Scan() {
 		// Note that everything in this loop should proceed as fast as it can
 		// so we're not blocked and can keep processing
 		// so the validation, the pipeline initiated via table.Dispatch(), etc
 		// must never block.
 
-		// note that we don't support lines longer than 4096B. that seems very reasonable..
-		buf, _, err := r.ReadLine()
-
-		if err != nil {
-			if io.EOF != err {
-				log.Error(err.Error())
-			}
-			break
-		}
-
+		buf := scanner.Bytes()
 		numIn.Inc(1)
 
 		key, val, ts, err := m20.ValidatePacket(buf, p.config.Validation_level_legacy.Level, p.config.Validation_level_m20.Level)
 		if err != nil {
+			log.Debug("plain.go: Bad Line: %q", buf)
 			p.bad.Add(key, buf, err)
 			numInvalid.Inc(1)
 			continue
@@ -61,12 +43,18 @@ func (p *Plain) Handle(c net.Conn) {
 		if p.config.Validate_order {
 			err = validate.Ordered(key, ts)
 			if err != nil {
+				log.Debug("plain.go: Out of Order Line: %q", buf)
 				p.bad.Add(key, buf, err)
 				numOutOfOrder.Inc(1)
 				continue
 			}
 		}
 
+		log.Debug("plain.go: Received Line: %q", buf)
+
 		p.table.Dispatch(buf, val, ts)
+	}
+	if err := scanner.Err(); err != nil {
+		log.Error(err.Error())
 	}
 }
