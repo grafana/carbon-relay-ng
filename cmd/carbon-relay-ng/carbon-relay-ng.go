@@ -147,7 +147,6 @@ func main() {
 		f.Close()
 	}
 
-	input.InitMetrics()
 	aggregator.InitMetrics()
 
 	go func() {
@@ -171,14 +170,6 @@ func main() {
 		go metrics.Graphite(metrics.DefaultRegistry, time.Duration(config.Instrumentation.Graphite_interval)*time.Millisecond, "", addr)
 	}
 
-	maxAge, err := time.ParseDuration(config.Bad_metrics_max_age)
-	if err != nil {
-		log.Error("could not parse badMetrics max age")
-		log.Error(err.Error())
-		os.Exit(1)
-	}
-	badMetrics = badmetrics.New(maxAge)
-
 	log.Notice("initializing routing table...")
 
 	table, err := tbl.InitFromConfig(config, meta)
@@ -196,7 +187,7 @@ func main() {
 	}
 
 	if config.Listen_addr != "" {
-		err = input.NewPlain(config, config.Listen_addr, table, badMetrics)
+		err = input.NewPlain(config.Listen_addr, table)
 		if err != nil {
 			log.Error(err.Error())
 			os.Exit(1)
@@ -204,7 +195,7 @@ func main() {
 	}
 
 	if config.Pickle_addr != "" {
-		err = input.NewPickle(config, config.Pickle_addr, table, badMetrics)
+		err = input.NewPickle(config.Pickle_addr, table)
 		if err != nil {
 			log.Error(err.Error())
 			os.Exit(1)
@@ -212,7 +203,7 @@ func main() {
 	}
 
 	if config.Amqp.Amqp_enabled == true {
-		go input.StartAMQP(config, table, badMetrics)
+		go input.StartAMQP(config, table)
 	}
 
 	if config.Admin_addr != "" {
@@ -226,7 +217,7 @@ func main() {
 	}
 
 	if config.Http_addr != "" {
-		go web.Start(config.Http_addr, config, table, badMetrics)
+		go web.Start(config.Http_addr, config, table)
 	}
 
 	select {}

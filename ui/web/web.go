@@ -12,7 +12,6 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
-	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
@@ -23,7 +22,6 @@ import (
 
 var table *tbl.Table
 var config cfg.Config
-var badMetrics *badmetrics.BadMetrics
 var log = logging.MustGetLogger("ui-web") // for tests. overridden by main
 
 func SetLogger(l *logging.Logger) {
@@ -87,7 +85,7 @@ func badMetricsHandler(w http.ResponseWriter, r *http.Request) (interface{}, *ha
 		return nil, &handlerError{err, "Could not parse timespec", http.StatusBadRequest}
 	}
 
-	records := badMetrics.Get(duration)
+	records := table.Bad().Get(duration)
 	return records, nil
 }
 
@@ -300,10 +298,9 @@ func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 	return map[string]string{"Message": "route added"}, nil
 }
 
-func Start(addr string, c cfg.Config, t *tbl.Table, bad *badmetrics.BadMetrics) {
+func Start(addr string, c cfg.Config, t *tbl.Table) {
 	table = t
 	config = c
-	badMetrics = bad
 
 	router := mux.NewRouter()
 	router.Handle("/badMetrics/{timespec}.json", handler(badMetricsHandler)).Methods("GET")

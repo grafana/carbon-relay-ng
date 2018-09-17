@@ -37,12 +37,12 @@ func NewDummyPackets(key string, amount int) *dummyPackets {
 	return &dummyPackets{key, amount, packetLen, scratch}
 }
 
-func (dp *dummyPackets) Get(i int) ([]byte, float64, uint32) {
+func (dp *dummyPackets) Get(i int) []byte {
 	if i >= dp.amount {
 		panic("can't ask for higher index then what we have in dummyPackets")
 	}
 	sliceFull := dp.scratch.Bytes()
-	return sliceFull[dp.packetLen*i : dp.packetLen*(i+1)], 123, uint32(tsBase + i + 1)
+	return sliceFull[dp.packetLen*i : dp.packetLen*(i+1)]
 }
 
 type msg struct {
