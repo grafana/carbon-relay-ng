@@ -6,42 +6,61 @@ import (
 )
 
 func listen(addr string, handler Handler) error {
-	laddr, err := net.ResolveTCPAddr("tcp", addr)
+	// listeners are set up outside of accept* here so they can interrupt startup
+	listener, err := listenTcp(addr)
 	if err != nil {
 		return err
 	}
-	l, err := net.ListenTCP("tcp", laddr)
-	if err != nil {
-		return err
-	}
-	log.Notice("listening on %v/tcp", laddr)
-	go acceptTcp(l, handler)
 
-	udp_addr, err := net.ResolveUDPAddr("udp", addr)
+	udp_conn, err := listenUdp(addr)
 	if err != nil {
 		return err
 	}
-	udp_conn, err := net.ListenUDP("udp", udp_addr)
-	if err != nil {
-		return err
-	}
-	log.Notice("listening on %v/udp", udp_addr)
-	go acceptUdp(udp_conn, handler)
+
+	go acceptTcp(addr, listener, handler)
+	go acceptUdp(addr, udp_conn, handler)
 
 	return nil
 }
 
-func acceptTcp(l *net.TCPListener, handler Handler) {
+func listenTcp(addr string) (*net.TCPListener, error) {
+	laddr, err := net.ResolveTCPAddr("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	listener, err := net.ListenTCP("tcp", laddr)
+	if err != nil {
+		return nil, err
+	}
+	return listener, nil
+}
+
+func acceptTcp(addr string, listener *net.TCPListener, handler Handler) {
+	var err error
+	l := listener
 	for {
-		// wait for a tcp connection
-		c, err := l.AcceptTCP()
+		log.Notice("listening on %v/tcp", addr)
+
+		for {
+			// wait for a tcp connection
+			c, err := l.AcceptTCP()
+			if err != nil {
+				log.Error(err.Error())
+				break
+			}
+			log.Debug("listen.go: tcp connection from %v", c.RemoteAddr())
+			// handle the connection
+			go acceptTcpConn(c, handler)
+		}
+
+		log.Notice("error listening on %v/tcp, reopening connection", addr)
+		l.Close()
+
+		l, err = listenTcp(addr)
 		if err != nil {
 			log.Error(err.Error())
 			break
 		}
-		log.Debug("listen.go: tcp connection from %v", c.RemoteAddr())
-		// handle the connection
-		go acceptTcpConn(c, handler)
 	}
 }
 
@@ -50,17 +69,44 @@ func acceptTcpConn(c net.Conn, handler Handler) {
 	handler.Handle(c)
 }
 
-func acceptUdp(l *net.UDPConn, handler Handler) {
+func listenUdp(addr string) (*net.UDPConn, error) {
+	udp_addr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+	udp_conn, err := net.ListenUDP("udp", udp_addr)
+	if err != nil {
+		return nil, err
+	}
+	return udp_conn, nil
+}
+
+func acceptUdp(addr string, udp_conn *net.UDPConn, handler Handler) {
+	var err error
+	l := udp_conn
 	buffer := make([]byte, 65535)
 	for {
-		// read a packet into buffer
-		b, addr, err := l.ReadFrom(buffer)
+		log.Notice("listening on %v/udp", addr)
+
+		for {
+			// read a packet into buffer
+			b, src, err := l.ReadFrom(buffer)
+			if err != nil {
+				log.Error(err.Error())
+				break
+			}
+			log.Debug("listen.go: udp packet from %v (length: %d)", src, b)
+			// handle the packet
+			handler.Handle(bytes.NewReader(buffer[:b]))
+		}
+
+		log.Notice("error listening on %v/udp, reopening connection", addr)
+		l.Close()
+
+		l, err = listenUdp(addr)
 		if err != nil {
 			log.Error(err.Error())
 			break
 		}
-		log.Debug("listen.go: udp packet from %v (length: %d)", addr, b)
-		// handle the packet
-		handler.Handle(bytes.NewReader(buffer[:b]))
 	}
 }
