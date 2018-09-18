@@ -94,7 +94,7 @@ func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy
 
 	r.partitioner, err = partitioner.NewKafka(partitionBy)
 	if err != nil {
-		log.Fatal(4, "kafkaMdm %q: failed to initialize partitioner. %s", r.Key, err)
+		log.Fatal(4, "kafkaMdm %q: failed to initialize partitioner. %s", r.key, err)
 	}
 
 	// We are looking for strong consistency semantics.
@@ -111,7 +111,7 @@ func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy
 	config.Producer.Timeout = time.Duration(timeout) * time.Millisecond
 	err = config.Validate()
 	if err != nil {
-		log.Fatal(4, "kafkaMdm %q: failed to validate kafka config. %s", r.Key, err)
+		log.Fatal(4, "kafkaMdm %q: failed to validate kafka config. %s", r.key, err)
 	}
 	r.saramaCfg = config
 
