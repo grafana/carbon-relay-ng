@@ -3,6 +3,7 @@ package input
 import (
 	"bytes"
 	"net"
+	"time"
 )
 
 func listen(addr string, handler Handler) error {
@@ -28,11 +29,7 @@ func listenTcp(addr string) (*net.TCPListener, error) {
 	if err != nil {
 		return nil, err
 	}
-	listener, err := net.ListenTCP("tcp", laddr)
-	if err != nil {
-		return nil, err
-	}
-	return listener, nil
+	return net.ListenTCP("tcp", laddr)
 }
 
 func acceptTcp(addr string, listener *net.TCPListener, handler Handler) {
@@ -53,13 +50,24 @@ func acceptTcp(addr string, listener *net.TCPListener, handler Handler) {
 			go acceptTcpConn(c, handler)
 		}
 
-		log.Notice("error listening on %v/tcp, reopening connection", addr)
+		log.Notice("error accepting on %v/tcp, closing connection", addr)
 		l.Close()
 
-		l, err = listenTcp(addr)
-		if err != nil {
+		backoff := time.Duration(time.Second)
+		for {
+			log.Notice("reopening %v/tcp", addr)
+
+			l, err = listenTcp(addr)
+			if err == nil {
+				break
+			}
+
 			log.Error(err.Error())
-			break
+
+			log.Notice("error listening on %v/tcp, retrying after %v", addr, backoff)
+			time.Sleep(backoff)
+
+			backoff *= 2
 		}
 	}
 }
@@ -74,11 +82,7 @@ func listenUdp(addr string) (*net.UDPConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	udp_conn, err := net.ListenUDP("udp", udp_addr)
-	if err != nil {
-		return nil, err
-	}
-	return udp_conn, nil
+	return net.ListenUDP("udp", udp_addr)
 }
 
 func acceptUdp(addr string, udp_conn *net.UDPConn, handler Handler) {
@@ -100,13 +104,24 @@ func acceptUdp(addr string, udp_conn *net.UDPConn, handler Handler) {
 			handler.Handle(bytes.NewReader(buffer[:b]))
 		}
 
-		log.Notice("error listening on %v/udp, reopening connection", addr)
+		log.Notice("error accepting on %v/udp, closing connection", addr)
 		l.Close()
 
-		l, err = listenUdp(addr)
-		if err != nil {
+		backoff := time.Duration(time.Second)
+		for {
+			log.Notice("reopening %v/udp", addr)
+
+			l, err = listenUdp(addr)
+			if err == nil {
+				break
+			}
+
 			log.Error(err.Error())
-			break
+
+			log.Notice("error listening on %v/udp, retrying after %v", addr, backoff)
+			time.Sleep(backoff)
+
+			backoff *= 2
 		}
 	}
 }
