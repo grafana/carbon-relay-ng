@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"net"
 	"time"
+
+	"github.com/jpillora/backoff"
 )
 
 func listen(addr string, handler Handler) error {
@@ -35,6 +37,11 @@ func listenTcp(addr string) (*net.TCPListener, error) {
 func acceptTcp(addr string, listener *net.TCPListener, handler Handler) {
 	var err error
 	l := listener
+	backoffCounter := &backoff.Backoff{
+		Min: 500 * time.Millisecond,
+		Max: time.Minute,
+	}
+
 	for {
 		log.Notice("listening on %v/tcp", addr)
 
@@ -53,21 +60,20 @@ func acceptTcp(addr string, listener *net.TCPListener, handler Handler) {
 		log.Notice("error accepting on %v/tcp, closing connection", addr)
 		l.Close()
 
-		backoff := time.Duration(time.Second)
 		for {
 			log.Notice("reopening %v/tcp", addr)
 
 			l, err = listenTcp(addr)
 			if err == nil {
+				backoffCounter.Reset()
 				break
 			}
 
 			log.Error(err.Error())
 
-			log.Notice("error listening on %v/tcp, retrying after %v", addr, backoff)
-			time.Sleep(backoff)
-
-			backoff *= 2
+			backoffDuration := backoffCounter.Duration()
+			log.Notice("error listening on %v/tcp, retrying after %v", addr, backoffDuration)
+			time.Sleep(backoffDuration)
 		}
 	}
 }
@@ -89,6 +95,11 @@ func acceptUdp(addr string, udp_conn *net.UDPConn, handler Handler) {
 	var err error
 	l := udp_conn
 	buffer := make([]byte, 65535)
+	backoffCounter := &backoff.Backoff{
+		Min: 500 * time.Millisecond,
+		Max: time.Minute,
+	}
+
 	for {
 		log.Notice("listening on %v/udp", addr)
 
@@ -107,21 +118,20 @@ func acceptUdp(addr string, udp_conn *net.UDPConn, handler Handler) {
 		log.Notice("error accepting on %v/udp, closing connection", addr)
 		l.Close()
 
-		backoff := time.Duration(time.Second)
 		for {
 			log.Notice("reopening %v/udp", addr)
 
 			l, err = listenUdp(addr)
 			if err == nil {
+				backoffCounter.Reset()
 				break
 			}
 
 			log.Error(err.Error())
 
-			log.Notice("error listening on %v/udp, retrying after %v", addr, backoff)
-			time.Sleep(backoff)
-
-			backoff *= 2
+			backoffDuration := backoffCounter.Duration()
+			log.Notice("error listening on %v/udp, retrying after %v", addr, backoffDuration)
+			time.Sleep(backoffDuration)
 		}
 	}
 }
