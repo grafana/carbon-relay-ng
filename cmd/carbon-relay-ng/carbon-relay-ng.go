@@ -221,6 +221,9 @@ func main() {
 	}
 
 	select {}
+
+	// blocks until all inputs have been shut down
+	input.Shutdown()
 }
 
 func expandVars(in string) (out string) {

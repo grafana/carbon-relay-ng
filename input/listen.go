@@ -34,24 +34,39 @@ func listenTcp(addr string) (*net.TCPListener, error) {
 	return net.ListenTCP("tcp", laddr)
 }
 
-func acceptTcp(addr string, listener *net.TCPListener, handler Handler) {
+func acceptTcp(addr string, l *net.TCPListener, handler Handler) {
 	var err error
-	l := listener
+	var backoffTimer *time.Timer
 	backoffCounter := &backoff.Backoff{
 		Min: 500 * time.Millisecond,
 		Max: time.Minute,
 	}
 
+	socketWg.Add(1)
+	defer socketWg.Done()
+
+	go func() {
+		<-shutdown
+		l.Close()
+	}()
+
 	for {
 		log.Notice("listening on %v/tcp", addr)
 
+	ACCEPT:
 		for {
-			// wait for a tcp connection
 			c, err := l.AcceptTCP()
 			if err != nil {
-				log.Error("error accepting on %v/tcp, closing connection: %s", addr, err)
-				l.Close()
-				break
+				select {
+				// socket has been closed due to shut down, log and return
+				case <-shutdown:
+					log.Info("shutting down %v/tcp, closing socket", addr)
+					return
+				default:
+					log.Error("error accepting on %v/tcp, closing connection: %s", addr, err)
+					l.Close()
+					break ACCEPT
+				}
 			}
 
 			// handle the connection
@@ -61,7 +76,6 @@ func acceptTcp(addr string, listener *net.TCPListener, handler Handler) {
 
 		for {
 			log.Notice("reopening %v/tcp", addr)
-
 			l, err = listenTcp(addr)
 			if err == nil {
 				backoffCounter.Reset()
@@ -69,15 +83,31 @@ func acceptTcp(addr string, listener *net.TCPListener, handler Handler) {
 			}
 
 			backoffDuration := backoffCounter.Duration()
-
 			log.Error("error listening on %v/tcp, retrying after %v: %s", addr, backoffDuration, err)
-			time.Sleep(backoffDuration)
+			backoffTimer = time.NewTimer(backoffDuration)
+
+			// continue looping once the backoffTimer triggers,
+			// unless a shutdown event gets triggered first
+			select {
+			case <-shutdown:
+				backoffTimer.Stop()
+				log.Info("shutting down %v/tcp, closing socket", addr)
+				return
+			case <-backoffTimer.C:
+			}
 		}
 	}
 }
 
 func acceptTcpConn(c net.Conn, handler Handler) {
-	defer c.Close()
+	socketWg.Add(1)
+	defer socketWg.Done()
+
+	go func() {
+		<-shutdown
+		c.Close()
+	}()
+
 	handler.Handle(c)
 }
 
@@ -89,25 +119,41 @@ func listenUdp(addr string) (*net.UDPConn, error) {
 	return net.ListenUDP("udp", udp_addr)
 }
 
-func acceptUdp(addr string, udp_conn *net.UDPConn, handler Handler) {
+func acceptUdp(addr string, l *net.UDPConn, handler Handler) {
 	var err error
-	l := udp_conn
 	buffer := make([]byte, 65535)
+	var backoffTimer *time.Timer
 	backoffCounter := &backoff.Backoff{
 		Min: 500 * time.Millisecond,
 		Max: time.Minute,
 	}
 
+	socketWg.Add(1)
+	defer socketWg.Done()
+
+	go func() {
+		<-shutdown
+		l.Close()
+	}()
+
 	for {
 		log.Notice("listening on %v/udp", addr)
 
+	READ:
 		for {
 			// read a packet into buffer
 			b, src, err := l.ReadFrom(buffer)
 			if err != nil {
-				log.Error("error reading packet on %v/udp, closing connection: %s", addr, err)
-				l.Close()
-				break
+				select {
+				// socket has been closed due to shut down, log and return
+				case <-shutdown:
+					log.Info("shutting down %v/udp, closing socket", addr)
+					return
+				default:
+					log.Error("error reading packet on %v/udp, closing connection: %s", addr, err)
+					l.Close()
+					break READ
+				}
 			}
 
 			// handle the packet
@@ -127,7 +173,17 @@ func acceptUdp(addr string, udp_conn *net.UDPConn, handler Handler) {
 			backoffDuration := backoffCounter.Duration()
 
 			log.Error("error listening on %v/udp, retrying after %v: %s", addr, backoffDuration, err)
-			time.Sleep(backoffDuration)
+			backoffTimer = time.NewTimer(backoffDuration)
+
+			// continue looping once the backoffTimer triggers,
+			// unless a shutdown event gets triggered first
+			select {
+			case <-shutdown:
+				backoffTimer.Stop()
+				log.Info("shutting down %v/udp, closing socket", addr)
+				return
+			case <-backoffTimer.C:
+			}
 		}
 	}
 }
