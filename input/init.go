@@ -3,14 +3,16 @@ package input
 import (
 	"io"
 	"sync"
+	"time"
 
 	logging "github.com/op/go-logging"
 )
 
 var (
-	log      = logging.MustGetLogger("input") // for tests. overridden by main
-	socketWg sync.WaitGroup
-	shutdown = make(chan struct{})
+	log             = logging.MustGetLogger("input") // for tests. overridden by main
+	socketWg        sync.WaitGroup
+	shutdown        = make(chan struct{})
+	shutdownTimeout = time.Second * 30 // how long to wait for shutdown
 )
 
 func SetLogger(l *logging.Logger) {
@@ -26,7 +28,20 @@ type Dispatcher interface {
 	IncNumInvalid()
 }
 
-func Shutdown() {
+// returns true if the shutdown was clean, otherwise false
+func Shutdown() bool {
 	close(shutdown)
-	socketWg.Wait()
+	shutdownComplete := make(chan struct{})
+
+	go func() {
+		socketWg.Wait()
+		close(shutdownComplete)
+	}()
+
+	select {
+	case <-shutdownComplete:
+		return true
+	case <-time.After(shutdownTimeout):
+		return false
+	}
 }
