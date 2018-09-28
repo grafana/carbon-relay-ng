@@ -52,7 +52,13 @@ func StartAMQP(config cfg.Config, dispatcher Dispatcher) {
 
 			d := b.Duration()
 			log.Info("retrying in %v", d)
-			time.Sleep(d)
+
+			select {
+			case <-shutdown:
+				log.Info("shutting down AMQP client")
+				return
+			case <-time.After(d):
+			}
 		} else {
 			// connected successfully; reset backoff
 			b.Reset()
@@ -63,6 +69,13 @@ func StartAMQP(config cfg.Config, dispatcher Dispatcher) {
 
 			// reconnect immediately
 			a.close()
+
+			select {
+			case <-shutdown:
+				log.Info("shutting down AMQP client")
+				return
+			default:
+			}
 		}
 	}
 }
@@ -106,20 +119,25 @@ func connectAMQP(a *Amqp) (<-chan amqp.Delivery, error) {
 
 func consumeAMQP(a *Amqp, c <-chan amqp.Delivery) {
 	log.Notice("consuming AMQP messages")
-	for m := range c {
-		// note that we don't support lines longer than 4096B. that seems very reasonable..
-		r := bufio.NewReaderSize(bytes.NewReader(m.Body), 4096)
-		for {
-			buf, _, err := r.ReadLine()
+	for {
+		select {
+		case m := <-c:
+			// note that we don't support lines longer than 4096B. that seems very reasonable..
+			r := bufio.NewReaderSize(bytes.NewReader(m.Body), 4096)
+			for {
+				buf, _, err := r.ReadLine()
 
-			if err != nil {
-				if io.EOF != err {
-					log.Error(err.Error())
+				if err != nil {
+					if io.EOF != err {
+						log.Error(err.Error())
+					}
+					break
 				}
-				break
-			}
 
-			a.dispatcher.Dispatch(buf)
+				a.dispatcher.Dispatch(buf)
+			}
+		case <-shutdown:
+			return
 		}
 	}
 }
