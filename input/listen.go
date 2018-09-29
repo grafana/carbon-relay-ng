@@ -101,14 +101,9 @@ func (l *Listener) acceptTcp(addr string) {
 
 			backoffDuration := backoffCounter.Duration()
 			log.Error("error listening on %v/tcp, retrying after %v: %s", addr, backoffDuration, err)
-
-			// continue looping once the backoff duration is over,
-			// unless a shutdown event gets triggered first
-			select {
-			case <-l.shutdown:
+			if !l.backoffOrShutdown(backoffDuration) {
 				log.Info("shutting down %v/tcp, closing socket", addr)
 				return
-			case <-time.After(backoffDuration):
 			}
 		}
 	}
@@ -189,17 +184,21 @@ func (l *Listener) acceptUdp(addr string) {
 			}
 
 			backoffDuration := backoffCounter.Duration()
-
 			log.Error("error listening on %v/udp, retrying after %v: %s", addr, backoffDuration, err)
-
-			// continue looping once the backoff duration is over,
-			// unless a shutdown event gets triggered first
-			select {
-			case <-l.shutdown:
+			if !l.backoffOrShutdown(backoffDuration) {
 				log.Info("shutting down %v/udp, closing socket", addr)
 				return
-			case <-time.After(backoffDuration):
 			}
 		}
+	}
+}
+
+// returns true if backoff expired, or false for shutdown
+func (l *Listener) backoffOrShutdown(d time.Duration) bool {
+	select {
+	case <-l.shutdown:
+		return false
+	case <-time.After(d):
+		return true
 	}
 }
