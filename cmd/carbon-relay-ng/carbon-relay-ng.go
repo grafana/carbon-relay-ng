@@ -203,7 +203,7 @@ func main() {
 	}
 
 	if config.Amqp.Amqp_enabled == true {
-		go input.StartAMQP(config, table)
+		go input.StartAMQP(config, table, input.AMQPConnector)
 	}
 
 	if config.Admin_addr != "" {

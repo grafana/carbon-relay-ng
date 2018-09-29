@@ -25,7 +25,10 @@ func (a *Amqp) close() {
 	a.conn.Close()
 }
 
-func StartAMQP(config cfg.Config, dispatcher Dispatcher) {
+// used to connect to the server. can be switched to allow mocking in tests
+type connector func(a *Amqp) (<-chan amqp.Delivery, error)
+
+func StartAMQP(config cfg.Config, dispatcher Dispatcher, connect connector) {
 	uri := amqp.URI{
 		Scheme:   "amqp",
 		Host:     config.Amqp.Amqp_host,
@@ -45,7 +48,7 @@ func StartAMQP(config cfg.Config, dispatcher Dispatcher) {
 		Min: 500 * time.Millisecond,
 	}
 	for {
-		c, err := connectAMQP(a)
+		c, err := connect(a)
 		if err != nil {
 			// failed to connect; backoff and try again
 			log.Error("connectAMQP: %v", err)
@@ -80,7 +83,7 @@ func StartAMQP(config cfg.Config, dispatcher Dispatcher) {
 	}
 }
 
-func connectAMQP(a *Amqp) (<-chan amqp.Delivery, error) {
+func AMQPConnector(a *Amqp) (<-chan amqp.Delivery, error) {
 	log.Notice("dialing AMQP: %v", a.uri)
 	conn, err := amqp.Dial(a.uri.String())
 	if err != nil {

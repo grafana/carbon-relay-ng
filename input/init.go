@@ -11,7 +11,7 @@ import (
 var (
 	log             = logging.MustGetLogger("input") // for tests. overridden by main
 	socketWg        sync.WaitGroup
-	shutdown        = make(chan struct{})
+	shutdown        chan struct{}
 	shutdownTimeout = time.Second * 30 // how long to wait for shutdown
 )
 
