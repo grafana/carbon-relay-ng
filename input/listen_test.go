@@ -52,7 +52,7 @@ func TestTcpUdpShutdown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error when trying to listen: %s", err)
 	}
-	res := listener.Shutdown()
+	res := listener.stop()
 	if !res {
 		t.Fatalf("Failed to shut down cleanly")
 	}
@@ -80,7 +80,7 @@ func TestTcpConnection(t *testing.T) {
 	// we've sent, so we just give it 50ms and then assume it did.
 	time.Sleep(time.Millisecond * 50)
 
-	listener.Shutdown()
+	listener.stop()
 
 	received := handler.String()
 	if received != testContent {
@@ -119,7 +119,7 @@ func TestUdpConnection(t *testing.T) {
 	// we've sent, so we just give it 50ms and then assume it did.
 	time.Sleep(time.Millisecond * 50)
 
-	listener.Shutdown()
+	listener.stop()
 
 	received := handler.String()
 	if received != testContent {

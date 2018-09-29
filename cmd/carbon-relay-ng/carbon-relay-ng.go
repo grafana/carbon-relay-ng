@@ -203,7 +203,7 @@ func main() {
 	}
 
 	if config.Amqp.Amqp_enabled == true {
-		go input.StartAMQP(config, table, input.AMQPConnector)
+		input.StartAMQP(config, table, input.AMQPConnector)
 	}
 
 	if config.Admin_addr != "" {
@@ -223,7 +223,9 @@ func main() {
 	select {}
 
 	// blocks until all inputs have been shut down
-	input.Shutdown()
+	if !input.Stop() {
+		log.Error("Shutdown timed out, exiting")
+	}
 }
 
 func expandVars(in string) (out string) {

@@ -12,12 +12,13 @@ import (
 )
 
 type Amqp struct {
-	uri     amqp.URI
-	conn    *amqp.Connection
-	channel *amqp.Channel
-
+	workerPool
+	uri        amqp.URI
+	conn       *amqp.Connection
+	channel    *amqp.Channel
 	config     cfg.Config
 	dispatcher Dispatcher
+	connect    connector
 }
 
 func (a *Amqp) close() {
@@ -29,6 +30,11 @@ func (a *Amqp) close() {
 type connector func(a *Amqp) (<-chan amqp.Delivery, error)
 
 func StartAMQP(config cfg.Config, dispatcher Dispatcher, connect connector) {
+	a := NewAMQP(config, dispatcher, connect)
+	go a.Start()
+}
+
+func NewAMQP(config cfg.Config, dispatcher Dispatcher, connect connector) *Amqp {
 	uri := amqp.URI{
 		Scheme:   "amqp",
 		Host:     config.Amqp.Amqp_host,
@@ -38,51 +44,14 @@ func StartAMQP(config cfg.Config, dispatcher Dispatcher, connect connector) {
 		Vhost:    config.Amqp.Amqp_vhost,
 	}
 
-	a := &Amqp{
+	return &Amqp{
 		uri:        uri,
 		config:     config,
 		dispatcher: dispatcher,
 	}
-
-	b := &backoff.Backoff{
-		Min: 500 * time.Millisecond,
-	}
-	for {
-		c, err := connect(a)
-		if err != nil {
-			// failed to connect; backoff and try again
-			log.Error("connectAMQP: %v", err)
-
-			d := b.Duration()
-			log.Info("retrying in %v", d)
-
-			select {
-			case <-shutdown:
-				log.Info("shutting down AMQP client")
-				return
-			case <-time.After(d):
-			}
-		} else {
-			// connected successfully; reset backoff
-			b.Reset()
-
-			// blocks until channel is closed
-			consumeAMQP(a, c)
-			log.Notice("consumeAMQP: channel closed")
-
-			// reconnect immediately
-			a.close()
-
-			select {
-			case <-shutdown:
-				log.Info("shutting down AMQP client")
-				return
-			default:
-			}
-		}
-	}
 }
 
+// connects an instance of Amqp and returns the message channel
 func AMQPConnector(a *Amqp) (<-chan amqp.Delivery, error) {
 	log.Notice("dialing AMQP: %v", a.uri)
 	conn, err := amqp.Dial(a.uri.String())
@@ -120,7 +89,51 @@ func AMQPConnector(a *Amqp) (<-chan amqp.Delivery, error) {
 	return c, nil
 }
 
-func consumeAMQP(a *Amqp, c <-chan amqp.Delivery) {
+func (a *Amqp) Start() {
+	a.startStoppable()
+	b := &backoff.Backoff{
+		Min: 500 * time.Millisecond,
+	}
+	a.wg.Add(1)
+	defer a.wg.Done()
+
+	for {
+		c, err := a.connect(a)
+		if err != nil {
+			// failed to connect; backoff and try again
+			log.Error("connectAMQP: %v", err)
+
+			d := b.Duration()
+			log.Info("retrying in %v", d)
+
+			select {
+			case <-a.shutdown:
+				log.Info("shutting down AMQP client")
+				return
+			case <-time.After(d):
+			}
+		} else {
+			// connected successfully; reset backoff
+			b.Reset()
+
+			// blocks until channel is closed
+			a.consumeAMQP(c)
+			log.Notice("consumeAMQP: channel closed")
+
+			// reconnect immediately
+			a.close()
+
+			select {
+			case <-a.shutdown:
+				log.Info("shutting down AMQP client")
+				return
+			default:
+			}
+		}
+	}
+}
+
+func (a *Amqp) consumeAMQP(c <-chan amqp.Delivery) {
 	log.Notice("consuming AMQP messages")
 	for {
 		select {
@@ -139,7 +152,7 @@ func consumeAMQP(a *Amqp, c <-chan amqp.Delivery) {
 
 				a.dispatcher.Dispatch(buf)
 			}
-		case <-shutdown:
+		case <-a.shutdown:
 			return
 		}
 	}

@@ -3,28 +3,27 @@ package input
 import (
 	"bytes"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/jpillora/backoff"
 )
 
 type Listener struct {
-	wg       sync.WaitGroup
-	tcpList  *net.TCPListener
-	udpConn  *net.UDPConn
-	handler  Handler
-	shutdown chan struct{}
+	workerPool
+	tcpList *net.TCPListener
+	udpConn *net.UDPConn
+	handler Handler
 }
 
 func NewListener(handler Handler) *Listener {
 	return &Listener{
-		handler:  handler,
-		shutdown: make(chan struct{}),
+		handler: handler,
 	}
 }
 
 func (l *Listener) listen(addr string) error {
+	l.startStoppable()
+
 	// listeners are set up outside of accept* here so they can interrupt startup
 	err := l.listenTcp(addr)
 	if err != nil {
@@ -60,7 +59,6 @@ func (l *Listener) acceptTcp(addr string) {
 		Min: 500 * time.Millisecond,
 		Max: time.Minute,
 	}
-
 	l.wg.Add(1)
 	defer l.wg.Done()
 
@@ -203,23 +201,5 @@ func (l *Listener) acceptUdp(addr string) {
 			case <-time.After(backoffDuration):
 			}
 		}
-	}
-}
-
-// returns true if the shutdown was clean, otherwise false
-func (l *Listener) Shutdown() bool {
-	close(l.shutdown)
-	shutdownComplete := make(chan struct{})
-
-	go func() {
-		l.wg.Wait()
-		close(shutdownComplete)
-	}()
-
-	select {
-	case <-shutdownComplete:
-		return true
-	case <-time.After(shutdownTimeout):
-		return false
 	}
 }
