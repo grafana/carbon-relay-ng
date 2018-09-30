@@ -35,6 +35,7 @@ func (l *Listener) listen(addr string) error {
 		return err
 	}
 
+	l.wg.Add(2)
 	go l.acceptTcp(addr)
 	go l.acceptUdp(addr)
 
@@ -54,13 +55,12 @@ func (l *Listener) listenTcp(addr string) error {
 }
 
 func (l *Listener) acceptTcp(addr string) {
+	defer l.wg.Done()
 	var err error
 	backoffCounter := &backoff.Backoff{
 		Min: 500 * time.Millisecond,
 		Max: time.Minute,
 	}
-	l.wg.Add(1)
-	defer l.wg.Done()
 
 	go func() {
 		<-l.shutdown
@@ -88,6 +88,7 @@ func (l *Listener) acceptTcp(addr string) {
 
 			// handle the connection
 			log.Debug("listen.go: tcp connection from %v", c.RemoteAddr())
+			l.wg.Add(1)
 			go l.acceptTcpConn(c)
 		}
 
@@ -110,7 +111,6 @@ func (l *Listener) acceptTcp(addr string) {
 }
 
 func (l *Listener) acceptTcpConn(c net.Conn) {
-	l.wg.Add(1)
 	defer l.wg.Done()
 
 	go func() {
@@ -134,15 +134,13 @@ func (l *Listener) listenUdp(addr string) error {
 }
 
 func (l *Listener) acceptUdp(addr string) {
+	defer l.wg.Done()
 	var err error
 	buffer := make([]byte, 65535)
 	backoffCounter := &backoff.Backoff{
 		Min: 500 * time.Millisecond,
 		Max: time.Minute,
 	}
-
-	l.wg.Add(1)
-	defer l.wg.Done()
 
 	go func() {
 		<-l.shutdown
