@@ -35,15 +35,12 @@ func (a *Amqp) close() {
 	a.conn.Close()
 }
 
-// used to connect to the server. can be switched to allow mocking in tests
-type connector func(a *Amqp) (<-chan amqp.Delivery, error)
-
-func StartAMQP(config cfg.Config, dispatcher Dispatcher, connect connector) {
+func StartAMQP(config cfg.Config, dispatcher Dispatcher, connect amqpConnector) {
 	a := NewAMQP(config, dispatcher, connect)
 	go a.Start()
 }
 
-func NewAMQP(config cfg.Config, dispatcher Dispatcher, connect connector) *Amqp {
+func NewAMQP(config cfg.Config, dispatcher Dispatcher, connect amqpConnector) *Amqp {
 	uri := amqp.URI{
 		Scheme:   "amqp",
 		Host:     config.Amqp.Amqp_host,
@@ -57,6 +54,7 @@ func NewAMQP(config cfg.Config, dispatcher Dispatcher, connect connector) *Amqp 
 		uri:        uri,
 		config:     config,
 		dispatcher: dispatcher,
+		connect:    connect,
 	}
 }
 

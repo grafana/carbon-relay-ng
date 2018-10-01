@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/streadway/amqp"
 )
 
@@ -33,10 +32,10 @@ type mockDispatcher struct {
 	dispatchDuration time.Duration
 }
 
-func (m *mockDispatcher) Dispatch(buf []byte, val float64, ts uint32) {}
+func (m *mockDispatcher) Dispatch(buf []byte) {}
+func (m *mockDispatcher) IncNumInvalid()      {}
 
 func TestMain(m *testing.M) {
-	InitMetrics()
 	_shutdownTimeout := shutdownTimeout
 	res := m.Run()
 	shutdownTimeout = _shutdownTimeout
@@ -44,10 +43,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestAmqpSuccessfulShutdown(t *testing.T) {
-	bad := badmetrics.New(time.Hour)
 	dispatcher := mockDispatcher{}
 	c, mockConn, mockChan, mockConnector := getMockConnector()
-	a := NewAMQP(config, &dispatcher, bad, mockConnector)
+	a := NewAMQP(config, &dispatcher, mockConnector)
 	go a.Start()
 
 	dispatcher.dispatchDuration = time.Millisecond
@@ -69,10 +67,9 @@ func TestAmqpSuccessfulShutdown(t *testing.T) {
 }
 
 func TestAmqpFailingShutdown(t *testing.T) {
-	bad := badmetrics.New(time.Hour)
 	dispatcher := mockDispatcher{}
 	c, mockConn, mockChan, mockConnector := getMockConnector()
-	a := NewAMQP(config, &dispatcher, bad, mockConnector)
+	a := NewAMQP(config, &dispatcher, mockConnector)
 	go a.Start()
 
 	dispatcher.dispatchDuration = time.Second * 5
