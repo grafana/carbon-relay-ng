@@ -11,6 +11,10 @@ type Stoppable interface {
 	stop() bool
 }
 
+type dispatcher interface {
+	Dispatch(buf []byte, val float64, ts uint32)
+}
+
 var (
 	log             = logging.MustGetLogger("input") // for tests. overridden by main
 	shutdown        chan struct{}

@@ -11,14 +11,23 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// amqpConnector is a function that connects an instance of *Amqp so
+// it will receive messages
+type amqpConnector func(a *Amqp) (<-chan amqp.Delivery, error)
+
+// Closables are things that have a .Close() method (channels & connections)
+type Closable interface {
+	Close() error
+}
+
 type Amqp struct {
 	workerPool
 	uri        amqp.URI
-	conn       *amqp.Connection
-	channel    *amqp.Channel
+	conn       Closable
+	channel    Closable
 	config     cfg.Config
 	dispatcher Dispatcher
-	connect    connector
+	connect    amqpConnector
 }
 
 func (a *Amqp) close() {
