@@ -10,6 +10,8 @@ type workerPool struct {
 	shutdown chan struct{}
 }
 
+// registers this instance in the list of stoppables
+// also initializes the shutdown channel
 func (w *workerPool) startStoppable() {
 	stoppables = append(stoppables, w)
 	w.shutdown = make(chan struct{})
