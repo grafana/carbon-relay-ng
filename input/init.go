@@ -11,14 +11,9 @@ type Stoppable interface {
 	stop() bool
 }
 
-type dispatcher interface {
-	Dispatch(buf []byte, val float64, ts uint32)
-}
-
 var (
 	log             = logging.MustGetLogger("input") // for tests. overridden by main
-	shutdown        chan struct{}
-	shutdownTimeout = time.Second * 30 // how long to wait for shutdown
+	shutdownTimeout = time.Second * 30               // how long to wait for shutdown
 	stoppables      []Stoppable
 )
 
