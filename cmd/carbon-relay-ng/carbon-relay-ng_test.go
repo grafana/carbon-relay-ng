@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 
@@ -54,7 +55,9 @@ func init() {
 }
 
 func NewTableOrFatal(tb testing.TB, spool_dir, cmd string) *tbl.Table {
-	table := tbl.New(spool_dir)
+	table := tbl.New(cfg.Config{
+		Spool_dir: spool_dir,
+	})
 	fatal := func(err error) {
 		tb.Fatal(err)
 	}
@@ -260,7 +263,7 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 	ns2 := t2.conditionNumSeen(dp.amount)
 
 	for msg := range dp.All() {
-		table.Dispatch(msg.Buf, msg.Val, msg.Ts)
+		table.Dispatch(msg.Buf)
 		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
 		// note i'm afraid this sleep masks another issue: data can get reordered.
 		// if you take this sleep away, and run like so:
@@ -303,7 +306,7 @@ func BenchmarkTableDispatch(b *testing.B) {
 	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // size: key = 48, val = 10, ts = 10 -> 70
 	table := NewTableOrFatal(b, "", "")
 	for i := 0; i < b.N; i++ {
-		table.Dispatch(metric70, 12345.6789, 1234567890)
+		table.Dispatch(metric70)
 	}
 }
 
@@ -328,7 +331,7 @@ func BenchmarkTableDisPatchAndEndpointReceive(b *testing.B) {
 	b.ResetTimer()
 	go func() {
 		for i := 0; i < b.N; i++ {
-			table.Dispatch(metric70, 12345.6789, 1234567890)
+			table.Dispatch(metric70)
 		}
 	}()
 	tE.WaitMetrics(b.N, 5*time.Second)

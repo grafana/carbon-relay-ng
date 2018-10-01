@@ -6,12 +6,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
-	"github.com/graphite-ng/carbon-relay-ng/table"
-	"github.com/graphite-ng/carbon-relay-ng/validate"
 	"github.com/jpillora/backoff"
-	m20 "github.com/metrics20/go-metrics20/carbon20"
 	"github.com/streadway/amqp"
 )
 
@@ -20,9 +16,8 @@ type Amqp struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 
-	config cfg.Config
-	bad    *badmetrics.BadMetrics
-	table  *table.Table
+	config     cfg.Config
+	dispatcher Dispatcher
 }
 
 func (a *Amqp) close() {
@@ -30,7 +25,7 @@ func (a *Amqp) close() {
 	a.conn.Close()
 }
 
-func StartAMQP(config cfg.Config, tbl *table.Table, bad *badmetrics.BadMetrics) {
+func StartAMQP(config cfg.Config, dispatcher Dispatcher) {
 	uri := amqp.URI{
 		Scheme:   "amqp",
 		Host:     config.Amqp.Amqp_host,
@@ -41,10 +36,9 @@ func StartAMQP(config cfg.Config, tbl *table.Table, bad *badmetrics.BadMetrics) 
 	}
 
 	a := &Amqp{
-		uri:    uri,
-		config: config,
-		bad:    bad,
-		table:  tbl,
+		uri:        uri,
+		config:     config,
+		dispatcher: dispatcher,
 	}
 
 	b := &backoff.Backoff{
@@ -125,30 +119,7 @@ func consumeAMQP(a *Amqp, c <-chan amqp.Delivery) {
 				break
 			}
 
-			a.dispatch(buf)
+			a.dispatcher.Dispatch(buf)
 		}
 	}
-}
-
-func (a *Amqp) dispatch(buf []byte) {
-	numIn.Inc(1)
-	log.Debug("dispatching message: %s", buf)
-
-	key, val, ts, err := m20.ValidatePacket(buf, a.config.Validation_level_legacy.Level, a.config.Validation_level_m20.Level)
-	if err != nil {
-		a.bad.Add(key, buf, err)
-		numInvalid.Inc(1)
-		return
-	}
-
-	if a.config.Validate_order {
-		err = validate.Ordered(key, ts)
-		if err != nil {
-			a.bad.Add(key, buf, err)
-			numOutOfOrder.Inc(1)
-			return
-		}
-	}
-
-	a.table.Dispatch(buf, val, ts)
 }

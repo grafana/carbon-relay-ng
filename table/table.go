@@ -6,32 +6,43 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
+	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/validate"
+	m20 "github.com/metrics20/go-metrics20/carbon20"
 )
 
 type TableConfig struct {
-	rewriters   []rewriter.RW
-	aggregators []*aggregator.Aggregator
-	blacklist   []*matcher.Matcher
-	routes      []route.Route
+	Validation_level_legacy validate.LevelLegacy
+	Validation_level_m20    validate.LevelM20
+	Validate_order          bool
+	rewriters               []rewriter.RW
+	aggregators             []*aggregator.Aggregator
+	blacklist               []*matcher.Matcher
+	routes                  []route.Route
 }
 
 type Table struct {
 	sync.Mutex                 // only needed for the multiple writers
 	config        atomic.Value // for reading and writing
 	SpoolDir      string
+	numIn         metrics.Counter
+	numInvalid    metrics.Counter
+	numOutOfOrder metrics.Counter
 	numBlacklist  metrics.Counter
 	numUnroutable metrics.Counter
 	In            chan []byte `json:"-"` // channel api to trade in some performance for encapsulation, for aggregators
+	bad           *badmetrics.BadMetrics
 }
 
 type TableSnapshot struct {
@@ -42,17 +53,24 @@ type TableSnapshot struct {
 	SpoolDir    string
 }
 
-func New(spoolDir string) *Table {
+func New(config cfg.Config) *Table {
 	t := &Table{
 		sync.Mutex{},
 		atomic.Value{},
-		spoolDir,
+		config.Spool_dir,
+		stats.Counter("unit=Metric.direction=in"),
+		stats.Counter("unit=Err.type=invalid"),
+		stats.Counter("unit=Err.type=out_of_order"),
 		stats.Counter("unit=Metric.direction=blacklist"),
 		stats.Counter("unit=Metric.direction=unroutable"),
 		make(chan []byte),
+		nil,
 	}
 
 	t.config.Store(TableConfig{
+		config.Validation_level_legacy,
+		config.Validation_level_m20,
+		config.Validate_order,
 		make([]rewriter.RW, 0),
 		make([]*aggregator.Aggregator, 0),
 		make([]*matcher.Matcher, 0),
@@ -75,18 +93,47 @@ func (table *Table) GetSpoolDir() string {
 	return table.SpoolDir
 }
 
+// This is used by inputs to record invalid packets
+// It also increments numIn so that it reflects the overall total
+func (table *Table) IncNumInvalid() {
+	table.numIn.Inc(1)
+	table.numInvalid.Inc(1)
+}
+
+func (table *Table) Bad() *badmetrics.BadMetrics {
+	return table.bad
+}
+
 // Dispatch is the entrypoint to send data into the table.
 // it dispatches incoming metrics into matching aggregators and routes,
 // after checking against the blacklist
 // buf is assumed to have no whitespace at the end
-func (table *Table) Dispatch(buf []byte, val float64, ts uint32) {
+func (table *Table) Dispatch(buf []byte) {
 	buf_copy := make([]byte, len(buf))
 	copy(buf_copy, buf)
 	log.Debug("table received packet %s", buf_copy)
 
-	fields := bytes.Fields(buf_copy)
+	table.numIn.Inc(1)
 
 	conf := table.config.Load().(TableConfig)
+
+	key, val, ts, err := m20.ValidatePacket(buf_copy, conf.Validation_level_legacy.Level, conf.Validation_level_m20.Level)
+	if err != nil {
+		table.bad.Add(key, buf_copy, err)
+		table.numInvalid.Inc(1)
+		return
+	}
+
+	if conf.Validate_order {
+		err = validate.Ordered(key, ts)
+		if err != nil {
+			table.bad.Add(key, buf_copy, err)
+			table.numOutOfOrder.Inc(1)
+			return
+		}
+	}
+
+	fields := bytes.Fields(buf_copy)
 
 	for _, matcher := range conf.blacklist {
 		if matcher.Match(fields[0]) {
@@ -477,9 +524,14 @@ func (table *Table) Print() (str string) {
 }
 
 func InitFromConfig(config cfg.Config, meta toml.MetaData) (*Table, error) {
-	table := New(config.Spool_dir)
+	table := New(config)
 
-	err := table.InitCmd(config)
+	err := table.InitBadMetrics(config)
+	if err != nil {
+		return table, err
+	}
+
+	err = table.InitCmd(config)
 	if err != nil {
 		return table, err
 	}
@@ -505,6 +557,18 @@ func InitFromConfig(config cfg.Config, meta toml.MetaData) (*Table, error) {
 	}
 
 	return table, nil
+}
+
+func (table *Table) InitBadMetrics(config cfg.Config) error {
+	maxAge, err := time.ParseDuration(config.Bad_metrics_max_age)
+	if err != nil {
+		log.Error("could not parse badMetrics max age")
+		log.Error(err.Error())
+		return fmt.Errorf("could not initialize bad metrics")
+	}
+	table.bad = badmetrics.New(maxAge)
+
+	return nil
 }
 
 func (table *Table) InitCmd(config cfg.Config) error {

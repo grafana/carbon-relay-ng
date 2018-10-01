@@ -8,22 +8,15 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
-	"github.com/graphite-ng/carbon-relay-ng/cfg"
-	"github.com/graphite-ng/carbon-relay-ng/table"
-	"github.com/graphite-ng/carbon-relay-ng/validate"
 	ogorek "github.com/kisielk/og-rek"
-	m20 "github.com/metrics20/go-metrics20/carbon20"
 )
 
 type Pickle struct {
-	config cfg.Config
-	bad    *badmetrics.BadMetrics
-	table  *table.Table
+	dispatcher Dispatcher
 }
 
-func NewPickle(config cfg.Config, addr string, tbl *table.Table, bad *badmetrics.BadMetrics) error {
-	return listen(addr, &Pickle{config, bad, tbl})
+func NewPickle(addr string, dispatcher Dispatcher) error {
+	return listen(addr, &Pickle{dispatcher})
 }
 
 func (p *Pickle) Handle(c io.Reader) {
@@ -36,7 +29,7 @@ ReadLoop:
 
 		// Note that everything in this loop should proceed as fast as it can
 		// so we're not blocked and can keep processing
-		// so the validation, the pipeline initiated via table.Dispatch(), etc
+		// so the validation, the pipeline initiated via dispatcher.Dispatch(), etc
 		// must never block.
 
 		log.Debug("pickle.go: detecting payload length with binary.Read...")
@@ -121,37 +114,35 @@ ReadLoop:
 
 	ItemLoop:
 		for _, rawItem := range decoded {
-			numIn.Inc(1)
-
 			log.Debug("pickle.go: doing high-level validation of unpickled item and data...")
 			item, ok := rawItem.(ogorek.Tuple)
 			if !ok {
 				log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for item", rawItem))
-				numInvalid.Inc(1)
+				p.dispatcher.IncNumInvalid()
 				continue
 			}
 			if len(item) != 2 {
 				log.Error(fmt.Sprintf("pickle.go: item length must be 2, got %d", len(item)))
-				numInvalid.Inc(1)
+				p.dispatcher.IncNumInvalid()
 				continue
 			}
 
 			metric, ok := item[0].(string)
 			if !ok {
 				log.Error(fmt.Sprintf("pickle.go: item metric must be a string, got %T", item[0]))
-				numInvalid.Inc(1)
+				p.dispatcher.IncNumInvalid()
 				continue
 			}
 
 			data, ok := item[1].(ogorek.Tuple)
 			if !ok {
 				log.Error(fmt.Sprintf("pickle.go: item data must be an array, got %T", item[1]))
-				numInvalid.Inc(1)
+				p.dispatcher.IncNumInvalid()
 				continue
 			}
 			if len(data) != 2 {
 				log.Error(fmt.Sprintf("pickle.go: item data length must be 2, got %d", len(data)))
-				numInvalid.Inc(1)
+				p.dispatcher.IncNumInvalid()
 				continue
 			}
 			log.Debug("pickle.go: done doing high-level validation of unpickled item and data")
@@ -166,7 +157,7 @@ ReadLoop:
 				value = fmt.Sprintf("%f", data[1])
 			default:
 				log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for value", data[1]))
-				numInvalid.Inc(1)
+				p.dispatcher.IncNumInvalid()
 				continue ItemLoop
 			}
 
@@ -180,34 +171,14 @@ ReadLoop:
 				timestamp = fmt.Sprintf("%.0f", data[0])
 			default:
 				log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for timestamp", data[0]))
-				numInvalid.Inc(1)
+				p.dispatcher.IncNumInvalid()
 				continue ItemLoop
 			}
 
 			buf := []byte(metric + " " + value + " " + timestamp)
 
-			log.Debug("pickle.go: passing unpickled metric to m20 Packet validator...")
-			key, val, ts, err := m20.ValidatePacket(buf, p.config.Validation_level_legacy.Level, p.config.Validation_level_m20.Level)
-			if err != nil {
-				log.Debug("pickle.go: metric failed to pass m20 Packet validation!")
-				p.bad.Add(key, buf, err)
-				numInvalid.Inc(1)
-				continue
-			}
-
-			if p.config.Validate_order {
-				log.Debug("pickle.go: order validation enabled, performing order validation...")
-				err = validate.Ordered(key, ts)
-				if err != nil {
-					log.Debug("pickle.go: order validation failed!")
-					p.bad.Add(key, buf, err)
-					numOutOfOrder.Inc(1)
-					continue
-				}
-			}
-
-			log.Debug("pickle.go: all good, dispatching metrics buffer")
-			p.table.Dispatch(buf, val, ts)
+			log.Debug("pickle.go: passing unpickled metric to dispatcher...")
+			p.dispatcher.Dispatch(buf)
 
 			log.Debug("pickle.go: exiting ItemLoop")
 		}
