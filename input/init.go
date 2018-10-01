@@ -32,12 +32,35 @@ type Dispatcher interface {
 
 // returns true if the shutdown was clean, otherwise false
 func Stop() bool {
-	success := true
+	results := make(chan bool)
 	for _, s := range stoppables {
-		if !s.stop() {
-			success = false
-		}
+		go func() {
+			results <- s.stop()
+		}()
 	}
 
-	return success
+	complete := make(chan bool)
+	go func() {
+		count := 0
+		success := true
+		for res := range results {
+
+			// one or more shutdowns failed
+			if !res {
+				success = false
+			}
+
+			count++
+			if count >= len(stoppables) {
+				complete <- success
+			}
+		}
+	}()
+
+	select {
+	case res := <-complete:
+		return res
+	case <-time.After(shutdownTimeout):
+		return false
+	}
 }

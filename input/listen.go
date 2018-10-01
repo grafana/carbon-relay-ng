@@ -92,9 +92,12 @@ func (l *Listener) accept(addr, proto string) {
 
 				backoffDuration := backoffCounter.Duration()
 				log.Error("error listening on %v/%s, retrying after %v: %s", addr, proto, backoffDuration, err)
-				if !l.backoffOrShutdown(backoffDuration) {
+				select {
+				case <-l.shutdown:
 					log.Info("shutting down %v/%s, closing socket", addr, proto)
 					return
+				case <-time.After(backoffDuration):
+					// retry to connect
 				}
 			}
 		}
@@ -132,29 +135,6 @@ func (l *Listener) acceptTcp(addr string) {
 		log.Debug("listen.go: tcp connection from %v", c.RemoteAddr())
 		l.wg.Add(1)
 		go l.acceptTcpConn(c)
-	}
-}
-
-func (l *Listener) reconnectTcp(addr string) {
-	backoffCounter := &backoff.Backoff{
-		Min: 500 * time.Millisecond,
-		Max: time.Minute,
-	}
-
-	for {
-		log.Notice("reopening %v/tcp", addr)
-		err := l.listenTcp(addr)
-		if err == nil {
-			backoffCounter.Reset()
-			break
-		}
-
-		backoffDuration := backoffCounter.Duration()
-		log.Error("error listening on %v/tcp, retrying after %v: %s", addr, backoffDuration, err)
-		if !l.backoffOrShutdown(backoffDuration) {
-			log.Info("shutting down %v/tcp, closing socket", addr)
-			return
-		}
 	}
 }
 
@@ -201,15 +181,5 @@ func (l *Listener) consumeUdp(addr string) {
 		// handle the packet
 		log.Debug("listen.go: udp packet from %v (length: %d)", src, b)
 		l.handler.Handle(bytes.NewReader(buffer[:b]))
-	}
-}
-
-// returns true if backoff expired, or false for shutdown
-func (l *Listener) backoffOrShutdown(d time.Duration) bool {
-	select {
-	case <-l.shutdown:
-		return false
-	case <-time.After(d):
-		return true
 	}
 }
