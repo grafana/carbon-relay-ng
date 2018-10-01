@@ -36,10 +36,69 @@ func (l *Listener) listen(addr string) error {
 	}
 
 	l.wg.Add(2)
-	go l.acceptTcp(addr)
-	go l.acceptUdp(addr)
+	go l.accept(addr, "tcp")
+	go l.accept(addr, "udp")
 
 	return nil
+}
+
+func (l *Listener) accept(addr, proto string) {
+	defer l.wg.Done()
+
+	var consume func(string)
+	var reconnect func(string) error
+	var listener Closable
+
+	switch proto {
+	case "tcp":
+		consume = l.acceptTcp
+		reconnect = l.listenTcp
+		listener = l.tcpList
+	case "udp":
+		consume = l.consumeUdp
+		reconnect = l.listenUdp
+		listener = l.udpConn
+	default:
+		return
+	}
+
+	backoffCounter := &backoff.Backoff{
+		Min: 500 * time.Millisecond,
+		Max: time.Minute,
+	}
+
+	go func() {
+		<-l.shutdown
+		log.Info("shutting down %v/%s, closing socket", addr, proto)
+		listener.Close()
+	}()
+
+	for {
+		log.Notice("listening on %v/%s", addr, proto)
+
+		consume(addr)
+
+		select {
+		case <-l.shutdown:
+			return
+		default:
+			for {
+				log.Notice("reopening %v/%s", addr, proto)
+				err := reconnect(addr)
+				if err == nil {
+					backoffCounter.Reset()
+					break
+				}
+
+				backoffDuration := backoffCounter.Duration()
+				log.Error("error listening on %v/%s, retrying after %v: %s", addr, proto, backoffDuration, err)
+				if !l.backoffOrShutdown(backoffDuration) {
+					log.Info("shutting down %v/%s, closing socket", addr, proto)
+					return
+				}
+			}
+		}
+	}
 }
 
 func (l *Listener) listenTcp(addr string) error {
@@ -55,57 +114,46 @@ func (l *Listener) listenTcp(addr string) error {
 }
 
 func (l *Listener) acceptTcp(addr string) {
-	defer l.wg.Done()
-	var err error
+	for {
+		c, err := l.tcpList.AcceptTCP()
+		if err != nil {
+			select {
+			// socket has been closed due to shut down, log and return
+			case <-l.shutdown:
+				return
+			default:
+				log.Error("error accepting on %v/tcp, closing connection: %s", addr, err)
+				l.tcpList.Close()
+				return
+			}
+		}
+
+		// handle the connection
+		log.Debug("listen.go: tcp connection from %v", c.RemoteAddr())
+		l.wg.Add(1)
+		go l.acceptTcpConn(c)
+	}
+}
+
+func (l *Listener) reconnectTcp(addr string) {
 	backoffCounter := &backoff.Backoff{
 		Min: 500 * time.Millisecond,
 		Max: time.Minute,
 	}
 
-	go func() {
-		<-l.shutdown
-		l.tcpList.Close()
-	}()
-
 	for {
-		log.Notice("listening on %v/tcp", addr)
-
-	ACCEPT:
-		for {
-			c, err := l.tcpList.AcceptTCP()
-			if err != nil {
-				select {
-				// socket has been closed due to shut down, log and return
-				case <-l.shutdown:
-					log.Info("shutting down %v/tcp, closing socket", addr)
-					return
-				default:
-					log.Error("error accepting on %v/tcp, closing connection: %s", addr, err)
-					l.tcpList.Close()
-					break ACCEPT
-				}
-			}
-
-			// handle the connection
-			log.Debug("listen.go: tcp connection from %v", c.RemoteAddr())
-			l.wg.Add(1)
-			go l.acceptTcpConn(c)
+		log.Notice("reopening %v/tcp", addr)
+		err := l.listenTcp(addr)
+		if err == nil {
+			backoffCounter.Reset()
+			break
 		}
 
-		for {
-			log.Notice("reopening %v/tcp", addr)
-			err = l.listenTcp(addr)
-			if err == nil {
-				backoffCounter.Reset()
-				break
-			}
-
-			backoffDuration := backoffCounter.Duration()
-			log.Error("error listening on %v/tcp, retrying after %v: %s", addr, backoffDuration, err)
-			if !l.backoffOrShutdown(backoffDuration) {
-				log.Info("shutting down %v/tcp, closing socket", addr)
-				return
-			}
+		backoffDuration := backoffCounter.Duration()
+		log.Error("error listening on %v/tcp, retrying after %v: %s", addr, backoffDuration, err)
+		if !l.backoffOrShutdown(backoffDuration) {
+			log.Info("shutting down %v/tcp, closing socket", addr)
+			return
 		}
 	}
 }
@@ -133,61 +181,26 @@ func (l *Listener) listenUdp(addr string) error {
 	return nil
 }
 
-func (l *Listener) acceptUdp(addr string) {
-	defer l.wg.Done()
-	var err error
+func (l *Listener) consumeUdp(addr string) {
 	buffer := make([]byte, 65535)
-	backoffCounter := &backoff.Backoff{
-		Min: 500 * time.Millisecond,
-		Max: time.Minute,
-	}
-
-	go func() {
-		<-l.shutdown
-		l.udpConn.Close()
-	}()
-
 	for {
-		log.Notice("listening on %v/udp", addr)
-
-	READ:
-		for {
-			// read a packet into buffer
-			b, src, err := l.udpConn.ReadFrom(buffer)
-			if err != nil {
-				select {
-				// socket has been closed due to shut down, log and return
-				case <-l.shutdown:
-					log.Info("shutting down %v/udp, closing socket", addr)
-					return
-				default:
-					log.Error("error reading packet on %v/udp, closing connection: %s", addr, err)
-					l.udpConn.Close()
-					break READ
-				}
-			}
-
-			// handle the packet
-			log.Debug("listen.go: udp packet from %v (length: %d)", src, b)
-			l.handler.Handle(bytes.NewReader(buffer[:b]))
-		}
-
-		for {
-			log.Notice("reopening %v/udp", addr)
-
-			err = l.listenUdp(addr)
-			if err == nil {
-				backoffCounter.Reset()
-				break
-			}
-
-			backoffDuration := backoffCounter.Duration()
-			log.Error("error listening on %v/udp, retrying after %v: %s", addr, backoffDuration, err)
-			if !l.backoffOrShutdown(backoffDuration) {
-				log.Info("shutting down %v/udp, closing socket", addr)
+		// read a packet into buffer
+		b, src, err := l.udpConn.ReadFrom(buffer)
+		if err != nil {
+			select {
+			// socket has been closed due to shut down, log and return
+			case <-l.shutdown:
+				return
+			default:
+				log.Error("error reading packet on %v/udp, closing connection: %s", addr, err)
+				l.udpConn.Close()
 				return
 			}
 		}
+
+		// handle the packet
+		log.Debug("listen.go: udp packet from %v (length: %d)", src, b)
+		l.handler.Handle(bytes.NewReader(buffer[:b]))
 	}
 }
 
