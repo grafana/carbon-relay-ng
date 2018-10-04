@@ -36,31 +36,14 @@ func (l *Listener) listen(addr string) error {
 	}
 
 	l.wg.Add(2)
-	go l.accept(addr, "tcp")
-	go l.accept(addr, "udp")
+	go l.accept(addr, "tcp", l.acceptTcp, l.listenTcp, l.tcpList)
+	go l.accept(addr, "udp", l.consumeUdp, l.listenUdp, l.udpConn)
 
 	return nil
 }
 
-func (l *Listener) accept(addr, proto string) {
+func (l *Listener) accept(addr, proto string, consume func(string), reconnect func(string) error, listener Closable) {
 	defer l.wg.Done()
-
-	var consume func(string)
-	var reconnect func(string) error
-	var listener Closable
-
-	switch proto {
-	case "tcp":
-		consume = l.acceptTcp
-		reconnect = l.listenTcp
-		listener = l.tcpList
-	case "udp":
-		consume = l.consumeUdp
-		reconnect = l.listenUdp
-		listener = l.udpConn
-	default:
-		return
-	}
 
 	backoffCounter := &backoff.Backoff{
 		Min: 500 * time.Millisecond,
