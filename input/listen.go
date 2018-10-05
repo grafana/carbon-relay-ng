@@ -105,7 +105,7 @@ func acceptUdp(addr string, udp_conn *net.UDPConn, handler Handler) {
 			// read a packet into buffer
 			b, src, err := l.ReadFrom(buffer)
 			if err != nil {
-				log.Error("error accepting on %v/udp, closing connection: %s", addr, err)
+				log.Error("error reading packet on %v/udp, closing connection: %s", addr, err)
 				l.Close()
 				break
 			}
