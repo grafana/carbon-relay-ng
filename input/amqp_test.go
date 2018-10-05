@@ -36,9 +36,7 @@ func (m *mockDispatcher) Dispatch(buf []byte) {}
 func (m *mockDispatcher) IncNumInvalid()      {}
 
 func TestMain(m *testing.M) {
-	_shutdownTimeout := shutdownTimeout
 	res := m.Run()
-	shutdownTimeout = _shutdownTimeout
 	os.Exit(res)
 }
 
@@ -54,11 +52,17 @@ func TestAmqpSuccessfulShutdown(t *testing.T) {
 		Body: []byte("a.b.c 1 2"),
 	}
 
-	shutdownTimeout = time.Second
-	res := a.stop()
-
-	if !res {
-		t.Fatalf("Expected shutdown to be successful, but it was not")
+	results := make(chan bool)
+	go func() {
+		results <- a.Stop()
+	}()
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("Shutdown timed out after a second")
+	case res := <-results:
+		if !res {
+			t.Fatalf("Expected shutdown to be successful, but it was not")
+		}
 	}
 
 	if !mockConn.closed || !mockChan.closed {
@@ -82,7 +86,7 @@ func TestAmqpFailingShutdown(t *testing.T) {
 
 	// giving the consumer thread 50ms to start
 	time.Sleep(time.Millisecond * 50)
-	res := a.stop()
+	res := a.Stop()
 
 	// if the dispatcher takes 5 seconds to process the message we pushed, but the
 	// shutdownTimeout is only 10ms, then we should hit the timeout on shutdown

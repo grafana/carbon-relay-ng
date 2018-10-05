@@ -47,12 +47,12 @@ func (m *mockHandler) String() string {
 func TestTcpUdpShutdown(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener(&handler)
+	listener := NewListener("mock", &handler)
 	err := listener.listen(addr)
 	if err != nil {
 		t.Fatalf("Error when trying to listen: %s", err)
 	}
-	res := listener.stop()
+	res := listener.Stop()
 	if !res {
 		t.Fatalf("Failed to shut down cleanly")
 	}
@@ -61,7 +61,7 @@ func TestTcpUdpShutdown(t *testing.T) {
 func TestTcpConnection(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener(&handler)
+	listener := NewListener("mock", &handler)
 	err := listener.listen(addr)
 	if err != nil {
 		t.Fatalf("Error when listening: %s", err)
@@ -80,7 +80,7 @@ func TestTcpConnection(t *testing.T) {
 	// we've sent, so we just give it 50ms and then assume it did.
 	time.Sleep(time.Millisecond * 50)
 
-	listener.stop()
+	listener.Stop()
 
 	received := handler.String()
 	if received != testContent {
@@ -100,7 +100,7 @@ func TestTcpConnection(t *testing.T) {
 func TestUdpConnection(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener(&handler)
+	listener := NewListener("mock", &handler)
 	err := listener.listen(addr)
 	if err != nil {
 		t.Fatalf("Error when listening: %s", err)
@@ -119,7 +119,7 @@ func TestUdpConnection(t *testing.T) {
 	// we've sent, so we just give it 50ms and then assume it did.
 	time.Sleep(time.Millisecond * 50)
 
-	listener.stop()
+	listener.Stop()
 
 	received := handler.String()
 	if received != testContent {
