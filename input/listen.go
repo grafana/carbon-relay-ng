@@ -12,40 +12,42 @@ import (
 type Listener struct {
 	wg       sync.WaitGroup
 	name     string
+	addr     string
 	tcpList  *net.TCPListener
 	udpConn  *net.UDPConn
 	handler  Handler
 	shutdown chan struct{}
 }
 
-func NewListener(name string, handler Handler) *Listener {
+func NewListener(name, addr string, handler Handler) *Listener {
 	return &Listener{
 		name:     name,
+		addr:     addr,
 		handler:  handler,
 		shutdown: make(chan struct{}),
 	}
 }
 
-func (l *Listener) listen(addr string) error {
+func (l *Listener) Start() error {
 	// listeners are set up outside of accept* here so they can interrupt startup
-	err := l.listenTcp(addr)
+	err := l.listenTcp()
 	if err != nil {
 		return err
 	}
 
-	err = l.listenUdp(addr)
+	err = l.listenUdp()
 	if err != nil {
 		return err
 	}
 
 	l.wg.Add(2)
-	go l.run(addr, "tcp", l.acceptTcp, l.listenTcp, l.tcpList)
-	go l.run(addr, "udp", l.consumeUdp, l.listenUdp, l.udpConn)
+	go l.run("tcp", l.acceptTcp, l.listenTcp, l.tcpList)
+	go l.run("udp", l.consumeUdp, l.listenUdp, l.udpConn)
 
 	return nil
 }
 
-func (l *Listener) run(addr, proto string, consume func(string), reconnect func(string) error, listener Closable) {
+func (l *Listener) run(proto string, consume func(), reconnect func() error, listener Closable) {
 	defer l.wg.Done()
 
 	backoffCounter := &backoff.Backoff{
@@ -55,14 +57,14 @@ func (l *Listener) run(addr, proto string, consume func(string), reconnect func(
 
 	go func() {
 		<-l.shutdown
-		log.Info("shutting down %v/%s, closing socket", addr, proto)
+		log.Info("shutting down %v/%s, closing socket", l.addr, proto)
 		listener.Close()
 	}()
 
 	for {
-		log.Notice("listening on %v/%s", addr, proto)
+		log.Notice("listening on %v/%s", l.addr, proto)
 
-		consume(addr)
+		consume()
 
 		select {
 		case <-l.shutdown:
@@ -70,8 +72,8 @@ func (l *Listener) run(addr, proto string, consume func(string), reconnect func(
 		default:
 		}
 		for {
-			log.Notice("reopening %v/%s", addr, proto)
-			err := reconnect(addr)
+			log.Notice("reopening %v/%s", l.addr, proto)
+			err := reconnect()
 			if err == nil {
 				backoffCounter.Reset()
 				break
@@ -79,19 +81,19 @@ func (l *Listener) run(addr, proto string, consume func(string), reconnect func(
 
 			select {
 			case <-l.shutdown:
-				log.Info("shutting down %v/%s, closing socket", addr, proto)
+				log.Info("shutting down %v/%s, closing socket", l.addr, proto)
 				return
 			default:
 			}
 			backoffDuration := backoffCounter.Duration()
-			log.Error("error listening on %v/%s, retrying after %v: %s", addr, proto, backoffDuration, err)
+			log.Error("error listening on %v/%s, retrying after %v: %s", l.addr, proto, backoffDuration, err)
 			<-time.After(backoffDuration)
 		}
 	}
 }
 
-func (l *Listener) listenTcp(addr string) error {
-	laddr, err := net.ResolveTCPAddr("tcp", addr)
+func (l *Listener) listenTcp() error {
+	laddr, err := net.ResolveTCPAddr("tcp", l.addr)
 	if err != nil {
 		return err
 	}
@@ -102,7 +104,7 @@ func (l *Listener) listenTcp(addr string) error {
 	return nil
 }
 
-func (l *Listener) acceptTcp(addr string) {
+func (l *Listener) acceptTcp() {
 	for {
 		c, err := l.tcpList.AcceptTCP()
 		if err != nil {
@@ -110,7 +112,7 @@ func (l *Listener) acceptTcp(addr string) {
 			case <-l.shutdown:
 				return
 			default:
-				log.Error("error accepting on %v/tcp, closing connection: %s", addr, err)
+				log.Error("error accepting on %v/tcp, closing connection: %s", l.addr, err)
 				l.tcpList.Close()
 				return
 			}
@@ -134,8 +136,8 @@ func (l *Listener) acceptTcpConn(c net.Conn) {
 	l.handler.Handle(c)
 }
 
-func (l *Listener) listenUdp(addr string) error {
-	udp_addr, err := net.ResolveUDPAddr("udp", addr)
+func (l *Listener) listenUdp() error {
+	udp_addr, err := net.ResolveUDPAddr("udp", l.addr)
 	if err != nil {
 		return err
 	}
@@ -146,7 +148,7 @@ func (l *Listener) listenUdp(addr string) error {
 	return nil
 }
 
-func (l *Listener) consumeUdp(addr string) {
+func (l *Listener) consumeUdp() {
 	buffer := make([]byte, 65535)
 	for {
 		// read a packet into buffer
@@ -156,7 +158,7 @@ func (l *Listener) consumeUdp(addr string) {
 			case <-l.shutdown:
 				return
 			default:
-				log.Error("error reading packet on %v/udp, closing connection: %s", addr, err)
+				log.Error("error reading packet on %v/udp, closing connection: %s", l.addr, err)
 				l.udpConn.Close()
 				return
 			}

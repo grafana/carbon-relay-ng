@@ -192,25 +192,23 @@ func main() {
 	}
 
 	if config.Listen_addr != "" {
-		plugin, err := input.NewPlain(config.Listen_addr, table)
-		if err != nil {
-			log.Error(err.Error())
-			os.Exit(1)
-		}
-		inputs = append(inputs, plugin)
+		inputs = append(inputs, input.NewPlain(config.Listen_addr, table))
 	}
 
 	if config.Pickle_addr != "" {
-		plugin, err := input.NewPickle(config.Pickle_addr, table)
+		inputs = append(inputs, input.NewPickle(config.Pickle_addr, table))
+	}
+
+	if config.Amqp.Amqp_enabled == true {
+		inputs = append(inputs, input.NewAMQP(config, table, input.AMQPConnector))
+	}
+
+	for _, in := range inputs {
+		err := in.Start()
 		if err != nil {
 			log.Error(err.Error())
 			os.Exit(1)
 		}
-		inputs = append(inputs, plugin)
-	}
-
-	if config.Amqp.Amqp_enabled == true {
-		inputs = append(inputs, input.StartAMQP(config, table, input.AMQPConnector))
 	}
 
 	if config.Admin_addr != "" {

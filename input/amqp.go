@@ -37,12 +37,6 @@ func (a *Amqp) close() {
 	a.conn.Close()
 }
 
-func StartAMQP(config cfg.Config, dispatcher Dispatcher, connect amqpConnector) *Amqp {
-	a := NewAMQP(config, dispatcher, connect)
-	go a.Start()
-	return a
-}
-
 func NewAMQP(config cfg.Config, dispatcher Dispatcher, connect amqpConnector) *Amqp {
 	uri := amqp.URI{
 		Scheme:   "amqp",
@@ -100,11 +94,20 @@ func AMQPConnector(a *Amqp) (<-chan amqp.Delivery, error) {
 	return c, nil
 }
 
-func (a *Amqp) Start() {
+func (a *Amqp) Name() string {
+	return "amqp"
+}
+
+func (a *Amqp) Start() error {
+	a.wg.Add(1)
+	go a.start()
+	return nil
+}
+
+func (a *Amqp) start() {
 	b := &backoff.Backoff{
 		Min: 500 * time.Millisecond,
 	}
-	a.wg.Add(1)
 	defer a.wg.Done()
 
 	for {
@@ -139,10 +142,6 @@ func (a *Amqp) Start() {
 			}
 		}
 	}
-}
-
-func (a *Amqp) Name() string {
-	return "amqp"
 }
 
 func (a *Amqp) Stop() bool {

@@ -15,9 +15,8 @@ type Pickle struct {
 	dispatcher Dispatcher
 }
 
-func NewPickle(addr string, dispatcher Dispatcher) (*Listener, error) {
-	listener := NewListener("pickle", &Pickle{dispatcher})
-	return listener, listener.listen(addr)
+func NewPickle(addr string, dispatcher Dispatcher) *Listener {
+	return NewListener("pickle", addr, &Pickle{dispatcher})
 }
 
 func (p *Pickle) Handle(c io.Reader) {

@@ -16,6 +16,7 @@ func SetLogger(l *logging.Logger) {
 
 type Plugin interface {
 	Name() string
+	Start() error
 	Stop() bool
 }
 
