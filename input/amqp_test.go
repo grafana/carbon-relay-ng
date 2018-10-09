@@ -29,11 +29,11 @@ func getMockConnector() (chan amqp.Delivery, *MockClosable, *MockClosable, amqpC
 }
 
 type mockDispatcher struct {
-	dispatchDuration time.Duration
 }
 
 func (m *mockDispatcher) Dispatch(buf []byte) {}
-func (m *mockDispatcher) IncNumInvalid()      {}
+
+func (m *mockDispatcher) IncNumInvalid() {}
 
 func TestMain(m *testing.M) {
 	res := m.Run()
@@ -45,8 +45,6 @@ func TestAmqpSuccessfulShutdown(t *testing.T) {
 	c, mockConn, mockChan, mockConnector := getMockConnector()
 	a := NewAMQP(config, &dispatcher, mockConnector)
 	go a.Start()
-
-	dispatcher.dispatchDuration = time.Millisecond
 
 	c <- amqp.Delivery{
 		Body: []byte("a.b.c 1 2"),
@@ -65,37 +63,6 @@ func TestAmqpSuccessfulShutdown(t *testing.T) {
 		}
 	}
 
-	if !mockConn.closed || !mockChan.closed {
-		t.Fatalf("Expected channel and connection to be closed, but they were not")
-	}
-}
-
-func TestAmqpFailingShutdown(t *testing.T) {
-	dispatcher := mockDispatcher{}
-	c, mockConn, mockChan, mockConnector := getMockConnector()
-	a := NewAMQP(config, &dispatcher, mockConnector)
-	go a.Start()
-
-	dispatcher.dispatchDuration = time.Second * 5
-
-	c <- amqp.Delivery{
-		Body: []byte("a.b.c 1 3"),
-	}
-
-	shutdownTimeout = time.Millisecond * 10
-
-	// giving the consumer thread 50ms to start
-	time.Sleep(time.Millisecond * 50)
-	res := a.Stop()
-
-	// if the dispatcher takes 5 seconds to process the message we pushed, but the
-	// shutdownTimeout is only 10ms, then we should hit the timeout on shutdown
-	if !res {
-		t.Fatalf("Expected shutdown to be successful, but it was not")
-	}
-
-	// even if the shutdown timeout was hit, the conn & chan should still have
-	// gotten closed
 	if !mockConn.closed || !mockChan.closed {
 		t.Fatalf("Expected channel and connection to be closed, but they were not")
 	}
