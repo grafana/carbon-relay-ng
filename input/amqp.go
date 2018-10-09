@@ -12,10 +12,6 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// amqpConnector is a function that connects an instance of *Amqp so
-// it will receive messages
-type amqpConnector func(a *Amqp) (<-chan amqp.Delivery, error)
-
 // Closables are things that have a .Close() method (channels & connections)
 type Closable interface {
 	Close() error
@@ -54,44 +50,6 @@ func NewAMQP(config cfg.Config, dispatcher Dispatcher, connect amqpConnector) *A
 		connect:    connect,
 		shutdown:   make(chan struct{}),
 	}
-}
-
-// connects an instance of Amqp and returns the message channel
-func AMQPConnector(a *Amqp) (<-chan amqp.Delivery, error) {
-	log.Notice("dialing AMQP: %v", a.uri)
-	conn, err := amqp.Dial(a.uri.String())
-	if err != nil {
-		return nil, err
-	}
-	a.conn = conn
-
-	amqpChan, err := conn.Channel()
-	if err != nil {
-		a.conn.Close()
-		return nil, err
-	}
-	a.channel = amqpChan
-
-	// queue name will be random, as in the python implementation
-	q, err := amqpChan.QueueDeclare(a.config.Amqp.Amqp_queue, a.config.Amqp.Amqp_durable, false, a.config.Amqp.Amqp_exclusive, false, nil)
-	if err != nil {
-		a.close()
-		return nil, err
-	}
-
-	err = amqpChan.QueueBind(q.Name, a.config.Amqp.Amqp_key, a.config.Amqp.Amqp_exchange, false, nil)
-	if err != nil {
-		a.close()
-		return nil, err
-	}
-
-	c, err := amqpChan.Consume(q.Name, "carbon-relay-ng", true, a.config.Amqp.Amqp_exclusive, true, false, nil)
-	if err != nil {
-		a.close()
-		return nil, err
-	}
-
-	return c, nil
 }
 
 func (a *Amqp) Name() string {
@@ -173,4 +131,46 @@ func (a *Amqp) consumeAMQP(c <-chan amqp.Delivery) {
 			return
 		}
 	}
+}
+
+// amqpConnector is a function that connects an instance of *Amqp so
+// it will receive messages
+type amqpConnector func(a *Amqp) (<-chan amqp.Delivery, error)
+
+// connects an instance of Amqp and returns the message channel
+func AMQPConnector(a *Amqp) (<-chan amqp.Delivery, error) {
+	log.Notice("dialing AMQP: %v", a.uri)
+	conn, err := amqp.Dial(a.uri.String())
+	if err != nil {
+		return nil, err
+	}
+	a.conn = conn
+
+	amqpChan, err := conn.Channel()
+	if err != nil {
+		a.conn.Close()
+		return nil, err
+	}
+	a.channel = amqpChan
+
+	// queue name will be random, as in the python implementation
+	q, err := amqpChan.QueueDeclare(a.config.Amqp.Amqp_queue, a.config.Amqp.Amqp_durable, false, a.config.Amqp.Amqp_exclusive, false, nil)
+	if err != nil {
+		a.close()
+		return nil, err
+	}
+
+	err = amqpChan.QueueBind(q.Name, a.config.Amqp.Amqp_key, a.config.Amqp.Amqp_exchange, false, nil)
+	if err != nil {
+		a.close()
+		return nil, err
+	}
+
+	c, err := amqpChan.Consume(q.Name, "carbon-relay-ng", true, a.config.Amqp.Amqp_exclusive, true, false, nil)
+	if err != nil {
+		a.close()
+		return nil, err
+	}
+
+	return c, nil
 }
