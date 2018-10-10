@@ -80,7 +80,7 @@ func (a *Amqp) start() {
 			}
 			dur := b.Duration()
 			log.Error("connectAMQP: %v. retrying in %s", err, dur)
-			<-time.After(dur)
+			time.Sleep(dur)
 		} else {
 			// connected successfully; reset backoff
 			b.Reset()

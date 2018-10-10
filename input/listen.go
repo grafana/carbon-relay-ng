@@ -85,9 +85,9 @@ func (l *Listener) run(proto string, consume func(), reconnect func() error, lis
 				return
 			default:
 			}
-			backoffDuration := backoffCounter.Duration()
-			log.Error("error listening on %v/%s, retrying after %v: %s", l.addr, proto, backoffDuration, err)
-			<-time.After(backoffDuration)
+			dur := backoffCounter.Duration()
+			log.Error("error listening on %v/%s, retrying after %v: %s", l.addr, proto, dur, err)
+			time.Sleep(dur)
 		}
 	}
 }
