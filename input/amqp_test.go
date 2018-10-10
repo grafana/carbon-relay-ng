@@ -2,6 +2,7 @@ package input
 
 import (
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -29,9 +30,21 @@ func getMockConnector() (chan amqp.Delivery, *MockClosable, *MockClosable, amqpC
 }
 
 type mockDispatcher struct {
+	sync.Mutex
+	data []byte
 }
 
-func (m *mockDispatcher) Dispatch(buf []byte) {}
+func (m *mockDispatcher) Dispatch(buf []byte) {
+	m.Lock()
+	m.data = append(m.data, buf...)
+	m.Unlock()
+}
+
+func (m *mockDispatcher) String() string {
+	m.Lock()
+	defer m.Unlock()
+	return string(m.data)
+}
 
 func (m *mockDispatcher) IncNumInvalid() {}
 
@@ -46,8 +59,10 @@ func TestAmqpSuccessfulShutdown(t *testing.T) {
 	a := NewAMQP(config, &dispatcher, mockConnector)
 	go a.Start()
 
+	testContent := "a.b.c 1 2"
+
 	c <- amqp.Delivery{
-		Body: []byte("a.b.c 1 2"),
+		Body: []byte(testContent),
 	}
 
 	results := make(chan bool)
@@ -65,5 +80,10 @@ func TestAmqpSuccessfulShutdown(t *testing.T) {
 
 	if !mockConn.closed || !mockChan.closed {
 		t.Fatalf("Expected channel and connection to be closed, but they were not")
+	}
+
+	received := dispatcher.String()
+	if received != testContent {
+		t.Fatalf("Received unexpected content in handler. Expected \"%s\" got \"%s\"", testContent, received)
 	}
 }
