@@ -139,7 +139,7 @@ func (a *Amqp) consumeAMQP() {
 // It must initialize a.channel, a.conn and a.delivery
 type amqpConnector func(a *Amqp) error
 
-// AMQPConnector connects an instance of Amqp and returns the message channel
+// AMQPConnector connects using the given configuration
 func AMQPConnector(a *Amqp) error {
 	log.Notice("dialing AMQP: %v", a.uri)
 	conn, err := amqp.Dial(a.uri.String())

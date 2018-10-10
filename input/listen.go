@@ -47,7 +47,7 @@ func (l *Listener) Start() error {
 	return nil
 }
 
-func (l *Listener) run(proto string, consume func(), reconnect func() error, listener Closable) {
+func (l *Listener) run(proto string, consume func(), listen func() error, listener Closable) {
 	defer l.wg.Done()
 
 	backoffCounter := &backoff.Backoff{
@@ -73,7 +73,7 @@ func (l *Listener) run(proto string, consume func(), reconnect func() error, lis
 		}
 		for {
 			log.Notice("reopening %v/%s", l.addr, proto)
-			err := reconnect()
+			err := listen()
 			if err == nil {
 				backoffCounter.Reset()
 				break
