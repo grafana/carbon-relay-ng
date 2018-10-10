@@ -22,6 +22,7 @@ type Amqp struct {
 	uri        amqp.URI
 	conn       Closable
 	channel    Closable
+	delivery   <-chan amqp.Delivery
 	config     cfg.Config
 	dispatcher Dispatcher
 	connect    amqpConnector
@@ -69,7 +70,7 @@ func (a *Amqp) start() {
 	defer a.wg.Done()
 
 	for {
-		c, err := a.connect(a)
+		err := a.connect(a)
 		if err != nil {
 
 			select {
@@ -86,7 +87,7 @@ func (a *Amqp) start() {
 			b.Reset()
 
 			// blocks until channel is closed
-			a.consumeAMQP(c)
+			a.consumeAMQP()
 			log.Notice("consumeAMQP: channel closed")
 
 			// reconnect immediately
@@ -108,11 +109,11 @@ func (a *Amqp) Stop() bool {
 	return true
 }
 
-func (a *Amqp) consumeAMQP(c <-chan amqp.Delivery) {
+func (a *Amqp) consumeAMQP() {
 	log.Notice("consuming AMQP messages")
 	for {
 		select {
-		case m := <-c:
+		case m := <-a.delivery:
 			// note that we don't support lines longer than 4096B. that seems very reasonable..
 			r := bufio.NewReaderSize(bytes.NewReader(m.Body), 4096)
 			for {
@@ -134,22 +135,23 @@ func (a *Amqp) consumeAMQP(c <-chan amqp.Delivery) {
 }
 
 // amqpConnector is a function that connects an instance of *Amqp so
-// it will receive messages
-type amqpConnector func(a *Amqp) (<-chan amqp.Delivery, error)
+// it will receive messages.
+// It must initialize a.channel, a.conn and a.delivery
+type amqpConnector func(a *Amqp) error
 
-// connects an instance of Amqp and returns the message channel
-func AMQPConnector(a *Amqp) (<-chan amqp.Delivery, error) {
+// AMQPConnector connects an instance of Amqp and returns the message channel
+func AMQPConnector(a *Amqp) error {
 	log.Notice("dialing AMQP: %v", a.uri)
 	conn, err := amqp.Dial(a.uri.String())
 	if err != nil {
-		return nil, err
+		return err
 	}
 	a.conn = conn
 
 	amqpChan, err := conn.Channel()
 	if err != nil {
 		a.conn.Close()
-		return nil, err
+		return err
 	}
 	a.channel = amqpChan
 
@@ -157,20 +159,19 @@ func AMQPConnector(a *Amqp) (<-chan amqp.Delivery, error) {
 	q, err := amqpChan.QueueDeclare(a.config.Amqp.Amqp_queue, a.config.Amqp.Amqp_durable, false, a.config.Amqp.Amqp_exclusive, false, nil)
 	if err != nil {
 		a.close()
-		return nil, err
+		return err
 	}
 
 	err = amqpChan.QueueBind(q.Name, a.config.Amqp.Amqp_key, a.config.Amqp.Amqp_exchange, false, nil)
 	if err != nil {
 		a.close()
-		return nil, err
+		return err
 	}
 
-	c, err := amqpChan.Consume(q.Name, "carbon-relay-ng", true, a.config.Amqp.Amqp_exclusive, true, false, nil)
+	a.delivery, err = amqpChan.Consume(q.Name, "carbon-relay-ng", true, a.config.Amqp.Amqp_exclusive, true, false, nil)
 	if err != nil {
 		a.close()
-		return nil, err
 	}
 
-	return c, nil
+	return err
 }

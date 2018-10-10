@@ -19,14 +19,16 @@ func (m *MockClosable) Close() error {
 }
 
 func getMockConnector() (chan amqp.Delivery, *MockClosable, *MockClosable, amqpConnector) {
-	c := make(chan amqp.Delivery)
+	delivery := make(chan amqp.Delivery)
 	mockConn := &MockClosable{}
 	mockChan := &MockClosable{}
-	return c, mockConn, mockChan, func(a *Amqp) (<-chan amqp.Delivery, error) {
+	mockConnector := func(a *Amqp) error {
 		a.channel = mockChan
 		a.conn = mockConn
-		return c, nil
+		a.delivery = delivery
+		return nil
 	}
+	return delivery, mockConn, mockChan, mockConnector
 }
 
 type mockDispatcher struct {
@@ -55,13 +57,13 @@ func TestMain(m *testing.M) {
 
 func TestAmqpSuccessfulShutdown(t *testing.T) {
 	dispatcher := mockDispatcher{}
-	c, mockConn, mockChan, mockConnector := getMockConnector()
+	delivery, mockConn, mockChan, mockConnector := getMockConnector()
 	a := NewAMQP(config, &dispatcher, mockConnector)
 	go a.Start()
 
 	testContent := "a.b.c 1 2"
 
-	c <- amqp.Delivery{
+	delivery <- amqp.Delivery{
 		Body: []byte(testContent),
 	}
 
