@@ -9,8 +9,10 @@ import (
 	"net"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"runtime"
 	"runtime/pprof"
+	"syscall"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/go-metrics"
@@ -19,6 +21,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/input"
+	"github.com/graphite-ng/carbon-relay-ng/input/manager"
 	"github.com/graphite-ng/carbon-relay-ng/route"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
@@ -36,6 +39,8 @@ var (
 	config_file      string
 	config           cfg.Config
 	to_dispatch      = make(chan []byte)
+	inputs           []input.Plugin
+	shutdownTimeout  = time.Second * 30 // how long to wait for shutdown
 	table            *tbl.Table
 	cpuprofile       = flag.String("cpuprofile", "", "write cpu profile to file")
 	blockProfileRate = flag.Int("block-profile-rate", 0, "see https://golang.org/pkg/runtime/#SetBlockProfileRate")
@@ -187,23 +192,23 @@ func main() {
 	}
 
 	if config.Listen_addr != "" {
-		err = input.NewPlain(config.Listen_addr, table)
-		if err != nil {
-			log.Error(err.Error())
-			os.Exit(1)
-		}
+		inputs = append(inputs, input.NewPlain(config.Listen_addr, table))
 	}
 
 	if config.Pickle_addr != "" {
-		err = input.NewPickle(config.Pickle_addr, table)
+		inputs = append(inputs, input.NewPickle(config.Pickle_addr, table))
+	}
+
+	if config.Amqp.Amqp_enabled == true {
+		inputs = append(inputs, input.NewAMQP(config, table, input.AMQPConnector))
+	}
+
+	for _, in := range inputs {
+		err := in.Start()
 		if err != nil {
 			log.Error(err.Error())
 			os.Exit(1)
 		}
-	}
-
-	if config.Amqp.Amqp_enabled == true {
-		go input.StartAMQP(config, table)
 	}
 
 	if config.Admin_addr != "" {
@@ -220,7 +225,17 @@ func main() {
 		go web.Start(config.Http_addr, config, table)
 	}
 
-	select {}
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case sig := <-sigChan:
+		log.Info("Received signal %q. Shutting down", sig)
+	}
+	if !manager.Stop(inputs, shutdownTimeout) {
+		os.Exit(1)
+	}
+	os.Exit(0)
 }
 
 func expandVars(in string) (out string) {

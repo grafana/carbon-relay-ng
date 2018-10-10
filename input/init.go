@@ -14,6 +14,12 @@ func SetLogger(l *logging.Logger) {
 	log = l
 }
 
+type Plugin interface {
+	Name() string
+	Start() error
+	Stop() bool
+}
+
 type Handler interface {
 	Handle(io.Reader)
 }
