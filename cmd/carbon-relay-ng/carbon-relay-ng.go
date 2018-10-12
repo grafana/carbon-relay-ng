@@ -133,9 +133,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	runtime.GOMAXPROCS(config.Max_procs)
-
 	log.Notice("===== carbon-relay-ng instance '%s' starting. (version %s) =====\n", config.Instance, Version)
+
+	if os.Getenv("GOMAXPROCS") == "" && config.Max_procs >= 1 {
+		log.Debug("setting GOMAXPROCS to %d", config.Max_procs)
+		runtime.GOMAXPROCS(config.Max_procs)
+	}
+
 	stats.New(config.Instance)
 
 	if config.Pid_file != "" {
