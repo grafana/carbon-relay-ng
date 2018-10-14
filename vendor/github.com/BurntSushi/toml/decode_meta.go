@@ -6,7 +6,7 @@ import "strings"
 // be inferrable via reflection. In particular, whether a key has been defined
 // and the TOML type of a key.
 type MetaData struct {
-	Mapping map[string]interface{}
+	mapping map[string]interface{}
 	types   map[string]tomlType
 	keys    []Key
 	decoded map[string]bool
@@ -27,7 +27,7 @@ func (md *MetaData) IsDefined(key ...string) bool {
 
 	var hash map[string]interface{}
 	var ok bool
-	var hashOrVal interface{} = md.Mapping
+	var hashOrVal interface{} = md.mapping
 	for _, k := range key {
 		if hash, ok = hashOrVal.(map[string]interface{}); !ok {
 			return false

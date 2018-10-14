@@ -2,7 +2,6 @@ package carbon20
 
 import "strings"
 
-//go:generate stringer -type=metricVersion
 type metricVersion int
 
 const (
