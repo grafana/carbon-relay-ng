@@ -25,14 +25,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:50603b71a80defacc44bb25fb3f6c190fc64f7c8e63e07714455cebdd077d2d8"
+  digest = "1:1078484aedd4c112fe08e5a237c2128f377c2244011905ffbc2762c047c7cddb"
   name = "github.com/Dieterbe/go-metrics"
   packages = [
     ".",
     "exp",
   ]
   pruneopts = "NUT"
-  revision = "357242b55a33c6cbd422e64467d09d514eb3123c"
+  revision = "87383909479ded2517a32386e5046d148fb906a4"
 
 [[projects]]
   branch = "master"
