@@ -274,11 +274,12 @@
   revision = "537ebed0a597c2262dfe1b2eaa1ac68efd5804fb"
 
 [[projects]]
-  digest = "1:558862b50fe74b0216f0e3699a8d7f9ae4fc48570ea95561335e6adf720a6d7d"
+  branch = "master"
+  digest = "1:fbf2e13dbd89ee228a027b6f49cc139731496b7e910d458d0ff95f95fe3c6250"
   name = "github.com/metrics20/go-metrics20"
   packages = ["carbon20"]
   pruneopts = "NUT"
-  revision = "27c134d83f76d8d6d233e52c4d628e2ee2634d75"
+  revision = "717ed3a27bf9f8d2469e7ea5b36037a4793eee44"
 
 [[projects]]
   digest = "1:43d3982e2a4a72d0c5bee1432f48bddd63584c0e3ad7bf1baebe7717cc49bbb6"

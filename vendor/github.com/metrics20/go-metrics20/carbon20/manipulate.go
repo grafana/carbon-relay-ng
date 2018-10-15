@@ -90,11 +90,11 @@ func Sum(in, p1, p2, p2ne, percentile, timespec string) (out string) {
 	return simpleStat(in, p1, p2, p2ne, "sum", "sum", percentile, timespec)
 }
 
-func Median(in, p1, p2, p2ne string, percentile, timespec string) (out string) {
+func Median(in, p1, p2, p2ne, percentile, timespec string) (out string) {
 	return simpleStat(in, p1, p2, p2ne, "median", "median", percentile, timespec)
 }
 
-func Std(in, p1, p2, p2ne string, percentile, timespec string) (out string) {
+func Std(in, p1, p2, p2ne, percentile, timespec string) (out string) {
 	return simpleStat(in, p1, p2, p2ne, "std", "std", percentile, timespec)
 }
 

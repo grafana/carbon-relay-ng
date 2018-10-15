@@ -26,6 +26,10 @@
 
 
 [[constraint]]
+  name = "github.com/metrics20/go-metrics20"
+  branch = "master"
+
+[[constraint]]
   branch = "datetimes"
   name = "github.com/BurntSushi/toml"
 
