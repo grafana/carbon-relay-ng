@@ -30,8 +30,9 @@
   branch = "master"
 
 [[constraint]]
-  branch = "datetimes"
+  branch = "master"
   name = "github.com/BurntSushi/toml"
+  source = "https://github.com/Dieterbe/toml.git"
 
 [[constraint]]
   branch = "master"

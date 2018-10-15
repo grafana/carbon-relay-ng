@@ -16,12 +16,13 @@
   revision = "b1067c1d21b537cf0970ff61d3f28dbb9e595c78"
 
 [[projects]]
-  branch = "datetimes"
-  digest = "1:57af181a57bdf94c39f1227ccf89efe26ad2d482c6625222e4cf1fce6d6460ec"
+  branch = "master"
+  digest = "1:8f04a6b3a45f207380ac5ef306be113da8fc9350a109dd517ac9f17e2ac29a53"
   name = "github.com/BurntSushi/toml"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "f0aeabca5a127c4078abb8c8d64298b147264b55"
+  revision = "96f3d827bb6ccb090f837909081c18402777232d"
+  source = "https://github.com/Dieterbe/toml.git"
 
 [[projects]]
   branch = "master"
