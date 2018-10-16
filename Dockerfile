@@ -1,4 +1,4 @@
-FROM gliderlabs/alpine
+FROM alpine
 RUN apk --update add --no-cache ca-certificates
 ADD carbon-relay-ng /bin/
 VOLUME /conf
