@@ -134,6 +134,7 @@ func (l *Listener) acceptTcpConn(c net.Conn) {
 	}()
 
 	l.handler.Handle(c)
+	c.Close()
 }
 
 func (l *Listener) listenUdp() error {
