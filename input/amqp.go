@@ -12,11 +12,12 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// Closables are things that have a .Close() method (channels & connections)
+// Closable can be closed. E.g. channel, net.Conn
 type Closable interface {
 	Close() error
 }
 
+// Amqp is a plugin that consumes from an amqp broker
 type Amqp struct {
 	wg         sync.WaitGroup
 	uri        amqp.URI

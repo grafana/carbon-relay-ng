@@ -67,8 +67,8 @@ func TestTcpConnection(t *testing.T) {
 		t.Fatalf("Error when listening: %s", err)
 	}
 
-	r_addr := listener.tcpList.Addr()
-	conn, err := net.DialTCP("tcp", nil, r_addr.(*net.TCPAddr))
+	rAddr := listener.tcpList.Addr()
+	conn, err := net.DialTCP("tcp", nil, rAddr.(*net.TCPAddr))
 	if err != nil {
 		t.Fatalf("Error when connecting to listening port: %s", err)
 	}
@@ -91,7 +91,7 @@ func TestTcpConnection(t *testing.T) {
 	time.Sleep(time.Millisecond * 50)
 
 	// verify that the socket is closed now
-	_, err = net.DialTCP("tcp", nil, r_addr.(*net.TCPAddr))
+	_, err = net.DialTCP("tcp", nil, rAddr.(*net.TCPAddr))
 	if err == nil {
 		t.Fatalf("Connection to tcp server should have failed, but it did not")
 	}
@@ -106,8 +106,8 @@ func TestUdpConnection(t *testing.T) {
 		t.Fatalf("Error when listening: %s", err)
 	}
 
-	r_addr := listener.udpConn.LocalAddr()
-	conn, err := net.DialUDP("udp", nil, r_addr.(*net.UDPAddr))
+	rAddr := listener.udpConn.LocalAddr()
+	conn, err := net.DialUDP("udp", nil, rAddr.(*net.UDPAddr))
 	if err != nil {
 		t.Fatalf("Error when connecting to listening port: %s", err)
 	}
