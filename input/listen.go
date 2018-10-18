@@ -127,10 +127,15 @@ func (l *Listener) acceptTcp() {
 
 func (l *Listener) acceptTcpConn(c net.Conn) {
 	defer l.wg.Done()
+	connClose := make(chan struct{})
+	defer close(connClose)
 
 	go func() {
-		<-l.shutdown
-		c.Close()
+		select {
+		case <-l.shutdown:
+			c.Close()
+		case <-connClose:
+		}
 	}()
 
 	l.handler.Handle(c)
