@@ -6,6 +6,7 @@ import (
 	"github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/nsqd"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
+	log "github.com/sirupsen/logrus"
 )
 
 // sits in front of nsqd diskqueue.
@@ -81,8 +82,8 @@ func (s *Spool) Writer() {
 		case buf := <-s.InRT: // wish we could somehow prioritize this higher
 			s.numIncomingRT.Inc(1)
 			//pre = time.Now()
-			log.Debug("spool %v satisfying spool RT", s.key)
-			log.Info("spool %s %s Writer -> queue.Put\n", s.key, buf)
+			log.Debugf("spool %v satisfying spool RT", s.key)
+			log.Tracef("spool %s %s Writer -> queue.Put\n", s.key, buf)
 			s.durationBuffer.Time(func() { s.queueBuffer <- buf })
 			s.numBuffered.Inc(1)
 			//post = time.Now()
@@ -90,8 +91,8 @@ func (s *Spool) Writer() {
 		case buf := <-s.InBulk:
 			s.numIncomingBulk.Inc(1)
 			//pre = time.Now()
-			log.Debug("spool %v satisfying spool BULK", s.key)
-			log.Info("spool %s %s Writer -> queue.Put\n", s.key, buf)
+			log.Debugf("spool %v satisfying spool BULK", s.key)
+			log.Tracef("spool %s %s Writer -> queue.Put\n", s.key, buf)
 			s.durationBuffer.Time(func() { s.queueBuffer <- buf })
 			s.numBuffered.Inc(1)
 			//post = time.Now()

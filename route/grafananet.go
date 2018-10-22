@@ -19,6 +19,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"github.com/graphite-ng/carbon-relay-ng/util"
 	"github.com/jpillora/backoff"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/lomik/go-carbon/persister"
 	"gopkg.in/raintank/schema.v1"
@@ -160,7 +161,7 @@ func (route *GrafanaNet) run(in chan []byte) {
 			route.numBuffered.Dec(1)
 			md, err := parseMetric(buf, route.schemas, route.orgId)
 			if err != nil {
-				log.Error("RouteGrafanaNet: %s", err)
+				log.Errorf("RouteGrafanaNet: %s", err)
 				continue
 			}
 			md.SetId()
@@ -222,12 +223,12 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 		}
 		route.numErrFlush.Inc(1)
 		b := boff.Duration()
-		log.Warning("GrafanaNet failed to submit data: %s - will try again in %s (this attempt took %s)", err.Error(), b, dur)
+		log.Warnf("GrafanaNet failed to submit data: %s - will try again in %s (this attempt took %s)", err.Error(), b, dur)
 		time.Sleep(b)
 		// re-instantiate body, since the previous .Do() attempt would have Read it all the way
 		req.Body = ioutil.NopCloser(bytes.NewReader(body))
 	}
-	log.Info("GrafanaNet sent metrics in %s -msg size %d", dur, len(metrics))
+	log.Debugf("GrafanaNet sent metrics in %s -msg size %d", dur, len(metrics))
 	route.durationTickFlush.Update(dur)
 	route.tickFlushSize.Update(int64(len(metrics)))
 	return metrics[:0]
@@ -255,7 +256,7 @@ func (route *GrafanaNet) flush(req *http.Request) (time.Duration, error) {
 // Dispatch takes in the requested buf or drops it if blocking mode and queue of the shard is full
 func (route *GrafanaNet) Dispatch(buf []byte) {
 	// should return as quickly as possible
-	log.Info("route %s sending to dest %s: %s", route.key, route.addr, buf)
+	log.Tracef("route %s sending to dest %s: %s", route.key, route.addr, buf)
 	buf = bytes.TrimSpace(buf)
 	index := bytes.Index(buf, []byte(" "))
 	if index == -1 {

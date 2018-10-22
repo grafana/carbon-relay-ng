@@ -15,6 +15,7 @@ import (
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
+	log "github.com/sirupsen/logrus"
 )
 
 // gzipPool provides a sync.Pool of initialized gzip.Writer's to avoid
@@ -212,7 +213,7 @@ func (r *PubSub) publish(buf *bytes.Buffer, cnt int) {
 	// write a compressed (maybe) copy of buf into the payload buffer. The content may not be
 	// compressed if r.codec == "none"
 	if err := compressWrite(&payload, buf.Bytes(), r.codec); err != nil {
-		log.Error("pubsub(%s) failed compressing message: %s", r.Key(), err)
+		log.Errorf("pubsub(%s) failed compressing message: %s", r.Key(), err)
 		r.numErrFlush.Inc(1)
 		return
 	}
@@ -224,7 +225,7 @@ func (r *PubSub) publish(buf *bytes.Buffer, cnt int) {
 		Attributes: attrs,
 	})
 	if id, err := res.Get(context.Background()); err != nil {
-		log.Error("pubsub(%s) publish failure: %s", r.Key(), err)
+		log.Errorf("pubsub(%s) publish failure: %s", r.Key(), err)
 		r.numErrFlush.Inc(1)
 	} else {
 		dur := time.Since(start)
@@ -233,7 +234,7 @@ func (r *PubSub) publish(buf *bytes.Buffer, cnt int) {
 		r.durationTickFlush.Update(dur)
 		r.tickFlushSize.Update(int64(payload.Len()))
 		// ex: "pubsub(pubsub) publish success, msgID: 27624288224257, count: 50000, size: 2139099, time: 1.288598 seconds"
-		log.Info("pubsub(%s) publish success, msgID: %s, count: %d, size: %d, time: %f ms",
+		log.Debugf("pubsub(%s) publish success, msgID: %s, count: %d, size: %d, time: %f ms",
 			r.Key(), id, cnt, payload.Len(), float64(dur)/float64(time.Millisecond))
 	}
 }

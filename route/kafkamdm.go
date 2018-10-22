@@ -11,6 +11,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"github.com/graphite-ng/carbon-relay-ng/util"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/Shopify/sarama"
 	"github.com/lomik/go-carbon/persister"
@@ -94,7 +95,7 @@ func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy
 
 	r.partitioner, err = partitioner.NewKafka(partitionBy)
 	if err != nil {
-		log.Fatal(4, "kafkaMdm %q: failed to initialize partitioner. %s", r.key, err)
+		log.Fatalf("kafkaMdm %q: failed to initialize partitioner. %s", r.key, err)
 	}
 
 	// We are looking for strong consistency semantics.
@@ -105,13 +106,13 @@ func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy
 	config.Producer.Retry.Max = 10                   // Retry up to 10 times to produce the message
 	config.Producer.Compression, err = getCompression(codec)
 	if err != nil {
-		log.Fatal(5, "kafkaMdm %q: %s", r.key, err)
+		log.Fatalf("kafkaMdm %q: %s", r.key, err)
 	}
 	config.Producer.Return.Successes = true
 	config.Producer.Timeout = time.Duration(timeout) * time.Millisecond
 	err = config.Validate()
 	if err != nil {
-		log.Fatal(4, "kafkaMdm %q: failed to validate kafka config. %s", r.key, err)
+		log.Fatalf("kafkaMdm %q: failed to validate kafka config. %s", r.key, err)
 	}
 	r.saramaCfg = config
 
@@ -128,14 +129,14 @@ func (r *KafkaMdm) run() {
 	for r.producer == nil {
 		r.producer, err = sarama.NewSyncProducer(r.brokers, r.saramaCfg)
 		if err == sarama.ErrOutOfBrokers {
-			log.Warning("kafkaMdm %q: %s", r.key, err)
+			log.Warnf("kafkaMdm %q: %s", r.key, err)
 			// sleep before trying to connect again.
 			time.Sleep(time.Second)
 		} else if err != nil {
-			log.Fatal(4, "kafkaMdm %q: failed to initialize kafka producer. %s", r.key, err)
+			log.Fatalf("kafkaMdm %q: failed to initialize kafka producer. %s", r.key, err)
 		}
 	}
-	log.Notice("kafkaMdm %q: now connected to kafka", r.key)
+	log.Infof("kafkaMdm %q: now connected to kafka", r.key)
 
 	// flushes the data to kafka and resets buffer.  blocks until it succeeds
 	flush := func() {
@@ -167,7 +168,7 @@ func (r *KafkaMdm) run() {
 
 			diff := time.Since(pre)
 			if err == nil {
-				log.Info("KafkaMdm %q: sent %d metrics in %s - msg size %d", r.key, len(metrics), diff, size)
+				log.Debugf("KafkaMdm %q: sent %d metrics in %s - msg size %d", r.key, len(metrics), diff, size)
 				r.numOut.Inc(int64(len(metrics)))
 				r.tickFlushSize.Update(int64(size))
 				r.durationTickFlush.Update(diff)
@@ -180,11 +181,11 @@ func (r *KafkaMdm) run() {
 				errors[e.Err] += 1
 			}
 			for k, v := range errors {
-				log.Warning("KafkaMdm %q: seen %d times: %s", r.key, v, k)
+				log.Warnf("KafkaMdm %q: seen %d times: %s", r.key, v, k)
 			}
 
 			r.numErrFlush.Inc(1)
-			log.Warning("KafkaMdm %q: failed to submit data: %s will try again in 100ms. (this attempt took %s)", r.key, err, diff)
+			log.Warnf("KafkaMdm %q: failed to submit data: %s will try again in 100ms. (this attempt took %s)", r.key, err, diff)
 
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -201,7 +202,7 @@ func (r *KafkaMdm) run() {
 			r.numBuffered.Dec(1)
 			md, err := parseMetric(buf, r.schemas, r.orgId)
 			if err != nil {
-				log.Error("KafkaMdm %q: %s", r.key, err)
+				log.Errorf("KafkaMdm %q: %s", r.key, err)
 				continue
 			}
 			md.SetId()
@@ -218,7 +219,7 @@ func (r *KafkaMdm) run() {
 }
 
 func (r *KafkaMdm) Dispatch(buf []byte) {
-	log.Info("kafkaMdm %q: sending to dest %v: %s", r.key, r.brokers, buf)
+	log.Tracef("kafkaMdm %q: sending to dest %v: %s", r.key, r.brokers, buf)
 	r.dispatch(r.buf, buf, r.numBuffered, r.numDropBuffFull)
 }
 

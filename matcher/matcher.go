@@ -2,6 +2,7 @@ package matcher
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 )
 
@@ -24,6 +25,10 @@ func New(prefix, sub, regex string) (*Matcher, error) {
 		return nil, err
 	}
 	return match, nil
+}
+
+func (m *Matcher) String() string {
+	return fmt.Sprintf("<Matcher. prefix:%q, sub: %q, regex: %q>", m.Prefix, m.Sub, m.Regex)
 }
 
 func (m *Matcher) updateInternals() error {

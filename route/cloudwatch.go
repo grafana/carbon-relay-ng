@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
+	log "github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
 )
@@ -89,7 +90,7 @@ func NewCloudWatch(key, prefix, sub, regex, awsProfile, awsRegion, awsNamespace 
 
 	for _, dim := range awsDimensions {
 		if len(dim) < 2 {
-			log.Error("RouteCloudWatch: Dimension needs exactly 2 fields: name and val", dim)
+			log.Errorf("RouteCloudWatch: Dimension needs exactly 2 fields: name and val. got %v", dim)
 			continue
 		}
 		r.awsDimensions = append(r.awsDimensions, &cloudwatch.Dimension{
@@ -146,12 +147,12 @@ func (r *CloudWatch) run() {
 			}
 			val, err := strconv.ParseFloat(elements[1], 64)
 			if err != nil {
-				log.Error("RouteCloudWatch: unable to parse value", err)
+				log.Errorf("RouteCloudWatch: unable to parse value: %s", err)
 				continue
 			}
 			timestamp, err := strconv.ParseInt(elements[2], 10, 32)
 			if err != nil {
-				log.Error("RouteCloudWatch: unable to parse timestamp", err)
+				log.Errorf("RouteCloudWatch: unable to parse timestamp: %s", err)
 				continue
 			}
 
@@ -191,7 +192,7 @@ func (r *CloudWatch) publish(metricData cloudwatch.PutMetricDataInput, cnt int) 
 	// Publish to CloudWatch!
 	result, err := r.client.PutMetricData(&metricData)
 	if err != nil {
-		log.Error("RouteCloudWatch: failed sending metric data", err)
+		log.Errorf("RouteCloudWatch: failed sending metric data: %s", err)
 		r.numErrFlush.Inc(1)
 		return
 	}
@@ -203,7 +204,7 @@ func (r *CloudWatch) publish(metricData cloudwatch.PutMetricDataInput, cnt int) 
 	r.durationTickFlush.Update(dur)
 	r.tickFlushSize.Update(dataLength)
 	// ex: "CloudWatch(key) publish success, count: 50000, size: 2139099, time: 1.288598 seconds"
-	log.Info("CloudWatch(%s) publish success, count: %d, size: %d, time: %f ms, result: %s",
+	log.Debugf("CloudWatch(%s) publish success, count: %d, size: %d, time: %f ms, result: %s",
 		r.Key(), cnt, dataLength, float64(dur)/float64(time.Millisecond), result)
 
 }

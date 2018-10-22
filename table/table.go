@@ -20,6 +20,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"github.com/graphite-ng/carbon-relay-ng/validate"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
+	log "github.com/sirupsen/logrus"
 )
 
 type TableConfig struct {
@@ -111,7 +112,7 @@ func (table *Table) Bad() *badmetrics.BadMetrics {
 func (table *Table) Dispatch(buf []byte) {
 	buf_copy := make([]byte, len(buf))
 	copy(buf_copy, buf)
-	log.Debug("table received packet %s", buf_copy)
+	log.Tracef("table received packet %s", buf_copy)
 
 	table.numIn.Inc(1)
 
@@ -138,7 +139,7 @@ func (table *Table) Dispatch(buf []byte) {
 	for _, matcher := range conf.blacklist {
 		if matcher.Match(fields[0]) {
 			table.numBlacklist.Inc(1)
-			log.Debug("table dropped %s, matched blacklist entry %s", buf_copy, matcher)
+			log.Tracef("table dropped %s, matched blacklist entry %s", buf_copy, matcher)
 			return
 		}
 	}
@@ -151,7 +152,7 @@ func (table *Table) Dispatch(buf []byte) {
 		// we rely on incoming metrics already having been validated
 		dropRaw := aggregator.AddMaybe(fields, val, ts)
 		if dropRaw {
-			log.Debug("table dropped %s, matched dropRaw aggregator %s", buf_copy, aggregator.Regex)
+			log.Tracef("table dropped %s, matched dropRaw aggregator %s", buf_copy, aggregator.Regex)
 			return
 		}
 	}
@@ -163,14 +164,14 @@ func (table *Table) Dispatch(buf []byte) {
 	for _, route := range conf.routes {
 		if route.Match(fields[0]) {
 			routed = true
-			log.Debug("table sending to route: %s", final)
+			log.Tracef("table sending to route: %s", final)
 			route.Dispatch(final)
 		}
 	}
 
 	if !routed {
 		table.numUnroutable.Inc(1)
-		log.Info("unrouteable: %s\n", final)
+		log.Tracef("unrouteable: %s\n", final)
 	}
 }
 
@@ -179,19 +180,19 @@ func (table *Table) Dispatch(buf []byte) {
 func (table *Table) DispatchAggregate(buf []byte) {
 	conf := table.config.Load().(TableConfig)
 	routed := false
-	log.Debug("table received aggregate packet %s", buf)
+	log.Tracef("table received aggregate packet %s", buf)
 
 	for _, route := range conf.routes {
 		if route.Match(buf) {
 			routed = true
-			log.Info("table sending to route: %s", buf)
+			log.Tracef("table sending to route: %s", buf)
 			route.Dispatch(buf)
 		}
 	}
 
 	if !routed {
 		table.numUnroutable.Inc(1)
-		log.Info("unrouteable: %s\n", buf)
+		log.Tracef("unrouteable: %s\n", buf)
 	}
 
 }
@@ -562,8 +563,7 @@ func InitFromConfig(config cfg.Config, meta toml.MetaData) (*Table, error) {
 func (table *Table) InitBadMetrics(config cfg.Config) error {
 	maxAge, err := time.ParseDuration(config.Bad_metrics_max_age)
 	if err != nil {
-		log.Error("could not parse badMetrics max age")
-		log.Error(err.Error())
+		log.Errorf("could not parse badMetrics max age: %s", err.Error())
 		return fmt.Errorf("could not initialize bad metrics")
 	}
 	table.bad = badmetrics.New(maxAge)
@@ -573,10 +573,10 @@ func (table *Table) InitBadMetrics(config cfg.Config) error {
 
 func (table *Table) InitCmd(config cfg.Config) error {
 	for i, cmd := range config.Init.Cmds {
-		log.Notice("applying: %s", cmd)
+		log.Infof("applying: %s", cmd)
 		err := imperatives.Apply(table, cmd)
 		if err != nil {
-			log.Error(err.Error())
+			log.Errorf("could not apply init cmd #%d: %s", i+1, err.Error())
 			return fmt.Errorf("could not apply init cmd #%d", i+1)
 		}
 	}
