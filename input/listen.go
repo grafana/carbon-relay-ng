@@ -13,21 +13,23 @@ import (
 // Listener takes care of TCP/UDP networking
 // and relies on the Handler to take care of reading data
 type Listener struct {
-	wg       sync.WaitGroup
-	name     string
-	addr     string
-	tcpList  *net.TCPListener
-	udpConn  *net.UDPConn
-	handler  Handler
-	shutdown chan struct{}
+	wg          sync.WaitGroup
+	name        string
+	addr        string
+	readTimeout time.Duration
+	tcpList     *net.TCPListener
+	udpConn     *net.UDPConn
+	handler     Handler
+	shutdown    chan struct{}
 }
 
-func NewListener(name, addr string, handler Handler) *Listener {
+func NewListener(name, addr string, readTimeout time.Duration, handler Handler) *Listener {
 	return &Listener{
-		name:     name,
-		addr:     addr,
-		handler:  handler,
-		shutdown: make(chan struct{}),
+		name:        name,
+		addr:        addr,
+		readTimeout: readTimeout,
+		handler:     handler,
+		shutdown:    make(chan struct{}),
 	}
 }
 
@@ -141,7 +143,7 @@ func (l *Listener) acceptTcpConn(c net.Conn) {
 		}
 	}()
 
-	l.handler.Handle(c)
+	l.handler.Handle(NewTimeoutConn(c, l.readTimeout))
 	c.Close()
 }
 

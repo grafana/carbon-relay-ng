@@ -168,11 +168,11 @@ func main() {
 	}
 
 	if config.Listen_addr != "" {
-		inputs = append(inputs, input.NewPlain(config.Listen_addr, table))
+		inputs = append(inputs, input.NewPlain(config.Listen_addr, config.Plain_read_timeout.Duration, table))
 	}
 
 	if config.Pickle_addr != "" {
-		inputs = append(inputs, input.NewPickle(config.Pickle_addr, table))
+		inputs = append(inputs, input.NewPickle(config.Pickle_addr, config.Pickle_read_timeout.Duration, table))
 	}
 
 	if config.Amqp.Amqp_enabled == true {

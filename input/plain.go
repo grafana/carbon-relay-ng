@@ -2,16 +2,18 @@ package input
 
 import (
 	"bufio"
-	log "github.com/sirupsen/logrus"
 	"io"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Plain struct {
 	dispatcher Dispatcher
 }
 
-func NewPlain(addr string, dispatcher Dispatcher) *Listener {
-	return NewListener("plain", addr, &Plain{dispatcher})
+func NewPlain(addr string, readTimeout time.Duration, dispatcher Dispatcher) *Listener {
+	return NewListener("plain", addr, readTimeout, &Plain{dispatcher})
 }
 
 func (p *Plain) Handle(c io.Reader) {

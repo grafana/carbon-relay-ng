@@ -1,8 +1,6 @@
 package input
 
-import (
-	"io"
-)
+import "io"
 
 type Plugin interface {
 	Name() string

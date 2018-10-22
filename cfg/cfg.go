@@ -1,12 +1,16 @@
 package cfg
 
 import (
+	"time"
+
 	"github.com/graphite-ng/carbon-relay-ng/validate"
 )
 
 type Config struct {
 	Listen_addr             string
+	Plain_read_timeout      Duration
 	Pickle_addr             string
+	Pickle_read_timeout     Duration
 	Admin_addr              string
 	Http_addr               string
 	Spool_dir               string
@@ -26,6 +30,16 @@ type Config struct {
 	Aggregation             []Aggregation
 	Route                   []Route
 	Rewriter                []Rewriter
+}
+
+type Duration struct {
+	time.Duration
+}
+
+func (d *Duration) UnmarshalText(text []byte) error {
+	var err error
+	d.Duration, err = time.ParseDuration(string(text))
+	return err
 }
 
 type Aggregation struct {
