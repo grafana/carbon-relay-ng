@@ -9,6 +9,8 @@ import (
 	"github.com/jpillora/backoff"
 )
 
+// Listener takes care of TCP/UDP networking
+// and relies on the Handler to take care of reading data
 type Listener struct {
 	wg       sync.WaitGroup
 	name     string
