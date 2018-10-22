@@ -17,16 +17,11 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
-	logging "github.com/op/go-logging"
+	log "github.com/sirupsen/logrus"
 )
 
 var table *tbl.Table
 var config cfg.Config
-var log = logging.MustGetLogger("ui-web") // for tests. overridden by main
-
-func SetLogger(l *logging.Logger) {
-	log = l
-}
 
 // error response contains everything we need to use http.Error
 type handlerError struct {
@@ -322,7 +317,7 @@ func Start(addr string, c cfg.Config, t *tbl.Table) {
 	loggedRouter := handlers.CombinedLoggingHandler(os.Stdout, router)
 	http.Handle("/", loggedRouter)
 
-	log.Notice("admin HTTP listener starting on %v", addr)
+	log.Infof("admin HTTP listener starting on %v", addr)
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())

@@ -4,22 +4,20 @@ import (
 	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/input"
-	logging "github.com/op/go-logging"
+	log "github.com/sirupsen/logrus"
 )
-
-var log = logging.MustGetLogger("input-manager")
 
 // Stop shuts down all given input plugins and returns whether it was successfull.
 func Stop(inputs []input.Plugin, timeout time.Duration) bool {
 	results := make(chan bool)
 	for _, plugin := range inputs {
 		go func(plugin input.Plugin) {
-			log.Info("Shutting down %s input", plugin.Name())
+			log.Infof("Shutting down %s input", plugin.Name())
 			res := plugin.Stop()
 			if res {
-				log.Info("%s input finished shutdown successfully", plugin.Name())
+				log.Infof("%s input finished shutdown successfully", plugin.Name())
 			} else {
-				log.Error("%s input failed to shutdown cleanly", plugin.Name())
+				log.Errorf("%s input failed to shutdown cleanly", plugin.Name())
 			}
 			results <- res
 		}(plugin)

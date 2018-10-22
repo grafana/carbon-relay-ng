@@ -1,11 +1,12 @@
 # log level description
 
+* trace: for tracing messages from start to finish, including unroutable/discards [1]
 * debug: state changes that we only need to know when debugging [1]
-* info: for tracing data as it flows around ONLY, including discards (note that some tracing data can be in warnings too!) [1]
-* notice: events worth noticing, i.e. harmless but they don't happen often or are special events like closing conn or manually triggered things [1]
-* warning: something's wrong but we can survive, like write errors
-* error:
-* critical: not used, errors are critical
+* info:  harmless, but interesting not-so-common events. e.g. connection changes, manually triggered flushes, etc. (this used to be `notice`)
+* warn:  minor issues (network timeouts etc)
+* error: recoverable errors
+* fatal: errors and problems that result in shutdown
+* panic: not used
 
 # fine-grained logging
 

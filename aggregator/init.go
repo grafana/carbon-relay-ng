@@ -7,20 +7,14 @@ import (
 
 	"github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
-	logging "github.com/op/go-logging"
 )
 
-var log = logging.MustGetLogger("aggregator") // for tests. overridden by main
 var numTooOld metrics.Counter
 var rangeTracker *RangeTracker
 
 func InitMetrics() {
 	numTooOld = stats.Counter("module=aggregator.unit=Metric.what=TooOld")
 	rangeTracker = NewRangeTracker()
-}
-
-func SetLogger(l *logging.Logger) {
-	log = l
 }
 
 type RangeTracker struct {

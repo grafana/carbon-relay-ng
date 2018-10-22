@@ -62,6 +62,11 @@
   name = "gopkg.in/raintank/schema.v1"
   version = "1.4.0"
 
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  # we need support for trace level
+  revision = "08e90462da344fbb3880e8e47a0ddacc37508579"
+
 [prune]
   go-tests = true
   non-go = true

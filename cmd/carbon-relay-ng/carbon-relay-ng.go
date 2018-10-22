@@ -19,16 +19,15 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
-	"github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/input"
 	"github.com/graphite-ng/carbon-relay-ng/input/manager"
-	"github.com/graphite-ng/carbon-relay-ng/route"
+	"github.com/graphite-ng/carbon-relay-ng/logger"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/ui/telnet"
 	"github.com/graphite-ng/carbon-relay-ng/ui/web"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
-	logging "github.com/op/go-logging"
+	log "github.com/sirupsen/logrus"
 
 	"strconv"
 	"strings"
@@ -48,23 +47,6 @@ var (
 	badMetrics       *badmetrics.BadMetrics
 	Version          = "unknown"
 )
-
-var log = logging.MustGetLogger("carbon-relay-ng")
-
-func init() {
-	var format = "%{color}%{time:15:04:05.000000} ▶ %{level:.4s} %{color:reset} %{message}"
-	logBackend := logging.NewLogBackend(os.Stderr, "", 0)
-	logging.SetFormatter(logging.MustStringFormatter(format))
-	logging.SetBackend(logBackend)
-
-	input.SetLogger(log)
-	tbl.SetLogger(log)
-	route.SetLogger(log)
-	destination.SetLogger(log)
-	telnet.SetLogger(log)
-	web.SetLogger(log)
-	aggregator.SetLogger(log)
-}
 
 func usage() {
 	fmt.Fprintln(
@@ -97,27 +79,19 @@ func main() {
 
 	meta, err := toml.DecodeFile(config_file, &config)
 	if err != nil {
-		log.Error("Cannot use config file '%s':\n", config_file)
-		log.Error(err.Error())
-		usage()
-		return
+		log.Fatalf("Invalid config file %q: %s\n", config_file, err.Error())
 	}
 	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
 
-	levels := map[string]logging.Level{
-		"critical": logging.CRITICAL,
-		"error":    logging.ERROR,
-		"warning":  logging.WARNING,
-		"notice":   logging.NOTICE,
-		"info":     logging.INFO,
-		"debug":    logging.DEBUG,
+	formatter := &logger.TextFormatter{}
+	formatter.TimestampFormat = "2006-01-02 15:04:05.000"
+	log.SetFormatter(formatter)
+	lvl, err := log.ParseLevel(config.Log_level)
+	if err != nil {
+		log.Fatalf("failed to parse log-level %q: %s", config.Log_level, err.Error())
 	}
-	level, ok := levels[config.Log_level]
-	if !ok {
-		log.Error("unrecognized log level '%s'\n", config.Log_level)
-		return
-	}
-	logging.SetLevel(level, "carbon-relay-ng")
+	log.SetLevel(lvl)
+
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -133,10 +107,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Notice("===== carbon-relay-ng instance '%s' starting. (version %s) =====\n", config.Instance, Version)
+	log.Infof("===== carbon-relay-ng instance '%s' starting. (version %s) =====\n", config.Instance, Version)
 
 	if os.Getenv("GOMAXPROCS") == "" && config.Max_procs >= 1 {
-		log.Debug("setting GOMAXPROCS to %d", config.Max_procs)
+		log.Debugf("setting GOMAXPROCS to %d", config.Max_procs)
 		runtime.GOMAXPROCS(config.Max_procs)
 	}
 
@@ -145,13 +119,11 @@ func main() {
 	if config.Pid_file != "" {
 		f, err := os.Create(config.Pid_file)
 		if err != nil {
-			fmt.Println("error creating pidfile:", err.Error())
-			os.Exit(1)
+			log.Fatalf("error creating pidfile: %s", err.Error())
 		}
 		_, err = f.Write([]byte(strconv.Itoa(os.Getpid())))
 		if err != nil {
-			fmt.Println("error writing to pidfile:", err.Error())
-			os.Exit(1)
+			log.Fatalf("error writing to pidfile: %s", err.Error())
 		}
 		f.Close()
 	}
@@ -179,7 +151,7 @@ func main() {
 		go metrics.Graphite(metrics.DefaultRegistry, time.Duration(config.Instrumentation.Graphite_interval)*time.Millisecond, "", addr)
 	}
 
-	log.Notice("initializing routing table...")
+	log.Info("initializing routing table...")
 
 	table, err := tbl.InitFromConfig(config, meta)
 	if err != nil {
@@ -188,11 +160,11 @@ func main() {
 	}
 
 	tablePrinted := table.Print()
-	log.Notice("===========================")
-	log.Notice("========== TABLE ==========")
-	log.Notice("===========================")
+	log.Info("===========================")
+	log.Info("========== TABLE ==========")
+	log.Info("===========================")
 	for _, line := range strings.Split(tablePrinted, "\n") {
-		log.Notice(line)
+		log.Info(line)
 	}
 
 	if config.Listen_addr != "" {
@@ -219,8 +191,7 @@ func main() {
 		go func() {
 			err := telnet.Start(config.Admin_addr, table)
 			if err != nil {
-				fmt.Println("Error listening:", err.Error())
-				os.Exit(1)
+				log.Fatalf("Error listening: %s", err.Error())
 			}
 		}()
 	}
@@ -234,7 +205,7 @@ func main() {
 
 	select {
 	case sig := <-sigChan:
-		log.Info("Received signal %q. Shutting down", sig)
+		log.Infof("Received signal %q. Shutting down", sig)
 	}
 	if !manager.Stop(inputs, shutdownTimeout) {
 		os.Exit(1)

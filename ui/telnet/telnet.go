@@ -8,15 +8,10 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/telnet"
-	logging "github.com/op/go-logging"
+	log "github.com/sirupsen/logrus"
 )
 
-var log = logging.MustGetLogger("ui-telnet") // for tests. overridden by main
 var table *tbl.Table
-
-func SetLogger(l *logging.Logger) {
-	log = l
-}
 
 func tcpViewHandler(req telnet.Req) (err error) {
 	if len(req.Command) != 1 {
@@ -126,6 +121,6 @@ func Start(addr string, t *tbl.Table) error {
 	telnet.HandleFunc("view", tcpViewHandler)
 	telnet.HandleFunc("help", tcpHelpHandler)
 	telnet.HandleFunc("", tcpDefaultHandler)
-	log.Notice("admin TCP listener starting on %v", addr)
+	log.Infof("admin TCP listener starting on %v", addr)
 	return telnet.ListenAndServe(addr)
 }

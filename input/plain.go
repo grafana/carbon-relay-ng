@@ -2,6 +2,7 @@ package input
 
 import (
 	"bufio"
+	log "github.com/sirupsen/logrus"
 	"io"
 )
 
@@ -22,7 +23,7 @@ func (p *Plain) Handle(c io.Reader) {
 		// must never block.
 
 		buf := scanner.Bytes()
-		log.Debug("plain.go: Received Line: %q", buf)
+		log.Tracef("plain.go: Received Line: %q", buf)
 
 		p.dispatcher.Dispatch(buf)
 	}

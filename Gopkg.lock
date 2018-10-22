@@ -52,21 +52,6 @@
   version = "v1.19.0"
 
 [[projects]]
-  digest = "1:e38e4b563c03b533cc4f41bafbc97de9dd5aeb81263ef84ceab9b9589a0b7390"
-  name = "github.com/Sirupsen/logrus"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "55eb11d21d2a31a3cc93838241d04800f52e823d"
-  version = "v0.7.3"
-
-[[projects]]
-  digest = "1:b123c5196e46bf2dfa2de71d5e9493995fc110d5e7e63a6c274fc6b64edf1da0"
-  name = "github.com/alyu/configparser"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "26b2fe18bee125de2a3090d6fadb7e280e63eba6"
-
-[[projects]]
   digest = "1:117f9c37008d5d78fc2ec0d99d9b57d9d98fab6b14b902b83909453984838867"
   name = "github.com/aws/aws-sdk-go"
   packages = [
@@ -155,6 +140,14 @@
   revision = "57eb5e1fc594ad4b0b1dbea7b286d299e0cb43c2"
 
 [[projects]]
+  branch = "master"
+  digest = "1:ffc62713230cd494711f6a0f7ecb04aad4375893677307e87bb219e7677ffb00"
+  name = "github.com/go-graphite/go-whisper"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "73c5cbd69142cbef9bd8ef9c6d485a8d34b4554c"
+
+[[projects]]
   digest = "1:d32823ccbd16481c42356a1ae7f2284761da19cae3131b554a0b7c086a650292"
   name = "github.com/go-ini/ini"
   packages = ["."]
@@ -215,13 +208,6 @@
   revision = "14cafe28513321476c73967a5a4f3454b6129c46"
 
 [[projects]]
-  digest = "1:ec6aa59483e4c61fb743ccc0acc7497188505b308914634027d1d4ab06546b1c"
-  name = "github.com/hydrogen18/stalecucumber"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "9b38526d4bdf8e197c31344777fc28f7f48d250d"
-
-[[projects]]
   digest = "1:ac6d01547ec4f7f673311b4663909269bfb8249952de3279799289467837c3cc"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
@@ -243,6 +229,14 @@
   revision = "ec792bc6e6aa06a6c490e8d292e15cca173c8bd3"
 
 [[projects]]
+  digest = "1:4059c14e87a2de3a434430340521b5feece186c1469eff0834c29a63870de3ed"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242"
+  version = "v1.0.1"
+
+[[projects]]
   digest = "1:25f3f89e9b9634769608a107450b13c98c701d1d7e78d709880a4301ae4d7715"
   name = "github.com/kr/pretty"
   packages = ["."]
@@ -257,22 +251,25 @@
   revision = "bb797dc4fb8320488f47bf11de07a733d7233e1f"
 
 [[projects]]
-  digest = "1:a06967531c68d5ac007999924d7e64240106d03b9f7e41300909ff98f15f043e"
+  digest = "1:6648a6aa5d694e5eba37c2ee2a6ef275dc230d00a5b94e9c0f747b9788ebb11d"
   name = "github.com/lomik/go-carbon"
   packages = [
     "helper",
     "persister",
     "points",
+    "tags",
   ]
   pruneopts = "NUT"
-  revision = "12b15c57fff585e38a965de347c4f8ecad1f9321"
+  revision = "c802cb57a59000797a8b7110a0b7c5ade40983d8"
+  version = "v0.13.0"
 
 [[projects]]
-  digest = "1:1999c60765b9660085dcf8e53807257505b918748a64ca4500a5e0c7e087a3a5"
-  name = "github.com/lomik/go-whisper"
+  branch = "master"
+  digest = "1:b13a49b5deae0fad34bf7fd8fee6b06be8288fe67b0d28ae5a3b70de63e5749d"
+  name = "github.com/lomik/zapwriter"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "537ebed0a597c2262dfe1b2eaa1ac68efd5804fb"
+  revision = "2ec2b9a616807f3fe930c075c48fcf32d1f2d250"
 
 [[projects]]
   branch = "master"
@@ -281,13 +278,6 @@
   packages = ["carbon20"]
   pruneopts = "NUT"
   revision = "717ed3a27bf9f8d2469e7ea5b36037a4793eee44"
-
-[[projects]]
-  digest = "1:43d3982e2a4a72d0c5bee1432f48bddd63584c0e3ad7bf1baebe7717cc49bbb6"
-  name = "github.com/op/go-logging"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "e5fb9bb8a3a168cc269b38f092b65d2e18cebb9a"
 
 [[projects]]
   digest = "1:ab414e66ca8d4ae93fc50eb34f0cff05fc8db3f9abb4223e571958b372f2ad77"
@@ -326,11 +316,39 @@
   revision = "7da7ed57785040df39407030c3f8f39747383bed"
 
 [[projects]]
+  digest = "1:807da2ada16d2e0c37c825753667a4d5d05e89bc93aa617fce7ad6b155293e56"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "08e90462da344fbb3880e8e47a0ddacc37508579"
+
+[[projects]]
   digest = "1:ba3cd9eaf544b09bcbc1ed96852a92007e67b3be2c0a10a775ab4189a4bbee91"
   name = "github.com/streadway/amqp"
   packages = ["."]
   pruneopts = "NUT"
   revision = "dfe15e36048539f4cda41f240b27a5ca25b9cd46"
+
+[[projects]]
+  branch = "master"
+  digest = "1:59483b8e8183f10ab21a85ba1f4cbb4a2335d48891801f79ed7b9499f44d383c"
+  name = "github.com/syndtr/goleveldb"
+  packages = [
+    "leveldb",
+    "leveldb/cache",
+    "leveldb/comparer",
+    "leveldb/errors",
+    "leveldb/filter",
+    "leveldb/iterator",
+    "leveldb/journal",
+    "leveldb/memdb",
+    "leveldb/opt",
+    "leveldb/storage",
+    "leveldb/table",
+    "leveldb/util",
+  ]
+  pruneopts = "NUT"
+  revision = "6b91fda63f2e36186f1c9d0e48578defb69c5d43"
 
 [[projects]]
   branch = "master"
@@ -347,6 +365,45 @@
   pruneopts = "NUT"
   revision = "0cea1fa86e8403be1284013014f87ab942056de8"
   version = "v1.0-beta"
+
+[[projects]]
+  digest = "1:22f696cee54865fb8e9ff91df7b633f6b8f22037a8015253c6b6a71ca82219c7"
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
+  version = "v1.3.2"
+
+[[projects]]
+  digest = "1:58ca93bdf81bac106ded02226b5395a0595d5346cdc4caa8d9c1f3a5f8f9976e"
+  name = "go.uber.org/multierr"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
+  version = "v1.1.0"
+
+[[projects]]
+  digest = "1:85674ac609b704fd4e9f463553b6ffc3a3527a993ae0ba550eb56beaabdfe094"
+  name = "go.uber.org/zap"
+  packages = [
+    ".",
+    "buffer",
+    "internal/bufferpool",
+    "internal/color",
+    "internal/exit",
+    "zapcore",
+  ]
+  pruneopts = "NUT"
+  revision = "ff33455a0e382e8a81d14dd7c922020b6b5e7982"
+  version = "v1.9.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:3f3a05ae0b95893d90b9b3b5afdb79a9b3d96e4e36e099d841ae602e4aca0da8"
+  name = "golang.org/x/crypto"
+  packages = ["ssh/terminal"]
+  pruneopts = "NUT"
+  revision = "0c41d7ab0a0ee717d4590a44bcb987dfd9e183eb"
 
 [[projects]]
   digest = "1:c6cbccf8feef20ceda958050f4f2221330e1245962ff0b280f2c3b9489d6f8cd"
@@ -386,6 +443,17 @@
   ]
   pruneopts = "NUT"
   revision = "fd80eb99c8f653c847d294a001bdf2a3a6f768f5"
+
+[[projects]]
+  branch = "master"
+  digest = "1:5a897bfe237d452232be0eb904a9a42bd89246a0255fab8034653454c9fd34f3"
+  name = "golang.org/x/sys"
+  packages = [
+    "unix",
+    "windows",
+  ]
+  pruneopts = "NUT"
+  revision = "8a28ead16f52c8aaeffbf79239b251dfdf6c4f96"
 
 [[projects]]
   digest = "1:e7071ed636b5422cc51c0e3a6cebc229d6c9fffc528814b519a980641422d619"
@@ -522,8 +590,8 @@
     "github.com/kisielk/og-rek",
     "github.com/lomik/go-carbon/persister",
     "github.com/metrics20/go-metrics20/carbon20",
-    "github.com/op/go-logging",
     "github.com/raintank/metrictank/cluster/partitioner",
+    "github.com/sirupsen/logrus",
     "github.com/streadway/amqp",
     "github.com/taylorchu/toki",
     "gopkg.in/raintank/schema.v1",

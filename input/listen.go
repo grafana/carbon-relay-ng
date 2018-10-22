@@ -7,8 +7,11 @@ import (
 	"time"
 
 	"github.com/jpillora/backoff"
+	log "github.com/sirupsen/logrus"
 )
 
+// Listener takes care of TCP/UDP networking
+// and relies on the Handler to take care of reading data
 type Listener struct {
 	wg       sync.WaitGroup
 	name     string
@@ -57,12 +60,12 @@ func (l *Listener) run(proto string, consume func(), listen func() error, listen
 
 	go func() {
 		<-l.shutdown
-		log.Info("shutting down %v/%s, closing socket", l.addr, proto)
+		log.Infof("shutting down %v/%s, closing socket", l.addr, proto)
 		listener.Close()
 	}()
 
 	for {
-		log.Notice("listening on %v/%s", l.addr, proto)
+		log.Infof("listening on %v/%s", l.addr, proto)
 
 		consume()
 
@@ -72,7 +75,7 @@ func (l *Listener) run(proto string, consume func(), listen func() error, listen
 		default:
 		}
 		for {
-			log.Notice("reopening %v/%s", l.addr, proto)
+			log.Infof("reopening %v/%s", l.addr, proto)
 			err := listen()
 			if err == nil {
 				backoffCounter.Reset()
@@ -81,12 +84,12 @@ func (l *Listener) run(proto string, consume func(), listen func() error, listen
 
 			select {
 			case <-l.shutdown:
-				log.Info("shutting down %v/%s, closing socket", l.addr, proto)
+				log.Infof("shutting down %v/%s, closing socket", l.addr, proto)
 				return
 			default:
 			}
 			dur := backoffCounter.Duration()
-			log.Error("error listening on %v/%s, retrying after %v: %s", l.addr, proto, dur, err)
+			log.Errorf("error listening on %v/%s, retrying after %v: %s", l.addr, proto, dur, err)
 			time.Sleep(dur)
 		}
 	}
@@ -112,14 +115,14 @@ func (l *Listener) acceptTcp() {
 			case <-l.shutdown:
 				return
 			default:
-				log.Error("error accepting on %v/tcp, closing connection: %s", l.addr, err)
+				log.Errorf("error accepting on %v/tcp, closing connection: %s", l.addr, err)
 				l.tcpList.Close()
 				return
 			}
 		}
 
 		// handle the connection
-		log.Debug("listen.go: tcp connection from %v", c.RemoteAddr())
+		log.Debugf("listen.go: tcp connection from %v", c.RemoteAddr())
 		l.wg.Add(1)
 		go l.acceptTcpConn(c)
 	}
@@ -164,14 +167,14 @@ func (l *Listener) consumeUdp() {
 			case <-l.shutdown:
 				return
 			default:
-				log.Error("error reading packet on %v/udp, closing connection: %s", l.addr, err)
+				log.Errorf("error reading packet on %v/udp, closing connection: %s", l.addr, err)
 				l.udpConn.Close()
 				return
 			}
 		}
 
 		// handle the packet
-		log.Debug("listen.go: udp packet from %v (length: %d)", src, b)
+		log.Debugf("listen.go: udp packet from %v (length: %d)", src, b)
 		l.handler.Handle(bytes.NewReader(buffer[:b]))
 	}
 }

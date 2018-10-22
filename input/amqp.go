@@ -9,6 +9,7 @@ import (
 
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/jpillora/backoff"
+	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
@@ -81,7 +82,7 @@ func (a *Amqp) start() {
 			default:
 			}
 			dur := b.Duration()
-			log.Error("connectAMQP: %v. retrying in %s", err, dur)
+			log.Errorf("connectAMQP: %v. retrying in %s", err, dur)
 			time.Sleep(dur)
 		} else {
 			// connected successfully; reset backoff
@@ -89,7 +90,7 @@ func (a *Amqp) start() {
 
 			// blocks until channel is closed
 			a.consumeAMQP()
-			log.Notice("consumeAMQP: channel closed")
+			log.Info("consumeAMQP: channel closed")
 
 			// reconnect immediately
 			a.close()
@@ -111,7 +112,7 @@ func (a *Amqp) Stop() bool {
 }
 
 func (a *Amqp) consumeAMQP() {
-	log.Notice("consuming AMQP messages")
+	log.Info("consuming AMQP messages")
 	for {
 		select {
 		case m := <-a.delivery:
@@ -142,7 +143,7 @@ type amqpConnector func(a *Amqp) error
 
 // AMQPConnector connects using the given configuration
 func AMQPConnector(a *Amqp) error {
-	log.Notice("dialing AMQP: %v", a.uri)
+	log.Infof("dialing AMQP: %v", a.uri)
 	conn, err := amqp.Dial(a.uri.String())
 	if err != nil {
 		return err

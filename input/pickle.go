@@ -9,6 +9,7 @@ import (
 	"math/big"
 
 	ogorek "github.com/kisielk/og-rek"
+	log "github.com/sirupsen/logrus"
 )
 
 type Pickle struct {
@@ -37,23 +38,23 @@ ReadLoop:
 		err := binary.Read(r, binary.BigEndian, &length)
 		if err != nil {
 			if io.EOF != err {
-				log.Error("pickle.go: couldn't read payload length: " + err.Error())
+				log.Errorf("pickle.go: couldn't read payload length: %s", err.Error())
 			} else {
 				log.Debug("pickle.go: EOF while detecting payload length")
 			}
 			break
 		}
-		log.Debug(fmt.Sprintf("pickle.go: done detecting payload length with binary.Read, length is %d", int(length)))
+		log.Debugf("pickle.go: done detecting payload length with binary.Read, length is %d", length)
 
 		lengthTotal := int(length)
 		if lengthTotal > maxLength {
-			log.Error(fmt.Sprintf("pickle.go: payload length of %d is more than the supported maximum %d", lengthTotal, maxLength))
+			log.Errorf("pickle.go: payload length of %d is more than the supported maximum %d", lengthTotal, maxLength)
 			break
 		}
 
 		prefix, err := r.Peek(3)
 		if err != nil {
-			log.Error("pickle.go: couldn't read payload prefix: " + err.Error())
+			log.Errorf("pickle.go: couldn't read payload prefix: %s", err.Error())
 			break
 		}
 
@@ -78,7 +79,7 @@ ReadLoop:
 			}
 			tmpLengthRead, err := r.Read(chunk[:toRead])
 			if err != nil {
-				log.Error("pickle.go: couldn't read payload: " + err.Error())
+				log.Errorf("pickle.go: couldn't read payload: %s", err.Error())
 				break ReadLoop
 			}
 			lengthRead += tmpLengthRead
@@ -95,7 +96,7 @@ ReadLoop:
 		rawDecoded, err := decoder.Decode()
 		if err != nil {
 			if io.ErrUnexpectedEOF != err {
-				log.Error("pickle.go: error reading pickled data " + err.Error())
+				log.Errorf("pickle.go: error reading pickled data: %s", err.Error())
 			}
 			log.Debug("pickle.go: detected ErrUnexpectedEOF while decoding pickled data, nothing more to decode, breaking")
 			break
@@ -105,7 +106,7 @@ ReadLoop:
 		log.Debug("pickle.go: checking the type of pickled data...")
 		decoded, ok := rawDecoded.([]interface{})
 		if !ok {
-			log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for pickled data", rawDecoded))
+			log.Errorf("pickle.go: Unrecognized type %T for pickled data", rawDecoded)
 			break
 		}
 		log.Debug("pickle.go: done checking the type of pickled data")
@@ -117,31 +118,31 @@ ReadLoop:
 			log.Debug("pickle.go: doing high-level validation of unpickled item and data...")
 			item, ok := rawItem.(ogorek.Tuple)
 			if !ok {
-				log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for item", rawItem))
+				log.Errorf("pickle.go: Unrecognized type %T for item", rawItem)
 				p.dispatcher.IncNumInvalid()
 				continue
 			}
 			if len(item) != 2 {
-				log.Error(fmt.Sprintf("pickle.go: item length must be 2, got %d", len(item)))
+				log.Errorf("pickle.go: item length must be 2, got %d", len(item))
 				p.dispatcher.IncNumInvalid()
 				continue
 			}
 
 			metric, ok := item[0].(string)
 			if !ok {
-				log.Error(fmt.Sprintf("pickle.go: item metric must be a string, got %T", item[0]))
+				log.Errorf("pickle.go: item metric must be a string, got %T", item[0])
 				p.dispatcher.IncNumInvalid()
 				continue
 			}
 
 			data, ok := item[1].(ogorek.Tuple)
 			if !ok {
-				log.Error(fmt.Sprintf("pickle.go: item data must be an array, got %T", item[1]))
+				log.Errorf("pickle.go: item data must be an array, got %T", item[1])
 				p.dispatcher.IncNumInvalid()
 				continue
 			}
 			if len(data) != 2 {
-				log.Error(fmt.Sprintf("pickle.go: item data length must be 2, got %d", len(data)))
+				log.Errorf("pickle.go: item data length must be 2, got %d", len(data))
 				p.dispatcher.IncNumInvalid()
 				continue
 			}
@@ -156,7 +157,7 @@ ReadLoop:
 			case float32, float64:
 				value = fmt.Sprintf("%f", data[1])
 			default:
-				log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for value", data[1]))
+				log.Errorf("pickle.go: Unrecognized type %T for value", data[1])
 				p.dispatcher.IncNumInvalid()
 				continue ItemLoop
 			}
@@ -170,7 +171,7 @@ ReadLoop:
 			case float32, float64:
 				timestamp = fmt.Sprintf("%.0f", data[0])
 			default:
-				log.Error(fmt.Sprintf("pickle.go: Unrecognized type %T for timestamp", data[0]))
+				log.Errorf("pickle.go: Unrecognized type %T for timestamp", data[0])
 				p.dispatcher.IncNumInvalid()
 				continue ItemLoop
 			}

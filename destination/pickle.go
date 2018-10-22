@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 
 	"github.com/kisielk/og-rek"
+	log "github.com/sirupsen/logrus"
 )
 
 func Pickle(dp *Datapoint) []byte {
