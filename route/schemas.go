@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lomik/go-carbon/persister"
+	"github.com/graphite-ng/carbon-relay-ng/persister"
 	"gopkg.in/raintank/schema.v1"
 )
 

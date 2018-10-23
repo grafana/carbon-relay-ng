@@ -14,7 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/Shopify/sarama"
-	"github.com/lomik/go-carbon/persister"
+	"github.com/graphite-ng/carbon-relay-ng/persister"
 	"github.com/raintank/metrictank/cluster/partitioner"
 	"gopkg.in/raintank/schema.v1"
 )
