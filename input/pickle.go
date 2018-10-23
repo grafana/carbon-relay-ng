@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"net"
 
 	ogorek "github.com/kisielk/og-rek"
 	log "github.com/sirupsen/logrus"
@@ -22,34 +21,6 @@ func NewPickle(dispatcher Dispatcher) *Pickle {
 	return &Pickle{dispatcher}
 }
 
-func (p *Pickle) HandleData(c io.Reader) {
-	err := p.Handle(c)
-	if err != nil {
-		log.Warnf("pickle handler: %s", err)
-		return
-	}
-	log.Debug("pickle handler finished")
-}
-
-func (p *Pickle) HandleConn(c net.Conn) {
-	log.Debugf("pickle handler: new tcp connection from %v", c.RemoteAddr())
-	err := p.Handle(c)
-
-	var remoteInfo string
-
-	rAddr := c.RemoteAddr()
-	if rAddr != nil {
-		remoteInfo = " for " + rAddr.String()
-	}
-	if err != nil {
-		log.Warnf("pickle handler%s returned: %s. closing conn", remoteInfo, err)
-		return
-	}
-	log.Debugf("pickle handler%s returned. closing conn", remoteInfo)
-}
-
-// Handle is the "core" processing function.
-// It is exported such that 3rd party embedders can reuse it.
 func (p *Pickle) Handle(c io.Reader) error {
 	r := bufio.NewReaderSize(c, 4096)
 	// 500MB max payload size per pickle body

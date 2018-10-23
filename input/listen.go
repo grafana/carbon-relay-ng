@@ -153,8 +153,28 @@ func (l *Listener) acceptTcpConn(c net.Conn) {
 		}
 	}()
 
-	l.handler.HandleConn(NewTimeoutConn(c, l.readTimeout))
+	l.HandleConn(c)
 	c.Close()
+}
+
+// HandleConn does the necessary logging and invocation of the handler
+// It is exported such that 3rd party embedders can override it.
+func (l *Listener) HandleConn(c net.Conn) {
+	log.Debugf("%s handler: new tcp connection from %v", l.name, c.RemoteAddr())
+
+	err := l.handler.Handle(NewTimeoutConn(c, l.readTimeout))
+
+	var remoteInfo string
+
+	rAddr := c.RemoteAddr()
+	if rAddr != nil {
+		remoteInfo = " for " + rAddr.String()
+	}
+	if err != nil {
+		log.Warnf("%s handler%s returned: %s. closing conn", l.name, remoteInfo, err)
+		return
+	}
+	log.Debugf("%s handler%s returned. closing conn", l.name, remoteInfo)
 }
 
 func (l *Listener) listenUdp() error {
@@ -184,11 +204,22 @@ func (l *Listener) consumeUdp() {
 				return
 			}
 		}
-
-		// handle the packet
-		log.Debugf("listen.go: udp packet from %v (length: %d)", src, b)
-		l.handler.HandleData(bytes.NewReader(buffer[:b]))
+		l.HandleData(buffer[:b], src)
 	}
+}
+
+// HandleData does the necessary logging and invocation of the handler
+// It is exported such that 3rd party embedders can override it.
+func (l *Listener) HandleData(data []byte, src net.Addr) {
+	log.Debugf("listen.go: udp packet from %v (length: %d)", l.name, src, len(data))
+
+	err := l.handler.Handle(bytes.NewReader(data))
+
+	if err != nil {
+		log.Warnf("%s handler: %s", l.name, err)
+		return
+	}
+	log.Debugf("%s handler finished", l.name)
 }
 
 func (l *Listener) Name() string {

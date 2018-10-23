@@ -1,9 +1,6 @@
 package input
 
-import (
-	"io"
-	"net"
-)
+import "io"
 
 type Plugin interface {
 	Name() string
@@ -16,8 +13,7 @@ type Plugin interface {
 // Dispatcher.IncNumInvalid upon protocol errors
 // Dispatcher.Dispatch to process data that's protocol-valid
 type Handler interface {
-	HandleData(io.Reader)
-	HandleConn(net.Conn)
+	Handle(io.Reader) error
 }
 
 type Dispatcher interface {
