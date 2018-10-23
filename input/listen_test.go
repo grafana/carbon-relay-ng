@@ -47,7 +47,7 @@ func (m *mockHandler) String() string {
 func TestTcpUdpShutdown(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener("mock", addr, &handler)
+	listener := NewListener("mock", addr, 0, &handler)
 	err := listener.Start()
 	if err != nil {
 		t.Fatalf("Error when trying to listen: %s", err)
@@ -61,7 +61,7 @@ func TestTcpUdpShutdown(t *testing.T) {
 func TestTcpConnection(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener("mock", addr, &handler)
+	listener := NewListener("mock", addr, 0, &handler)
 	err := listener.Start()
 	if err != nil {
 		t.Fatalf("Error when listening: %s", err)
@@ -100,7 +100,7 @@ func TestTcpConnection(t *testing.T) {
 func TestUdpConnection(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener("mock", addr, &handler)
+	listener := NewListener("mock", addr, 0, &handler)
 	err := listener.Start()
 	if err != nil {
 		t.Fatalf("Error when listening: %s", err)

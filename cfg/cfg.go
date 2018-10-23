@@ -1,12 +1,17 @@
 package cfg
 
 import (
+	"time"
+
 	"github.com/graphite-ng/carbon-relay-ng/validate"
+	m20 "github.com/metrics20/go-metrics20/carbon20"
 )
 
 type Config struct {
 	Listen_addr             string
+	Plain_read_timeout      Duration
 	Pickle_addr             string
+	Pickle_read_timeout     Duration
 	Admin_addr              string
 	Http_addr               string
 	Spool_dir               string
@@ -26,6 +31,29 @@ type Config struct {
 	Aggregation             []Aggregation
 	Route                   []Route
 	Rewriter                []Rewriter
+}
+
+func NewConfig() Config {
+	return Config{
+		Plain_read_timeout: Duration{
+			2 * time.Minute,
+		},
+		Pickle_read_timeout: Duration{
+			2 * time.Minute,
+		},
+		Validation_level_legacy: validate.LevelLegacy{m20.MediumLegacy},
+		Validation_level_m20:    validate.LevelM20{m20.MediumM20},
+	}
+}
+
+type Duration struct {
+	time.Duration
+}
+
+func (d *Duration) UnmarshalText(text []byte) error {
+	var err error
+	d.Duration, err = time.ParseDuration(string(text))
+	return err
 }
 
 type Aggregation struct {
