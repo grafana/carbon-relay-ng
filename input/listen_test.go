@@ -22,28 +22,25 @@ type mockHandler struct {
 }
 
 // just store all the data in m.data
-func (m *mockHandler) Handle(r io.Reader) {
+func (m *mockHandler) Handle(r io.Reader) error {
 	buf := make([]byte, 100)
 	for {
 		n, err := r.Read(buf)
 		if err != nil {
-			return
+			return err
 		}
 		if n == 0 {
-			return
+			return nil
 		}
 		m.Lock()
 		m.data = append(m.data, buf[:n]...)
 		m.Unlock()
 	}
+	return nil
 }
 
-func (m *mockHandler) HandleData(r io.Reader) {
-	m.Handle(r)
-}
-
-func (m *mockHandler) HandleConn(c net.Conn) {
-	m.Handle(c)
+func (m *mockHandler) Kind() string {
+	return "mock"
 }
 
 func (m *mockHandler) String() string {
@@ -55,7 +52,7 @@ func (m *mockHandler) String() string {
 func TestTcpUdpShutdown(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener("mock", addr, 0, &handler)
+	listener := NewListener(addr, 0, &handler)
 	err := listener.Start()
 	if err != nil {
 		t.Fatalf("Error when trying to listen: %s", err)
@@ -69,7 +66,7 @@ func TestTcpUdpShutdown(t *testing.T) {
 func TestTcpConnection(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener("mock", addr, 0, &handler)
+	listener := NewListener(addr, 0, &handler)
 	err := listener.Start()
 	if err != nil {
 		t.Fatalf("Error when listening: %s", err)
@@ -108,7 +105,7 @@ func TestTcpConnection(t *testing.T) {
 func TestUdpConnection(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener("mock", addr, 0, &handler)
+	listener := NewListener(addr, 0, &handler)
 	err := listener.Start()
 	if err != nil {
 		t.Fatalf("Error when listening: %s", err)
