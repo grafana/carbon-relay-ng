@@ -23,6 +23,18 @@ type Listener struct {
 	shutdown    chan struct{}
 }
 
+// NewPlainListener creates a Plain handler and a listener using that handler
+func NewPlainListener(addr string, readTimeout time.Duration, dispatcher Dispatcher) *Listener {
+	return NewListener("plain", addr, readTimeout, NewPlain(dispatcher))
+}
+
+// NewPickleListener creates a Pickle handler and a listener using that handler
+func NewPickleListener(addr string, readTimeout time.Duration, dispatcher Dispatcher) *Listener {
+	return NewListener("pickle", addr, readTimeout, NewPickle(dispatcher))
+}
+
+// NewListener creates a new listener. Note: "name" should correspond to the type of handler.
+// You can use one of the convenience constructors above to assure this.
 func NewListener(name, addr string, readTimeout time.Duration, handler Handler) *Listener {
 	return &Listener{
 		name:        name,

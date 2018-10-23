@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"io"
 	"net"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -13,8 +12,8 @@ type Plain struct {
 	dispatcher Dispatcher
 }
 
-func NewPlain(addr string, readTimeout time.Duration, dispatcher Dispatcher) *Listener {
-	return NewListener("plain", addr, readTimeout, &Plain{dispatcher})
+func NewPlain(dispatcher Dispatcher) *Plain {
+	return &Plain{dispatcher}
 }
 
 func (p *Plain) HandleData(c io.Reader) {

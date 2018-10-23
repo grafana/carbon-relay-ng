@@ -9,7 +9,6 @@ import (
 	"io"
 	"math/big"
 	"net"
-	"time"
 
 	ogorek "github.com/kisielk/og-rek"
 	log "github.com/sirupsen/logrus"
@@ -19,8 +18,8 @@ type Pickle struct {
 	dispatcher Dispatcher
 }
 
-func NewPickle(addr string, readTimeout time.Duration, dispatcher Dispatcher) *Listener {
-	return NewListener("pickle", addr, readTimeout, &Pickle{dispatcher})
+func NewPickle(dispatcher Dispatcher) *Pickle {
+	return &Pickle{dispatcher}
 }
 
 func (p *Pickle) HandleData(c io.Reader) {
