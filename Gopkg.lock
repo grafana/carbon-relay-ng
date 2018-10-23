@@ -273,6 +273,14 @@
   revision = "5a004441f897722c627870a981d02b29924215fa"
 
 [[projects]]
+  digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  pruneopts = "NUT"
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:702871fd067843dac45acf878c75d14fea30ad6084c93a9babfbf79fc9369a61"
   name = "github.com/raintank/metrictank"
   packages = ["cluster/partitioner"]
@@ -299,6 +307,14 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "dfe15e36048539f4cda41f240b27a5ca25b9cd46"
+
+[[projects]]
+  digest = "1:b5c8b4a0ad5f65a85eb2a9f89e30c638ef8b99f8a3f078467cea778869757666"
+  name = "github.com/stretchr/testify"
+  packages = ["assert"]
+  pruneopts = "NUT"
+  revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
+  version = "v1.1.4"
 
 [[projects]]
   branch = "master"
@@ -511,6 +527,7 @@
     "github.com/raintank/metrictank/cluster/partitioner",
     "github.com/sirupsen/logrus",
     "github.com/streadway/amqp",
+    "github.com/stretchr/testify/assert",
     "github.com/taylorchu/toki",
     "gopkg.in/raintank/schema.v1",
     "gopkg.in/raintank/schema.v1/msg",
