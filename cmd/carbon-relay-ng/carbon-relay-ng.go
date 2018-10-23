@@ -26,7 +26,6 @@ import (
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/ui/telnet"
 	"github.com/graphite-ng/carbon-relay-ng/ui/web"
-	m20 "github.com/metrics20/go-metrics20/carbon20"
 	log "github.com/sirupsen/logrus"
 
 	"strconv"
@@ -36,7 +35,7 @@ import (
 
 var (
 	config_file      string
-	config           cfg.Config
+	config           = cfg.NewConfig()
 	to_dispatch      = make(chan []byte)
 	inputs           []input.Plugin
 	shutdownTimeout  = time.Second * 30 // how long to wait for shutdown
@@ -62,10 +61,6 @@ func main() {
 	flag.Parse()
 	runtime.SetBlockProfileRate(*blockProfileRate)
 	runtime.MemProfileRate = *memProfileRate
-
-	// validation defaults
-	config.Validation_level_legacy.Level = m20.MediumLegacy
-	config.Validation_level_m20.Level = m20.MediumM20
 
 	config_file = "/etc/carbon-relay-ng.ini"
 	if 1 == flag.NArg() {
