@@ -1,8 +1,8 @@
 # log level description
 
 * trace: for tracing messages from start to finish, including unroutable/discards [1]
-* debug: state changes that we only need to know when debugging [1]
-* info:  harmless, but interesting not-so-common events. e.g. connection changes, manually triggered flushes, etc. (this used to be `notice`)
+* debug: state changes that we only need to know when debugging, client conns opening and closing [1]
+* info:  harmless, but interesting not-so-common events. e.g. outbound connection changes, manually triggered flushes, etc. (this used to be `notice`)
 * warn:  minor issues (network timeouts etc)
 * error: recoverable errors
 * fatal: errors and problems that result in shutdown

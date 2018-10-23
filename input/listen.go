@@ -146,7 +146,7 @@ func (l *Listener) acceptTcpConn(c net.Conn) {
 	l.handler.Handle(NewTimeoutConn(c, l.readTimeout))
 	rAddr := c.RemoteAddr()
 	if rAddr != nil {
-		log.Infof("handler returned. %v closing conn with %s", l.addr, rAddr)
+		log.Debugf("handler returned. %v closing conn with %s", l.addr, rAddr)
 	}
 	c.Close()
 }
