@@ -140,14 +140,6 @@
   revision = "57eb5e1fc594ad4b0b1dbea7b286d299e0cb43c2"
 
 [[projects]]
-  branch = "master"
-  digest = "1:ffc62713230cd494711f6a0f7ecb04aad4375893677307e87bb219e7677ffb00"
-  name = "github.com/go-graphite/go-whisper"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "73c5cbd69142cbef9bd8ef9c6d485a8d34b4554c"
-
-[[projects]]
   digest = "1:d32823ccbd16481c42356a1ae7f2284761da19cae3131b554a0b7c086a650292"
   name = "github.com/go-ini/ini"
   packages = ["."]
@@ -251,27 +243,6 @@
   revision = "bb797dc4fb8320488f47bf11de07a733d7233e1f"
 
 [[projects]]
-  digest = "1:6648a6aa5d694e5eba37c2ee2a6ef275dc230d00a5b94e9c0f747b9788ebb11d"
-  name = "github.com/lomik/go-carbon"
-  packages = [
-    "helper",
-    "persister",
-    "points",
-    "tags",
-  ]
-  pruneopts = "NUT"
-  revision = "c802cb57a59000797a8b7110a0b7c5ade40983d8"
-  version = "v0.13.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:b13a49b5deae0fad34bf7fd8fee6b06be8288fe67b0d28ae5a3b70de63e5749d"
-  name = "github.com/lomik/zapwriter"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "2ec2b9a616807f3fe930c075c48fcf32d1f2d250"
-
-[[projects]]
   branch = "master"
   digest = "1:fbf2e13dbd89ee228a027b6f49cc139731496b7e910d458d0ff95f95fe3c6250"
   name = "github.com/metrics20/go-metrics20"
@@ -331,27 +302,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:59483b8e8183f10ab21a85ba1f4cbb4a2335d48891801f79ed7b9499f44d383c"
-  name = "github.com/syndtr/goleveldb"
-  packages = [
-    "leveldb",
-    "leveldb/cache",
-    "leveldb/comparer",
-    "leveldb/errors",
-    "leveldb/filter",
-    "leveldb/iterator",
-    "leveldb/journal",
-    "leveldb/memdb",
-    "leveldb/opt",
-    "leveldb/storage",
-    "leveldb/table",
-    "leveldb/util",
-  ]
-  pruneopts = "NUT"
-  revision = "6b91fda63f2e36186f1c9d0e48578defb69c5d43"
-
-[[projects]]
-  branch = "master"
   digest = "1:3758e047e70d92c2a550369ac401230d1a9f445396cb98ab4bccee1d2a768838"
   name = "github.com/taylorchu/toki"
   packages = ["."]
@@ -365,37 +315,6 @@
   pruneopts = "NUT"
   revision = "0cea1fa86e8403be1284013014f87ab942056de8"
   version = "v1.0-beta"
-
-[[projects]]
-  digest = "1:22f696cee54865fb8e9ff91df7b633f6b8f22037a8015253c6b6a71ca82219c7"
-  name = "go.uber.org/atomic"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
-  version = "v1.3.2"
-
-[[projects]]
-  digest = "1:58ca93bdf81bac106ded02226b5395a0595d5346cdc4caa8d9c1f3a5f8f9976e"
-  name = "go.uber.org/multierr"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
-  version = "v1.1.0"
-
-[[projects]]
-  digest = "1:85674ac609b704fd4e9f463553b6ffc3a3527a993ae0ba550eb56beaabdfe094"
-  name = "go.uber.org/zap"
-  packages = [
-    ".",
-    "buffer",
-    "internal/bufferpool",
-    "internal/color",
-    "internal/exit",
-    "zapcore",
-  ]
-  pruneopts = "NUT"
-  revision = "ff33455a0e382e8a81d14dd7c922020b6b5e7982"
-  version = "v1.9.1"
 
 [[projects]]
   branch = "master"
@@ -588,7 +507,6 @@
     "github.com/gorilla/mux",
     "github.com/jpillora/backoff",
     "github.com/kisielk/og-rek",
-    "github.com/lomik/go-carbon/persister",
     "github.com/metrics20/go-metrics20/carbon20",
     "github.com/raintank/metrictank/cluster/partitioner",
     "github.com/sirupsen/logrus",
