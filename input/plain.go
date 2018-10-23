@@ -15,6 +15,10 @@ func NewPlain(dispatcher Dispatcher) *Plain {
 	return &Plain{dispatcher}
 }
 
+func (p *Plain) Kind() string {
+	return "plain"
+}
+
 func (p *Plain) Handle(c io.Reader) error {
 	scanner := bufio.NewScanner(c)
 	for scanner.Scan() {

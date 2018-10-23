@@ -13,6 +13,7 @@ type Plugin interface {
 // Dispatcher.IncNumInvalid upon protocol errors
 // Dispatcher.Dispatch to process data that's protocol-valid
 type Handler interface {
+	Kind() string
 	Handle(io.Reader) error
 }
 

@@ -21,6 +21,10 @@ func NewPickle(dispatcher Dispatcher) *Pickle {
 	return &Pickle{dispatcher}
 }
 
+func (p *Pickle) Kind() string {
+	return "pickle"
+}
+
 func (p *Pickle) Handle(c io.Reader) error {
 	r := bufio.NewReaderSize(c, 4096)
 	// 500MB max payload size per pickle body

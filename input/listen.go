@@ -14,7 +14,7 @@ import (
 // and relies on the Handler to take care of reading data
 type Listener struct {
 	wg          sync.WaitGroup
-	name        string
+	kind        string // the kind of associated handler
 	addr        string
 	readTimeout time.Duration
 	tcpList     *net.TCPListener
@@ -23,21 +23,10 @@ type Listener struct {
 	shutdown    chan struct{}
 }
 
-// NewPlainListener creates a Plain handler and a listener using that handler
-func NewPlainListener(addr string, readTimeout time.Duration, dispatcher Dispatcher) *Listener {
-	return NewListener("plain", addr, readTimeout, NewPlain(dispatcher))
-}
-
-// NewPickleListener creates a Pickle handler and a listener using that handler
-func NewPickleListener(addr string, readTimeout time.Duration, dispatcher Dispatcher) *Listener {
-	return NewListener("pickle", addr, readTimeout, NewPickle(dispatcher))
-}
-
-// NewListener creates a new listener. Note: "name" should correspond to the type of handler.
-// You can use one of the convenience constructors above to assure this.
-func NewListener(name, addr string, readTimeout time.Duration, handler Handler) *Listener {
+// NewListener creates a new listener.
+func NewListener(addr string, readTimeout time.Duration, handler Handler) *Listener {
 	return &Listener{
-		name:        name,
+		kind:        handler.Kind(),
 		addr:        addr,
 		readTimeout: readTimeout,
 		handler:     handler,
@@ -160,7 +149,7 @@ func (l *Listener) acceptTcpConn(c net.Conn) {
 // HandleConn does the necessary logging and invocation of the handler
 // It is exported such that 3rd party embedders can override it.
 func (l *Listener) HandleConn(c net.Conn) {
-	log.Debugf("%s handler: new tcp connection from %v", l.name, c.RemoteAddr())
+	log.Debugf("%s handler: new tcp connection from %v", l.kind, c.RemoteAddr())
 
 	err := l.handler.Handle(NewTimeoutConn(c, l.readTimeout))
 
@@ -171,10 +160,10 @@ func (l *Listener) HandleConn(c net.Conn) {
 		remoteInfo = " for " + rAddr.String()
 	}
 	if err != nil {
-		log.Warnf("%s handler%s returned: %s. closing conn", l.name, remoteInfo, err)
+		log.Warnf("%s handler%s returned: %s. closing conn", l.kind, remoteInfo, err)
 		return
 	}
-	log.Debugf("%s handler%s returned. closing conn", l.name, remoteInfo)
+	log.Debugf("%s handler%s returned. closing conn", l.kind, remoteInfo)
 }
 
 func (l *Listener) listenUdp() error {
@@ -211,19 +200,19 @@ func (l *Listener) consumeUdp() {
 // HandleData does the necessary logging and invocation of the handler
 // It is exported such that 3rd party embedders can override it.
 func (l *Listener) HandleData(data []byte, src net.Addr) {
-	log.Debugf("listen.go: udp packet from %v (length: %d)", l.name, src, len(data))
+	log.Debugf("listen.go: udp packet from %v (length: %d)", l.kind, src, len(data))
 
 	err := l.handler.Handle(bytes.NewReader(data))
 
 	if err != nil {
-		log.Warnf("%s handler: %s", l.name, err)
+		log.Warnf("%s handler: %s", l.kind, err)
 		return
 	}
-	log.Debugf("%s handler finished", l.name)
+	log.Debugf("%s handler finished", l.kind)
 }
 
 func (l *Listener) Name() string {
-	return l.name
+	return l.kind
 }
 
 func (l *Listener) Stop() bool {
