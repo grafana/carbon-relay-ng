@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
-	log "github.com/sirupsen/logrus"
 )
 
 var keepsafe_initial_cap = 100000 // not very important

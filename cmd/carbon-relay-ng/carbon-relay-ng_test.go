@@ -14,8 +14,8 @@ import (
 
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
-	log "github.com/sirupsen/logrus"
 )
 
 var packets0A *dummyPackets

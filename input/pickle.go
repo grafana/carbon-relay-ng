@@ -9,8 +9,8 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	ogorek "github.com/kisielk/og-rek"
-	log "github.com/sirupsen/logrus"
 )
 
 type Pickle struct {

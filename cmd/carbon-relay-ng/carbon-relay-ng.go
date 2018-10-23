@@ -21,12 +21,13 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/input"
 	"github.com/graphite-ng/carbon-relay-ng/input/manager"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/graphite-ng/carbon-relay-ng/logger"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/ui/telnet"
 	"github.com/graphite-ng/carbon-relay-ng/ui/web"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"strconv"
 	"strings"
@@ -78,14 +79,18 @@ func main() {
 	}
 	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
 
+	log.SetLogger(&logger.LogrusLogger{
+		logrus.StandardLogger(),
+	})
+
 	formatter := &logger.TextFormatter{}
 	formatter.TimestampFormat = "2006-01-02 15:04:05.000"
-	log.SetFormatter(formatter)
-	lvl, err := log.ParseLevel(config.Log_level)
+	logrus.SetFormatter(formatter)
+	lvl, err := logrus.ParseLevel(config.Log_level)
 	if err != nil {
 		log.Fatalf("failed to parse log-level %q: %s", config.Log_level, err.Error())
 	}
-	log.SetLevel(lvl)
+	logrus.SetLevel(lvl)
 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)

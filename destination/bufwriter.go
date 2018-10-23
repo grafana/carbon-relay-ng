@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
-	log "github.com/sirupsen/logrus"
 )
 
 // Writer implements buffering for an io.Writer object.
@@ -58,7 +58,7 @@ func (b *Writer) flush() error {
 	if b.n == 0 {
 		return nil
 	}
-	if log.IsLevelEnabled(log.TraceLevel) {
+	if log.IsTraceEnabled() {
 		bufs := bytes.Split(b.buf[0:b.n], []byte{'\n'})
 		for _, buf := range bufs {
 			log.Tracef("bufWriter %s flush-writing to tcp %s\n", b.key, buf)

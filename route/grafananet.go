@@ -15,12 +15,12 @@ import (
 	"github.com/Dieterbe/go-metrics"
 	"github.com/golang/snappy"
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/persister"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"github.com/graphite-ng/carbon-relay-ng/util"
 	"github.com/jpillora/backoff"
-	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/raintank/schema.v1"
 	"gopkg.in/raintank/schema.v1/msg"

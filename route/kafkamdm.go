@@ -8,10 +8,10 @@ import (
 
 	"github.com/Dieterbe/go-metrics"
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"github.com/graphite-ng/carbon-relay-ng/util"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/Shopify/sarama"
 	"github.com/graphite-ng/carbon-relay-ng/persister"

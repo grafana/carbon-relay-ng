@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/telnet"
-	log "github.com/sirupsen/logrus"
 )
 
 var table *tbl.Table

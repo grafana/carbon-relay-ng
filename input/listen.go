@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/jpillora/backoff"
-	log "github.com/sirupsen/logrus"
 )
 
 // Listener takes care of TCP/UDP networking

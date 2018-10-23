@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"io"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 )
 
 type Plain struct {

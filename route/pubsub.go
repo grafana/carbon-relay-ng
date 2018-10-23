@@ -13,9 +13,9 @@ import (
 	"cloud.google.com/go/pubsub"
 	"github.com/Dieterbe/go-metrics"
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
-	log "github.com/sirupsen/logrus"
 )
 
 // gzipPool provides a sync.Pool of initialized gzip.Writer's to avoid

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Dieterbe/topic"
-	log "github.com/sirupsen/logrus"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 )
 
 // TODO see if we can get simplify this type. do we need to track all bufs? can we do it in a more performant way?

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/input"
-	log "github.com/sirupsen/logrus"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 )
 
 // Stop shuts down all given input plugins and returns whether it was successfull.

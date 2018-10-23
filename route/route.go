@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
-	log "github.com/sirupsen/logrus"
 )
 
 type Config interface {

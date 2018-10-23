@@ -14,10 +14,10 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/destination"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
-	log "github.com/sirupsen/logrus"
 )
 
 var table *tbl.Table

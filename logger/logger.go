@@ -13,6 +13,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type LogrusLogger struct {
+	*logrus.Logger
+}
+
+func (l *LogrusLogger) IsTraceEnabled() bool {
+	return l.IsLevelEnabled(logrus.TraceLevel)
+}
+
 const defaultTimestampFormat = time.RFC3339
 
 // TextFormatter maintains a list of options to apply while formatting your log output.

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/kisielk/og-rek"
-	log "github.com/sirupsen/logrus"
 )
 
 func Pickle(dp *Datapoint) []byte {

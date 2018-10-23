@@ -14,13 +14,13 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
+	"github.com/graphite-ng/carbon-relay-ng/log"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"github.com/graphite-ng/carbon-relay-ng/validate"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
-	log "github.com/sirupsen/logrus"
 )
 
 type TableConfig struct {
