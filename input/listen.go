@@ -19,8 +19,10 @@ type Listener struct {
 	readTimeout time.Duration
 	tcpList     *net.TCPListener
 	udpConn     *net.UDPConn
-	handler     Handler
+	Handler     Handler
 	shutdown    chan struct{}
+	HandleConn  func(l *Listener, c net.Conn)
+	HandleData  func(l *Listener, data []byte, src net.Addr)
 }
 
 // NewListener creates a new listener.
@@ -29,8 +31,10 @@ func NewListener(addr string, readTimeout time.Duration, handler Handler) *Liste
 		kind:        handler.Kind(),
 		addr:        addr,
 		readTimeout: readTimeout,
-		handler:     handler,
+		Handler:     handler,
 		shutdown:    make(chan struct{}),
+		HandleConn:  handleConn,
+		HandleData:  handleData,
 	}
 }
 
@@ -142,16 +146,15 @@ func (l *Listener) acceptTcpConn(c net.Conn) {
 		}
 	}()
 
-	l.HandleConn(c)
+	l.HandleConn(l, NewTimeoutConn(c, l.readTimeout))
 	c.Close()
 }
 
-// HandleConn does the necessary logging and invocation of the handler
-// It is exported such that 3rd party embedders can override it.
-func (l *Listener) HandleConn(c net.Conn) {
+// handleConn does the necessary logging and invocation of the handler
+func handleConn(l *Listener, c net.Conn) {
 	log.Debugf("%s handler: new tcp connection from %v", l.kind, c.RemoteAddr())
 
-	err := l.handler.Handle(NewTimeoutConn(c, l.readTimeout))
+	err := l.Handler.Handle(c)
 
 	var remoteInfo string
 
@@ -193,16 +196,15 @@ func (l *Listener) consumeUdp() {
 				return
 			}
 		}
-		l.HandleData(buffer[:b], src)
+		l.HandleData(l, buffer[:b], src)
 	}
 }
 
-// HandleData does the necessary logging and invocation of the handler
-// It is exported such that 3rd party embedders can override it.
-func (l *Listener) HandleData(data []byte, src net.Addr) {
-	log.Debugf("listen.go: udp packet from %v (length: %d)", l.kind, src, len(data))
+// handleData does the necessary logging and invocation of the handler
+func handleData(l *Listener, data []byte, src net.Addr) {
+	log.Debugf("%s handler: udp packet from %v (length: %d)", l.kind, src, len(data))
 
-	err := l.handler.Handle(bytes.NewReader(data))
+	err := l.Handler.Handle(bytes.NewReader(data))
 
 	if err != nil {
 		log.Warnf("%s handler: %s", l.kind, err)
