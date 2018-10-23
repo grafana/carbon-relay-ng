@@ -8,11 +8,13 @@ type Plugin interface {
 	Stop() bool
 }
 
+// Handler is responsible for reading input.
+// It should call:
+// Dispatcher.IncNumInvalid upon protocol errors
+// Dispatcher.Dispatch to process data that's protocol-valid
 type Handler interface {
-	// Handle reads input of the network/socket, it calls:
-	// Dispatcher.IncNumInvalid upon protocol errors
-	// Dispatcher.Dispatch to process data that's protocol-valid
-	Handle(io.Reader)
+	Kind() string
+	Handle(io.Reader) error
 }
 
 type Dispatcher interface {

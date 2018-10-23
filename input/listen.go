@@ -14,22 +14,27 @@ import (
 // and relies on the Handler to take care of reading data
 type Listener struct {
 	wg          sync.WaitGroup
-	name        string
+	kind        string // the kind of associated handler
 	addr        string
 	readTimeout time.Duration
 	tcpList     *net.TCPListener
 	udpConn     *net.UDPConn
-	handler     Handler
+	Handler     Handler
 	shutdown    chan struct{}
+	HandleConn  func(l *Listener, c net.Conn)
+	HandleData  func(l *Listener, data []byte, src net.Addr)
 }
 
-func NewListener(name, addr string, readTimeout time.Duration, handler Handler) *Listener {
+// NewListener creates a new listener.
+func NewListener(addr string, readTimeout time.Duration, handler Handler) *Listener {
 	return &Listener{
-		name:        name,
+		kind:        handler.Kind(),
 		addr:        addr,
 		readTimeout: readTimeout,
-		handler:     handler,
+		Handler:     handler,
 		shutdown:    make(chan struct{}),
+		HandleConn:  handleConn,
+		HandleData:  handleData,
 	}
 }
 
@@ -123,8 +128,6 @@ func (l *Listener) acceptTcp() {
 			}
 		}
 
-		// handle the connection
-		log.Debugf("listen.go: tcp connection from %v", c.RemoteAddr())
 		l.wg.Add(1)
 		go l.acceptTcpConn(c)
 	}
@@ -143,12 +146,27 @@ func (l *Listener) acceptTcpConn(c net.Conn) {
 		}
 	}()
 
-	l.handler.Handle(NewTimeoutConn(c, l.readTimeout))
+	l.HandleConn(l, NewTimeoutConn(c, l.readTimeout))
+	c.Close()
+}
+
+// handleConn does the necessary logging and invocation of the handler
+func handleConn(l *Listener, c net.Conn) {
+	log.Debugf("%s handler: new tcp connection from %v", l.kind, c.RemoteAddr())
+
+	err := l.Handler.Handle(c)
+
+	var remoteInfo string
+
 	rAddr := c.RemoteAddr()
 	if rAddr != nil {
-		log.Debugf("handler returned. %v closing conn with %s", l.addr, rAddr)
+		remoteInfo = " for " + rAddr.String()
 	}
-	c.Close()
+	if err != nil {
+		log.Warnf("%s handler%s returned: %s. closing conn", l.kind, remoteInfo, err)
+		return
+	}
+	log.Debugf("%s handler%s returned. closing conn", l.kind, remoteInfo)
 }
 
 func (l *Listener) listenUdp() error {
@@ -178,15 +196,25 @@ func (l *Listener) consumeUdp() {
 				return
 			}
 		}
-
-		// handle the packet
-		log.Debugf("listen.go: udp packet from %v (length: %d)", src, b)
-		l.handler.Handle(bytes.NewReader(buffer[:b]))
+		l.HandleData(l, buffer[:b], src)
 	}
 }
 
+// handleData does the necessary logging and invocation of the handler
+func handleData(l *Listener, data []byte, src net.Addr) {
+	log.Debugf("%s handler: udp packet from %v (length: %d)", l.kind, src, len(data))
+
+	err := l.Handler.Handle(bytes.NewReader(data))
+
+	if err != nil {
+		log.Warnf("%s handler: %s", l.kind, err)
+		return
+	}
+	log.Debugf("%s handler finished", l.kind)
+}
+
 func (l *Listener) Name() string {
-	return l.name
+	return l.kind
 }
 
 func (l *Listener) Stop() bool {

@@ -3,7 +3,6 @@ package input
 import (
 	"bufio"
 	"io"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -12,11 +11,15 @@ type Plain struct {
 	dispatcher Dispatcher
 }
 
-func NewPlain(addr string, readTimeout time.Duration, dispatcher Dispatcher) *Listener {
-	return NewListener("plain", addr, readTimeout, &Plain{dispatcher})
+func NewPlain(dispatcher Dispatcher) *Plain {
+	return &Plain{dispatcher}
 }
 
-func (p *Plain) Handle(c io.Reader) {
+func (p *Plain) Kind() string {
+	return "plain"
+}
+
+func (p *Plain) Handle(c io.Reader) error {
 	scanner := bufio.NewScanner(c)
 	for scanner.Scan() {
 		// Note that everything in this loop should proceed as fast as it can
@@ -29,7 +32,5 @@ func (p *Plain) Handle(c io.Reader) {
 
 		p.dispatcher.Dispatch(buf)
 	}
-	if err := scanner.Err(); err != nil {
-		log.Error(err.Error())
-	}
+	return scanner.Err()
 }
