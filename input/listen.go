@@ -123,8 +123,6 @@ func (l *Listener) acceptTcp() {
 			}
 		}
 
-		// handle the connection
-		log.Debugf("listen.go: tcp connection from %v", c.RemoteAddr())
 		l.wg.Add(1)
 		go l.acceptTcpConn(c)
 	}
@@ -143,11 +141,7 @@ func (l *Listener) acceptTcpConn(c net.Conn) {
 		}
 	}()
 
-	l.handler.Handle(NewTimeoutConn(c, l.readTimeout))
-	rAddr := c.RemoteAddr()
-	if rAddr != nil {
-		log.Debugf("handler returned. %v closing conn with %s", l.addr, rAddr)
-	}
+	l.handler.HandleConn(NewTimeoutConn(c, l.readTimeout))
 	c.Close()
 }
 
@@ -181,7 +175,7 @@ func (l *Listener) consumeUdp() {
 
 		// handle the packet
 		log.Debugf("listen.go: udp packet from %v (length: %d)", src, b)
-		l.handler.Handle(bytes.NewReader(buffer[:b]))
+		l.handler.HandleData(bytes.NewReader(buffer[:b]))
 	}
 }
 

@@ -38,6 +38,14 @@ func (m *mockHandler) Handle(r io.Reader) {
 	}
 }
 
+func (m *mockHandler) HandleData(r io.Reader) {
+	m.Handle(r)
+}
+
+func (m *mockHandler) HandleConn(c net.Conn) {
+	m.Handle(c)
+}
+
 func (m *mockHandler) String() string {
 	m.Lock()
 	defer m.Unlock()

@@ -1,6 +1,9 @@
 package input
 
-import "io"
+import (
+	"io"
+	"net"
+)
 
 type Plugin interface {
 	Name() string
@@ -8,11 +11,13 @@ type Plugin interface {
 	Stop() bool
 }
 
+// Handler is responsible for reading input.
+// It should call:
+// Dispatcher.IncNumInvalid upon protocol errors
+// Dispatcher.Dispatch to process data that's protocol-valid
 type Handler interface {
-	// Handle reads input of the network/socket, it calls:
-	// Dispatcher.IncNumInvalid upon protocol errors
-	// Dispatcher.Dispatch to process data that's protocol-valid
-	Handle(io.Reader)
+	HandleData(io.Reader)
+	HandleConn(net.Conn)
 }
 
 type Dispatcher interface {
