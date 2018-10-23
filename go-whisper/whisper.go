@@ -1,6 +1,5 @@
-/*
-	Package whisper implements Graphite's Whisper database format
-*/
+// package whisper is a copy of some stuff we need from https://github.com/go-graphite/go-whisper
+// in particular, it removes flock stuff which doesn't build on windows
 package whisper
 
 import (
