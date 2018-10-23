@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
-	"time"
 
 	ogorek "github.com/kisielk/og-rek"
 	log "github.com/sirupsen/logrus"
@@ -17,16 +17,20 @@ type Pickle struct {
 	dispatcher Dispatcher
 }
 
-func NewPickle(addr string, readTimeout time.Duration, dispatcher Dispatcher) *Listener {
-	return NewListener("pickle", addr, readTimeout, &Pickle{dispatcher})
+func NewPickle(dispatcher Dispatcher) *Pickle {
+	return &Pickle{dispatcher}
 }
 
-func (p *Pickle) Handle(c io.Reader) {
+func (p *Pickle) Kind() string {
+	return "pickle"
+}
+
+func (p *Pickle) Handle(c io.Reader) error {
 	r := bufio.NewReaderSize(c, 4096)
 	// 500MB max payload size per pickle body
 	maxLength := 500 * 1024 * 1024
 	log.Debug("pickle.go: entering ReadLoop...")
-ReadLoop:
+	// ReadLoop
 	for {
 
 		// Note that everything in this loop should proceed as fast as it can
@@ -38,31 +42,27 @@ ReadLoop:
 		var length uint32
 		err := binary.Read(r, binary.BigEndian, &length)
 		if err != nil {
-			if io.EOF != err {
-				log.Errorf("pickle.go: couldn't read payload length: %s", err.Error())
-			} else {
-				log.Debug("pickle.go: EOF while detecting payload length")
+			if err != io.EOF {
+				return fmt.Errorf("couldn't read payload length: %s", err.Error())
 			}
-			break
+			log.Debug("pickle.go: EOF while detecting payload length")
+			return nil
 		}
 		log.Debugf("pickle.go: done detecting payload length with binary.Read, length is %d", length)
 
 		lengthTotal := int(length)
 		if lengthTotal > maxLength {
-			log.Errorf("pickle.go: payload length of %d is more than the supported maximum %d", lengthTotal, maxLength)
-			break
+			return fmt.Errorf("payload length of %d is more than the supported maximum %d", lengthTotal, maxLength)
 		}
 
 		prefix, err := r.Peek(3)
 		if err != nil {
-			log.Errorf("pickle.go: couldn't read payload prefix: %s", err.Error())
-			break
+			return fmt.Errorf("couldn't read payload prefix: %s", err.Error())
 		}
 
 		// payload must start with opProto, <version>, opEmptyList
 		if prefix[0] != '\x80' || prefix[2] != ']' {
-			log.Error("pickle.go: invalid payload prefix")
-			break
+			return errors.New("invalid payload prefix")
 		}
 
 		log.Debug("pickle.go: reading payload...")
@@ -80,8 +80,7 @@ ReadLoop:
 			}
 			tmpLengthRead, err := r.Read(chunk[:toRead])
 			if err != nil {
-				log.Errorf("pickle.go: couldn't read payload: %s", err.Error())
-				break ReadLoop
+				return fmt.Errorf("couldn't read payload: %s", err.Error())
 			}
 			lengthRead += tmpLengthRead
 			payload.Write(chunk[:tmpLengthRead])
@@ -96,19 +95,18 @@ ReadLoop:
 		log.Debug("pickle.go: decoding pickled data...")
 		rawDecoded, err := decoder.Decode()
 		if err != nil {
-			if io.ErrUnexpectedEOF != err {
-				log.Errorf("pickle.go: error reading pickled data: %s", err.Error())
+			if err != io.ErrUnexpectedEOF {
+				return fmt.Errorf("error reading pickled data: %s", err.Error())
 			}
 			log.Debug("pickle.go: detected ErrUnexpectedEOF while decoding pickled data, nothing more to decode, breaking")
-			break
+			return nil
 		}
 		log.Debug("pickle.go: done decoding pickled data")
 
 		log.Debug("pickle.go: checking the type of pickled data...")
 		decoded, ok := rawDecoded.([]interface{})
 		if !ok {
-			log.Errorf("pickle.go: Unrecognized type %T for pickled data", rawDecoded)
-			break
+			return fmt.Errorf("Unrecognized type %T for pickled data", rawDecoded)
 		}
 		log.Debug("pickle.go: done checking the type of pickled data")
 
