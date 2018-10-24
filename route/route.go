@@ -154,7 +154,7 @@ func (route *ConsistentHashing) Dispatch(buf []byte) {
 		log.Tracef("route %s sending to dest %s: %s", route.key, dest.Key, name)
 		dest.In <- buf
 	} else {
-		log.Errorf("could not parse %s\n", buf)
+		log.Errorf("could not parse %s", buf)
 	}
 }
 

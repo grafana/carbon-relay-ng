@@ -219,18 +219,18 @@ func (dest *Destination) Shutdown() error {
 }
 
 func (dest *Destination) updateConn(addr string) {
-	log.Debugf("dest %v (re)connecting to %v\n", dest.Key, addr)
+	log.Debugf("dest %v (re)connecting to %v", dest.Key, addr)
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
 	addr, instance := addrInstanceSplit(addr)
 	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle, dest.connBufSize, dest.ioBufSize)
 	if err != nil {
-		log.Debugf("dest %v: %v\n", dest.Key, err.Error())
+		log.Debugf("dest %v: %v", dest.Key, err.Error())
 		return
 	}
-	log.Debugf("dest %v connected to %v\n", dest.Key, addr)
+	log.Debugf("dest %v connected to %v", dest.Key, addr)
 	if addr != dest.Key {
-		log.Infof("dest %v update address to %v)\n", dest.Key, addr)
+		log.Infof("dest %v update address to %v)", dest.Key, addr)
 		dest.Addr = addr
 		dest.Instance = instance
 		dest.Key = util.Key(dest.RouteName, addr)
@@ -268,7 +268,7 @@ func (dest *Destination) relay() {
 		case conn.In <- buf:
 			conn.numBuffered.Inc(1)
 		default:
-			log.Tracef("dest %s %s nonBlockingSend -> dropping due to slow conn\n", dest.Key, buf)
+			log.Tracef("dest %s %s nonBlockingSend -> dropping due to slow conn", dest.Key, buf)
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
@@ -282,9 +282,9 @@ func (dest *Destination) relay() {
 	nonBlockingSpool := func(buf []byte) {
 		select {
 		case dest.spool.InRT <- buf:
-			log.Tracef("dest %s %s nonBlockingSpool -> added to spool\n", dest.Key, buf)
+			log.Tracef("dest %s %s nonBlockingSpool -> added to spool", dest.Key, buf)
 		default:
-			log.Tracef("dest %s %s nonBlockingSpool -> dropping due to slow spool\n", dest.Key, buf)
+			log.Tracef("dest %s %s nonBlockingSpool -> dropping due to slow spool", dest.Key, buf)
 			dest.numDropSlowSpool.Inc(1)
 		}
 	}
@@ -322,7 +322,7 @@ func (dest *Destination) relay() {
 		// note: new conn can be nil and that's ok (it means we had to [re]connect but couldn't)
 		case conn = <-dest.connUpdates:
 			dest.Online = conn != nil
-			log.Infof("dest %s updating conn. online: %v\n", dest.Key, dest.Online)
+			log.Infof("dest %s updating conn. online: %v", dest.Key, dest.Online)
 			if dest.Online {
 				// new conn? start with a clean slate!
 				dest.SlowLastLoop = false
@@ -344,7 +344,7 @@ func (dest *Destination) relay() {
 				dest.flushErr <- nil
 			}
 		case <-dest.shutdown:
-			log.Infof("dest %v shutting down. flushing and closing conn\n", dest.Key)
+			log.Infof("dest %v shutting down. flushing and closing conn", dest.Key)
 			if conn != nil {
 				conn.Flush()
 				conn.Close()
@@ -355,17 +355,17 @@ func (dest *Destination) relay() {
 			return
 		case buf := <-toUnspool:
 			// we know that conn != nil here because toUnspool is set above
-			log.Tracef("dest %v %s received from spool -> nonBlockingSend\n", dest.Key, buf)
+			log.Tracef("dest %v %s received from spool -> nonBlockingSend", dest.Key, buf)
 			nonBlockingSend(buf)
 		case buf := <-dest.In:
 			if conn != nil {
-				log.Tracef("dest %v %s received from In -> nonBlockingSend\n", dest.Key, buf)
+				log.Tracef("dest %v %s received from In -> nonBlockingSend", dest.Key, buf)
 				nonBlockingSend(buf)
 			} else if dest.Spool {
-				log.Tracef("dest %v %s received from In -> nonBlockingSpool\n", dest.Key, buf)
+				log.Tracef("dest %v %s received from In -> nonBlockingSpool", dest.Key, buf)
 				nonBlockingSpool(buf)
 			} else {
-				log.Tracef("dest %v %s received from In -> no conn no spool -> drop\n", dest.Key, buf)
+				log.Tracef("dest %v %s received from In -> no conn no spool -> drop", dest.Key, buf)
 				dest.numDropNoConnNoSpool.Inc(1)
 			}
 		}

@@ -66,7 +66,7 @@ func main() {
 	if 1 == flag.NArg() {
 		val := flag.Arg(0)
 		if val == "version" {
-			fmt.Printf("carbon-relay-ng %s (built with %s)\n", Version, runtime.Version())
+			fmt.Printf("carbon-relay-ng %s (built with %s)", Version, runtime.Version())
 			return
 		}
 		config_file = val
@@ -74,7 +74,7 @@ func main() {
 
 	meta, err := toml.DecodeFile(config_file, &config)
 	if err != nil {
-		log.Fatalf("Invalid config file %q: %s\n", config_file, err.Error())
+		log.Fatalf("Invalid config file %q: %s", config_file, err.Error())
 	}
 	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
 
@@ -102,7 +102,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Infof("===== carbon-relay-ng instance '%s' starting. (version %s) =====\n", config.Instance, Version)
+	log.Infof("===== carbon-relay-ng instance '%s' starting. (version %s) =====", config.Instance, Version)
 
 	if os.Getenv("GOMAXPROCS") == "" && config.Max_procs >= 1 {
 		log.Debugf("setting GOMAXPROCS to %d", config.Max_procs)

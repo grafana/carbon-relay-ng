@@ -42,12 +42,12 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// check for errors
 	if err != nil {
-		//log.Printf("ERROR: %v\n", err.Error)
+		//log.Printf("ERROR: %v", err.Error)
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Message+": "+err.Error.Error()), err.Code)
 		return
 	}
 	if response == nil {
-		//log.Printf("ERROR: response from method is nil\n")
+		//log.Printf("ERROR: response from method is nil")
 		http.Error(w, "Internal server error. Check the logs.", http.StatusInternalServerError)
 		return
 	}
