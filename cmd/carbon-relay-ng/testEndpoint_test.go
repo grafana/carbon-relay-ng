@@ -51,7 +51,7 @@ func (tE *TestEndpoint) Start() {
 	if err != nil {
 		panic(err)
 	}
-	log.Infof("tE %s is now listening\n", tE.addr)
+	log.Infof("tE %s is now listening", tE.addr)
 	tE.ln = ln
 	go func() {
 		numAccepts := 0
@@ -61,18 +61,18 @@ func (tE *TestEndpoint) Start() {
 				return
 			default:
 			}
-			log.Debugf("tE %s waiting for accept\n", tE.addr)
+			log.Debugf("tE %s waiting for accept", tE.addr)
 			conn, err := ln.Accept()
 			// when closing, this can happen: accept tcp [::]:2005: use of closed network connection
 			if err != nil {
-				log.Debugf("tE %s accept error: '%s' -> stopping tE\n", tE.addr, err)
+				log.Debugf("tE %s accept error: '%s' -> stopping tE", tE.addr, err)
 				return
 			}
 			numAccepts += 1
 			tE.accepts.Broadcast <- numAccepts
-			log.Infof("tE %s accepted new conn\n", tE.addr)
+			log.Infof("tE %s accepted new conn", tE.addr)
 			go tE.handle(conn)
-			defer func() { log.Debugf("tE %s closing conn.\n", tE.addr); conn.Close() }()
+			defer func() { log.Debugf("tE %s closing conn.", tE.addr); conn.Close() }()
 		}
 	}()
 	go func() {
@@ -294,7 +294,7 @@ func (tE *TestEndpoint) SeenThisOrFatal(ref chan msg) {
 
 func (tE *TestEndpoint) handle(c net.Conn) {
 	defer func() {
-		log.Debugf("tE %s closing conn %s\n", tE.addr, c)
+		log.Debugf("tE %s closing conn %s", tE.addr, c)
 		c.Close()
 	}()
 	r := bufio.NewReaderSize(c, 4096)
@@ -306,10 +306,10 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 		}
 		buf, _, err := r.ReadLine()
 		if err != nil {
-			log.Warnf("tE %s read error: %s. closing handler\n", tE.addr, err)
+			log.Warnf("tE %s read error: %s. closing handler", tE.addr, err)
 			return
 		}
-		log.Tracef("tE %s %s read\n", tE.addr, buf)
+		log.Tracef("tE %s %s read", tE.addr, buf)
 		buf_copy := make([]byte, len(buf), len(buf))
 		copy(buf_copy, buf)
 		tE.seen <- buf_copy
@@ -360,7 +360,7 @@ func (tE *TestEndpointCounter) Start() {
 	if err != nil {
 		panic(err)
 	}
-	log.Infof("tE %s is now listening\n", tE.addr)
+	log.Infof("tE %s is now listening", tE.addr)
 	tE.ln = ln
 	go func() {
 		for {
@@ -369,24 +369,24 @@ func (tE *TestEndpointCounter) Start() {
 				return
 			default:
 			}
-			log.Debugf("tE %s waiting for accept\n", tE.addr)
+			log.Debugf("tE %s waiting for accept", tE.addr)
 			conn, err := ln.Accept()
 			// when closing, this can happen: accept tcp [::]:2005: use of closed network connection
 			if err != nil {
-				log.Debugf("tE %s accept error: '%s' -> stopping tE\n", tE.addr, err)
+				log.Debugf("tE %s accept error: '%s' -> stopping tE", tE.addr, err)
 				return
 			}
 			tE.accepts <- struct{}{}
-			log.Infof("tE %s accepted new conn\n", tE.addr)
+			log.Infof("tE %s accepted new conn", tE.addr)
 			go tE.handle(conn)
-			defer func() { log.Debugf("tE %s closing conn.\n", tE.addr); conn.Close() }()
+			defer func() { log.Debugf("tE %s closing conn.", tE.addr); conn.Close() }()
 		}
 	}()
 }
 
 func (tE *TestEndpointCounter) handle(c net.Conn) {
 	defer func() {
-		log.Debugf("tE %s closing conn %s\n", tE.addr, c)
+		log.Debugf("tE %s closing conn %s", tE.addr, c)
 		c.Close()
 	}()
 	r := bufio.NewReaderSize(c, 4096)
@@ -398,7 +398,7 @@ func (tE *TestEndpointCounter) handle(c net.Conn) {
 		}
 		_, _, err := r.ReadLine()
 		if err != nil {
-			log.Warnf("tE %s read error: %s. closing handler\n", tE.addr, err)
+			log.Warnf("tE %s read error: %s. closing handler", tE.addr, err)
 			return
 		}
 		tE.metrics <- struct{}{}
