@@ -66,7 +66,7 @@ func main() {
 	if 1 == flag.NArg() {
 		val := flag.Arg(0)
 		if val == "version" {
-			fmt.Printf("carbon-relay-ng %s (built with %s)", Version, runtime.Version())
+			fmt.Printf("carbon-relay-ng %s (built with %s)\n", Version, runtime.Version())
 			return
 		}
 		config_file = val
