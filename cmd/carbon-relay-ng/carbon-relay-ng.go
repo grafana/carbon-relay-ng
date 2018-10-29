@@ -48,10 +48,11 @@ var (
 )
 
 func usage() {
-	fmt.Fprintln(
-		os.Stderr,
-		"Usage: carbon-relay-ng <path-to-config>",
-	)
+	header := `Usage:
+        carbon-relay-ng version
+        carbon-relay-ng <path-to-config>
+	`
+	fmt.Fprintln(os.Stderr, header)
 	flag.PrintDefaults()
 }
 
