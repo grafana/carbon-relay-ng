@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
@@ -27,10 +28,7 @@ type Conn struct {
 	shutdown    chan bool
 	In          chan []byte
 	dest        *Destination // which dest do we correspond to
-	up          bool
 	pickle      bool
-	checkUp     chan bool
-	updateUp    chan bool
 	flush       chan bool
 	flushErr    chan error
 	periodFlush time.Duration
@@ -49,6 +47,9 @@ type Conn struct {
 	numBuffered       metrics.Gauge
 	bufferSize        metrics.Gauge
 	numDropBadPickle  metrics.Counter
+
+	upMutex sync.RWMutex
+	up      bool
 }
 
 func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle bool, connBufSize, ioBufSize int) (*Conn, error) {
@@ -69,8 +70,6 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle b
 		dest:              dest,
 		up:                true,
 		pickle:            pickle,
-		checkUp:           make(chan bool),
-		updateUp:          make(chan bool),
 		flush:             make(chan bool),
 		flushErr:          make(chan error),
 		periodFlush:       periodFlush,
@@ -91,14 +90,16 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle b
 	connObj.bufferSize.Update(int64(connBufSize))
 
 	go connObj.checkEOF()
-
 	go connObj.HandleData()
-	go connObj.HandleStatus()
 	return connObj, nil
 }
 
 func (c *Conn) isAlive() bool {
-	return <-c.checkUp
+	c.upMutex.RLock()
+	up := c.up
+	c.upMutex.RUnlock()
+	log.Debugf("conn %s .up query responded with %t", c.dest.Key, up)
+	return up
 }
 
 // normally the remote end should never write anything back
@@ -146,18 +147,14 @@ func (c *Conn) getRedo() [][]byte {
 	}
 }
 
-func (c *Conn) HandleStatus() {
-	for {
-		select {
-		// note: when we mark as down here, it is expected that conn doesn't absorb any more data,
-		// so that you can call getRedo() and get the full picture
-		// this is actually not true yet.
-		case c.up = <-c.updateUp:
-			log.Debugf("conn %s .up set to %v", c.dest.Key, c.up)
-		case c.checkUp <- c.up:
-			log.Debugf("conn %s .up query responded with %t", c.dest.Key, c.up)
-		}
-	}
+func (c *Conn) alive(alive bool) {
+	// note: when we mark as down here, it is expected that conn doesn't absorb any more data,
+	// so that you can call getRedo() and get the full picture
+	// this is actually not true yet.
+	c.upMutex.Lock()
+	c.up = alive
+	c.upMutex.Unlock()
+	log.Debugf("conn %s .up set to %v", c.dest.Key, alive)
 }
 
 func (c *Conn) HandleData() {
@@ -185,7 +182,7 @@ func (c *Conn) HandleData() {
 			if err != nil {
 				log.Warnf("conn %s write error: %s", c.dest.Key, err)
 				log.Debugf("conn %s setting up=false", c.dest.Key)
-				c.updateUp <- false // assure In won't receive more data because every loop that writes to In reads this out
+				c.alive(false) // assure In won't receive more data because every loop that writes to In reads this out
 				log.Debugf("conn %s Closing", c.dest.Key)
 				go c.Close() // this can take a while but that's ok. this conn won't be used anymore
 				return
@@ -203,7 +200,7 @@ func (c *Conn) HandleData() {
 			if err != nil {
 				log.Warnf("conn %s HandleData c.buffered auto-flush done but with error: %s, closing", c.dest.Key, err)
 				c.numErrFlush.Inc(1)
-				c.updateUp <- false
+				c.alive(false)
 				go c.Close()
 				return
 			}
@@ -222,7 +219,7 @@ func (c *Conn) HandleData() {
 			if err != nil {
 				log.Warnf("conn %s HandleData c.buffered manual flush done but witth error: %s, closing", c.dest.Key, err)
 				// TODO instrument
-				c.updateUp <- false
+				c.alive(false)
 				go c.Close()
 				return
 			}
@@ -279,7 +276,7 @@ func (c *Conn) Flush() error {
 }
 
 func (c *Conn) Close() error {
-	c.updateUp <- false // redundant in case HandleData() called us, but not if the dest called us
+	c.alive(false) // redundant in case HandleData() called us, but not if the dest called us
 	log.Debugf("conn %s Close() called. sending shutdown", c.dest.Key)
 	c.shutdown <- true
 	log.Debugf("conn %s c.keepSafe.Close()\n", c.dest.Key)
