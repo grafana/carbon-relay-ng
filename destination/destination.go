@@ -178,7 +178,7 @@ func (dest *Destination) Snapshot() *Destination {
 
 func (dest *Destination) Run() {
 	if dest.In != nil {
-		panic(fmt.Sprintf("Run() called on already running dest '%s'", dest.Key))
+		panic(fmt.Sprintf("Run() called on already running dest %q", dest.Key))
 	}
 	dest.In = make(chan []byte)
 	dest.shutdown = make(chan bool)
@@ -229,8 +229,8 @@ func (dest *Destination) updateConn(addr string) {
 		return
 	}
 	log.Debugf("dest %v connected to %v", dest.Key, addr)
-	if addr != dest.Key {
-		log.Infof("dest %v update address to %v)", dest.Key, addr)
+	if addr != dest.Addr {
+		log.Infof("dest %v update address to %v", dest.Key, addr)
 		dest.Addr = addr
 		dest.Instance = instance
 		dest.Key = util.Key(dest.RouteName, addr)
