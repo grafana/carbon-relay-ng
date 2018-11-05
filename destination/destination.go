@@ -56,7 +56,7 @@ type Destination struct {
 	In                  chan []byte        `json:"-"` // incoming metrics
 	shutdown            chan bool          // signals shutdown internally
 	spool               *Spool             // queue used if spooling enabled
-	connUpdates         chan *Conn         // when the dest changes (possibly nil)
+	connUpdates         chan *Conn         // channel for newly created connection. It replaces any previous connection
 	inConnUpdate        chan bool          // to signal when we start a new conn and when we finish
 	setSignalConnOnline chan chan struct{} // the provided chan will be closed when the conn comes online (internal implementation detail)
 	flush               chan bool
@@ -296,6 +296,7 @@ func (dest *Destination) relay() {
 	for {
 		if conn != nil {
 			if !conn.isAlive() {
+				dest.Online = false
 				if dest.Spool {
 					dest.tasks.Add(1)
 					go dest.collectRedo(conn)
@@ -319,17 +320,14 @@ func (dest *Destination) relay() {
 			} else {
 				numConnUpdates -= 1
 			}
-		// note: new conn can be nil and that's ok (it means we had to [re]connect but couldn't)
 		case conn = <-dest.connUpdates:
-			dest.Online = conn != nil
-			log.Infof("dest %s updating conn. online: %v", dest.Key, dest.Online)
-			if dest.Online {
-				// new conn? start with a clean slate!
-				dest.SlowLastLoop = false
-				dest.SlowNow = false
-				if signalConnOnline != nil {
-					close(signalConnOnline)
-				}
+			dest.Online = true
+			log.Infof("dest %s new conn online", dest.Key)
+			// new conn? start with a clean slate!
+			dest.SlowLastLoop = false
+			dest.SlowNow = false
+			if signalConnOnline != nil {
+				close(signalConnOnline)
 			}
 		case <-ticker.C: // periodically try to bring connection (back) up, if we have to, and no other connect is happening
 			if conn == nil && numConnUpdates == 0 {
