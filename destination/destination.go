@@ -223,7 +223,7 @@ func (dest *Destination) updateConn(addr string) {
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
 	addr, instance := addrInstanceSplit(addr)
-	conn, err := NewConn(addr, dest, dest.periodFlush, dest.Pickle, dest.connBufSize, dest.ioBufSize)
+	conn, err := NewConn(dest.Key, addr, dest.periodFlush, dest.Pickle, dest.connBufSize, dest.ioBufSize)
 	if err != nil {
 		log.Debugf("dest %v: %v", dest.Key, err.Error())
 		return

@@ -26,13 +26,12 @@ type Conn struct {
 	conn        *net.TCPConn
 	buffered    *Writer
 	shutdown    chan bool
-	In          chan []byte
-	dest        *Destination // which dest do we correspond to
+	In          chan []byte // for incoming data. callers should stop writing to In when !conn.isAlive()
+	key         string
 	pickle      bool
 	flush       chan bool
 	flushErr    chan error
 	periodFlush time.Duration
-	unFlushed   []byte
 	keepSafe    *keepSafe
 
 	numErrTruncated   metrics.Counter
@@ -52,7 +51,7 @@ type Conn struct {
 	up      bool
 }
 
-func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle bool, connBufSize, ioBufSize int) (*Conn, error) {
+func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSize, ioBufSize int) (*Conn, error) {
 	raddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -63,29 +62,32 @@ func NewConn(addr string, dest *Destination, periodFlush time.Duration, pickle b
 		return nil, err
 	}
 	connObj := &Conn{
-		conn:              conn,
-		buffered:          NewWriter(conn, ioBufSize, dest.Key),
-		shutdown:          make(chan bool, 1), // when we write here, HandleData() may not be running anymore to read from the chan
+		conn:     conn,
+		buffered: NewWriter(conn, ioBufSize, key),
+		// when we write to shutdown, HandleData() may not be running anymore to read from the chan
+		// but, it may also be in an error scenario in which case it calls c.Close() writing a second time to shutdown,
+		// after checkEOF has called c.Close(). so we need enough room
+		shutdown:          make(chan bool, 2),
 		In:                make(chan []byte, connBufSize),
-		dest:              dest,
+		key:               key,
 		up:                true,
 		pickle:            pickle,
 		flush:             make(chan bool),
 		flushErr:          make(chan error),
 		periodFlush:       periodFlush,
 		keepSafe:          NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
-		numErrTruncated:   stats.Counter("dest=" + dest.Key + ".unit=Err.type=truncated"),
-		numErrWrite:       stats.Counter("dest=" + dest.Key + ".unit=Err.type=write"),
-		numErrFlush:       stats.Counter("dest=" + dest.Key + ".unit=Err.type=flush"),
-		numOut:            stats.Counter("dest=" + dest.Key + ".unit=Metric.direction=out"),
-		durationWrite:     stats.Timer("dest=" + dest.Key + ".what=durationWrite"),
-		durationTickFlush: stats.Timer("dest=" + dest.Key + ".what=durationFlush.type=ticker"),
-		durationManuFlush: stats.Timer("dest=" + dest.Key + ".what=durationFlush.type=manual"),
-		tickFlushSize:     stats.Histogram("dest=" + dest.Key + ".unit=B.what=FlushSize.type=ticker"),
-		manuFlushSize:     stats.Histogram("dest=" + dest.Key + ".unit=B.what=FlushSize.type=manual"),
-		numBuffered:       stats.Gauge("dest=" + dest.Key + ".unit=Metric.what=numBuffered"),
-		bufferSize:        stats.Gauge("dest=" + dest.Key + ".unit=Metric.what=bufferSize"),
-		numDropBadPickle:  stats.Counter("dest=" + dest.Key + ".unit=Metric.action=drop.reason=bad_pickle"),
+		numErrTruncated:   stats.Counter("dest=" + key + ".unit=Err.type=truncated"),
+		numErrWrite:       stats.Counter("dest=" + key + ".unit=Err.type=write"),
+		numErrFlush:       stats.Counter("dest=" + key + ".unit=Err.type=flush"),
+		numOut:            stats.Counter("dest=" + key + ".unit=Metric.direction=out"),
+		durationWrite:     stats.Timer("dest=" + key + ".what=durationWrite"),
+		durationTickFlush: stats.Timer("dest=" + key + ".what=durationFlush.type=ticker"),
+		durationManuFlush: stats.Timer("dest=" + key + ".what=durationFlush.type=manual"),
+		tickFlushSize:     stats.Histogram("dest=" + key + ".unit=B.what=FlushSize.type=ticker"),
+		manuFlushSize:     stats.Histogram("dest=" + key + ".unit=B.what=FlushSize.type=manual"),
+		numBuffered:       stats.Gauge("dest=" + key + ".unit=Metric.what=numBuffered"),
+		bufferSize:        stats.Gauge("dest=" + key + ".unit=Metric.what=bufferSize"),
+		numDropBadPickle:  stats.Counter("dest=" + key + ".unit=Metric.action=drop.reason=bad_pickle"),
 	}
 	connObj.bufferSize.Update(int64(connBufSize))
 
@@ -98,7 +100,7 @@ func (c *Conn) isAlive() bool {
 	c.upMutex.RLock()
 	up := c.up
 	c.upMutex.RUnlock()
-	log.Debugf("conn %s .up query responded with %t", c.dest.Key, up)
+	log.Debugf("conn %s .up query responded with %t", c.key, up)
 	return up
 }
 
@@ -111,17 +113,17 @@ func (c *Conn) checkEOF() {
 	for {
 		num, err := c.conn.Read(b)
 		if err == io.EOF {
-			log.Infof("conn %s .conn.Read returned EOF -> conn is closed. closing conn explicitly", c.dest.Key)
+			log.Infof("conn %s .conn.Read returned EOF -> conn is closed. closing conn explicitly", c.key)
 			c.Close()
 			return
 		}
 		// just in case i misunderstand something or the remote behaves badly
 		if num != 0 {
-			log.Debugf("conn %s .conn.Read data? did not expect that.  data: %s", c.dest.Key, b[:num])
+			log.Debugf("conn %s .conn.Read data? did not expect that.  data: %s", c.key, b[:num])
 			continue
 		}
 		if err != io.EOF {
-			log.Errorf("conn %s checkEOF .conn.Read returned err != EOF, which is unexpected.  closing conn. error: %s", c.dest.Key, err)
+			log.Errorf("conn %s checkEOF .conn.Read returned err != EOF, which is unexpected.  closing conn. error: %s", c.key, err)
 			c.Close()
 			return
 		}
@@ -154,7 +156,7 @@ func (c *Conn) alive(alive bool) {
 	c.upMutex.Lock()
 	c.up = alive
 	c.upMutex.Unlock()
-	log.Debugf("conn %s .up set to %v", c.dest.Key, alive)
+	log.Debugf("conn %s .up set to %v", c.key, alive)
 }
 
 func (c *Conn) HandleData() {
@@ -176,15 +178,12 @@ func (c *Conn) HandleData() {
 			active = time.Now()
 			c.numBuffered.Dec(1)
 			action = "write"
-			log.Tracef("conn %s HandleData: writing %s", c.dest.Key, buf)
+			log.Tracef("conn %s HandleData: writing %s", c.key, buf)
 			c.keepSafe.Add(buf)
 			n, err := c.Write(buf)
 			if err != nil {
-				log.Warnf("conn %s write error: %s", c.dest.Key, err)
-				log.Debugf("conn %s setting up=false", c.dest.Key)
-				c.alive(false) // assure In won't receive more data because every loop that writes to In reads this out
-				log.Debugf("conn %s Closing", c.dest.Key)
-				go c.Close() // this can take a while but that's ok. this conn won't be used anymore
+				log.Warnf("conn %s write error: %s. closing", c.key, err)
+				c.Close() // this can take a while but that's ok. this conn won't be used anymore
 				return
 			}
 			c.numOut.Inc(1)
@@ -195,16 +194,15 @@ func (c *Conn) HandleData() {
 		case <-tickerFlush.C:
 			active = time.Now()
 			action = "auto-flush"
-			log.Debugf("conn %s HandleData: c.buffered auto-flushing...", c.dest.Key)
+			log.Debugf("conn %s HandleData: c.buffered auto-flushing...", c.key)
 			err := c.buffered.Flush()
 			if err != nil {
-				log.Warnf("conn %s HandleData c.buffered auto-flush done but with error: %s, closing", c.dest.Key, err)
+				log.Warnf("conn %s HandleData c.buffered auto-flush done but with error: %s, closing", c.key, err)
 				c.numErrFlush.Inc(1)
-				c.alive(false)
-				go c.Close()
+				c.Close()
 				return
 			}
-			log.Debugf("conn %s HandleData c.buffered auto-flush done without error", c.dest.Key)
+			log.Debugf("conn %s HandleData c.buffered auto-flush done without error", c.key)
 			now = time.Now()
 			durationActive = now.Sub(active)
 			c.durationTickFlush.Update(durationActive)
@@ -213,27 +211,26 @@ func (c *Conn) HandleData() {
 		case <-c.flush:
 			active = time.Now()
 			action = "manual-flush"
-			log.Debugf("conn %s HandleData: c.buffered manual flushing...", c.dest.Key)
+			log.Debugf("conn %s HandleData: c.buffered manual flushing...", c.key)
 			err := c.buffered.Flush()
 			c.flushErr <- err
 			if err != nil {
-				log.Warnf("conn %s HandleData c.buffered manual flush done but witth error: %s, closing", c.dest.Key, err)
+				log.Warnf("conn %s HandleData c.buffered manual flush done but witth error: %s, closing", c.key, err)
 				// TODO instrument
-				c.alive(false)
-				go c.Close()
+				c.Close()
 				return
 			}
-			log.Infof("conn %s HandleData c.buffered manual flush done without error", c.dest.Key)
+			log.Infof("conn %s HandleData c.buffered manual flush done without error", c.key)
 			now = time.Now()
 			durationActive = now.Sub(active)
 			c.durationManuFlush.Update(durationActive)
 			c.manuFlushSize.Update(flushSize)
 			flushSize = 0
 		case <-c.shutdown:
-			log.Debugf("conn %s HandleData: shutdown received. returning.", c.dest.Key)
+			log.Debugf("conn %s HandleData: shutdown received. returning.", c.key)
 			return
 		}
-		log.Debugf("conn %s HandleData %s %s (total iter %s) (use this to tune your In buffering)", c.dest.Key, action, durationActive, now.Sub(start))
+		log.Debugf("conn %s HandleData %s %s (total iter %s) (use this to tune your In buffering)", c.key, action, durationActive, now.Sub(start))
 	}
 }
 
@@ -269,20 +266,20 @@ func (c *Conn) Write(buf []byte) (int, error) {
 }
 
 func (c *Conn) Flush() error {
-	log.Debugf("conn %s going to flush my buffer", c.dest.Key)
+	log.Debugf("conn %s going to flush my buffer", c.key)
 	c.flush <- true
-	log.Debugf("conn %s waiting for flush, getting error.", c.dest.Key)
+	log.Debugf("conn %s waiting for flush, getting error.", c.key)
 	return <-c.flushErr
 }
 
 func (c *Conn) Close() error {
-	c.alive(false) // redundant in case HandleData() called us, but not if the dest called us
-	log.Debugf("conn %s Close() called. sending shutdown", c.dest.Key)
+	c.alive(false)
+	log.Debugf("conn %s Close() called. sending shutdown", c.key)
 	c.shutdown <- true
-	log.Debugf("conn %s c.keepSafe.Close()\n", c.dest.Key)
-	c.keepSafe.Stop()
-	log.Debugf("conn %s c.conn.Close()", c.dest.Key)
+	log.Debugf("conn %s c.keepSafe.Close()", c.key)
+	c.keepSafe.Stop() // note this still keeps a ref to c.keepSafe
+	log.Debugf("conn %s c.conn.Close()", c.key)
 	a := c.conn.Close()
-	log.Debugf("conn %s c.conn is closed", c.dest.Key)
+	log.Debugf("conn %s c.conn is closed", c.key)
 	return a
 }
