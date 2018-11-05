@@ -241,7 +241,6 @@ func (dest *Destination) updateConn(addr string) {
 }
 
 func (dest *Destination) collectRedo(conn *Conn) {
-	dest.tasks.Add(1)
 	bulkData := conn.getRedo()
 	dest.spool.Ingest(bulkData)
 	dest.tasks.Done()
@@ -298,6 +297,7 @@ func (dest *Destination) relay() {
 		if conn != nil {
 			if !conn.isAlive() {
 				if dest.Spool {
+					dest.tasks.Add(1)
 					go dest.collectRedo(conn)
 				}
 				conn = nil
