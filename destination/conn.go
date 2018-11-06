@@ -21,12 +21,19 @@ var keepsafe_keep_duration = time.Duration(10 * time.Second)
 
 var newLine = []byte{'\n'}
 
-// Conn represents a connection to a tcp endpoint
+// Conn represents a connection to a tcp endpoint.
+// As long as conn.isAlive(), caller may write data to conn.In
+// when no longer alive, caller may call getRedo to get the last bunch of data which may have not made
+// it to the tcp endpoint. After calling getRedo(), no data may be written to conn.In
+// NOTE: in the future, this design can be much simpler:
+// keepSafe doesn't need a separate structure, we could just have an in-line buffer in between the dest and the conn
+// since we write buffered chunks in the bufWriter, may as well "keep those safe". e.g. buffered writing and keepSafe
+// can be the same buffer. but this requires significant refactoring.
 type Conn struct {
 	conn        *net.TCPConn
 	buffered    *Writer
 	shutdown    chan bool
-	In          chan []byte // for incoming data. callers should stop writing to In when !conn.isAlive()
+	In          chan []byte
 	key         string
 	pickle      bool
 	flush       chan bool
@@ -48,7 +55,7 @@ type Conn struct {
 	numDropBadPickle  metrics.Counter
 
 	upMutex sync.RWMutex
-	up      bool
+	up      bool // true until the conn goes down
 }
 
 func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSize, ioBufSize int) (*Conn, error) {
@@ -150,9 +157,6 @@ func (c *Conn) getRedo() [][]byte {
 }
 
 func (c *Conn) alive(alive bool) {
-	// note: when we mark as down here, it is expected that conn doesn't absorb any more data,
-	// so that you can call getRedo() and get the full picture
-	// this is actually not true yet.
 	c.upMutex.Lock()
 	c.up = alive
 	c.upMutex.Unlock()
