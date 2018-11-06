@@ -300,6 +300,8 @@ func (dest *Destination) relay() {
 				if dest.Spool {
 					dest.tasks.Add(1)
 					go dest.collectRedo(conn)
+				} else {
+					conn.clearRedo()
 				}
 				conn = nil
 			}
