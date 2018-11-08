@@ -1,5 +1,11 @@
 # Installation
 
+## Release vs latest master
+
+Typically, some new code was added to master since the last release.
+See the [changelog](https://github.com/graphite-ng/carbon-relay-ng/blob/master/CHANGELOG.md) or look at the [git log](https://github.com/graphite-ng/carbon-relay-ng/commits/master) for the most up to date information.
+This may help you decide whether you want the latest release, or the latest code.
+
 ## Linux distribution packages
 
 Grafana Labs provides 2 repositories for carbon-relay-ng:
@@ -10,8 +16,6 @@ Grafana Labs provides 2 repositories for carbon-relay-ng:
 See the installation instructions on those pages for how to enable the repositories for your distribution
 
 We host packages for Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8, 9, 10 (jessie, stretch and buster/testing), Centos6 and Centos7.
-
-To see the difference between what's in testing (unreleased code) vs raintank (last release), see the [changelog](https://github.com/graphite-ng/carbon-relay-ng/blob/master/CHANGELOG.md) or look at the git log for the most up to date information.
 
 ## Windows
 
