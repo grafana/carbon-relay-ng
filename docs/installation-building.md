@@ -1,21 +1,35 @@
+# Installation
 
-Installation
-------------
+## Linux distribution packages
 
-You can install packages from the [raintank packagecloud repository](https://packagecloud.io/raintank/raintank)
-We automatically build packages for Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8, 9, 10 (jessie, stretch and buster/testing), Centos6 and Centos7 when builds in CircleCI succeed.
-[Instructions for enabling the repository](https://packagecloud.io/raintank/raintank/install)
+Grafana Labs provides 2 repositories for carbon-relay-ng:
 
-You can also just build a binary (see below) and run the binary with a config file like so:
+* [raintank](https://packagecloud.io/raintank/raintank): stable repository for official stable releases
+* [testing](https://packagecloud.io/raintank/testing): testing repository that has the latest packages which typically bring improvements but possibly also new bugs.
 
-<code>carbon-relay-ng [-cpuprofile <em>cpuprofile-file</em>] <em>config-file</em></code>
+See the installation instructions on those pages for how to enable the repositories for your distribution
+
+We host packages for Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8, 9, 10 (jessie, stretch and buster/testing), Centos6 and Centos7.
+
+## Windows
+
+For Windows users, as of the upcoming release, we will start including the executables along with the release on the [releases](https://github.com/graphite-ng/carbon-relay-ng/releases) page.
+For now, you have to find the build for the release on CircleCI and explore the artifacts hierarchy and download them from there.
+
+## Docker images
+
+See [dockerhub](https://hub.docker.com/r/raintank/carbon-relay-ng/).
+
+You can use these tags:
+
+* `latest`: the latest official stable release
+* `master`: latest build from master. these versions typically bring improvements but possibly also new bugs
 
 
-Building
---------
+# Building from source
 
 Requires Go 1.7 or higher.
-We use https://github.com/kardianos/govendor to manage vendoring 3rd party libraries
+We use [dep](https://golang.github.io/dep/) to manage vendoring 3rd party libraries
 
     export GOPATH=/some/path/
     export PATH="$PATH:$GOPATH/bin"
@@ -26,3 +40,31 @@ We use https://github.com/kardianos/govendor to manage vendoring 3rd party libra
     make
 
 
+This leaves you with a binary that you can run with a config file like so:
+
+```
+./carbon-relay-ng -h
+Usage:
+        carbon-relay-ng version
+        carbon-relay-ng <path-to-config>
+	
+  -block-profile-rate int
+    	see https://golang.org/pkg/runtime/#SetBlockProfileRate
+  -cpuprofile string
+    	write cpu profile to file
+  -mem-profile-rate int
+    	0 to disable. 1 for max precision (expensive!) see https://golang.org/pkg/runtime/#pkg-variables (default 524288)
+```
+
+
+# Release process
+
+During normal development, maintain CHANGELOG.md, and mark interesting -to users- changes under "unreleased" version.
+Grafana Labs regularly deploys the latest code from `master`, but cannot possibly do extensive testing of all functionality in production, so users are encouraged to run master also, and report any issues they hit.
+When interesting changes have been merged to master, and they have had a chance to be tested for a while, we tag a release, as follows:
+
+* update CHANGELOG.md from `unreleased` to the version.
+* create annotated git tag in the form `v<version>` and push to GitHub
+* wait for CircleCI to complete successfully.
+* create release on GitHub. copy entry from CHANGELOG.md to GitHub release page
+* upload windows build from CircleCI to the release as well.
