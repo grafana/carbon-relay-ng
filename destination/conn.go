@@ -305,6 +305,6 @@ func (c *Conn) Close() {
 
 // clearRedo releases the keepSafe resources
 func (c *Conn) clearRedo() {
-	log.Debugf("conn %s c.keepSafe.Close()", c.key)
+	log.Debugf("conn %s c.keepSafe.Stop()", c.key)
 	c.keepSafe.Stop()
 }
