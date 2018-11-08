@@ -34,7 +34,7 @@ Documentation
 * [aggregation](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/aggregation.md)
 * [monitoring](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/monitoring.md)
 * [TCP admin interface](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/tcp-admin-interface.md)
-* [releases and versions](https://github.com/graphite-ng/carbon-relay-ng/releases)
+* [current changelog](https://github.com/graphite-ng/carbon-relay-ng/blob/master/CHANGELOG.md) and [official releasess](https://github.com/graphite-ng/carbon-relay-ng/releases)
 * [limitations](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/limitations.md)
 * [installation and building](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/installation-building.md)
 
