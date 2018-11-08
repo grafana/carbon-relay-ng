@@ -24,8 +24,7 @@ test:
 	go test ./...
 
 docker: build-linux
-	docker build --tag=raintank/carbon-relay-ng:latest .
-	docker tag raintank/carbon-relay-ng raintank/carbon-relay-ng:$(VERSION)
+	./build_docker.sh
 
 all:
 
