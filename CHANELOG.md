@@ -3,7 +3,9 @@
 * BREAKING: switch to logrus for logging. #317, #326
   If you were previously using log level notice, you should now use info.
   See [logging docs](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/logging.md) for more info on the log levels.
-* partial fix for a memory leak. #259
+* IMPORTANT: refactor release process, docker tags and package repo. #330, #331
+  see [installation docs](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/installation-building.md)
+* fix memory leak when connections should be closed. #259, #329
 * Rewrite of the inputs. pickle, tcp, udp and data reading.
   They are now plugins, handle errors better, and support timeouts.
   #286, #287, #301, #303, #306, #313, #316, #318, #320
