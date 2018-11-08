@@ -11,6 +11,8 @@ See the installation instructions on those pages for how to enable the repositor
 
 We host packages for Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8, 9, 10 (jessie, stretch and buster/testing), Centos6 and Centos7.
 
+To see the difference between what's in testing (unreleased code) vs raintank (last release), see the [changelog](https://github.com/graphite-ng/carbon-relay-ng/blob/master/CHANGELOG.md) or look at the git log for the most up to date information.
+
 ## Windows
 
 For Windows users, as of the upcoming release, we will start including the executables along with the release on the [releases](https://github.com/graphite-ng/carbon-relay-ng/releases) page.
