@@ -1,3 +1,26 @@
+# unreleased. last update 8 nov 2018.
+
+* BREAKING: switch to logrus for logging. #317, #326
+  If you were previously using log level notice, you should now use info.
+  See [logging docs](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/logging.md) for more info on the log levels.
+* partial fix for a memory leak. #259
+* Rewrite of the inputs. pickle, tcp, udp and data reading.
+  They are now plugins, handle errors better, and support timeouts.
+  #286, #287, #301, #303, #306, #313, #316, #318, #320
+* simplify default configs, bump default stats interval, improve config docs. #276
+* Make StorageResolution for CloudWatch routes configurable. #275
+* re-organize docs into separate pages. #277
+* track timestamps coming in to aggregators and being too old. #280
+* include sysv init file in centos6/rhel6 rpm to accommodate aws images. #283
+* rewriter: support "not" clause + DRY constructor. #284
+* fix connection pooling for grafanaNet route. #289
+* Fix sslVerify default=true for grafanaNet route using new syntax. #291
+* add support for tag appendix validation. make validation inline with grafanaNet. #292
+* add request logging for admin interface. #297
+* make max_procs setting optional, honor GOMAXPROCS env var. #309
+* switch to circleci 2.0. #294
+* switch from govendor to dep. #310
+
 # v0.10.1: aggregator optional drop raw, grafanaNet concurrent send fix, auto-windows binaries. May 2 2018
 
 * build windows binaries in CircleCI and save artifacts 
