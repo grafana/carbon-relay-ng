@@ -19,8 +19,7 @@ We host packages for Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8, 9, 10 (jes
 
 ## Windows
 
-For Windows users, as of the upcoming release, we will start including the executables along with the release on the [releases](https://github.com/graphite-ng/carbon-relay-ng/releases) page.
-For now, you have to find the build for the release on CircleCI and explore the artifacts hierarchy and download them from there.
+For Windows users, see the included executables along with the release on the [releases](https://github.com/graphite-ng/carbon-relay-ng/releases) page.
 
 ## Docker images
 

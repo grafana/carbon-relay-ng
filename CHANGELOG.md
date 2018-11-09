@@ -1,4 +1,4 @@
-# unreleased. last update 8 nov 2018.
+# v0.11.0: memleak fix, new logging, major input refactor and more. Nov 9, 2018
 
 * BREAKING: switch to logrus for logging. #317, #326
   If you were previously using log level notice, you should now use info.
