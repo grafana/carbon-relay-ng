@@ -3,11 +3,13 @@ package route
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -217,7 +219,7 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 	}
 	var dur time.Duration
 	for {
-		dur, err = route.flush(req)
+		dur, err = route.flush(mda, req)
 		if err == nil {
 			break
 		}
@@ -234,7 +236,7 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 	return metrics[:0]
 }
 
-func (route *GrafanaNet) flush(req *http.Request) (time.Duration, error) {
+func (route *GrafanaNet) flush(mda schema.MetricDataArray, req *http.Request) (time.Duration, error) {
 	pre := time.Now()
 	resp, err := route.client.Do(req)
 	dur := time.Since(pre)
@@ -242,8 +244,29 @@ func (route *GrafanaNet) flush(req *http.Request) (time.Duration, error) {
 		return dur, err
 	}
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		ioutil.ReadAll(resp.Body)
+		bod, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
+		if err != nil {
+			log.Warnf("GrafanaNet processed the request, but could not read the response: %s", err.Error())
+			return dur, nil
+		}
+		var resp MetricsResponse
+		err = json.Unmarshal(bod, &resp)
+		if err != nil {
+			log.Warnf("GrafanaNet processed the request, but could not parse the response: %s", err.Error())
+			return dur, nil
+		}
+		if resp.Invalid != 0 {
+			var b strings.Builder
+			fmt.Fprintf(&b, "request contained %d invalid metrics that were dropped (%d valid metrics were published in this request)\n", resp.Invalid, resp.Published)
+			for key, vErr := range resp.ValidationErrors {
+				fmt.Fprintf(&b, "%q : %d metrics.  Examples:\n", key, vErr.Count)
+				for _, idx := range vErr.ExampleIds {
+					fmt.Fprintf(&b, "%#v\n", mda[idx])
+				}
+			}
+			log.Warn(b.String())
+		}
 		return dur, nil
 	}
 	buf := make([]byte, 300)
