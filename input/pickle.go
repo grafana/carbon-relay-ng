@@ -60,8 +60,17 @@ func (p *Pickle) Handle(c io.Reader) error {
 			return fmt.Errorf("couldn't read payload prefix: %s", err.Error())
 		}
 
-		// payload must start with opProto, <version>, opEmptyList
-		if prefix[0] != '\x80' || prefix[2] != ']' {
+		// payload must start with:
+		switch true {
+		// version 4 - opProto, <version>, opFrame
+		case prefix[0] == '\x80' && prefix[2] == '\x95':
+		// version 2, 3 - opProto, <version>, opEmptyList
+		case prefix[0] == '\x80' && prefix[2] == ']':
+		// version 1 - opEmptyList
+		case prefix[0] == ']':
+		// version 0 - opMark, opList
+		case prefix[0] == '(' && prefix[1] == 'l':
+		default:
 			return errors.New("invalid payload prefix")
 		}
 
