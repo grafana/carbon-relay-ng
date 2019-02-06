@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/kisielk/og-rek"
+	ogorek "github.com/kisielk/og-rek"
 	log "github.com/sirupsen/logrus"
 )
 
 func Pickle(dp *Datapoint) []byte {
 	dataBuf := &bytes.Buffer{}
-	pickler := ogórek.NewEncoder(dataBuf)
+	pickler := ogorek.NewEncoder(dataBuf)
 
 	// pickle format (in python talk): [(path, (timestamp, value)), ...]
-	point := []interface{}{string(dp.Name), []interface{}{dp.Time, dp.Val}}
+	point := ogorek.Tuple{string(dp.Name), ogorek.Tuple{dp.Time, dp.Val}}
 	list := []interface{}{point}
 	pickler.Encode(list)
 	messageBuf := &bytes.Buffer{}

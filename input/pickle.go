@@ -124,12 +124,18 @@ func (p *Pickle) Handle(c io.Reader) error {
 	ItemLoop:
 		for _, rawItem := range decoded {
 			log.Debug("pickle.go: doing high-level validation of unpickled item and data...")
-			item, ok := rawItem.(ogorek.Tuple)
-			if !ok {
+			var item []interface{}
+			switch v := rawItem.(type) {
+			case ogorek.Tuple:
+				item = []interface{}(v)
+			case []interface{}:
+				item = v
+			default:
 				log.Errorf("pickle.go: Unrecognized type %T for item", rawItem)
 				p.dispatcher.IncNumInvalid()
-				continue
+				continue ItemLoop
 			}
+
 			if len(item) != 2 {
 				log.Errorf("pickle.go: item length must be 2, got %d", len(item))
 				p.dispatcher.IncNumInvalid()
@@ -143,12 +149,18 @@ func (p *Pickle) Handle(c io.Reader) error {
 				continue
 			}
 
-			data, ok := item[1].(ogorek.Tuple)
-			if !ok {
-				log.Errorf("pickle.go: item data must be an array, got %T", item[1])
+			var data []interface{}
+			switch v := item[1].(type) {
+			case ogorek.Tuple:
+				data = []interface{}(v)
+			case []interface{}:
+				data = v
+			default:
+				log.Errorf("pickle.go: item data must be a tuple, got %T", item[1])
 				p.dispatcher.IncNumInvalid()
-				continue
+				continue ItemLoop
 			}
+
 			if len(data) != 2 {
 				log.Errorf("pickle.go: item data length must be 2, got %d", len(data))
 				p.dispatcher.IncNumInvalid()
