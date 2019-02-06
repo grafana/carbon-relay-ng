@@ -55,23 +55,8 @@ func (p *Pickle) Handle(c io.Reader) error {
 			return fmt.Errorf("payload length of %d is more than the supported maximum %d", lengthTotal, maxLength)
 		}
 
-		prefix, err := r.Peek(3)
-		if err != nil {
-			return fmt.Errorf("couldn't read payload prefix: %s", err.Error())
-		}
-
-		// payload must start with:
-		switch true {
-		// version 4 - opProto, <version>, opFrame
-		case prefix[0] == '\x80' && prefix[2] == '\x95':
-		// version 2, 3 - opProto, <version>, opEmptyList
-		case prefix[0] == '\x80' && prefix[2] == ']':
-		// version 1 - opEmptyList
-		case prefix[0] == ']':
-		// version 0 - opMark, opList
-		case prefix[0] == '(' && prefix[1] == 'l':
-		default:
-			return errors.New("invalid payload prefix")
+		if err := checkProtocol(r); err != nil {
+			return err
 		}
 
 		log.Debug("pickle.go: reading payload...")
@@ -205,4 +190,36 @@ func (p *Pickle) Handle(c io.Reader) error {
 		}
 		log.Debug("pickle.go: exiting ReadLoop")
 	}
+}
+
+func checkProtocol(r *bufio.Reader) error {
+	prefix, err := r.Peek(1)
+	if err != nil {
+		return fmt.Errorf("couldn't read payload prefix: %s", err.Error())
+	}
+	// version 1 - opEmptyList
+	if prefix[0] == ']' {
+		return nil
+	}
+	prefix, err = r.Peek(2)
+	if err != nil {
+		return fmt.Errorf("couldn't read payload prefix: %s", err.Error())
+	}
+	// version 0 - opMark, opList
+	if prefix[0] == '(' && prefix[1] == 'l' {
+		return nil
+	}
+	prefix, err = r.Peek(3)
+	if err != nil {
+		return fmt.Errorf("couldn't read payload prefix: %s", err.Error())
+	}
+	// version 2, 3 - opProto, <version>, opEmptyList
+	if prefix[0] == '\x80' && prefix[2] == ']' {
+		return nil
+	}
+	// version 4 - opProto, <version>, opFrame
+	if prefix[0] == '\x80' && prefix[2] == '\x95' {
+		return nil
+	}
+	return errors.New("invalid payload prefix")
 }
