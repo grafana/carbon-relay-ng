@@ -55,14 +55,8 @@ func (p *Pickle) Handle(c io.Reader) error {
 			return fmt.Errorf("payload length of %d is more than the supported maximum %d", lengthTotal, maxLength)
 		}
 
-		prefix, err := r.Peek(3)
-		if err != nil {
-			return fmt.Errorf("couldn't read payload prefix: %s", err.Error())
-		}
-
-		// payload must start with opProto, <version>, opEmptyList
-		if prefix[0] != '\x80' || prefix[2] != ']' {
-			return errors.New("invalid payload prefix")
+		if err := checkProtocol(r); err != nil {
+			return err
 		}
 
 		log.Debug("pickle.go: reading payload...")
@@ -115,12 +109,18 @@ func (p *Pickle) Handle(c io.Reader) error {
 	ItemLoop:
 		for _, rawItem := range decoded {
 			log.Debug("pickle.go: doing high-level validation of unpickled item and data...")
-			item, ok := rawItem.(ogorek.Tuple)
-			if !ok {
+			var item []interface{}
+			switch v := rawItem.(type) {
+			case ogorek.Tuple:
+				item = []interface{}(v)
+			case []interface{}:
+				item = v
+			default:
 				log.Errorf("pickle.go: Unrecognized type %T for item", rawItem)
 				p.dispatcher.IncNumInvalid()
-				continue
+				continue ItemLoop
 			}
+
 			if len(item) != 2 {
 				log.Errorf("pickle.go: item length must be 2, got %d", len(item))
 				p.dispatcher.IncNumInvalid()
@@ -134,12 +134,18 @@ func (p *Pickle) Handle(c io.Reader) error {
 				continue
 			}
 
-			data, ok := item[1].(ogorek.Tuple)
-			if !ok {
-				log.Errorf("pickle.go: item data must be an array, got %T", item[1])
+			var data []interface{}
+			switch v := item[1].(type) {
+			case ogorek.Tuple:
+				data = []interface{}(v)
+			case []interface{}:
+				data = v
+			default:
+				log.Errorf("pickle.go: item data must be a tuple, got %T", item[1])
 				p.dispatcher.IncNumInvalid()
-				continue
+				continue ItemLoop
 			}
+
 			if len(data) != 2 {
 				log.Errorf("pickle.go: item data length must be 2, got %d", len(data))
 				p.dispatcher.IncNumInvalid()
@@ -184,4 +190,36 @@ func (p *Pickle) Handle(c io.Reader) error {
 		}
 		log.Debug("pickle.go: exiting ReadLoop")
 	}
+}
+
+func checkProtocol(r *bufio.Reader) error {
+	prefix, err := r.Peek(1)
+	if err != nil {
+		return fmt.Errorf("couldn't read payload prefix: %s", err.Error())
+	}
+	// version 1 - opEmptyList
+	if prefix[0] == ']' {
+		return nil
+	}
+	prefix, err = r.Peek(2)
+	if err != nil {
+		return fmt.Errorf("couldn't read payload prefix: %s", err.Error())
+	}
+	// version 0 - opMark, opList
+	if prefix[0] == '(' && prefix[1] == 'l' {
+		return nil
+	}
+	prefix, err = r.Peek(3)
+	if err != nil {
+		return fmt.Errorf("couldn't read payload prefix: %s", err.Error())
+	}
+	// version 2, 3 - opProto, <version>, opEmptyList
+	if prefix[0] == '\x80' && prefix[2] == ']' {
+		return nil
+	}
+	// version 4 - opProto, <version>, opFrame
+	if prefix[0] == '\x80' && prefix[2] == '\x95' {
+		return nil
+	}
+	return errors.New("invalid payload prefix")
 }
