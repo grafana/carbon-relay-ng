@@ -260,7 +260,7 @@ func (route *GrafanaNet) flush(mda schema.MetricDataArray, req *http.Request) (t
 			var b strings.Builder
 			fmt.Fprintf(&b, "request contained %d invalid metrics that were dropped (%d valid metrics were published in this request)\n", resp.Invalid, resp.Published)
 			for key, vErr := range resp.ValidationErrors {
-				fmt.Fprintf(&b, "%q : %d metrics.  Examples:\n", key, vErr.Count)
+				fmt.Fprintf(&b, "  %q : %d metrics.  Examples:\n", key, vErr.Count)
 				for _, idx := range vErr.ExampleIds {
 					fmt.Fprintf(&b, "   - %#v\n", mda[idx])
 				}
