@@ -163,7 +163,7 @@ func (route *GrafanaNet) run(in chan []byte) {
 			route.numBuffered.Dec(1)
 			md, err := parseMetric(buf, route.schemas, route.orgId)
 			if err != nil {
-				log.Errorf("RouteGrafanaNet: %s", err)
+				log.Errorf("RouteGrafanaNet: parseMetric failed: %s. skipping metric", err)
 				continue
 			}
 			md.SetId()
@@ -247,19 +247,19 @@ func (route *GrafanaNet) flush(mda schema.MetricDataArray, req *http.Request) (t
 		bod, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			log.Warnf("GrafanaNet processed the request, but could not read the response: %s", err.Error())
+			log.Warnf("GrafanaNet remote said %q, but could not read its response: %s", resp.Status, err.Error())
 			return dur, nil
 		}
-		var resp MetricsResponse
-		err = json.Unmarshal(bod, &resp)
+		var mResp MetricsResponse
+		err = json.Unmarshal(bod, &mResp)
 		if err != nil {
-			log.Warnf("GrafanaNet processed the request, but could not parse the response: %s", err.Error())
+			log.Warnf("GrafanaNet remote returned %q, but could not parse its response: %s", resp.Status, err.Error())
 			return dur, nil
 		}
-		if resp.Invalid != 0 {
+		if mResp.Invalid != 0 {
 			var b strings.Builder
-			fmt.Fprintf(&b, "request contained %d invalid metrics that were dropped (%d valid metrics were published in this request)\n", resp.Invalid, resp.Published)
-			for key, vErr := range resp.ValidationErrors {
+			fmt.Fprintf(&b, "request contained %d invalid metrics that were dropped (%d valid metrics were published in this request)\n", mResp.Invalid, mResp.Published)
+			for key, vErr := range mResp.ValidationErrors {
 				fmt.Fprintf(&b, "  %q : %d metrics.  Examples:\n", key, vErr.Count)
 				for _, idx := range vErr.ExampleIds {
 					fmt.Fprintf(&b, "   - %#v\n", mda[idx])
