@@ -1,3 +1,7 @@
+# master/unreleased
+
+* support pickle protocol versions 0, 1, 2, 3 & 4 + accept pickle arrays + send pickle tuples. #341
+
 # v0.11.0: memleak fix, new logging, major input refactor and more. Nov 9, 2018
 
 * BREAKING: switch to logrus for logging. #317, #326
