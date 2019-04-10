@@ -6,7 +6,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -15,14 +14,11 @@ import (
 	"syscall"
 
 	"github.com/BurntSushi/toml"
-	"github.com/Dieterbe/go-metrics"
-	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/input"
 	"github.com/graphite-ng/carbon-relay-ng/input/manager"
 	"github.com/graphite-ng/carbon-relay-ng/logger"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/ui/telnet"
 	"github.com/graphite-ng/carbon-relay-ng/ui/web"
@@ -111,8 +107,6 @@ func main() {
 		runtime.GOMAXPROCS(config.Max_procs)
 	}
 
-	stats.New(config.Instance)
-
 	if config.Pid_file != "" {
 		f, err := os.Create(config.Pid_file)
 		if err != nil {
@@ -123,29 +117,7 @@ func main() {
 			log.Fatalf("error writing to pidfile: %s", err.Error())
 		}
 		f.Close()
-	}
 
-	aggregator.InitMetrics()
-
-	go func() {
-		sys := stats.Gauge("what=virtual_memory.unit=Byte")
-		alloc := stats.Gauge("what=memory_allocated.unit=Byte")
-		ticker := time.NewTicker(time.Second)
-		var memstats runtime.MemStats
-		for range ticker.C {
-			runtime.ReadMemStats(&memstats)
-			sys.Update(int64(memstats.Sys))
-			alloc.Update(int64(memstats.Alloc))
-
-		}
-	}()
-
-	if config.Instrumentation.Graphite_addr != "" {
-		addr, err := net.ResolveTCPAddr("tcp", config.Instrumentation.Graphite_addr)
-		if err != nil {
-			log.Fatal(err)
-		}
-		go metrics.Graphite(metrics.DefaultRegistry, time.Duration(config.Instrumentation.Graphite_interval)*time.Millisecond, "", addr)
 	}
 
 	log.Info("initializing routing table...")

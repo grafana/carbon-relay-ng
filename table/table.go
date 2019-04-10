@@ -9,15 +9,14 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
+	"github.com/graphite-ng/carbon-relay-ng/metrics"
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"github.com/graphite-ng/carbon-relay-ng/validate"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
 	log "github.com/sirupsen/logrus"
@@ -34,16 +33,12 @@ type TableConfig struct {
 }
 
 type Table struct {
-	sync.Mutex                 // only needed for the multiple writers
-	config        atomic.Value // for reading and writing
-	SpoolDir      string
-	numIn         metrics.Counter
-	numInvalid    metrics.Counter
-	numOutOfOrder metrics.Counter
-	numBlacklist  metrics.Counter
-	numUnroutable metrics.Counter
-	In            chan []byte `json:"-"` // channel api to trade in some performance for encapsulation, for aggregators
-	bad           *badmetrics.BadMetrics
+	sync.Mutex              // only needed for the multiple writers
+	config     atomic.Value // for reading and writing
+	SpoolDir   string
+	In         chan []byte `json:"-"` // channel api to trade in some performance for encapsulation, for aggregators
+	bad        *badmetrics.BadMetrics
+	tm         *metrics.TableMetrics
 }
 
 type TableSnapshot struct {
@@ -59,13 +54,9 @@ func New(config cfg.Config) *Table {
 		sync.Mutex{},
 		atomic.Value{},
 		config.Spool_dir,
-		stats.Counter("unit=Metric.direction=in"),
-		stats.Counter("unit=Err.type=invalid"),
-		stats.Counter("unit=Err.type=out_of_order"),
-		stats.Counter("unit=Metric.direction=blacklist"),
-		stats.Counter("unit=Metric.direction=unroutable"),
 		make(chan []byte),
 		nil,
+		metrics.NewTableMetrics(),
 	}
 
 	t.config.Store(TableConfig{
@@ -96,10 +87,6 @@ func (table *Table) GetSpoolDir() string {
 
 // This is used by inputs to record invalid packets
 // It also increments numIn so that it reflects the overall total
-func (table *Table) IncNumInvalid() {
-	table.numIn.Inc(1)
-	table.numInvalid.Inc(1)
-}
 
 func (table *Table) Bad() *badmetrics.BadMetrics {
 	return table.bad
@@ -110,18 +97,20 @@ func (table *Table) Bad() *badmetrics.BadMetrics {
 // after checking against the blacklist
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
+
+	defer metrics.ObserveSinceSeconds(table.tm.RoutingDuration, time.Now())
 	buf_copy := make([]byte, len(buf))
 	copy(buf_copy, buf)
 	log.Tracef("table received packet %s", buf_copy)
 
-	table.numIn.Inc(1)
+	table.tm.In.Inc()
 
 	conf := table.config.Load().(TableConfig)
 
 	key, val, ts, err := m20.ValidatePacket(buf_copy, conf.Validation_level_legacy.Level, conf.Validation_level_m20.Level)
 	if err != nil {
 		table.bad.Add(key, buf_copy, err)
-		table.numInvalid.Inc(1)
+		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeInvalid).Inc()
 		return
 	}
 
@@ -129,7 +118,7 @@ func (table *Table) Dispatch(buf []byte) {
 		err = validate.Ordered(key, ts)
 		if err != nil {
 			table.bad.Add(key, buf_copy, err)
-			table.numOutOfOrder.Inc(1)
+			table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeOutOfOrder).Inc()
 			return
 		}
 	}
@@ -138,7 +127,7 @@ func (table *Table) Dispatch(buf []byte) {
 
 	for _, matcher := range conf.blacklist {
 		if matcher.Match(fields[0]) {
-			table.numBlacklist.Inc(1)
+			table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeBlacklist).Inc()
 			log.Tracef("table dropped %s, matched blacklist entry %s", buf_copy, matcher)
 			return
 		}
@@ -153,6 +142,7 @@ func (table *Table) Dispatch(buf []byte) {
 		dropRaw := aggregator.AddMaybe(fields, val, ts)
 		if dropRaw {
 			log.Tracef("table dropped %s, matched dropRaw aggregator %s", buf_copy, aggregator.Regex)
+			table.tm.Unrouted.WithLabelValues("drop_after_aggregation").Inc()
 			return
 		}
 	}
@@ -170,7 +160,7 @@ func (table *Table) Dispatch(buf []byte) {
 	}
 
 	if !routed {
-		table.numUnroutable.Inc(1)
+		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeUnroutable).Inc()
 		log.Tracef("unrouteable: %s", final)
 	}
 }
@@ -191,10 +181,15 @@ func (table *Table) DispatchAggregate(buf []byte) {
 	}
 
 	if !routed {
-		table.numUnroutable.Inc(1)
+		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeUnroutable).Inc()
 		log.Tracef("unrouteable: %s", buf)
 	}
 
+}
+
+func (table *Table) IncNumInvalid() {
+	table.tm.In.Inc()
+	table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeInvalid)
 }
 
 // to view the state of the table/route at any point in time

@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All Rights Reserved.
+// Copyright 2014 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package pubsub // import "cloud.google.com/go/pubsub"
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -22,7 +23,6 @@ import (
 
 	"cloud.google.com/go/internal/version"
 	vkit "cloud.google.com/go/pubsub/apiv1"
-	"golang.org/x/net/context"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -36,9 +36,9 @@ const (
 	// ScopeCloudPlatform grants permissions to view and manage your data
 	// across Google Cloud Platform services.
 	ScopeCloudPlatform = "https://www.googleapis.com/auth/cloud-platform"
-)
 
-const prodAddr = "https://pubsub.googleapis.com/"
+	maxAckDeadline = 10 * time.Minute
+)
 
 // Client is a Google Pub/Sub client scoped to a single project.
 //
@@ -51,7 +51,7 @@ type Client struct {
 }
 
 // NewClient creates a new PubSub client.
-func NewClient(ctx context.Context, projectID string, opts ...option.ClientOption) (*Client, error) {
+func NewClient(ctx context.Context, projectID string, opts ...option.ClientOption) (c *Client, err error) {
 	var o []option.ClientOption
 	// Environment variables for gcloud emulator:
 	// https://cloud.google.com/sdk/gcloud/reference/beta/emulators/pubsub/
@@ -69,6 +69,7 @@ func NewClient(ctx context.Context, projectID string, opts ...option.ClientOptio
 				Time: 5 * time.Minute,
 			})),
 		}
+		o = append(o, openCensusOptions()...)
 	}
 	o = append(o, opts...)
 	pubc, err := vkit.NewPublisherClient(ctx, o...)

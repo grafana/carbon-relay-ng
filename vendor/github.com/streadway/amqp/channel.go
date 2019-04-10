@@ -114,7 +114,7 @@ func (ch *Channel) shutdown(e *Error) {
 			ch.errors <- e
 		}
 
-		ch.consumers.closeAll()
+		ch.consumers.close()
 
 		for _, c := range ch.closes {
 			close(c)
@@ -143,6 +143,7 @@ func (ch *Channel) shutdown(e *Error) {
 			ch.confirms.Close()
 		}
 
+		close(ch.errors)
 		ch.noNotify = true
 	})
 }
@@ -173,8 +174,11 @@ func (ch *Channel) call(req message, res ...message) error {
 
 	if req.wait() {
 		select {
-		case e := <-ch.errors:
-			return e
+		case e, ok := <-ch.errors:
+			if ok {
+				return e
+			}
+			return ErrClosed
 
 		case msg := <-ch.rpc:
 			if msg != nil {
@@ -270,8 +274,13 @@ func (ch *Channel) sendOpen(msg message) (err error) {
 func (ch *Channel) dispatch(msg message) {
 	switch m := msg.(type) {
 	case *channelClose:
-		ch.connection.closeChannel(ch, newError(m.ReplyCode, m.ReplyText))
+		// lock before sending connection.close-ok
+		// to avoid unexpected interleaving with basic.publish frames if
+		// publishing is happening concurrently
+		ch.m.Lock()
 		ch.send(&channelCloseOk{})
+		ch.m.Unlock()
+		ch.connection.closeChannel(ch, newError(m.ReplyCode, m.ReplyText))
 
 	case *channelFlow:
 		ch.notifyM.RLock()
@@ -287,7 +296,7 @@ func (ch *Channel) dispatch(msg message) {
 			c <- m.ConsumerTag
 		}
 		ch.notifyM.RUnlock()
-		ch.consumers.close(m.ConsumerTag)
+		ch.consumers.cancel(m.ConsumerTag)
 
 	case *basicReturn:
 		ret := newReturn(*m)
@@ -447,8 +456,8 @@ func (ch *Channel) NotifyClose(c chan *Error) chan *Error {
 
 /*
 NotifyFlow registers a listener for basic.flow methods sent by the server.
-When `true` is sent on one of the listener channels, all publishers should
-pause until a `false` is sent.
+When `false` is sent on one of the listener channels, all publishers should
+pause until a `true` is sent.
 
 The server may ask the producer to pause or restart the flow of Publishings
 sent by on a channel. This is a simple flow-control mechanism that a server can
@@ -615,7 +624,11 @@ started with noAck.
 When global is true, these Qos settings apply to all existing and future
 consumers on all channels on the same connection.  When false, the Channel.Qos
 settings will apply to all existing and future consumers on this channel.
-RabbitMQ does not implement the global flag.
+
+Please see the RabbitMQ Consumer Prefetch documentation for an explanation of
+how the global flag is implemented in RabbitMQ, as it differs from the
+AMQP 0.9.1 specification in that global Qos settings are limited in scope to
+channels, not connections (https://www.rabbitmq.com/consumer-prefetch.html).
 
 To get round-robin behavior between consumers consuming from the same queue on
 different connections, set the prefetch count to 1, and the next available
@@ -670,10 +683,10 @@ func (ch *Channel) Cancel(consumer string, noWait bool) error {
 	}
 
 	if req.wait() {
-		ch.consumers.close(res.ConsumerTag)
+		ch.consumers.cancel(res.ConsumerTag)
 	} else {
 		// Potentially could drop deliveries in flight
-		ch.consumers.close(consumer)
+		ch.consumers.cancel(consumer)
 	}
 
 	return nil
@@ -807,7 +820,7 @@ func (ch *Channel) QueueDeclarePassive(name string, durable, autoDelete, exclusi
 QueueInspect passively declares a queue by name to inspect the current message
 count and consumer count.
 
-Use this method to check how many unacknowledged messages reside in the queue,
+Use this method to check how many messages ready for delivery reside in the queue,
 how many consumers are receiving deliveries, and whether a queue by this
 name already exists.
 
@@ -876,7 +889,7 @@ and exchanges will also be restored on server restart.
 If the binding could not complete, an error will be returned and the channel
 will be closed.
 
-When noWait is true and the queue could not be bound, the channel will be
+When noWait is false and the queue could not be bound, the channel will be
 closed with an error.
 
 */
@@ -1023,11 +1036,14 @@ exception will be raised and the channel will be closed.
 Optional arguments can be provided that have specific semantics for the queue
 or server.
 
-When the channel or connection closes, all delivery chans will also close.
+Inflight messages, limited by Channel.Qos will be buffered until received from
+the returned chan.
 
-Deliveries on the returned chan will be buffered indefinitely. To limit memory
-of this buffer, use the Channel.Qos method to limit the amount of
-unacknowledged/buffered deliveries the server will deliver on this Channel.
+When the Channel or Connection is closed, all buffered and inflight messages will
+be dropped.
+
+When the consumer tag is cancelled, all inflight messages will be delivered until
+the returned chan is closed.
 
 */
 func (ch *Channel) Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args Table) (<-chan Delivery, error) {
@@ -1059,7 +1075,7 @@ func (ch *Channel) Consume(queue, consumer string, autoAck, exclusive, noLocal, 
 	ch.consumers.add(consumer, deliveries)
 
 	if err := ch.call(req, res); err != nil {
-		ch.consumers.close(consumer)
+		ch.consumers.cancel(consumer)
 		return nil, err
 	}
 
@@ -1431,12 +1447,12 @@ func (ch *Channel) TxRollback() error {
 
 /*
 Flow pauses the delivery of messages to consumers on this channel.  Channels
-are opened with flow control not active, to open a channel with paused
-deliveries immediately call this method with true after calling
+are opened with flow control active, to open a channel with paused
+deliveries immediately call this method with `false` after calling
 Connection.Channel.
 
-When active is true, this method asks the server to temporarily pause deliveries
-until called again with active as false.
+When active is `false`, this method asks the server to temporarily pause deliveries
+until called again with active as `true`.
 
 Channel.Get methods will not be affected by flow control.
 
@@ -1445,7 +1461,7 @@ the number of unacknowledged messages or bytes in flight instead.
 
 The server may also send us flow methods to throttle our publishings.  A well
 behaving publishing client should add a listener with Channel.NotifyFlow and
-pause its publishings when true is sent on that channel.
+pause its publishings when `false` is sent on that channel.
 
 Note: RabbitMQ prefers to use TCP push back to control flow for all channels on
 a connection, so under high volume scenarios, it's wise to open separate
@@ -1529,6 +1545,9 @@ is true.
 See also Delivery.Ack
 */
 func (ch *Channel) Ack(tag uint64, multiple bool) error {
+	ch.m.Lock()
+	defer ch.m.Unlock()
+
 	return ch.send(&basicAck{
 		DeliveryTag: tag,
 		Multiple:    multiple,
@@ -1543,6 +1562,9 @@ it must be redelivered or dropped.
 See also Delivery.Nack
 */
 func (ch *Channel) Nack(tag uint64, multiple bool, requeue bool) error {
+	ch.m.Lock()
+	defer ch.m.Unlock()
+
 	return ch.send(&basicNack{
 		DeliveryTag: tag,
 		Multiple:    multiple,
@@ -1558,6 +1580,9 @@ multiple messages, reducing the amount of protocol messages to exchange.
 See also Delivery.Reject
 */
 func (ch *Channel) Reject(tag uint64, requeue bool) error {
+	ch.m.Lock()
+	defer ch.m.Unlock()
+
 	return ch.send(&basicReject{
 		DeliveryTag: tag,
 		Requeue:     requeue,

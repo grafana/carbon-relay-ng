@@ -25,8 +25,10 @@ const (
 	defaultConnectionTimeout = 30 * time.Second
 	defaultProduct           = "https://github.com/streadway/amqp"
 	defaultVersion           = "β"
-	defaultChannelMax        = maxChannelMax
-	defaultLocale            = "en_US"
+	// Safer default that makes channel leaks a lot easier to spot
+	// before they create operational headaches. See https://github.com/rabbitmq/rabbitmq-server/issues/1593.
+	defaultChannelMax = (2 << 10) - 1
+	defaultLocale     = "en_US"
 )
 
 // Config is used in DialConfig and Open to specify the desired tuning
@@ -71,7 +73,7 @@ type Config struct {
 
 // Connection manages the serialization and deserialization of frames from IO
 // and dispatches the frames to the appropriate channel.  All RPC methods and
-// asyncronous Publishing, Delivery, Ack, Nack and Return messages are
+// asynchronous Publishing, Delivery, Ack, Nack and Return messages are
 // multiplexed on this channel.  There must always be active receivers for
 // every asynchronous message on this connection.
 type Connection struct {
@@ -109,21 +111,23 @@ type readDeadliner interface {
 	SetReadDeadline(time.Time) error
 }
 
-// defaultDial establishes a connection when config.Dial is not provided
-func defaultDial(network, addr string) (net.Conn, error) {
-	conn, err := net.DialTimeout(network, addr, defaultConnectionTimeout)
-	if err != nil {
-		return nil, err
-	}
+// DefaultDial establishes a connection when config.Dial is not provided
+func DefaultDial(connectionTimeout time.Duration) func(network, addr string) (net.Conn, error) {
+	return func(network, addr string) (net.Conn, error) {
+		conn, err := net.DialTimeout(network, addr, connectionTimeout)
+		if err != nil {
+			return nil, err
+		}
 
-	// Heartbeating hasn't started yet, don't stall forever on a dead server.
-	// A deadline is set for TLS and AMQP handshaking. After AMQP is established,
-	// the deadline is cleared in openComplete.
-	if err := conn.SetDeadline(time.Now().Add(defaultConnectionTimeout)); err != nil {
-		return nil, err
-	}
+		// Heartbeating hasn't started yet, don't stall forever on a dead server.
+		// A deadline is set for TLS and AMQP handshaking. After AMQP is established,
+		// the deadline is cleared in openComplete.
+		if err := conn.SetDeadline(time.Now().Add(connectionTimeout)); err != nil {
+			return nil, err
+		}
 
-	return conn, nil
+		return conn, nil
+	}
 }
 
 // Dial accepts a string in the AMQP URI format and returns a new Connection
@@ -178,7 +182,7 @@ func DialConfig(url string, config Config) (*Connection, error) {
 
 	dialer := config.Dial
 	if dialer == nil {
-		dialer = defaultDial
+		dialer = DefaultDial(defaultConnectionTimeout)
 	}
 
 	conn, err = dialer("tcp", addr)
@@ -199,6 +203,7 @@ func DialConfig(url string, config Config) (*Connection, error) {
 
 		client := tls.Client(conn, config.TLSClientConfig)
 		if err := client.Handshake(); err != nil {
+
 			conn.Close()
 			return nil, err
 		}
@@ -256,7 +261,7 @@ func (c *Connection) ConnectionState() tls.ConnectionState {
 
 /*
 NotifyClose registers a listener for close events either initiated by an error
-accompaning a connection.close method or by a normal shutdown.
+accompanying a connection.close method or by a normal shutdown.
 
 On normal shutdowns, the chan will be closed.
 
@@ -315,7 +320,7 @@ including the underlying io, Channels, Notify listeners and Channel consumers
 will also be closed.
 */
 func (c *Connection) Close() error {
-	if c.isClosed() {
+	if c.IsClosed() {
 		return ErrClosed
 	}
 
@@ -330,7 +335,7 @@ func (c *Connection) Close() error {
 }
 
 func (c *Connection) closeWith(err *Error) error {
-	if c.isClosed() {
+	if c.IsClosed() {
 		return ErrClosed
 	}
 
@@ -344,12 +349,14 @@ func (c *Connection) closeWith(err *Error) error {
 	)
 }
 
-func (c *Connection) isClosed() bool {
+// IsClosed returns true if the connection is marked as closed, otherwise false
+// is returned.
+func (c *Connection) IsClosed() bool {
 	return (atomic.LoadInt32(&c.closed) == 1)
 }
 
 func (c *Connection) send(f frame) error {
-	if c.isClosed() {
+	if c.IsClosed() {
 		return ErrClosed
 	}
 
@@ -589,7 +596,7 @@ func (c *Connection) allocateChannel() (*Channel, error) {
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	if c.isClosed() {
+	if c.IsClosed() {
 		return nil, ErrClosed
 	}
 

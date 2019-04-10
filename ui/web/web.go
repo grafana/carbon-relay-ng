@@ -18,6 +18,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -332,6 +333,7 @@ func Start(addr string, c cfg.Config, t *tbl.Table, enableDebug bool) {
 	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo, Prefix: "admin_http_assets/"}))
 	loggedRouter := handlers.CombinedLoggingHandler(os.Stdout, router)
 	http.Handle("/", loggedRouter)
+	http.Handle("/metrics", promhttp.Handler())
 
 	log.Infof("admin HTTP listener starting on %v", addr)
 	err := http.ListenAndServe(addr, nil)

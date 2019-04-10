@@ -10,8 +10,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/Dieterbe/go-metrics"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,12 +20,11 @@ import (
 // Flush method to guarantee all data has been forwarded to
 // the underlying io.Writer.
 type Writer struct {
-	key                   string
-	err                   error
-	buf                   []byte
-	n                     int
-	wr                    io.Writer
-	durationOverflowFlush metrics.Timer
+	key string
+	err error
+	buf []byte
+	n   int
+	wr  io.Writer
 }
 
 // NewWriterSize returns a new Writer whose buffer has at least the specified
@@ -38,10 +35,9 @@ func NewWriter(w io.Writer, size int, key string) *Writer {
 		panic("invalid size requested")
 	}
 	return &Writer{
-		key:                   key,
-		buf:                   make([]byte, size),
-		wr:                    w,
-		durationOverflowFlush: stats.Timer("dest=" + key + ".what=durationFlush.type=overflow"),
+		key: key,
+		buf: make([]byte, size),
+		wr:  w,
 	}
 }
 
@@ -100,13 +96,13 @@ func (b *Writer) Write(p []byte) (nn int, err error) {
 			start := time.Now()
 			log.Tracef("bufWriter %s writing to tcp %s", b.key, p)
 			n, b.err = b.wr.Write(p)
-			b.durationOverflowFlush.UpdateSince(start)
+			log.Tracef("bufWriter %s took %#v to write to %s", b.key, time.Since(start), p)
 		} else {
 			n = copy(b.buf[b.n:], p)
 			b.n += n
-			b.durationOverflowFlush.Time(func() {
-				b.flush()
-			})
+			start := time.Now()
+			b.flush()
+			log.Tracef("bufWriter %s took %#v to flush to %s", b.key, time.Since(start), p)
 		}
 		nn += n
 		p = p[n:]

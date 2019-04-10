@@ -1,21 +1,18 @@
 package route
 
 import (
-	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/Dieterbe/go-metrics"
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
+
+	"strconv"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
 	log "github.com/sirupsen/logrus"
-	"strconv"
-	"strings"
 )
 
 // Publishes data points to the native AWS metrics service: CloudWatch
@@ -32,21 +29,11 @@ type CloudWatch struct {
 	baseRoute
 	buf      chan []byte
 	blocking bool
-	dispatch func(chan []byte, []byte, metrics.Gauge, metrics.Counter)
+	dispatch func(chan []byte, []byte)
 
 	bufSize      int // amount of messages we can buffer up. each message is about 100B. so 1e7 is about 1GB.
 	flushMaxSize int
 	flushMaxWait time.Duration
-
-	numOut                metrics.Counter // metrics successfully written to CloudWatch
-	numCloudWatchMessages metrics.Counter // number of messages submitted to CloudWatch
-	numErrFlush           metrics.Counter
-	numDropBuffFull       metrics.Counter   // metric drops due to queue full
-	numParseError         metrics.Counter   // metrics that failed destination.ParseDataPoint()
-	durationTickFlush     metrics.Timer     // only updated after successful flush
-	tickFlushSize         metrics.Histogram // only updated after successful flush
-	numBuffered           metrics.Gauge
-	bufferSize            metrics.Gauge
 }
 
 // NewCloudWatch creates a route that writes metrics to the AWS service CloudWatch
@@ -63,29 +50,19 @@ func NewCloudWatch(key, prefix, sub, regex, awsProfile, awsRegion, awsNamespace 
 		awsNamespace:       awsNamespace,
 		storageResolution:  storageResolution,
 		putMetricDataInput: cloudwatch.PutMetricDataInput{Namespace: aws.String(awsNamespace)},
-		baseRoute:          baseRoute{sync.Mutex{}, atomic.Value{}, key},
+		baseRoute:          *newBaseRoute(key, "CloudWatch"),
 		buf:                make(chan []byte, bufSize),
 		blocking:           blocking,
 		bufSize:            bufSize,
 		flushMaxSize:       flushMaxSize,
 		flushMaxWait:       time.Duration(flushMaxWait) * time.Millisecond,
-
-		numOut:                stats.Counter("dest=cloudwatch" + ".unit=Metric.direction=out"),
-		numCloudWatchMessages: stats.Counter("dest=cloudwatch" + "unit.Metric.what=CloudWatchMessagesPublished"),
-		numErrFlush:           stats.Counter("dest=cloudwatch" + ".unit=Err.type=flush"),
-		numParseError:         stats.Counter("dest=cloudwatch" + ".unit.Err.type=parse"),
-		durationTickFlush:     stats.Timer("dest=cloudwatch" + ".what=durationFlush.type=ticker"),
-		tickFlushSize:         stats.Histogram("dest=cloudwatch" + ".unit=B.what=FlushSize.type=ticker"),
-		numBuffered:           stats.Gauge("dest=cloudwatch" + ".unit=Metric.what=numBuffered"),
-		bufferSize:            stats.Gauge("dest=cloudwatch" + ".unit=Metric.what=bufferSize"),
-		numDropBuffFull:       stats.Counter("dest=cloudwatch" + ".unit=Metric.action=drop.reason=queue_full"),
 	}
-	r.bufferSize.Update(int64(bufSize))
+	r.rm.Buffer.Size.Set(float64(bufSize))
 
 	if blocking {
-		r.dispatch = dispatchBlocking
+		r.dispatch = r.dispatchBlocking
 	} else {
-		r.dispatch = dispatchNonBlocking
+		r.dispatch = r.dispatchNonBlocking
 	}
 
 	for _, dim := range awsDimensions {
@@ -136,7 +113,7 @@ func (r *CloudWatch) run() {
 				flush()
 				return
 			}
-			r.numBuffered.Dec(1)
+			r.rm.Buffer.BufferedMetrics.Dec()
 
 			// Parse metric data
 			msg := strings.TrimSpace(string(buf))
@@ -193,17 +170,14 @@ func (r *CloudWatch) publish(metricData cloudwatch.PutMetricDataInput, cnt int) 
 	result, err := r.client.PutMetricData(&metricData)
 	if err != nil {
 		log.Errorf("RouteCloudWatch: failed sending metric data: %s", err)
-		r.numErrFlush.Inc(1)
+		r.rm.Errors.WithLabelValues("flush").Inc()
 		return
 	}
 
 	dataLength := int64(len(metricData.MetricData))
 	dur := time.Since(start)
-	r.numOut.Inc(int64(cnt))
-	r.numCloudWatchMessages.Inc(1)
-	r.durationTickFlush.Update(dur)
-	r.tickFlushSize.Update(dataLength)
-	// ex: "CloudWatch(key) publish success, count: 50000, size: 2139099, time: 1.288598 seconds"
+	r.rm.OutMetrics.Add(float64(cnt))
+	r.rm.Buffer.ObserveFlush(dur, dataLength, "")
 	log.Debugf("CloudWatch(%s) publish success, count: %d, size: %d, time: %f ms, result: %s",
 		r.Key(), cnt, dataLength, float64(dur)/float64(time.Millisecond), result)
 
@@ -211,7 +185,7 @@ func (r *CloudWatch) publish(metricData cloudwatch.PutMetricDataInput, cnt int) 
 
 // Dispatch is called to submit metrics. They will be in graphite 'plain' format no matter how they arrived.
 func (r *CloudWatch) Dispatch(buf []byte) {
-	r.dispatch(r.buf, buf, r.numBuffered, r.numDropBuffFull)
+	r.dispatch(r.buf, buf)
 }
 
 // Flush is not currently implemented
@@ -228,5 +202,5 @@ func (r *CloudWatch) Shutdown() error {
 
 // Snapshot clones the current config for update operations
 func (r *CloudWatch) Snapshot() Snapshot {
-	return makeSnapshot(&r.baseRoute, "CloudWatch")
+	return makeSnapshot(&r.baseRoute)
 }

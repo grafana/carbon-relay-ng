@@ -7,9 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
 	"github.com/graphite-ng/carbon-relay-ng/util"
 	log "github.com/sirupsen/logrus"
 )
@@ -62,10 +60,6 @@ type Destination struct {
 	flush               chan bool
 	flushErr            chan error
 	tasks               sync.WaitGroup
-
-	numDropNoConnNoSpool metrics.Counter
-	numDropSlowSpool     metrics.Counter
-	numDropSlowConn      metrics.Counter
 }
 
 // New creates a destination object. Note that it still needs to be told to run via Run().
@@ -96,14 +90,7 @@ func New(routeName, prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 		UnspoolSleep:         unspoolSleep,
 		RouteName:            routeName,
 	}
-	dest.setMetrics()
 	return dest, nil
-}
-
-func (dest *Destination) setMetrics() {
-	dest.numDropNoConnNoSpool = stats.Counter("dest=" + dest.Key + ".unit=Metric.action=drop.reason=conn_down_no_spool")
-	dest.numDropSlowSpool = stats.Counter("dest=" + dest.Key + ".unit=Metric.action=drop.reason=slow_spool")
-	dest.numDropSlowConn = stats.Counter("dest=" + dest.Key + ".unit=Metric.action=drop.reason=slow_conn")
 }
 
 func (dest *Destination) Match(s []byte) bool {
@@ -234,7 +221,6 @@ func (dest *Destination) updateConn(addr string) {
 		dest.Addr = addr
 		dest.Instance = instance
 		dest.Key = util.Key(dest.RouteName, addr)
-		dest.setMetrics()
 	}
 	dest.connUpdates <- conn
 	return
@@ -265,13 +251,13 @@ func (dest *Destination) relay() {
 		select {
 		// this op won't succeed as long as the conn is busy processing/flushing
 		case conn.In <- buf:
-			conn.numBuffered.Inc(1)
+			conn.bm.BufferedMetrics.Inc()
 		default:
 			log.Tracef("dest %s %s nonBlockingSend -> dropping due to slow conn", dest.Key, buf)
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
-			dest.numDropSlowConn.Inc(1)
+			droppedMetricsCounter.WithLabelValues("slow_conn").Inc()
 			dest.SlowNow = true
 		}
 	}
@@ -284,7 +270,7 @@ func (dest *Destination) relay() {
 			log.Tracef("dest %s %s nonBlockingSpool -> added to spool", dest.Key, buf)
 		default:
 			log.Tracef("dest %s %s nonBlockingSpool -> dropping due to slow spool", dest.Key, buf)
-			dest.numDropSlowSpool.Inc(1)
+			droppedMetricsCounter.WithLabelValues("slow_pool").Inc()
 		}
 	}
 
@@ -366,7 +352,7 @@ func (dest *Destination) relay() {
 				nonBlockingSpool(buf)
 			} else {
 				log.Tracef("dest %v %s received from In -> no conn no spool -> drop", dest.Key, buf)
-				dest.numDropNoConnNoSpool.Inc(1)
+				droppedMetricsCounter.WithLabelValues(dest.Key, "conn_down_no_spool").Inc()
 			}
 		}
 	}

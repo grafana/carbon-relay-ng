@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Dieterbe/go-metrics"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/metrics"
+	"github.com/prometheus/client_golang/prometheus"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -32,6 +33,7 @@ var newLine = []byte{'\n'}
 // keepSafe doesn't need a separate structure, we could just have an in-line buffer in between the dest and the conn
 // since we write buffered chunks in the bufWriter, may as well "keep those safe". e.g. buffered writing and keepSafe
 // can be the same buffer. but this requires significant refactoring.
+
 type Conn struct {
 	conn        *net.TCPConn
 	buffered    *Writer
@@ -43,24 +45,13 @@ type Conn struct {
 	flushErr    chan error
 	periodFlush time.Duration
 	keepSafe    *keepSafe
-
-	numErrTruncated   metrics.Counter
-	numErrWrite       metrics.Counter
-	numErrFlush       metrics.Counter
-	numOut            metrics.Counter // metrics successfully written to our buffered conn (no flushing yet)
-	durationWrite     metrics.Timer
-	durationTickFlush metrics.Timer     // only updated after successful flush
-	durationManuFlush metrics.Timer     // only updated after successful flush
-	tickFlushSize     metrics.Histogram // only updated after successful flush. in bytes
-	manuFlushSize     metrics.Histogram // only updated after successful flush. in bytes
-	numBuffered       metrics.Gauge
-	bufferSize        metrics.Gauge
-	numDropBadPickle  metrics.Counter
-
-	upMutex sync.RWMutex
-	up      bool // true until the conn goes down
+	upMutex     sync.RWMutex
+	up          bool // true until the conn goes down
 
 	wg sync.WaitGroup
+
+	droppedMetricsCounter *prometheus.CounterVec
+	bm                    *metrics.BufferMetrics
 }
 
 func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSize, ioBufSize int) (*Conn, error) {
@@ -79,29 +70,19 @@ func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSi
 		// when we write to shutdown, HandleData() may not be running anymore to read from the chan
 		// but, it may also be in an error scenario in which case it calls c.close() writing a second time to shutdown,
 		// after checkEOF has called c.close(). so we need enough room
-		shutdown:          make(chan bool, 2),
-		In:                make(chan []byte, connBufSize),
-		key:               key,
-		up:                true,
-		pickle:            pickle,
-		flush:             make(chan bool),
-		flushErr:          make(chan error),
-		periodFlush:       periodFlush,
-		keepSafe:          NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
-		numErrTruncated:   stats.Counter("dest=" + key + ".unit=Err.type=truncated"),
-		numErrWrite:       stats.Counter("dest=" + key + ".unit=Err.type=write"),
-		numErrFlush:       stats.Counter("dest=" + key + ".unit=Err.type=flush"),
-		numOut:            stats.Counter("dest=" + key + ".unit=Metric.direction=out"),
-		durationWrite:     stats.Timer("dest=" + key + ".what=durationWrite"),
-		durationTickFlush: stats.Timer("dest=" + key + ".what=durationFlush.type=ticker"),
-		durationManuFlush: stats.Timer("dest=" + key + ".what=durationFlush.type=manual"),
-		tickFlushSize:     stats.Histogram("dest=" + key + ".unit=B.what=FlushSize.type=ticker"),
-		manuFlushSize:     stats.Histogram("dest=" + key + ".unit=B.what=FlushSize.type=manual"),
-		numBuffered:       stats.Gauge("dest=" + key + ".unit=Metric.what=numBuffered"),
-		bufferSize:        stats.Gauge("dest=" + key + ".unit=Metric.what=bufferSize"),
-		numDropBadPickle:  stats.Counter("dest=" + key + ".unit=Metric.action=drop.reason=bad_pickle"),
+		shutdown:    make(chan bool, 2),
+		In:          make(chan []byte, connBufSize),
+		key:         key,
+		up:          true,
+		pickle:      pickle,
+		flush:       make(chan bool),
+		flushErr:    make(chan error),
+		periodFlush: periodFlush,
+		keepSafe:    NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
+		bm:          metrics.NewBufferMetrics("duration_conn", key, nil),
 	}
-	connObj.bufferSize.Update(int64(connBufSize))
+
+	connObj.bm.Size.Set(float64(connBufSize))
 
 	connObj.wg.Add(2)
 	go connObj.checkEOF()
@@ -156,7 +137,7 @@ func (c *Conn) getRedo() [][]byte {
 	for {
 		select {
 		case buf := <-c.In:
-			c.numBuffered.Dec(1)
+			c.bm.BufferedMetrics.Dec()
 			c.keepSafe.Add(buf)
 		default:
 			return c.keepSafe.GetAll()
@@ -175,12 +156,11 @@ func (c *Conn) HandleData() {
 	defer c.wg.Done()
 	periodFlush := c.periodFlush
 	tickerFlush := time.NewTicker(periodFlush)
-	var now time.Time
-	var durationActive time.Duration
 	flushSize := int64(0)
+	start := time.Now()
 
 	for {
-		start := time.Now()
+		iterStart := time.Now()
 		var active time.Time
 		var action string
 		select { // handle incoming data or flush/shutdown commands
@@ -189,7 +169,7 @@ func (c *Conn) HandleData() {
 		case buf := <-c.In:
 			// seems to take about 30 micros when writing log to disk, 10 micros otherwise (100k messages/second)
 			active = time.Now()
-			c.numBuffered.Dec(1)
+			c.bm.BufferedMetrics.Dec()
 			action = "write"
 			log.Tracef("conn %s HandleData: writing %s", c.key, buf)
 			c.keepSafe.Add(buf)
@@ -199,11 +179,8 @@ func (c *Conn) HandleData() {
 				c.close() // this can take a while but that's ok. this conn won't be used anymore
 				return
 			}
-			c.numOut.Inc(1)
+			c.bm.WriteDuration.Observe(time.Since(active).Seconds())
 			flushSize += int64(n)
-			now = time.Now()
-			durationActive = now.Sub(active)
-			c.durationWrite.Update(durationActive)
 		case <-tickerFlush.C:
 			active = time.Now()
 			action = "auto-flush"
@@ -211,15 +188,12 @@ func (c *Conn) HandleData() {
 			err := c.buffered.Flush()
 			if err != nil {
 				log.Warnf("conn %s HandleData c.buffered auto-flush done but with error: %s, closing", c.key, err)
-				c.numErrFlush.Inc(1)
+				errCounter.WithLabelValues(c.key, "flush").Inc()
 				c.close()
 				return
 			}
 			log.Debugf("conn %s HandleData c.buffered auto-flush done without error", c.key)
-			now = time.Now()
-			durationActive = now.Sub(active)
-			c.durationTickFlush.Update(durationActive)
-			c.tickFlushSize.Update(flushSize)
+			c.bm.ObserveFlush(time.Since(active), flushSize, action)
 			flushSize = 0
 		case <-c.flush:
 			active = time.Now()
@@ -229,21 +203,18 @@ func (c *Conn) HandleData() {
 			c.flushErr <- err
 			if err != nil {
 				log.Warnf("conn %s HandleData c.buffered manual flush done but witth error: %s, closing", c.key, err)
-				// TODO instrument
+				errCounter.WithLabelValues(c.key, "flush").Inc()
 				c.close()
 				return
 			}
 			log.Infof("conn %s HandleData c.buffered manual flush done without error", c.key)
-			now = time.Now()
-			durationActive = now.Sub(active)
-			c.durationManuFlush.Update(durationActive)
-			c.manuFlushSize.Update(flushSize)
+			c.bm.ObserveFlush(time.Since(active), flushSize, action)
 			flushSize = 0
 		case <-c.shutdown:
 			log.Debugf("conn %s HandleData: shutdown received. returning.", c.key)
 			return
 		}
-		log.Debugf("conn %s HandleData %s %s (total iter %s) (use this to tune your In buffering)", c.key, action, durationActive, now.Sub(start))
+		log.Debugf("conn %s HandleData %s %s (total iter %v) (use this to tune your In buffering)", c.key, action, time.Since(iterStart), time.Since(start))
 	}
 }
 
@@ -254,7 +225,7 @@ func (c *Conn) Write(buf []byte) (int, error) {
 		dp, err := ParseDataPoint(buf)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-			c.numDropBadPickle.Inc(1)
+			droppedMetricsCounter.WithLabelValues(c.key, "bad_pickle").Inc()
 			return 0, nil
 		}
 		buf = Pickle(dp)
@@ -269,10 +240,10 @@ func (c *Conn) Write(buf []byte) (int, error) {
 		written += n
 	}
 	if err != nil {
-		c.numErrWrite.Inc(1)
+		errCounter.WithLabelValues(c.key, "write").Inc()
 	}
 	if err == nil && size != n {
-		c.numErrTruncated.Inc(1)
+		errCounter.WithLabelValues(c.key, "truncated").Inc()
 		err = fmt.Errorf("truncated write: %s", buf)
 	}
 	return written, err
