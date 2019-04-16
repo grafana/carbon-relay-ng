@@ -165,11 +165,11 @@ func main() {
 	}
 
 	if config.Listen_addr != "" {
-		inputs = append(inputs, input.NewListener(config.Listen_addr, config.Plain_read_timeout.Duration, input.NewPlain(table)))
+		inputs = append(inputs, input.NewListener(config.Listen_addr, config.Plain_read_timeout.Duration, config.TCP_workers, config.UDP_workers, input.NewPlain(table)))
 	}
 
 	if config.Pickle_addr != "" {
-		inputs = append(inputs, input.NewListener(config.Pickle_addr, config.Pickle_read_timeout.Duration, input.NewPickle(table)))
+		inputs = append(inputs, input.NewListener(config.Pickle_addr, config.Pickle_read_timeout.Duration, config.TCP_workers, config.UDP_workers, input.NewPickle(table)))
 	}
 
 	if config.Amqp.Amqp_enabled == true {

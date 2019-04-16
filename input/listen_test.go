@@ -11,8 +11,13 @@ import (
 )
 
 var (
-	addr   = "localhost"
 	config = cfg.Config{}
+)
+
+const (
+	UDPWorkerCount = 1
+	TCPWorkerCount = 1
+	TCPReadTimeout = 0
 )
 
 type mockHandler struct {
@@ -52,7 +57,7 @@ func (m *mockHandler) String() string {
 func TestTcpUdpShutdown(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener(addr, 0, &handler)
+	listener := NewListener(addr, TCPReadTimeout, TCPWorkerCount, UDPWorkerCount, &handler)
 	err := listener.Start()
 	if err != nil {
 		t.Fatalf("Error when trying to listen: %s", err)
@@ -66,13 +71,13 @@ func TestTcpUdpShutdown(t *testing.T) {
 func TestTcpConnection(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener(addr, 0, &handler)
+	listener := NewListener(addr, TCPReadTimeout, TCPWorkerCount, UDPWorkerCount, &handler)
 	err := listener.Start()
 	if err != nil {
 		t.Fatalf("Error when listening: %s", err)
 	}
 
-	rAddr := listener.tcpList.Addr()
+	rAddr := listener.tcpWorkers[0].listener.Addr()
 	conn, err := net.DialTCP("tcp", nil, rAddr.(*net.TCPAddr))
 	if err != nil {
 		t.Fatalf("Error when connecting to listening port: %s", err)
@@ -105,13 +110,13 @@ func TestTcpConnection(t *testing.T) {
 func TestUdpConnection(t *testing.T) {
 	handler := mockHandler{testing: t}
 	addr := "localhost:" // choose random ports
-	listener := NewListener(addr, 0, &handler)
+	listener := NewListener(addr, TCPReadTimeout, TCPWorkerCount, UDPWorkerCount, &handler)
 	err := listener.Start()
 	if err != nil {
 		t.Fatalf("Error when listening: %s", err)
 	}
 
-	rAddr := listener.udpConn.LocalAddr()
+	rAddr := listener.udpWorkers[0].packetConn.LocalAddr()
 	conn, err := net.DialUDP("udp", nil, rAddr.(*net.UDPAddr))
 	if err != nil {
 		t.Fatalf("Error when connecting to listening port: %s", err)
@@ -135,8 +140,8 @@ func TestUdpConnection(t *testing.T) {
 	time.Sleep(time.Millisecond * 50)
 
 	buffer := make([]byte, 10)
-	listener.udpConn.SetDeadline(time.Now().Add(time.Second))
-	_, _, err = listener.udpConn.ReadFrom(buffer)
+	listener.udpWorkers[0].packetConn.SetDeadline(time.Now().Add(time.Second))
+	_, _, err = listener.udpWorkers[0].packetConn.ReadFrom(buffer)
 	if err == nil {
 		t.Fatalf("Expected read from udp connection to fail, but it did not")
 	}

@@ -1,5 +1,5 @@
 language: go
-go: 1.10.x
+go: 1.11.x
 go_import_path: github.com/graphite-ng/carbon-relay-ng
 before_install:
 - go get -u github.com/go-bindata/go-bindata/...

@@ -38,9 +38,9 @@ func NewWriter(w io.Writer, size int, key string) *Writer {
 		panic("invalid size requested")
 	}
 	return &Writer{
-		key: key,
-		buf: make([]byte, size),
-		wr:  w,
+		key:                   key,
+		buf:                   make([]byte, size),
+		wr:                    w,
 		durationOverflowFlush: stats.Timer("dest=" + key + ".what=durationFlush.type=overflow"),
 	}
 }

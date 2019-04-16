@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jpillora/backoff"
+	reuse "github.com/libp2p/go-reuseport"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,16 +18,35 @@ type Listener struct {
 	kind        string // the kind of associated handler
 	addr        string
 	readTimeout time.Duration
-	tcpList     *net.TCPListener
-	udpConn     *net.UDPConn
+	tcpWorkers  []tcpWorker
+	udpWorkers  []udpWorker
 	Handler     Handler
 	shutdown    chan struct{}
 	HandleConn  func(l *Listener, c net.Conn)
 	HandleData  func(l *Listener, data []byte, src net.Addr)
 }
 
+const (
+	UDPPacketSize = 65535
+)
+
+type worker interface {
+	close()                 // close the listener
+	consume(*Listener)      // consumer loop which forwards data to Listener.Handle
+	listen(*Listener) error // create listener
+	protocol() string       // returns the transport protocol
+}
+
+type tcpWorker struct {
+	listener net.Listener
+}
+
+type udpWorker struct {
+	packetConn net.PacketConn
+}
+
 // NewListener creates a new listener.
-func NewListener(addr string, readTimeout time.Duration, handler Handler) *Listener {
+func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDPWorkerCount int, handler Handler) *Listener {
 	return &Listener{
 		kind:        handler.Kind(),
 		addr:        addr,
@@ -35,29 +55,58 @@ func NewListener(addr string, readTimeout time.Duration, handler Handler) *Liste
 		shutdown:    make(chan struct{}),
 		HandleConn:  handleConn,
 		HandleData:  handleData,
+		udpWorkers:  make([]udpWorker, UDPWorkerCount),
+		tcpWorkers:  make([]tcpWorker, TCPWorkerCount),
 	}
 }
 
+// Name returns Handler's name.
+func (l *Listener) Name() string {
+	return l.kind
+}
+
+// Start initiliaze the TCP and UDP workers and the consumer loop
 func (l *Listener) Start() error {
 	// listeners are set up outside of accept* here so they can interrupt startup
-	err := l.listenTcp()
-	if err != nil {
-		return err
+
+	// create TCP workers
+	for i := 0; i < len(l.tcpWorkers); i++ {
+		err := l.tcpWorkers[i].listen(l)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = l.listenUdp()
-	if err != nil {
-		return err
+	// create UDP workers
+	for i := 0; i < len(l.udpWorkers); i++ {
+		err := l.udpWorkers[i].listen(l)
+		if err != nil {
+			return err
+		}
 	}
 
-	l.wg.Add(2)
-	go l.run("tcp", l.acceptTcp, l.listenTcp, l.tcpList)
-	go l.run("udp", l.consumeUdp, l.listenUdp, l.udpConn)
+	// Run the TCP workers
+	l.wg.Add(len(l.tcpWorkers))
+	for workerID := range l.tcpWorkers {
+		go l.run(&l.tcpWorkers[workerID])
+	}
+	// Run the UDP workers
+	l.wg.Add(len(l.udpWorkers))
+	for workerID := range l.udpWorkers {
+		go l.run(&l.udpWorkers[workerID])
+	}
 
 	return nil
 }
 
-func (l *Listener) run(proto string, consume func(), listen func() error, listener Closable) {
+// Stop will close all the TCP and UDP listeners
+func (l *Listener) Stop() bool {
+	close(l.shutdown)
+	l.wg.Wait()
+	return true
+}
+
+func (l *Listener) run(worker worker) {
 	defer l.wg.Done()
 
 	backoffCounter := &backoff.Backoff{
@@ -67,14 +116,14 @@ func (l *Listener) run(proto string, consume func(), listen func() error, listen
 
 	go func() {
 		<-l.shutdown
-		log.Infof("shutting down %v/%s, closing socket", l.addr, proto)
-		listener.Close()
+		log.Infof("shutting down %v/%s, closing socket", l.addr, worker.protocol())
+		worker.close()
 	}()
 
 	for {
-		log.Infof("listening on %v/%s", l.addr, proto)
+		log.Infof("listening on %v/%s", l.addr, worker.protocol())
 
-		consume()
+		worker.consume(l)
 
 		select {
 		case <-l.shutdown:
@@ -82,8 +131,8 @@ func (l *Listener) run(proto string, consume func(), listen func() error, listen
 		default:
 		}
 		for {
-			log.Infof("reopening %v/%s", l.addr, proto)
-			err := listen()
+			log.Infof("reopening %v/%s", l.addr, worker.protocol())
+			err := worker.listen(l)
 			if err == nil {
 				backoffCounter.Reset()
 				break
@@ -91,49 +140,54 @@ func (l *Listener) run(proto string, consume func(), listen func() error, listen
 
 			select {
 			case <-l.shutdown:
-				log.Infof("shutting down %v/%s, closing socket", l.addr, proto)
+				log.Infof("shutting down %v/%s, closing socket", l.addr, worker.protocol())
 				return
 			default:
 			}
 			dur := backoffCounter.Duration()
-			log.Errorf("error listening on %v/%s, retrying after %v: %s", l.addr, proto, dur, err)
+			log.Errorf("error listening on %v/%s, retrying after %v: %s", l.addr, worker.protocol(), dur, err)
 			time.Sleep(dur)
 		}
 	}
 }
 
-func (l *Listener) listenTcp() error {
-	laddr, err := net.ResolveTCPAddr("tcp", l.addr)
-	if err != nil {
-		return err
-	}
-	l.tcpList, err = net.ListenTCP("tcp", laddr)
-	if err != nil {
-		return err
-	}
-	return nil
+func (w *tcpWorker) close() {
+	w.listener.Close()
 }
 
-func (l *Listener) acceptTcp() {
+func (w *tcpWorker) consume(l *Listener) {
 	for {
-		c, err := l.tcpList.AcceptTCP()
+		conn, err := w.listener.Accept()
 		if err != nil {
 			select {
 			case <-l.shutdown:
 				return
 			default:
-				log.Errorf("error accepting on %v/tcp, closing connection: %s", l.addr, err)
-				l.tcpList.Close()
+				log.Errorf("error accepting on %v/tcp, closing connection: %s", w.listener.Addr().String(), err)
+				w.listener.Close()
 				return
 			}
 		}
 
 		l.wg.Add(1)
-		go l.acceptTcpConn(c)
+		go w.acceptTcpConn(l, conn)
 	}
 }
 
-func (l *Listener) acceptTcpConn(c net.Conn) {
+func (w *tcpWorker) listen(l *Listener) error {
+	listener, err := reuse.Listen("tcp", l.addr)
+	if err != nil {
+		return err
+	}
+	w.listener = listener
+	return nil
+}
+
+func (w *tcpWorker) protocol() string {
+	return "tcp"
+}
+
+func (w *tcpWorker) acceptTcpConn(l *Listener, conn net.Conn) {
 	defer l.wg.Done()
 	connClose := make(chan struct{})
 	defer close(connClose)
@@ -141,13 +195,13 @@ func (l *Listener) acceptTcpConn(c net.Conn) {
 	go func() {
 		select {
 		case <-l.shutdown:
-			c.Close()
+			conn.Close()
 		case <-connClose:
 		}
 	}()
 
-	l.HandleConn(l, NewTimeoutConn(c, l.readTimeout))
-	c.Close()
+	l.HandleConn(l, NewTimeoutConn(conn, l.readTimeout))
+	conn.Close()
 }
 
 // handleConn does the necessary logging and invocation of the handler
@@ -169,35 +223,41 @@ func handleConn(l *Listener, c net.Conn) {
 	log.Debugf("%s handler%s returned. closing conn", l.kind, remoteInfo)
 }
 
-func (l *Listener) listenUdp() error {
-	udp_addr, err := net.ResolveUDPAddr("udp", l.addr)
-	if err != nil {
-		return err
-	}
-	l.udpConn, err = net.ListenUDP("udp", udp_addr)
-	if err != nil {
-		return err
-	}
-	return nil
+func (w *udpWorker) close() {
+	w.packetConn.Close()
 }
 
-func (l *Listener) consumeUdp() {
-	buffer := make([]byte, 65535)
+func (w *udpWorker) consume(l *Listener) {
+	buffer := make([]byte, UDPPacketSize)
+
 	for {
 		// read a packet into buffer
-		b, src, err := l.udpConn.ReadFrom(buffer)
+		b, src, err := w.packetConn.ReadFrom(buffer)
 		if err != nil {
 			select {
 			case <-l.shutdown:
 				return
 			default:
-				log.Errorf("error reading packet on %v/udp, closing connection: %s", l.addr, err)
-				l.udpConn.Close()
+				log.Errorf("error reading packet on %v/udp, closing connection: %s", w.packetConn.LocalAddr().String(), err)
+				w.packetConn.Close()
 				return
 			}
 		}
 		l.HandleData(l, buffer[:b], src)
 	}
+}
+
+func (w *udpWorker) listen(l *Listener) error {
+	packetConn, err := reuse.ListenPacket("udp", l.addr)
+	if err != nil {
+		return err
+	}
+	w.packetConn = packetConn
+	return nil
+}
+
+func (w *udpWorker) protocol() string {
+	return "udp"
 }
 
 // handleData does the necessary logging and invocation of the handler
@@ -211,14 +271,4 @@ func handleData(l *Listener, data []byte, src net.Addr) {
 		return
 	}
 	log.Debugf("%s handler finished", l.kind)
-}
-
-func (l *Listener) Name() string {
-	return l.kind
-}
-
-func (l *Listener) Stop() bool {
-	close(l.shutdown)
-	l.wg.Wait()
-	return true
 }

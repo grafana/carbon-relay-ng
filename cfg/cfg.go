@@ -9,6 +9,8 @@ import (
 
 type Config struct {
 	Listen_addr             string
+	TCP_workers             int
+	UDP_workers             int
 	Plain_read_timeout      Duration
 	Pickle_addr             string
 	Pickle_read_timeout     Duration
@@ -35,6 +37,8 @@ type Config struct {
 
 func NewConfig() Config {
 	return Config{
+		TCP_workers: 1,
+		UDP_workers: 1,
 		Plain_read_timeout: Duration{
 			2 * time.Minute,
 		},

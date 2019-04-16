@@ -71,3 +71,7 @@
   go-tests = true
   non-go = true
   unused-packages = true
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/libp2p/go-reuseport"

@@ -85,7 +85,7 @@ func admin_http_assetsAppCss() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "admin_http_assets/app.css", size: 122, mode: os.FileMode(420), modTime: time.Unix(1551366508, 0)}
+	info := bindataFileInfo{name: "admin_http_assets/app.css", size: 122, mode: os.FileMode(420), modTime: time.Unix(1552574380, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -105,7 +105,7 @@ func admin_http_assetsAppJs() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "admin_http_assets/app.js", size: 4809, mode: os.FileMode(420), modTime: time.Unix(1551366508, 0)}
+	info := bindataFileInfo{name: "admin_http_assets/app.js", size: 4809, mode: os.FileMode(420), modTime: time.Unix(1552574380, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -125,7 +125,7 @@ func admin_http_assetsIndexHtml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "admin_http_assets/index.html", size: 15961, mode: os.FileMode(420), modTime: time.Unix(1551366508, 0)}
+	info := bindataFileInfo{name: "admin_http_assets/index.html", size: 15961, mode: os.FileMode(420), modTime: time.Unix(1552574380, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
