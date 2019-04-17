@@ -206,7 +206,6 @@ func main() {
 	if !manager.Stop(inputs, shutdownTimeout) {
 		os.Exit(1)
 	}
-	os.Exit(0)
 }
 
 func expandVars(in string) (out string) {
