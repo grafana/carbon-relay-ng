@@ -43,6 +43,7 @@ var (
 	cpuprofile       = flag.String("cpuprofile", "", "write cpu profile to file")
 	blockProfileRate = flag.Int("block-profile-rate", 0, "see https://golang.org/pkg/runtime/#SetBlockProfileRate")
 	memProfileRate   = flag.Int("mem-profile-rate", 512*1024, "0 to disable. 1 for max precision (expensive!) see https://golang.org/pkg/runtime/#pkg-variables")
+	enablePprof      = flag.Bool("enable-pprof", false, "Will enable debug endpoints on /debug/pprof/")
 	badMetrics       *badmetrics.BadMetrics
 	Version          = "unknown"
 )
@@ -193,7 +194,7 @@ func main() {
 	}
 
 	if config.Http_addr != "" {
-		go web.Start(config.Http_addr, config, table)
+		go web.Start(config.Http_addr, config, table, *enablePprof)
 	}
 
 	sigChan := make(chan os.Signal, 1)
