@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"strconv"
 	"time"
@@ -293,7 +294,7 @@ func addRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerErro
 	return map[string]string{"Message": "route added"}, nil
 }
 
-func Start(addr string, c cfg.Config, t *tbl.Table) {
+func Start(addr string, c cfg.Config, t *tbl.Table, enableDebug bool) {
 	table = t
 	config = c
 
@@ -312,6 +313,21 @@ func Start(addr string, c cfg.Config, t *tbl.Table) {
 	//router.Handle("/routes/{key}", handler(updateRoute)).Methods("POST")
 	router.Handle("/routes/{key}", handler(removeRoute)).Methods("DELETE")
 	router.Handle("/routes/{key}/destinations/{index}", handler(removeDestination)).Methods("DELETE")
+	if enableDebug {
+		log.Info("Enabled debug endpoints on /debug/pprof")
+		router.HandleFunc("/debug/pprof/", pprof.Index)
+		router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		router.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		router.HandleFunc("/debug/pprof/{name}", func(w http.ResponseWriter, r *http.Request) {
+			if p, ok := mux.Vars(r)["name"]; ok {
+				pprof.Handler(p).ServeHTTP(w, r)
+			} else {
+				w.WriteHeader(404)
+			}
+		})
+	}
 
 	router.PathPrefix("/").Handler(http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo, Prefix: "admin_http_assets/"}))
 	loggedRouter := handlers.CombinedLoggingHandler(os.Stdout, router)

@@ -397,7 +397,6 @@ func TestConfigDontInterpolateOtherValues(t *testing.T) {
 regex = '^servers\.(dc[0-9]+)\.(app|proxy)[0-9]+\.(.*)'
 format = 'aggregates.$1.$2.$3.sum'`)
 
-
 	ioutil.WriteFile("/tmp/config.example.toml", template, 0644)
 	config := readConfigFile("/tmp/config.example.toml")
 
