@@ -40,7 +40,7 @@ percentiles    | a set of different percentiles
 
 
 * The wait parameter allows up to the specified amount of seconds to wait for values:
-With a wait of 120, metrics can come 2 minutes late and still be included in the aggregation results.
+With a wait of 120, metrics can come 2 minutes after the start of the interval and still be included in the aggregation results.  A general rule of thumb is that the wait value should be set to the interval plus a few seconds to allow time for points to come in.
 * The fmt parameter dictates what the metric key of the aggregated metric will be.  use $1, $2, etc to refer to groups in the regex
   Multi-value aggregators (currently only percentiles) add .pxx at the end of the various metrics they emit.
   Single-value aggregators (currently all others) don't, allowing you to specify keywords like avg, sum, etc wherever into the fmt string you want.
