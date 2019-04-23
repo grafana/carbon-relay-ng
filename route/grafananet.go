@@ -3,11 +3,13 @@ package route
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -161,7 +163,7 @@ func (route *GrafanaNet) run(in chan []byte) {
 			route.numBuffered.Dec(1)
 			md, err := parseMetric(buf, route.schemas, route.orgId)
 			if err != nil {
-				log.Errorf("RouteGrafanaNet: %s", err)
+				log.Errorf("RouteGrafanaNet: parseMetric failed: %s. skipping metric", err)
 				continue
 			}
 			md.SetId()
@@ -217,7 +219,7 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 	}
 	var dur time.Duration
 	for {
-		dur, err = route.flush(req)
+		dur, err = route.flush(mda, req)
 		if err == nil {
 			break
 		}
@@ -234,7 +236,7 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 	return metrics[:0]
 }
 
-func (route *GrafanaNet) flush(req *http.Request) (time.Duration, error) {
+func (route *GrafanaNet) flush(mda schema.MetricDataArray, req *http.Request) (time.Duration, error) {
 	pre := time.Now()
 	resp, err := route.client.Do(req)
 	dur := time.Since(pre)
@@ -242,8 +244,29 @@ func (route *GrafanaNet) flush(req *http.Request) (time.Duration, error) {
 		return dur, err
 	}
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		ioutil.ReadAll(resp.Body)
+		bod, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
+		if err != nil {
+			log.Warnf("GrafanaNet remote said %q, but could not read its response: %s", resp.Status, err.Error())
+			return dur, nil
+		}
+		var mResp MetricsResponse
+		err = json.Unmarshal(bod, &mResp)
+		if err != nil {
+			log.Warnf("GrafanaNet remote returned %q, but could not parse its response: %s", resp.Status, err.Error())
+			return dur, nil
+		}
+		if mResp.Invalid != 0 {
+			var b strings.Builder
+			fmt.Fprintf(&b, "request contained %d invalid metrics that were dropped (%d valid metrics were published in this request)\n", mResp.Invalid, mResp.Published)
+			for key, vErr := range mResp.ValidationErrors {
+				fmt.Fprintf(&b, "  %q : %d metrics.  Examples:\n", key, vErr.Count)
+				for _, idx := range vErr.ExampleIds {
+					fmt.Fprintf(&b, "   - %#v\n", mda[idx])
+				}
+			}
+			log.Warn(b.String())
+		}
 		return dur, nil
 	}
 	buf := make([]byte, 300)
