@@ -8,8 +8,8 @@ package util
 type Limiter chan struct{}
 
 // NewLimiter creates a limiter with l slots
-func NewLimiter(l int) Limiter {
-	return make(chan struct{}, l)
+func NewLimiter(limit int) Limiter {
+	return make(chan struct{}, limit)
 }
 
 func (l Limiter) Add() {
