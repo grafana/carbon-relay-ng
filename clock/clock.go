@@ -1,12 +1,19 @@
 package clock
 
-import "time"
+import (
+	"time"
+)
 
-// AlignedTick returns a tick channel so that, let's say interval is a second
-// then it will tick at every whole second, or if it's 60s than it's every whole
-// minute. Note that in my testing this is about .0001 to 0.0002 seconds later due
+// AlignedTick returns a tick channel that ticks slightly after*
+// offset after the whole interval.
+// Examples
+// interval   offset         ticks
+// 1s         0              every whole second
+// 10s        1s             00:00:01, 00:00:11, etc
+// 90m        15m            00:00:15, 00:01:45, etc
+// [*] in my testing about .0001 to 0.0002 seconds later due
 // to scheduling etc.
-func AlignedTick(period time.Duration) <-chan time.Time {
+func AlignedTick(period, offset time.Duration) <-chan time.Time {
 	// note that time.Ticker is not an interface,
 	// and that if we instantiate one, we can't write to its channel
 	// hence we can't leverage that type.
@@ -14,7 +21,8 @@ func AlignedTick(period time.Duration) <-chan time.Time {
 	go func() {
 		for {
 			unix := time.Now().UnixNano()
-			diff := time.Duration(period - (time.Duration(unix) % period))
+			adjusted := time.Duration(unix) - offset
+			diff := time.Duration(period - adjusted%period)
 			time.Sleep(diff)
 			select {
 			case c <- time.Now():

@@ -7,10 +7,12 @@ import (
 
 	"github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/util"
 )
 
 var numTooOld metrics.Counter
 var rangeTracker *RangeTracker
+var flushes = util.NewLimiter(1)
 
 func InitMetrics() {
 	numTooOld = stats.Counter("module=aggregator.unit=Metric.what=TooOld")
