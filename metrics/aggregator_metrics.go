@@ -50,23 +50,20 @@ func NewAggregatorMetrics(id string, labels prometheus.Labels) *AggregatorMetric
 	labels["id"] = id
 
 	am.Cache = NewCacheMetrics(namespace, labels)
-
-	tsVec := promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace:   namespace,
-		Name:        "timestamp_value",
-		Help:        "Lowest and Highest Timestamp registered",
-		ConstLabels: labels,
-	}, []string{"type"})
-
-	am.highestTimestampCounter = tsVec.WithLabelValues("highest")
-	am.lowestTimestampCounter = tsVec.WithLabelValues("lowest")
-
 	am.Dropped = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace:   namespace,
 		Name:        "dropped_metrics_total",
 		Help:        "Total number of metrics dropped because of their age",
 		ConstLabels: labels,
 	})
+	tsVec := promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace:   namespace,
+		Name:        "timestamp_value",
+		Help:        "Lowest and Highest Timestamp registered",
+		ConstLabels: labels,
+	}, []string{"type"})
+	am.highestTimestampCounter = tsVec.WithLabelValues("highest")
+	am.lowestTimestampCounter = tsVec.WithLabelValues("lowest")
 
 	am.tsch = make(chan uint32)
 	go func() {
