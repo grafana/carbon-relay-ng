@@ -74,7 +74,8 @@ func regexToPrefix(regex string) []byte {
 
 // New creates an aggregator
 func New(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte) (*Aggregator, error) {
-	return NewMocked(fun, regex, prefix, sub, outFmt, cache, interval, wait, dropRaw, out, 2000, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
+	ticker := clock.AlignedTick(time.Duration(interval)*time.Second, time.Duration(wait)*time.Second)
+	return NewMocked(fun, regex, prefix, sub, outFmt, cache, interval, wait, dropRaw, out, 2000, time.Now, ticker)
 }
 
 func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
@@ -157,7 +158,7 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 // Flush finalizes and removes aggregations that are due
 func (a *Aggregator) Flush(ts uint) {
 	for k, proc := range a.aggregations {
-		if k.ts < ts {
+		if k.ts <= ts {
 			results, ok := proc.Flush()
 			if ok {
 				if len(results) == 1 {
