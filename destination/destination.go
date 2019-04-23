@@ -74,8 +74,8 @@ func New(routeName, prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 	if err != nil {
 		return nil, err
 	}
-	addr, instance := addrInstanceSplit(addr)
 	key := util.Key(routeName, addr)
+	addr, instance := addrInstanceSplit(addr)
 	dest := &Destination{
 		Matcher:              *m,
 		Addr:                 addr,
