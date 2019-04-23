@@ -157,6 +157,7 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 
 // Flush finalizes and removes aggregations that are due
 func (a *Aggregator) Flush(ts uint) {
+	flushes.Add()
 	for k, proc := range a.aggregations {
 		if k.ts <= ts {
 			results, ok := proc.Flush()
@@ -173,6 +174,7 @@ func (a *Aggregator) Flush(ts uint) {
 		}
 	}
 	//fmt.Println("flush done for ", a.now().Unix(), ". agg size now", len(a.aggregations), a.now())
+	flushes.Done()
 }
 
 func (a *Aggregator) Shutdown() {
