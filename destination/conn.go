@@ -79,7 +79,7 @@ func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSi
 		flushErr:    make(chan error),
 		periodFlush: periodFlush,
 		keepSafe:    NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
-		bm:          metrics.NewBufferMetrics("duration_conn", key, nil),
+		bm:          metrics.NewBufferMetrics("destination_conn", key, nil, []float64{50, 100, 200, 300, 500, 800, 1200}),
 	}
 
 	connObj.bm.Size.Set(float64(connBufSize))
@@ -179,7 +179,7 @@ func (c *Conn) HandleData() {
 				c.close() // this can take a while but that's ok. this conn won't be used anymore
 				return
 			}
-			c.bm.WriteDuration.Observe(time.Since(active).Seconds())
+			c.bm.WriteDuration.Observe(float64(time.Since(active)))
 			flushSize += int64(n)
 		case <-tickerFlush.C:
 			active = time.Now()
@@ -193,7 +193,7 @@ func (c *Conn) HandleData() {
 				return
 			}
 			log.Debugf("conn %s HandleData c.buffered auto-flush done without error", c.key)
-			c.bm.ObserveFlush(time.Since(active), flushSize, action)
+			c.bm.ObserveFlush(time.Since(active), flushSize, metrics.FlushTypeTicker)
 			flushSize = 0
 		case <-c.flush:
 			active = time.Now()
@@ -208,7 +208,7 @@ func (c *Conn) HandleData() {
 				return
 			}
 			log.Infof("conn %s HandleData c.buffered manual flush done without error", c.key)
-			c.bm.ObserveFlush(time.Since(active), flushSize, action)
+			c.bm.ObserveFlush(time.Since(active), flushSize, metrics.FlushTypeManual)
 			flushSize = 0
 		case <-c.shutdown:
 			log.Debugf("conn %s HandleData: shutdown received. returning.", c.key)

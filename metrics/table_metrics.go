@@ -24,8 +24,9 @@ func NewTableMetrics() *TableMetrics {
 
 	tm.RoutingDuration = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: namespace,
-		Name:      "routing_duration_seconds",
+		Name:      "routing_duration_ns",
 		Help:      "time spent routing metrics",
+		Buckets:   []float64{1000, 3000, 5000, 6000, 10000, 15000, 20000, 50000, 100000},
 	})
 	tm.In = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,

@@ -17,12 +17,12 @@ type BufferMetrics struct {
 	DroppedMetrics prometheus.Counter
 
 	BufferedMetrics prometheus.Gauge
-	WriteDuration   prometheus.Histogram
-	FlushSize       *prometheus.HistogramVec
-	FlushDuration   *prometheus.HistogramVec
+	WriteDuration   prometheus.Summary
+	FlushSize       *prometheus.SummaryVec
+	FlushDuration   *prometheus.SummaryVec
 }
 
-func NewBufferMetrics(namespace, id string, additionnalLabels prometheus.Labels) *BufferMetrics {
+func NewBufferMetrics(namespace, id string, additionnalLabels prometheus.Labels, WriteDurationBuckets []float64) *BufferMetrics {
 	if additionnalLabels == nil {
 		additionnalLabels = prometheus.Labels{}
 	}
@@ -31,30 +31,33 @@ func NewBufferMetrics(namespace, id string, additionnalLabels prometheus.Labels)
 	bm.Size = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace:   namespace,
 		Subsystem:   bufferSystem,
-		Name:        "size_bytes",
+		Name:        "size",
 		Help:        "The current size of the buffer",
 		ConstLabels: additionnalLabels,
 	})
 	bm.WriteDuration = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace:   namespace,
 		Subsystem:   bufferSystem,
-		Name:        "write_duration_seconds",
-		Help:        "Histogram about time spent writing in buffer",
+		Name:        "write_duration_ns",
+		Help:        "Summary about time spent writing in buffer",
 		ConstLabels: additionnalLabels,
+		Buckets:     WriteDurationBuckets,
 	})
-	bm.FlushSize = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	bm.FlushSize = promauto.NewSummaryVec(prometheus.SummaryOpts{
 		Namespace:   namespace,
 		Subsystem:   bufferSystem,
-		Name:        "flush_size_bytes",
-		Help:        "Histogram about the buffer's flushes size",
+		Name:        "flush_size",
+		Help:        "Summary about the buffer's flushes size",
 		ConstLabels: additionnalLabels,
+		BufCap:      50000,
 	}, []string{"flush_type"})
-	bm.FlushDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	bm.FlushDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
 		Namespace:   namespace,
 		Subsystem:   bufferSystem,
-		Name:        "flush_duration_seconds",
-		Help:        "Histogram about the buffer's flushes duration",
+		Name:        "flush_duration_ns",
+		Help:        "Summary about the buffer's flushes duration",
 		ConstLabels: additionnalLabels,
+		BufCap:      50000,
 	}, []string{"flush_type"})
 	bm.BufferedMetrics = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace:   namespace,
@@ -77,6 +80,6 @@ func (bm *BufferMetrics) ObserveFlush(duration time.Duration, size int64, flush_
 	if flush_type == "" {
 		flush_type = "basic"
 	}
-	bm.FlushDuration.WithLabelValues(flush_type).Observe(duration.Seconds())
+	bm.FlushDuration.WithLabelValues(flush_type).Observe(float64(duration.Nanoseconds()))
 	bm.FlushSize.WithLabelValues(flush_type).Observe(float64(size))
 }

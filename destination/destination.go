@@ -257,7 +257,7 @@ func (dest *Destination) relay() {
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
-			droppedMetricsCounter.WithLabelValues("slow_conn").Inc()
+			droppedMetricsCounter.WithLabelValues(dest.Key, "slow_conn").Inc()
 			dest.SlowNow = true
 		}
 	}
@@ -270,7 +270,7 @@ func (dest *Destination) relay() {
 			log.Tracef("dest %s %s nonBlockingSpool -> added to spool", dest.Key, buf)
 		default:
 			log.Tracef("dest %s %s nonBlockingSpool -> dropping due to slow spool", dest.Key, buf)
-			droppedMetricsCounter.WithLabelValues("slow_pool").Inc()
+			droppedMetricsCounter.WithLabelValues(dest.Key, "slow_pool").Inc()
 		}
 	}
 

@@ -98,7 +98,7 @@ func (table *Table) Bad() *badmetrics.BadMetrics {
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
 
-	defer metrics.ObserveSinceSeconds(table.tm.RoutingDuration, time.Now())
+	defer metrics.ObserveSince(table.tm.RoutingDuration, time.Now())
 	buf_copy := make([]byte, len(buf))
 	copy(buf_copy, buf)
 	log.Tracef("table received packet %s", buf_copy)

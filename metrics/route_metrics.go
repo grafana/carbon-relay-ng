@@ -25,7 +25,7 @@ func NewRouteMetrics(id, routeType string, additionnalLabels prometheus.Labels) 
 
 	additionnalLabels["type"] = routeType
 
-	rm.Buffer = NewBufferMetrics(namespace, id, additionnalLabels)
+	rm.Buffer = NewBufferMetrics(namespace, id, additionnalLabels, nil)
 	// TODO: Add again once package route is refactored
 	// rm.InMetrics = promauto.NewCounter(prometheus.CounterOpts{
 	// 	Namespace:   namespace,
