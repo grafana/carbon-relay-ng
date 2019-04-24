@@ -7,7 +7,6 @@ import (
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/serialx/hashring"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,7 +15,7 @@ type ConsistentHashing struct {
 	Ring *hashring.HashRing
 }
 
-func NewConsistentHashing(key, prefix, sub, regex string, destinations []*dest.Destination) (Route, error) {
+func NewConsistentHashing(key, prefix, sub, regex string, destinations []*dest.Destination) (*ConsistentHashing, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
@@ -32,12 +31,25 @@ func NewConsistentHashing(key, prefix, sub, regex string, destinations []*dest.D
 
 func (cs *ConsistentHashing) Add(d *dest.Destination) {
 	cs.Ring = cs.Ring.AddNode(d.Key)
-	logrus.Infof("Adding %s in the ring", d.Key)
 	cs.baseRoute.Add(d)
 }
 
+func (cs *ConsistentHashing) DelDestination(index int) error {
+	d, err := cs.GetDestination(index)
+	if err != nil {
+		return err
+	}
+	cs.baseRoute.DelDestination(index)
+	cs.Lock()
+	defer cs.Unlock()
+	cs.Ring = cs.Ring.RemoveNode(d.Key)
+	return nil
+}
+
 func (cs *ConsistentHashing) GetDestinationForName(name []byte) (*dest.Destination, error) {
-	dName, ok := cs.Ring.GetNode(string(name))
+	var ok bool
+	var dName string
+	dName, ok = cs.Ring.GetNode(string(name))
 	if !ok {
 		return nil, fmt.Errorf("can't generate a consistent key for %s. ring is empty", name)
 	}
