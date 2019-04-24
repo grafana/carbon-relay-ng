@@ -205,10 +205,12 @@ func (dest *Destination) Shutdown() error {
 	return nil
 }
 
+// TODO: Fix Instance key update
 func (dest *Destination) updateConn(addr string) {
 	log.Debugf("dest %v (re)connecting to %v", dest.Key, addr)
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
+	key := util.Key(dest.RouteName, addr)
 	addr, instance := addrInstanceSplit(addr)
 	conn, err := NewConn(dest.Key, addr, dest.periodFlush, dest.Pickle, dest.connBufSize, dest.ioBufSize)
 	if err != nil {
@@ -220,7 +222,7 @@ func (dest *Destination) updateConn(addr string) {
 		log.Infof("dest %v update address to %v", dest.Key, addr)
 		dest.Addr = addr
 		dest.Instance = instance
-		dest.Key = util.Key(dest.RouteName, addr)
+		dest.Key = key
 	}
 	dest.connUpdates <- conn
 	return

@@ -2,105 +2,68 @@ package route
 
 import (
 	"bytes"
-	"crypto/md5"
-	"encoding/binary"
+	"fmt"
+
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
-	"sort"
-	"strconv"
-	"strings"
+	"github.com/graphite-ng/carbon-relay-ng/matcher"
+	"github.com/serialx/hashring"
+	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
-type hashRingEntry struct {
-	Position         uint16
-	Hostname         string
-	Instance         string
-	DestinationIndex int
+type ConsistentHashing struct {
+	baseRoute
+	Ring *hashring.HashRing
 }
 
-// hashRing represents the ring of elements and implements sort.Interface
-// comparing `Position`, `Hostname`, and `Instance`, in that order.
-type hashRing []hashRingEntry
-
-// Len, Swap, and Less make up sort.Interface.
-func (r hashRing) Len() int {
-	return len(r)
-}
-func (r hashRing) Swap(i, j int) {
-	r[i], r[j] = r[j], r[i]
-}
-func (r hashRing) Less(i, j int) bool {
-	return r[i].Position < r[j].Position ||
-		(r[i].Position == r[j].Position && r[i].Hostname < r[j].Hostname) ||
-		(r[i].Position == r[j].Position && r[i].Hostname == r[j].Hostname && r[i].Instance < r[j].Instance)
-}
-
-type ConsistentHasher struct {
-	Ring         hashRing
-	destinations []*dest.Destination
-	replicaCount int
-}
-
-func computeRingPosition(key []byte) uint16 {
-	var Position uint16
-	hash := md5.Sum(key)
-	buf := bytes.NewReader(hash[0:2])
-	binary.Read(buf, binary.BigEndian, &Position)
-	return Position
-}
-
-func NewConsistentHasher(destinations []*dest.Destination) ConsistentHasher {
-	return NewConsistentHasherReplicaCount(destinations, 100)
-}
-
-func NewConsistentHasherReplicaCount(destinations []*dest.Destination, replicaCount int) ConsistentHasher {
-	hashRing := ConsistentHasher{replicaCount: replicaCount}
-	for _, d := range destinations {
-		hashRing.AddDestination(d)
+func NewConsistentHashing(key, prefix, sub, regex string, destinations []*dest.Destination) (Route, error) {
+	m, err := matcher.New(prefix, sub, regex)
+	if err != nil {
+		return nil, err
 	}
-	return hashRing
+	ring := hashring.New(nil)
+	r := &ConsistentHashing{*newBaseRoute(key, "ConsistentHashing"), ring}
+	r.config.Store(baseConfig{*m, destinations})
+	for _, dest := range destinations {
+		r.Add(dest)
+	}
+	return r, nil
 }
 
-func (h *ConsistentHasher) AddDestination(d *dest.Destination) {
-	newDestinationIndex := len(h.destinations)
-	h.destinations = append(h.destinations, d)
-	newRingEntries := make(hashRing, h.replicaCount)
-	for i := 0; i < h.replicaCount; i++ {
-		var keyBuf bytes.Buffer
-		// The part of the key prior to the ':' is actually the Python
-		// string representation of the tuple (server, instance) in the
-		// original Carbon code. Note that the server component excludes
-		// the port.
-		server := strings.Split(d.Addr, ":")
-		keyBuf.WriteString("('")
-		keyBuf.WriteString(server[0])
-		keyBuf.WriteString("', ")
-		if d.Instance != "" {
-			keyBuf.WriteString("'")
-			keyBuf.WriteString(d.Instance)
-			keyBuf.WriteString("'")
-		} else {
-			keyBuf.WriteString("None")
+func (cs *ConsistentHashing) Add(d *dest.Destination) {
+	cs.Ring = cs.Ring.AddNode(d.Key)
+	logrus.Infof("Adding %s in the ring", d.Key)
+	cs.baseRoute.Add(d)
+}
+
+func (cs *ConsistentHashing) GetDestinationForName(name []byte) (*dest.Destination, error) {
+	dName, ok := cs.Ring.GetNode(string(name))
+	if !ok {
+		return nil, fmt.Errorf("can't generate a consistent key for %s. ring is empty", name)
+	}
+	d, err := cs.GetDestinationByName(dName)
+	if err != nil {
+		return nil, fmt.Errorf("can't find a destination %s with metric: %s", dName, name)
+	}
+	return d, nil
+}
+
+func (cs *ConsistentHashing) Dispatch(buf []byte) {
+	if pos := bytes.IndexByte(buf, ' '); pos > 0 {
+		name := buf[0:pos]
+		dest, err := cs.GetDestinationForName(name)
+		if err != nil {
+			log.Errorf("can't process metric `%s`: %s", name, err)
+			return
 		}
-		keyBuf.WriteString(")")
-		keyBuf.WriteString(":")
-		keyBuf.WriteString(strconv.Itoa(i))
-		position := computeRingPosition(keyBuf.Bytes())
-		newRingEntries[i].Position = position
-		newRingEntries[i].Hostname = server[0]
-		newRingEntries[i].Instance = d.Instance
-		newRingEntries[i].DestinationIndex = newDestinationIndex
+		// dest should handle this as quickly as it can
+		log.Tracef("route %s sending to dest %s: %s", cs.key, dest.Key, name)
+		dest.In <- buf
+	} else {
+		log.Errorf("could not parse %s", buf)
 	}
-	h.Ring = append(h.Ring, newRingEntries...)
-	sort.Sort(h.Ring)
 }
 
-// GetDestinationIndex returns the index of the destination corresponding
-// to the provided key.
-func (h *ConsistentHasher) GetDestinationIndex(key []byte) int {
-	position := computeRingPosition(key)
-	// Find the index where we would insert a server entry with the same
-	// position field as the position for the specified key.
-	// This is equivalent to bisect_left in the Python implementation.
-	index := sort.Search(len(h.Ring), func(i int) bool { return h.Ring[i].Position >= position }) % len(h.Ring)
-	return h.Ring[index].DestinationIndex
+func (route *ConsistentHashing) Snapshot() Snapshot {
+	return makeSnapshot(&route.baseRoute)
 }
