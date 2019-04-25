@@ -98,14 +98,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:433a2ff0ef4e2f8634614aab3174783c5ff80120b487712db96cc3712f409583"
-  name = "github.com/bmizerany/assert"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "b7ed37b82869576c289d7d97fb2bbd8b64a0cb28"
-
-[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -233,22 +225,6 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:7b21c7fc5551b46d1308b4ffa9e9e49b66c7a8b0ba88c0130474b0e7a20d859f"
-  name = "github.com/kr/pretty"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "73f6ac0b30a98e433b289500d779f50c1a6f0712"
-  version = "v0.1.0"
-
-[[projects]]
-  digest = "1:c3a7836b5904db0f8b609595b619916a6831cb35b8b714aec39f96d00c6155d8"
-  name = "github.com/kr/text"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
-  version = "v0.1.0"
-
-[[projects]]
   branch = "master"
   digest = "1:31b28df4215ef2961ca7f6f95d3dfaefd5f6fd2fdc2784fca464e068db29b766"
   name = "github.com/libp2p/go-reuseport"
@@ -371,6 +347,14 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "3113b8401b8a98917cde58f8bbd42a1b1c03b1fd"
+
+[[projects]]
+  branch = "master"
+  digest = "1:edbf6ec3cdc2e6830c4c45280aa66305a9b0b891c907e92e0037642bdb05e9de"
+  name = "github.com/serialx/hashring"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "8b2912629002c928de72c69aae20c8600bef41a6"
 
 [[projects]]
   digest = "1:807da2ada16d2e0c37c825753667a4d5d05e89bc93aa617fce7ad6b155293e56"
@@ -642,7 +626,6 @@
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/cloudwatch",
-    "github.com/bmizerany/assert",
     "github.com/elazarl/go-bindata-assetfs",
     "github.com/golang/snappy",
     "github.com/gorilla/handlers",
@@ -655,6 +638,7 @@
     "github.com/prometheus/client_golang/prometheus/promauto",
     "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/raintank/metrictank/cluster/partitioner",
+    "github.com/serialx/hashring",
     "github.com/sirupsen/logrus",
     "github.com/streadway/amqp",
     "github.com/stretchr/testify/assert",
