@@ -27,6 +27,7 @@ Available functions:
 function       | output
 ---------------|----------------------------------------------
 avg            | average (mean)
+count          | number of points/values seen (count of items in the bucket)
 delta          | difference between highest and lowest value seen
 derive         | derivative (needs at least 2 input values. if more, derives from oldest to newest)
 last           | last value seen in the bucket

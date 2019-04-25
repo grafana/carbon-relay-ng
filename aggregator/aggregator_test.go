@@ -12,6 +12,7 @@ func TestScanner(t *testing.T) {
 		in    []float64
 		ts    []uint32
 		avg   float64
+		count float64
 		delta float64
 		last  float64
 		max   float64
@@ -30,6 +31,7 @@ func TestScanner(t *testing.T) {
 			[]float64{1, 2, 5, 4, 3},
 			[]uint32{1, 2, 3, 4, 5},
 			3,
+			5,
 			4,
 			3,
 			5,
@@ -48,6 +50,7 @@ func TestScanner(t *testing.T) {
 			[]float64{5, 4, 7, 4, 2, 5, 4, 9},
 			[]uint32{1, 2, 3, 4, 5, 6, 7, 8},
 			5,
+			8,
 			7,
 			9,
 			9,
@@ -66,6 +69,7 @@ func TestScanner(t *testing.T) {
 			[]float64{6, 2, 3, 1},
 			[]uint32{1, 2, 3, 4},
 			3,
+			4,
 			5,
 			1,
 			6,
@@ -85,6 +89,7 @@ func TestScanner(t *testing.T) {
 			[]float64{7, 4, 5, 4, 9, 5, 4, 2},
 			[]uint32{3, 2, 1, 4, 8, 6, 7, 5},
 			5,
+			8,
 			7,
 			2, // last is the last received one, not the one with last timestamp. we could handle that better perhaps
 			9,
@@ -104,6 +109,7 @@ func TestScanner(t *testing.T) {
 			[]float64{95.1772, 95.1567, 95.1937, 95.1959, 95.1442, 95.0610, 95.1591, 95.1195, 95.1065, 95.0925, 95.1990, 95.1682},
 			[]uint32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
 			95.14779166666666,
+			12,
 			0.13799999999999102,
 			95.1682,
 			95.1990,
@@ -150,6 +156,7 @@ func TestScanner(t *testing.T) {
 	}
 	for i, e := range cases {
 		testCase(i, "avg", e.in, e.ts, map[string]float64{"avg": e.avg})
+		testCase(i, "count", e.in, e.ts, map[string]float64{"count": e.count})
 		testCase(i, "delta", e.in, e.ts, map[string]float64{"delta": e.delta})
 		testCase(i, "last", e.in, e.ts, map[string]float64{"last": e.last})
 		testCase(i, "max", e.in, e.ts, map[string]float64{"max": e.max})

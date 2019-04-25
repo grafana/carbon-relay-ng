@@ -17,6 +17,7 @@ commands:
     addAgg <func> <match> <fmt> <interval> <wait> [cache=true/false] add a new aggregation rule.
              <func>:                             aggregation function to use
                avg
+               count
                delta
                derive
                last

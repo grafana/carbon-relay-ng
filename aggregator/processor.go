@@ -35,6 +35,27 @@ func (a *Avg) Flush() ([]processorResult, bool) {
 	}, true
 }
 
+// Count aggregates to the number of values seen
+type Count struct {
+	cnt int
+}
+
+func NewCount(val float64, ts uint32) Processor {
+	return &Count{
+		cnt: 1,
+	}
+}
+
+func (c *Count) Add(val float64, ts uint32) {
+	c.cnt += 1
+}
+
+func (c *Count) Flush() ([]processorResult, bool) {
+	return []processorResult{
+		{fcnName: "count", val: float64(c.cnt)},
+	}, true
+}
+
 // Delta aggregates to the difference between highest and lowest value seen
 type Delta struct {
 	max float64
@@ -292,6 +313,8 @@ func GetProcessorConstructor(fun string) (func(val float64, ts uint32) Processor
 	switch fun {
 	case "avg":
 		return NewAvg, nil
+	case "count":
+		return NewCount, nil
 	case "delta":
 		return NewDelta, nil
 	case "last":

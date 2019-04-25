@@ -36,6 +36,9 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
               if (value == "delta") {
                   return true;
               }
+              if (value == "count") {
+                  return true;
+              }
               if (value == "derive") {
                   return true;
               }
