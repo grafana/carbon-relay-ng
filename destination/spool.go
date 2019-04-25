@@ -47,8 +47,10 @@ func NewSpool(key, spoolDir string, bufSize int, maxBytesPerFile, syncEvery int6
 		queueBuffer:    make(chan []byte, bufSize),
 		shutdownWriter: make(chan bool),
 		shutdownBuffer: make(chan bool),
-		sm:             metrics.NewSpoolMetrics("duration", key, nil),
+		sm:             metrics.NewSpoolMetrics("destination", key, nil),
 	}
+	s.sm.Buffer.Size.Set(float64(maxBytesPerFile))
+
 	go s.Writer()
 	go s.Buffer()
 	return &s
