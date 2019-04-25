@@ -56,6 +56,7 @@ commands:
              <func>:                             aggregation function to use
                avg
                delta
+               count
                derive
                last
                max
