@@ -20,6 +20,7 @@ func NewSafeRegistry() *SafeRegistry {
 
 func (r *SafeRegistry) MustRegister(collectors ...prometheus.Collector) {
 	for _, cltor := range collectors {
+		r.Unregister(cltor)
 		if err := r.Register(cltor); err != nil {
 			logrus.Warnf("failed to register a collector: %s", err)
 		}
