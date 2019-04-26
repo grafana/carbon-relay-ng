@@ -23,7 +23,8 @@ func testBaseCHRoute(nodeNum int) *ConsistentHashing {
 		nodes = append(nodes, addr)
 		destMap[addr] = &destination.Destination{Key: addr}
 	}
-	r := &ConsistentHashing{*newBaseRoute("test_route", "ConsistentHashing"), hashring.New(nodes)}
+	rm, _ := NewRoutingMutator(nil, 0)
+	r := &ConsistentHashing{*newBaseRoute("test_route", "ConsistentHashing"), hashring.New(nodes), rm}
 	r.baseRoute.destMap = destMap
 	return r
 }
