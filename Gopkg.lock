@@ -650,6 +650,7 @@
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/cloudwatch",
     "github.com/coocood/freecache",
+    "github.com/davecgh/go-spew/spew",
     "github.com/elazarl/go-bindata-assetfs",
     "github.com/golang/snappy",
     "github.com/gorilla/handlers",

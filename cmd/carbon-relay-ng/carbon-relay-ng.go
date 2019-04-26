@@ -13,6 +13,8 @@ import (
 	"runtime/pprof"
 	"syscall"
 
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/BurntSushi/toml"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -75,6 +77,7 @@ func main() {
 		log.Fatalf("Invalid config file %q: %s", config_file, err.Error())
 	}
 	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
+	spew.Dump(config)
 
 	formatter := &logger.TextFormatter{}
 	formatter.TimestampFormat = "2006-01-02 15:04:05.000"
@@ -120,6 +123,7 @@ func main() {
 
 	}
 
+	log.Error(spew.Sdump(config))
 	log.Info("initializing routing table...")
 
 	table, err := tbl.InitFromConfig(config, meta)
