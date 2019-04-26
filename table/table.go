@@ -686,7 +686,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				return fmt.Errorf("must get at least 2 destination for route '%s'", routeConfig.Key)
 			}
 
-			route, err := route.NewConsistentHashing(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations)
+			route, err := route.NewConsistentHashing(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations, routeConfig.RoutingMutations, routeConfig.CacheSize)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -707,25 +707,14 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			// cases routeConfig.SslVerify would simply be set to false.
 			// So, we must look at the metadata returned by the config parser.
 
-			routeMeta := meta.Mapping["route"].([]map[string]interface{})
+			// We don't use grafananet anyway.
+			if routeConfig.SslVerify != nil {
+				sslVerify = *(routeConfig.SslVerify)
+			}
 
 			// Note: toml library allows arbitrary casing of properties,
 			// and the map keys are these properties as specified by user
 			// so we can't look up directly
-		OuterLoop:
-			for _, routemeta := range routeMeta {
-				for k, v := range routemeta {
-					if strings.ToLower(k) == "key" && v == routeConfig.Key {
-						for k2, v2 := range routemeta {
-							if strings.ToLower(k2) == "sslverify" {
-								sslVerify = v2.(bool)
-								break OuterLoop
-							}
-						}
-					}
-				}
-			}
-
 			if routeConfig.Spool {
 				spool = routeConfig.Spool
 			}
