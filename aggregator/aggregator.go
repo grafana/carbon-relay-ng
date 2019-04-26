@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"sort"
 	"sync"
 	"time"
 
@@ -26,16 +27,17 @@ type Aggregator struct {
 	Cache        bool
 	reCache      map[string]CacheEntry
 	reCacheMutex sync.Mutex
-	Interval     uint                 // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
-	Wait         uint                 // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
-	DropRaw      bool                 // drop raw values "consumed" by this aggregator
-	aggregations map[aggkey]Processor // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
-	snapReq      chan bool            // chan to issue snapshot requests on
-	snapResp     chan *Aggregator     // chan on which snapshot response gets sent
-	shutdown     chan struct{}        // chan used internally to shut down
-	wg           sync.WaitGroup       // tracks worker running state
-	now          func() time.Time     // returns current time. wraps time.Now except in some unit tests
-	tick         <-chan time.Time     // controls when to flush
+	Interval     uint                          // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
+	Wait         uint                          // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
+	DropRaw      bool                          // drop raw values "consumed" by this aggregator
+	tsList       []uint                        // ordered list of quantized timestamps, so we can flush in correct order
+	aggregations map[uint]map[string]Processor // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
+	snapReq      chan bool                     // chan to issue snapshot requests on
+	snapResp     chan *Aggregator              // chan on which snapshot response gets sent
+	shutdown     chan struct{}                 // chan used internally to shut down
+	wg           sync.WaitGroup                // tracks worker running state
+	now          func() time.Time              // returns current time. wraps time.Now except in some unit tests
+	tick         <-chan time.Time              // controls when to flush
 }
 
 type msg struct {
@@ -103,7 +105,7 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 		Interval:     interval,
 		Wait:         wait,
 		DropRaw:      dropRaw,
-		aggregations: make(map[aggkey]Processor),
+		aggregations: make(map[uint]map[string]Processor),
 		snapReq:      make(chan bool),
 		snapResp:     make(chan *Aggregator),
 		shutdown:     make(chan struct{}),
@@ -125,21 +127,32 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 	return a, nil
 }
 
-type aggkey struct {
-	key string
-	ts  uint
-}
+type TsSlice []uint
+
+func (p TsSlice) Len() int           { return len(p) }
+func (p TsSlice) Less(i, j int) bool { return p[i] < p[j] }
+func (p TsSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value float64) {
-	k := aggkey{
-		key,
-		quantized,
-	}
 	rangeTracker.Sample(ts)
-	proc, ok := a.aggregations[k]
+	aggByKey, ok := a.aggregations[quantized]
+	var proc Processor
 	if ok {
-		proc.Add(value, ts)
+		proc, ok = aggByKey[key]
+		if ok {
+			// if both levels exist, we can just add the value and that's it
+			proc.Add(value, ts)
+		}
 	} else {
+		// first level doesn't exist. create it and add the ts to the list
+		// (second level will be created below)
+		a.tsList = append(a.tsList, quantized)
+		if len(a.tsList) > 1 && a.tsList[len(a.tsList)-2] > quantized {
+			sort.Sort(TsSlice(a.tsList))
+		}
+		a.aggregations[quantized] = make(map[string]Processor)
+	}
+	if !ok {
 		// note, we only flush where for a given value of now, quantized < now-wait
 		// this means that as long as the clock doesn't go back in time
 		// we never recreate a previously created bucket (and reflush with same key and ts)
@@ -148,7 +161,7 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 		// parameter properly. You can use the rangeTracker and numTooOld metrics to help with this
 		if quantized > uint(a.now().Unix())-a.Wait {
 			proc = a.procConstr(value, ts)
-			a.aggregations[k] = proc
+			a.aggregations[quantized][key] = proc
 			return
 		}
 		numTooOld.Inc(1)
@@ -158,23 +171,43 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 // Flush finalizes and removes aggregations that are due
 func (a *Aggregator) Flush(ts uint) {
 	flushes.Add()
-	for k, proc := range a.aggregations {
-		if k.ts <= ts {
+	defer flushes.Done()
+
+	pos := -1 // will track the pos of the last ts position that was successfully processed
+	for i, quantized := range a.tsList {
+		if quantized > ts {
+			break
+		}
+		for key, proc := range a.aggregations[ts] {
 			results, ok := proc.Flush()
 			if ok {
 				if len(results) == 1 {
-					a.out <- []byte(fmt.Sprintf("%s %f %d", k.key, results[0].val, k.ts))
+					a.out <- []byte(fmt.Sprintf("%s %f %d", key, results[0].val, quantized))
 				} else {
 					for _, result := range results {
-						a.out <- []byte(fmt.Sprintf("%s.%s %f %d", k.key, result.fcnName, result.val, k.ts))
+						a.out <- []byte(fmt.Sprintf("%s.%s %f %d", key, result.fcnName, result.val, quantized))
 					}
 				}
 			}
-			delete(a.aggregations, k)
 		}
+		delete(a.aggregations, ts)
+		pos = i
 	}
+	// now we must delete all the timestamps from the ordered list
+	if pos == -1 {
+		// we didn't process anything, so no action needed
+		return
+	}
+	if pos == len(a.tsList)-1 {
+		// we went through all of them. can just reset the slice
+		a.tsList = a.tsList[:1]
+		return
+	}
+
+	copy(a.tsList[0:], a.tsList[pos+1:])
+	a.tsList = a.tsList[:len(a.tsList)-pos-1]
+
 	//fmt.Println("flush done for ", a.now().Unix(), ". agg size now", len(a.aggregations), a.now())
-	flushes.Done()
 }
 
 func (a *Aggregator) Shutdown() {
@@ -297,9 +330,12 @@ func (a *Aggregator) run() {
 				a.reCacheMutex.Unlock()
 			}
 		case <-a.snapReq:
-			aggs := make(map[aggkey]Processor)
-			for k := range a.aggregations {
-				aggs[k] = nil
+			aggs := make(map[uint]map[string]Processor)
+			for quant := range a.aggregations {
+				aggs[quant] = make(map[string]Processor)
+				for key := range a.aggregations[quant] {
+					aggs[quant][key] = nil
+				}
 			}
 			s := &Aggregator{
 				Fun:          a.Fun,
