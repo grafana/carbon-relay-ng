@@ -2,13 +2,16 @@ package aggregator
 
 import (
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"regexp"
 	"sort"
 	"sync"
 	"time"
 
+	metrics "github.com/Dieterbe/go-metrics"
 	"github.com/graphite-ng/carbon-relay-ng/clock"
+	"github.com/graphite-ng/carbon-relay-ng/stats"
 )
 
 type Aggregator struct {
@@ -38,6 +41,9 @@ type Aggregator struct {
 	wg           sync.WaitGroup                // tracks worker running state
 	now          func() time.Time              // returns current time. wraps time.Now except in some unit tests
 	tick         <-chan time.Time              // controls when to flush
+
+	Key   string
+	numIn metrics.Counter
 }
 
 type msg struct {
@@ -122,6 +128,8 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 	if cache {
 		a.reCache = make(map[string]CacheEntry)
 	}
+	a.setKey()
+	a.numIn = stats.Counter("unit=Metric.direction=in.aggregator=" + a.Key)
 	a.wg.Add(1)
 	go a.run()
 	return a, nil
@@ -132,6 +140,23 @@ type TsSlice []uint
 func (p TsSlice) Len() int           { return len(p) }
 func (p TsSlice) Less(i, j int) bool { return p[i] < p[j] }
 func (p TsSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func (a *Aggregator) setKey() string {
+	h := md5.New()
+	h.Write([]byte(a.Fun))
+	h.Write([]byte("\000"))
+	h.Write([]byte(a.Regex))
+	h.Write([]byte("\000"))
+	h.Write([]byte(a.Prefix))
+	h.Write([]byte("\000"))
+	h.Write([]byte(a.Sub))
+	h.Write([]byte("\000"))
+	h.Write([]byte(a.OutFmt))
+
+	key := fmt.Sprintf("%x", h.Sum(nil))
+	a.Key = key[:7]
+	return a.Key
+}
 
 func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value float64) {
 	rangeTracker.Sample(ts)
@@ -304,6 +329,7 @@ func (a *Aggregator) run() {
 			if !ok {
 				continue
 			}
+			a.numIn.Inc(1)
 			ts := uint(msg.ts)
 			quantized := ts - (ts % a.Interval)
 			a.AddOrCreate(outKey, msg.ts, quantized, msg.val)
@@ -352,6 +378,7 @@ func (a *Aggregator) run() {
 				DropRaw:      a.DropRaw,
 				aggregations: aggs,
 				now:          time.Now,
+				Key:          a.Key,
 			}
 			a.snapResp <- s
 		case <-a.shutdown:

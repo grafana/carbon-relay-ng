@@ -402,6 +402,7 @@ func (table *Table) Print() (str string) {
 	maxBPrefix := 6
 	maxBSub := 6
 	maxBRegex := 5
+	maxAKey := 4
 	maxAFunc := 4
 	maxARegex := 5
 	maxAPrefix := 6
@@ -438,6 +439,7 @@ func (table *Table) Print() (str string) {
 		maxBRegex = max(maxBRegex, len(black.Regex))
 	}
 	for _, agg := range t.Aggregators {
+		maxAKey = max(maxAKey, len(agg.Key))
 		maxAFunc = max(maxAFunc, len(agg.Fun))
 		maxARegex = max(maxARegex, len(agg.Regex))
 		maxAPrefix = max(maxAPrefix, len(agg.Prefix))
@@ -464,8 +466,8 @@ func (table *Table) Print() (str string) {
 	rowFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%dd\n", maxRWOld, maxRWNew, maxRWNot, maxRWMax)
 	heaFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBSub, maxBRegex)
 	rowFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBSub, maxBRegex)
-	heaFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-%ds  %%-%ds %%-7s\n", maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
-	rowFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5t  %%-%dd  %%-%dd %%-7t\n", maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
+	heaFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-%ds  %%-%ds %%-7s\n", maxAKey, maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
+	rowFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5t  %%-%dd  %%-%dd %%-7t\n", maxAKey, maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
 	heaFmtR := fmt.Sprintf("  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRType, maxRKey, maxRPrefix, maxRSub, maxRRegex)
 	rowFmtR := fmt.Sprintf("> %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRType, maxRKey, maxRPrefix, maxRSub, maxRRegex)
 	heaFmtD := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-6s  %%-6s\n", maxDPrefix, maxDSub, maxDRegex, maxDAddr, maxDSpoolDir)
@@ -490,10 +492,10 @@ func (table *Table) Print() (str string) {
 	}
 
 	str += "\n## Aggregations:\n"
-	cols = fmt.Sprintf(heaFmtA, "func", "regex", "prefix", "substr", "outFmt", "cache", "interval", "wait", "dropRaw")
+	cols = fmt.Sprintf(heaFmtA, "key", "func", "regex", "prefix", "substr", "outFmt", "cache", "interval", "wait", "dropRaw")
 	str += cols + underscore(len(cols)-1)
 	for _, agg := range t.Aggregators {
-		str += fmt.Sprintf(rowFmtA, agg.Fun, agg.Regex, agg.Prefix, agg.Sub, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait, agg.DropRaw)
+		str += fmt.Sprintf(rowFmtA, agg.Key, agg.Fun, agg.Regex, agg.Prefix, agg.Sub, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait, agg.DropRaw)
 	}
 
 	str += "\n## Routes:\n"
