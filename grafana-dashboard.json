@@ -421,6 +421,341 @@
       }
     },
     {
+      "aliasColors": {
+        "GC cpu fraction - promille": "#BF1B00",
+        "alloc speed": "#C15C17",
+        "major_page_faults": "#bf1b00",
+        "minor_page_faults": "#0a437c",
+        "rss": "#ba43a9"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "id": 17,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 3,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "bytes_per_point",
+          "linewidth": 1,
+          "yaxis": 1
+        },
+        {
+          "alias": "major_page_faults",
+          "yaxis": 2
+        },
+        {
+          "alias": "minor_page_faults",
+          "fill": 5,
+          "linewidth": 0,
+          "yaxis": 2
+        },
+        {
+          "alias": "rss",
+          "fill": 2,
+          "linewidth": 0
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "hide": false,
+          "refCount": 0,
+          "refId": "A",
+          "target": "alias(sumSeries(perSecond(carbon-relay-ng.stats.$instance.memory.total_bytes_allocated.counter64)), 'alloc rate')"
+        },
+        {
+          "hide": false,
+          "refCount": 0,
+          "refId": "B",
+          "target": "alias(sumSeries(carbon-relay-ng.stats.$instance.memory.bytes.allocated_in_heap.gauge64), 'allocated in heap')"
+        },
+        {
+          "hide": true,
+          "refCount": 0,
+          "refId": "C",
+          "target": "alias(sumSeries(carbon-relay-ng.stats.$instance.memory.bytes.obtained_from_sys.gauge64), 'bytes_sys')"
+        },
+        {
+          "hide": true,
+          "refCount": 0,
+          "refId": "D",
+          "target": "alias(sumSeries(carbon-relay-ng.stats.$instance.process.virtual_memory_bytes.gauge64), 'vsz')"
+        },
+        {
+          "hide": false,
+          "refCount": 0,
+          "refId": "E",
+          "target": "alias(sumSeries(carbon-relay-ng.stats.$instance.process.resident_memory_bytes.gauge64), 'rss')"
+        },
+        {
+          "refCount": 0,
+          "refId": "G",
+          "target": "aliasByNode(sumSeries(perSecond(carbon-relay-ng.stats.$instance.process.minor_page_faults.counter64)), 5)"
+        },
+        {
+          "refCount": 0,
+          "refId": "I",
+          "target": "aliasByNode(sumSeries(perSecond(carbon-relay-ng.stats.$instance.process.major_page_faults.counter64)), 5)"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "memory",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "bytes",
+          "label": "allocation",
+          "logBase": 1,
+          "max": null,
+          "min": 0,
+          "show": true
+        },
+        {
+          "format": "none",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {
+        "CPU usage": "#6d1f62",
+        "GC cpu fraction - promille": "#BF1B00",
+        "alloc speed": "#C15C17",
+        "major_page_faults": "#bf1b00",
+        "minor_page_faults": "#0a437c",
+        "rss": "#ba43a9"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "id": 19,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 3,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "GC cpu fraction - promille",
+          "yaxis": 2
+        },
+        {
+          "alias": "CPU usage",
+          "fill": 10,
+          "linewidth": 0
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "hide": false,
+          "refCount": 0,
+          "refId": "H",
+          "target": "alias(averageSeries(carbon-relay-ng.stats.$instance.memory.gc.cpu_fraction.gauge32), 'GC cpu fraction - promille')"
+        },
+        {
+          "refCount": 0,
+          "refId": "F",
+          "target": "alias(sumSeries(perSecond(carbon-relay-ng.stats.$instance.process.cpu_seconds_total.counter64)), 'CPU usage')"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "CPU",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "percentunit",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": 0,
+          "show": true
+        },
+        {
+          "format": "none",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "id": 21,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": false,
+      "linewidth": 2,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 1,
+      "points": true,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "duration",
+          "lines": false,
+          "pointradius": 1,
+          "points": true,
+          "yaxis": 2
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "refId": "A",
+          "target": "alias(averageSeries(perSecond(carbon-relay-ng.stats.$instance.memory.total_gc_cycles.counter64)), 'collections')"
+        },
+        {
+          "refId": "B",
+          "target": "alias(averageSeries(carbon-relay-ng.stats.$instance.memory.gc.last_duration.gauge64), 'duration')"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Golang GC",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "hertz",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "ns",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
@@ -434,7 +769,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8
+        "y": 15
       },
       "id": 8,
       "legend": {
@@ -553,7 +888,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8
+        "y": 15
       },
       "id": 6,
       "legend": {
@@ -677,7 +1012,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8
+        "y": 15
       },
       "id": 5,
       "legend": {
@@ -780,7 +1115,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 15
+        "y": 22
       },
       "id": 10,
       "legend": {
@@ -866,7 +1201,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 15
+        "y": 22
       },
       "id": 9,
       "legend": {
@@ -952,7 +1287,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 15
+        "y": 22
       },
       "id": 11,
       "legend": {
@@ -1047,7 +1382,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 19
+        "y": 26
       },
       "id": 13,
       "legend": {
@@ -1172,7 +1507,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 19
+        "y": 26
       },
       "id": 15,
       "legend": {
@@ -1244,7 +1579,7 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "format": "none",
           "label": null,
           "logBase": 1,
           "max": null,

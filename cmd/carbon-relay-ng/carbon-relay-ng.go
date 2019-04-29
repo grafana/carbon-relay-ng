@@ -23,6 +23,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/input/manager"
 	"github.com/graphite-ng/carbon-relay-ng/logger"
 	"github.com/graphite-ng/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/statsmt"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/ui/telnet"
 	"github.com/graphite-ng/carbon-relay-ng/ui/web"
@@ -145,6 +146,16 @@ func main() {
 			log.Fatal(err)
 		}
 		go metrics.Graphite(metrics.DefaultRegistry, time.Duration(config.Instrumentation.Graphite_interval)*time.Millisecond, "", addr)
+
+		// we use a copy of metrictank's stats library for some extra process/memory related stats
+		// note: they follow a different naming scheme, and have their own reporter.
+
+		statsmt.NewMemoryReporter()
+		_, err = statsmt.NewProcessReporter()
+		if err != nil {
+			log.Fatalf("stats: could not initialize process reporter: %v", err)
+		}
+		statsmt.NewGraphite("carbon-relay-ng.stats."+config.Instance, config.Instrumentation.Graphite_addr, config.Instrumentation.Graphite_interval/1000, 1000, time.Second*10)
 	}
 
 	log.Info("initializing routing table...")
