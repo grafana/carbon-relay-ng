@@ -77,10 +77,19 @@ func (s *Spool) Writer() {
 	// note that this still allows for channel ops to come in on InRT and to be starved, resulting
 	// in some realtime traffic to be dropped, but that shouldn't be too much of an issue. experience will tell..
 	for {
+		// Poor Man's select preference
 		select {
 		case <-s.shutdownWriter:
 			return
-		case buf := <-s.InRT: // wish we could somehow prioritize this higher
+		case buf := <-s.InRT:
+			s.write(buf, "RT")
+			continue
+		default:
+		}
+		select {
+		case <-s.shutdownWriter:
+			return
+		case buf := <-s.InRT:
 			s.write(buf, "RT")
 		case buf := <-s.InBulk:
 			s.write(buf, "bulk")
