@@ -195,7 +195,9 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 
 // Flush finalizes and removes aggregations that are due
 func (a *Aggregator) Flush(ts uint) {
+	flushWaiting.Inc(1)
 	flushes.Add()
+	flushWaiting.Dec(1)
 	defer flushes.Done()
 
 	pos := -1 // will track the pos of the last ts position that was successfully processed
