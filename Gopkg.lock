@@ -411,6 +411,14 @@
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:055af3599226588634be0bbf308225608424e2acc05a808459365e7490478f81"
+  name = "github.com/valyala/fastrand"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "de27aeef8e28dd2bbf18ac43a0277f0f119ad14c"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:a138a5db9d54fe88ac6e41d943dab87c5d8b1a91931fea478ba50825155f8fe2"
   name = "go.opencensus.io"
   packages = [
@@ -642,7 +650,6 @@
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/cloudwatch",
     "github.com/coocood/freecache",
-    "github.com/davecgh/go-spew/spew",
     "github.com/elazarl/go-bindata-assetfs",
     "github.com/golang/snappy",
     "github.com/gorilla/handlers",
@@ -660,6 +667,7 @@
     "github.com/streadway/amqp",
     "github.com/stretchr/testify/assert",
     "github.com/taylorchu/toki",
+    "github.com/valyala/fastrand",
     "gopkg.in/raintank/schema.v1",
     "gopkg.in/raintank/schema.v1/msg",
   ]
