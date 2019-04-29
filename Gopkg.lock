@@ -26,6 +26,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:622bc18c663f130b5b16abe3c723a5ce0f91413b0e59e1f2e319d8dae337ecb3"
+  name = "github.com/Dieterbe/artisanalhistogram"
+  packages = [
+    "hist12h",
+    "hist15s",
+  ]
+  pruneopts = "NUT"
+  revision = "f61b7225d304620f6f2c5cbb21435d0957115429"
+
+[[projects]]
+  branch = "master"
   digest = "1:1078484aedd4c112fe08e5a237c2128f377c2244011905ffbc2762c047c7cddb"
   name = "github.com/Dieterbe/go-metrics"
   packages = [
@@ -109,6 +120,14 @@
   packages = ["spew"]
   pruneopts = "NUT"
   revision = "2df174808ee097f90d259e432cc04442cf60be21"
+
+[[projects]]
+  branch = "master"
+  digest = "1:07e80adc1161a63d37f382328ebabbf4f50e027cfaadf718515c3f39a65eb18f"
+  name = "github.com/dgryski/go-linlog"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "edcf2dfd90ff209a4434491d7f38e203b3163de2"
 
 [[projects]]
   digest = "1:08143362be979b087c2c1bae5dde986e988d3d5d4dc661727cbe436411b3f33a"
@@ -279,6 +298,14 @@
   pruneopts = "NUT"
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:7813f698f171bd7132b123364433e1b0362f7fdb4ed7f4a20df595a4c2410f8a"
+  name = "github.com/prometheus/procfs"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "87a4384529e0652f5035fb5cc8095faf73ea9b0b"
 
 [[projects]]
   digest = "1:702871fd067843dac45acf878c75d14fea30ad6084c93a9babfbf79fc9369a61"
@@ -509,6 +536,8 @@
   input-imports = [
     "cloud.google.com/go/pubsub",
     "github.com/BurntSushi/toml",
+    "github.com/Dieterbe/artisanalhistogram/hist12h",
+    "github.com/Dieterbe/artisanalhistogram/hist15s",
     "github.com/Dieterbe/go-metrics",
     "github.com/Dieterbe/go-metrics/exp",
     "github.com/Dieterbe/topic",
@@ -517,6 +546,7 @@
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/cloudwatch",
     "github.com/bmizerany/assert",
+    "github.com/dgryski/go-linlog",
     "github.com/elazarl/go-bindata-assetfs",
     "github.com/golang/snappy",
     "github.com/gorilla/handlers",
@@ -524,6 +554,7 @@
     "github.com/jpillora/backoff",
     "github.com/kisielk/og-rek",
     "github.com/metrics20/go-metrics20/carbon20",
+    "github.com/prometheus/procfs",
     "github.com/raintank/metrictank/cluster/partitioner",
     "github.com/sirupsen/logrus",
     "github.com/streadway/amqp",
