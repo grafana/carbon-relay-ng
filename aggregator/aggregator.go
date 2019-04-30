@@ -42,8 +42,9 @@ type Aggregator struct {
 	now          func() time.Time              // returns current time. wraps time.Now except in some unit tests
 	tick         <-chan time.Time              // controls when to flush
 
-	Key   string
-	numIn metrics.Counter
+	Key        string
+	numIn      metrics.Counter
+	numFlushed metrics.Counter
 }
 
 type msg struct {
@@ -130,6 +131,7 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 	}
 	a.setKey()
 	a.numIn = stats.Counter("unit=Metric.direction=in.aggregator=" + a.Key)
+	a.numFlushed = stats.Counter("unit=Metric.direction=out.aggregator=" + a.Key)
 	a.wg.Add(1)
 	go a.run()
 	return a, nil
@@ -210,9 +212,11 @@ func (a *Aggregator) Flush(ts uint) {
 			if ok {
 				if len(results) == 1 {
 					a.out <- []byte(fmt.Sprintf("%s %f %d", key, results[0].val, quantized))
+					a.numFlushed.Inc(1)
 				} else {
 					for _, result := range results {
 						a.out <- []byte(fmt.Sprintf("%s.%s %f %d", key, result.fcnName, result.val, quantized))
+						a.numFlushed.Inc(1)
 					}
 				}
 			}

@@ -1379,8 +1379,8 @@
       "datasource": "${DS_GRAPHITE}",
       "fill": 0,
       "gridPos": {
-        "h": 7,
-        "w": 12,
+        "h": 5,
+        "w": 8,
         "x": 0,
         "y": 26
       },
@@ -1504,9 +1504,9 @@
       "dashes": false,
       "fill": 1,
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
+        "h": 5,
+        "w": 16,
+        "x": 8,
         "y": 26
       },
       "id": 15,
@@ -1518,6 +1518,8 @@
         "min": false,
         "rightSide": true,
         "show": true,
+        "sort": "avg",
+        "sortDesc": true,
         "total": false,
         "values": true
       },
@@ -1549,21 +1551,118 @@
       "targets": [
         {
           "refCount": 0,
-          "refId": "A",
-          "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.*.unit_is_aggregator.what_is_flush_waiting, 'aggregators waiting to flush')"
-        },
-        {
-          "refCount": 0,
           "refId": "B",
           "target": "aliasSub(perSecond(service_is_carbon-relay-ng.instance_is_$instance.mtype_is_counter.unit_is_Metric.direction_is_in.aggregator_is_*), '.*instance_is_([^\\.]+).*aggregator_is_([^\\.]+)', 'metrics going into aggregator \\1.\\2')",
-          "textEditor": true
+          "textEditor": false
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "aggregators inbound and flushing",
+      "title": "aggregators inbound",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "none",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {
+        "aggregators waiting to flush": "semi-dark-red"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "fill": 1,
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "id": 22,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": false,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "sort": "avg",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": false,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 2,
+      "points": true,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "aggregators waiting to flush",
+          "dashes": true,
+          "lines": false,
+          "points": false,
+          "yaxis": 2
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "refCount": 0,
+          "refId": "A",
+          "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.*.unit_is_aggregator.what_is_flush_waiting, 'aggregators waiting to flush')"
+        },
+        {
+          "refCount": 0,
+          "refId": "B",
+          "target": "aliasSub(perSecond(service_is_carbon-relay-ng.instance_is_$instance.mtype_is_counter.unit_is_Metric.direction_is_out.aggregator_is_*), '.*instance_is_([^\\.]+).*aggregator_is_([^\\.]+)', 'metrics going out of aggregator \\1.\\2')",
+          "textEditor": false
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "aggregators outbound and flushing",
       "tooltip": {
         "shared": true,
         "sort": 0,
