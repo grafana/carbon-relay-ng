@@ -83,7 +83,7 @@ func regexToPrefix(regex string) []byte {
 
 // New creates an aggregator
 func New(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte) (*Aggregator, error) {
-	ticker := clock.AlignedTick(time.Duration(interval)*time.Second, time.Duration(wait)*time.Second)
+	ticker := clock.AlignedTick(time.Duration(interval)*time.Second, time.Duration(wait)*time.Second, 2)
 	return NewMocked(fun, regex, prefix, sub, outFmt, cache, interval, wait, dropRaw, out, 2000, time.Now, ticker)
 }
 

@@ -13,11 +13,11 @@ import (
 // 90m        15m            00:00:15, 00:01:45, etc
 // [*] in my testing about .0001 to 0.0002 seconds later due
 // to scheduling etc.
-func AlignedTick(period, offset time.Duration) <-chan time.Time {
+func AlignedTick(period, offset time.Duration, bufSize int) <-chan time.Time {
 	// note that time.Ticker is not an interface,
 	// and that if we instantiate one, we can't write to its channel
 	// hence we can't leverage that type.
-	c := make(chan time.Time)
+	c := make(chan time.Time, bufSize)
 	go func() {
 		for {
 			unix := time.Now().UnixNano()
