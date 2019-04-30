@@ -350,8 +350,8 @@ func (a *Aggregator) run() {
 			// even though some cruft may temporarily linger a bit longer.
 			// WARNING: this relies on Go's map implementation detail which randomizes iteration order, in order for us to reach
 			// the entire keyspace. This may stop working properly with future go releases.  Will need to come up with smth better.
-			cutoff := uint32(now.Add(-100 * time.Duration(a.Wait) * time.Second).Unix())
 			if a.reCache != nil {
+				cutoff := uint32(now.Add(-100 * time.Duration(a.Wait) * time.Second).Unix())
 				a.reCacheMutex.Lock()
 				for k, v := range a.reCache {
 					if v.seen < cutoff {
