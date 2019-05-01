@@ -14,19 +14,19 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "5.0.4"
+      "version": "6.1.4"
     },
     {
       "type": "panel",
       "id": "graph",
       "name": "Graph",
-      "version": "5.0.0"
+      "version": ""
     },
     {
       "type": "datasource",
       "id": "graphite",
       "name": "Graphite",
-      "version": "5.0.0"
+      "version": "1.0.0"
     }
   ],
   "annotations": {
@@ -47,7 +47,7 @@
   "gnetId": 338,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1527771760357,
+  "iteration": 1556542692698,
   "links": [],
   "panels": [
     {
@@ -115,6 +115,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "$instance incoming",
       "tooltip": {
@@ -144,7 +145,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -201,6 +206,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "dest metric directions",
       "tooltip": {
@@ -230,7 +236,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {
@@ -286,6 +296,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "dest metric drops",
       "tooltip": {
@@ -315,7 +326,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {
@@ -369,6 +384,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "dest Errors",
       "tooltip": {
@@ -398,7 +414,346 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {
+        "GC cpu fraction - promille": "#BF1B00",
+        "alloc speed": "#C15C17",
+        "major_page_faults": "#bf1b00",
+        "minor_page_faults": "#0a437c",
+        "rss": "#ba43a9"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "id": 17,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 3,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "bytes_per_point",
+          "linewidth": 1,
+          "yaxis": 1
+        },
+        {
+          "alias": "major_page_faults",
+          "yaxis": 2
+        },
+        {
+          "alias": "minor_page_faults",
+          "fill": 5,
+          "linewidth": 0,
+          "yaxis": 2
+        },
+        {
+          "alias": "rss",
+          "fill": 2,
+          "linewidth": 0
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "hide": false,
+          "refCount": 0,
+          "refId": "A",
+          "target": "alias(sumSeries(perSecond(carbon-relay-ng.stats.$instance.memory.total_bytes_allocated.counter64)), 'alloc rate')"
+        },
+        {
+          "hide": false,
+          "refCount": 0,
+          "refId": "B",
+          "target": "alias(sumSeries(carbon-relay-ng.stats.$instance.memory.bytes.allocated_in_heap.gauge64), 'allocated in heap')"
+        },
+        {
+          "hide": true,
+          "refCount": 0,
+          "refId": "C",
+          "target": "alias(sumSeries(carbon-relay-ng.stats.$instance.memory.bytes.obtained_from_sys.gauge64), 'bytes_sys')"
+        },
+        {
+          "hide": true,
+          "refCount": 0,
+          "refId": "D",
+          "target": "alias(sumSeries(carbon-relay-ng.stats.$instance.process.virtual_memory_bytes.gauge64), 'vsz')"
+        },
+        {
+          "hide": false,
+          "refCount": 0,
+          "refId": "E",
+          "target": "alias(sumSeries(carbon-relay-ng.stats.$instance.process.resident_memory_bytes.gauge64), 'rss')"
+        },
+        {
+          "refCount": 0,
+          "refId": "G",
+          "target": "aliasByNode(sumSeries(perSecond(carbon-relay-ng.stats.$instance.process.minor_page_faults.counter64)), 5)"
+        },
+        {
+          "refCount": 0,
+          "refId": "I",
+          "target": "aliasByNode(sumSeries(perSecond(carbon-relay-ng.stats.$instance.process.major_page_faults.counter64)), 5)"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "memory",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "bytes",
+          "label": "allocation",
+          "logBase": 1,
+          "max": null,
+          "min": 0,
+          "show": true
+        },
+        {
+          "format": "none",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {
+        "CPU usage": "#6d1f62",
+        "GC cpu fraction - promille": "#BF1B00",
+        "alloc speed": "#C15C17",
+        "major_page_faults": "#bf1b00",
+        "minor_page_faults": "#0a437c",
+        "rss": "#ba43a9"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "id": 19,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 3,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "GC cpu fraction - promille",
+          "yaxis": 2
+        },
+        {
+          "alias": "CPU usage",
+          "fill": 10,
+          "linewidth": 0
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "hide": false,
+          "refCount": 0,
+          "refId": "H",
+          "target": "alias(averageSeries(carbon-relay-ng.stats.$instance.memory.gc.cpu_fraction.gauge32), 'GC cpu fraction - promille')"
+        },
+        {
+          "refCount": 0,
+          "refId": "F",
+          "target": "alias(sumSeries(perSecond(carbon-relay-ng.stats.$instance.process.cpu_seconds_total.counter64)), 'CPU usage')"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "CPU",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "percentunit",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": 0,
+          "show": true
+        },
+        {
+          "format": "none",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "id": 21,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": false,
+      "linewidth": 2,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 1,
+      "points": true,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "duration",
+          "lines": false,
+          "pointradius": 1,
+          "points": true,
+          "yaxis": 2
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "refId": "A",
+          "target": "alias(averageSeries(perSecond(carbon-relay-ng.stats.$instance.memory.total_gc_cycles.counter64)), 'collections')"
+        },
+        {
+          "refId": "B",
+          "target": "alias(averageSeries(carbon-relay-ng.stats.$instance.memory.gc.last_duration.gauge64), 'duration')"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Golang GC",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "hertz",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "ns",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -414,7 +769,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8
+        "y": 15
       },
       "id": 8,
       "legend": {
@@ -481,6 +836,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "conn Flush size",
       "tooltip": {
@@ -510,7 +866,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {
@@ -528,7 +888,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8
+        "y": 15
       },
       "id": 6,
       "legend": {
@@ -597,6 +957,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "conn metrics in buffer",
       "tooltip": {
@@ -626,7 +987,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {
@@ -647,7 +1012,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8
+        "y": 15
       },
       "id": 5,
       "legend": {
@@ -697,6 +1062,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "conn flush durations",
       "tooltip": {
@@ -726,7 +1092,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {
@@ -745,7 +1115,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 15
+        "y": 22
       },
       "id": 10,
       "legend": {
@@ -781,6 +1151,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "spool inputs",
       "tooltip": {
@@ -810,7 +1181,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -826,7 +1201,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 15
+        "y": 22
       },
       "id": 9,
       "legend": {
@@ -861,6 +1236,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "spool metrics in buffer",
       "tooltip": {
@@ -891,7 +1267,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {},
@@ -907,7 +1287,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 15
+        "y": 22
       },
       "id": 11,
       "legend": {
@@ -953,6 +1333,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "spool durations",
       "tooltip": {
@@ -982,7 +1363,11 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     },
     {
       "aliasColors": {
@@ -995,9 +1380,9 @@
       "fill": 0,
       "gridPos": {
         "h": 5,
-        "w": 24,
+        "w": 8,
         "x": 0,
-        "y": 19
+        "y": 26
       },
       "id": 13,
       "legend": {
@@ -1071,6 +1456,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Aggregator input",
       "tooltip": {
@@ -1103,11 +1489,219 @@
           "min": null,
           "show": true
         }
-      ]
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {
+        "aggregators waiting to flush": "semi-dark-red"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "fill": 1,
+      "gridPos": {
+        "h": 5,
+        "w": 16,
+        "x": 8,
+        "y": 26
+      },
+      "id": 15,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": false,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "sort": "avg",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "aggregators waiting to flush",
+          "dashes": true,
+          "lines": false,
+          "yaxis": 2
+        },
+        {
+          "alias": "/going into/",
+          "fill": 8,
+          "linewidth": 0,
+          "stack": "A"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "refCount": 0,
+          "refId": "B",
+          "target": "aliasSub(perSecond(service_is_carbon-relay-ng.instance_is_$instance.mtype_is_counter.unit_is_Metric.direction_is_in.aggregator_is_*), '.*instance_is_([^\\.]+).*aggregator_is_([^\\.]+)', 'metrics going into aggregator \\1.\\2')",
+          "textEditor": false
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "aggregators inbound",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "none",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {
+        "aggregators waiting to flush": "semi-dark-red"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "fill": 1,
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "id": 22,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": false,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "sort": "avg",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": false,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 2,
+      "points": true,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "aggregators waiting to flush",
+          "dashes": true,
+          "lines": false,
+          "points": false,
+          "yaxis": 2
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "refCount": 0,
+          "refId": "A",
+          "target": "alias(service_is_carbon-relay-ng.instance_is_$instance.*.unit_is_aggregator.what_is_flush_waiting, 'aggregators waiting to flush')"
+        },
+        {
+          "refCount": 0,
+          "refId": "B",
+          "target": "aliasSub(perSecond(service_is_carbon-relay-ng.instance_is_$instance.mtype_is_counter.unit_is_Metric.direction_is_out.aggregator_is_*), '.*instance_is_([^\\.]+).*aggregator_is_([^\\.]+)', 'metrics going out of aggregator \\1.\\2')",
+          "textEditor": false
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "aggregators outbound and flushing",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "none",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     }
   ],
   "refresh": false,
-  "schemaVersion": 16,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [
     "telemetry"
@@ -1119,6 +1713,7 @@
         "allValue": null,
         "current": {},
         "datasource": "${DS_GRAPHITE}",
+        "definition": "",
         "hide": 0,
         "includeAll": true,
         "label": null,
@@ -1129,6 +1724,7 @@
         "refresh": 1,
         "refresh_on_load": true,
         "regex": "/instance_is_(.*)/",
+        "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
         "tags": [],
@@ -1141,6 +1737,7 @@
         "allValue": null,
         "current": {},
         "datasource": "${DS_GRAPHITE}",
+        "definition": "",
         "hide": 0,
         "includeAll": true,
         "label": null,
@@ -1151,6 +1748,7 @@
         "refresh": 1,
         "refresh_on_load": true,
         "regex": "/dest_is_(.*)/",
+        "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
         "tags": [],
@@ -1161,7 +1759,7 @@
     ]
   },
   "time": {
-    "from": "now-1m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {
@@ -1198,5 +1796,5 @@
   "timezone": "browser",
   "title": "Carbon-relay-ng",
   "uid": "8MmAXj4mz",
-  "version": 4
+  "version": 1
 }
