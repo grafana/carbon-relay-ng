@@ -196,26 +196,26 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 }
 
 // Flush finalizes and removes aggregations that are due
-func (a *Aggregator) Flush(ts uint) {
+func (a *Aggregator) Flush(cutoff uint) {
 	flushWaiting.Inc(1)
 	flushes.Add()
 	flushWaiting.Dec(1)
 	defer flushes.Done()
 
 	pos := -1 // will track the pos of the last ts position that was successfully processed
-	for i, quantized := range a.tsList {
-		if quantized > ts {
+	for i, ts := range a.tsList {
+		if ts > cutoff {
 			break
 		}
 		for key, proc := range a.aggregations[ts] {
 			results, ok := proc.Flush()
 			if ok {
 				if len(results) == 1 {
-					a.out <- []byte(fmt.Sprintf("%s %f %d", key, results[0].val, quantized))
+					a.out <- []byte(fmt.Sprintf("%s %f %d", key, results[0].val, ts))
 					a.numFlushed.Inc(1)
 				} else {
 					for _, result := range results {
-						a.out <- []byte(fmt.Sprintf("%s.%s %f %d", key, result.fcnName, result.val, quantized))
+						a.out <- []byte(fmt.Sprintf("%s.%s %f %d", key, result.fcnName, result.val, ts))
 						a.numFlushed.Inc(1)
 					}
 				}
@@ -231,10 +231,12 @@ func (a *Aggregator) Flush(ts uint) {
 	}
 	if pos == len(a.tsList)-1 {
 		// we went through all of them. can just reset the slice
-		a.tsList = a.tsList[:1]
+		a.tsList = a.tsList[:0]
 		return
 	}
 
+	// adjust the slice to only contain the timestamps that still need processing,
+	// reusing the backing array
 	copy(a.tsList[0:], a.tsList[pos+1:])
 	a.tsList = a.tsList[:len(a.tsList)-pos-1]
 
