@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"sort"
 	"sync"
 
 	"github.com/coocood/freecache"
@@ -46,6 +47,9 @@ func NewRoutingMutator(table map[string]string, cacheSize int) (*RoutingMutator,
 			mutators = append(mutators, &Mutator{re, []byte(out)})
 		}
 	}
+	sort.SliceStable(mutators, func(i, j int) bool {
+		return mutators[i].Matcher.String() < mutators[j].Matcher.String()
+	})
 
 	var cache *freecache.Cache
 	if cacheSize > 0 {
