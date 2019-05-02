@@ -147,6 +147,9 @@ func main() {
 	if config.Amqp.Amqp_enabled == true {
 		inputs = append(inputs, input.NewAMQP(config, table, input.AMQPConnector))
 	}
+	if config.Kafka.Kafka_enabled == true {
+		inputs = append(inputs, input.NewKafka(config, table))
+	}
 
 	for _, in := range inputs {
 		err := in.Start()

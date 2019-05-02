@@ -17,6 +17,7 @@ type Config struct {
 	Admin_addr              string
 	Http_addr               string
 	Spool_dir               string
+	Kafka                   Kafka
 	Amqp                    Amqp
 	Max_procs               int
 	First_only              bool
@@ -140,6 +141,14 @@ type Amqp struct {
 	Amqp_key       string
 	Amqp_durable   bool
 	Amqp_exclusive bool
+}
+
+type Kafka struct {
+	Kafka_brokers           []string
+	Kafka_topic             string
+	Kafka_auto_offset_reset string
+	Kafka_consumer_group    string
+	Kafka_enabled           bool
 }
 
 type Init struct {
