@@ -21,7 +21,7 @@ func NewSpoolMetrics(namespace, id string, additionnalLabels prometheus.Labels) 
 	}
 	additionnalLabels["id"] = id
 	sm := SpoolMetrics{}
-	sm.Buffer = NewBufferMetrics(fmt.Sprintf("%s_%s", namespace, SpoolSystem), id, additionnalLabels, nil)
+	sm.Buffer = NewBufferMetrics(fmt.Sprintf("%s_%s", namespace, SpoolSystem), id, additionnalLabels, []float64{250, 500, 750, 1000, 1250, 1500})
 	sm.IncomingMetrics = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace:   namespace,
 		Subsystem:   SpoolSystem,

@@ -79,7 +79,9 @@ func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSi
 		flushErr:    make(chan error),
 		periodFlush: periodFlush,
 		keepSafe:    NewKeepSafe(keepsafe_initial_cap, keepsafe_keep_duration),
-		bm:          metrics.NewBufferMetrics("destination_conn", key, nil, []float64{50, 100, 200, 300, 500, 800, 1200}),
+		bm: metrics.NewBufferMetrics("destination_conn", key, prometheus.Labels{
+			"address": addr,
+		}, []float64{250, 500, 750, 1000, 1250, 1500}),
 	}
 
 	connObj.bm.Size.Set(float64(connBufSize))

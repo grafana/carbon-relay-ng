@@ -165,6 +165,7 @@ func (cs *ConsistentHashing) Dispatch(buf []byte) {
 		// dest should handle this as quickly as it can
 		log.Tracef("route %s sending to dest %s: %s", cs.key, dest.Key, name)
 		dest.In <- buf
+		cs.baseRoute.rm.OutMetrics.Inc()
 	} else {
 		log.Errorf("could not parse %s", buf)
 	}
