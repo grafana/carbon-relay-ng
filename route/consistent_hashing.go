@@ -1,11 +1,12 @@
 package route
 
 import (
-	"bytes"
 	"fmt"
 	"regexp"
 	"sort"
 	"sync"
+
+	"github.com/graphite-ng/carbon-relay-ng/formats"
 
 	"github.com/coocood/freecache"
 
@@ -140,6 +141,24 @@ func (cs *ConsistentHashing) DelDestination(index int) error {
 	return nil
 }
 
+func (cs *ConsistentHashing) GetDestinationForNameString(name string) (*dest.Destination, error) {
+	var ok bool
+	var dName string
+	newName, mutated := cs.Mutator.HandleString(name)
+	if mutated {
+		name = newName
+	}
+	dName, ok = cs.Ring.GetNode(name)
+	if !ok {
+		return nil, fmt.Errorf("can't generate a consistent key for %s. ring is empty", name)
+	}
+	d, err := cs.GetDestinationByName(dName)
+	if err != nil {
+		return nil, fmt.Errorf("can't find a destination %s with metric: %s", dName, name)
+	}
+	return d, nil
+}
+
 func (cs *ConsistentHashing) GetDestinationForName(name []byte) (*dest.Destination, error) {
 	var ok bool
 	var dName string
@@ -158,21 +177,16 @@ func (cs *ConsistentHashing) GetDestinationForName(name []byte) (*dest.Destinati
 	return d, nil
 }
 
-func (cs *ConsistentHashing) Dispatch(buf []byte) {
-	if pos := bytes.IndexByte(buf, ' '); pos > 0 {
-		name := buf[0:pos]
-		dest, err := cs.GetDestinationForName(name)
-		if err != nil {
-			log.Errorf("can't process metric `%s`: %s", name, err)
-			return
-		}
-		// dest should handle this as quickly as it can
-		log.Tracef("route %s sending to dest %s: %s", cs.key, dest.Key, name)
-		dest.In <- buf
-		cs.baseRoute.rm.OutMetrics.Inc()
-	} else {
-		log.Errorf("could not parse %s", buf)
+func (cs *ConsistentHashing) Dispatch(dp formats.Datapoint) {
+	dest, err := cs.GetDestinationForNameString(dp.Name)
+	if err != nil {
+		log.Errorf("can't process metric `%s`: %s", dp.Name, err)
+		return
 	}
+	// dest should handle this as quickly as it can
+	log.Tracef("route %s sending to dest %s: %s", cs.key, dest.Key, dp.Name)
+	dest.In <- dp
+	cs.baseRoute.rm.OutMetrics.Inc()
 }
 
 func (route *ConsistentHashing) Snapshot() Snapshot {

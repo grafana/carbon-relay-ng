@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"regexp"
+	"strings"
 )
 
 var errEmptyOld = errors.New("Rewriter must have non-empty 'old' specification")
@@ -68,8 +69,23 @@ func New(old, new, not string, max int) (RW, error) {
 	}, nil
 }
 
-// Do executes the rewriting of the metric line
-// note: it allocates a new one, it would be better to replace in place.
+func (r RW) DoString(s string) string {
+	if r.notRe != nil {
+		if r.notRe.MatchString(s) {
+			return s
+		}
+	} else if len(r.Not) > 0 {
+		if strings.Contains(s, r.Not) {
+			return s
+		}
+	}
+	if r.re != nil {
+		return (*r.re).ReplaceAllString(s, r.New)
+	}
+
+	return strings.Replace(s, r.Old, r.New, r.Max)
+}
+
 func (r RW) Do(buf []byte) []byte {
 	if r.notRe != nil {
 		if r.notRe.Match(buf) {

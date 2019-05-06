@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/graphite-ng/carbon-relay-ng/formats"
 
 	"github.com/graphite-ng/carbon-relay-ng/clock"
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
@@ -14,14 +17,14 @@ import (
 type Aggregator struct {
 	Fun          string `json:"fun"`
 	procConstr   func(val float64, ts uint32) Processor
-	in           chan msg       `json:"-"` // incoming metrics, already split in 3 fields
-	out          chan []byte    // outgoing metrics
-	Regex        string         `json:"regex,omitempty"`
-	Prefix       string         `json:"prefix,omitempty"`
-	Sub          string         `json:"substring,omitempty"`
-	regex        *regexp.Regexp // compiled version of Regex
-	prefix       []byte         // automatically generated based on Prefix or regex, for fast preMatch
-	substring    []byte         // based on Sub, for fast preMatch
+	in           chan formats.Datapoint `json:"-"` // incoming metrics, already split in 3 fields
+	out          chan formats.Datapoint // outgoing metrics
+	Regex        string                 `json:"regex,omitempty"`
+	Prefix       string                 `json:"prefix,omitempty"`
+	Sub          string                 `json:"substring,omitempty"`
+	regex        *regexp.Regexp         // compiled version of Regex
+	prefix       []byte                 // automatically generated based on Prefix or regex, for fast preMatch
+	substring    []byte                 // based on Sub, for fast preMatch
 	OutFmt       string
 	outFmt       []byte
 	Cache        bool
@@ -38,12 +41,6 @@ type Aggregator struct {
 	now          func() time.Time     // returns current time. wraps time.Now except in some unit tests
 	tick         <-chan time.Time     // controls when to flush
 	am           *metrics.AggregatorMetrics
-}
-
-type msg struct {
-	buf [][]byte
-	val float64
-	ts  uint32
 }
 
 // regexToPrefix inspects the regex and returns the longest static prefix part of the regex
@@ -75,11 +72,11 @@ func regexToPrefix(regex string) []byte {
 }
 
 // New creates an aggregator
-func New(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte) (*Aggregator, error) {
+func New(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan formats.Datapoint) (*Aggregator, error) {
 	return NewMocked(fun, regex, prefix, sub, outFmt, cache, interval, wait, dropRaw, out, 2000, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
 }
 
-func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
+func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan formats.Datapoint, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
 	regexObj, err := regexp.Compile(regex)
 	if err != nil {
 		return nil, err
@@ -92,7 +89,7 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 	a := &Aggregator{
 		Fun:          fun,
 		procConstr:   procConstr,
-		in:           make(chan msg, inBuf),
+		in:           make(chan formats.Datapoint, inBuf),
 		out:          out,
 		Regex:        regex,
 		Sub:          sub,
@@ -164,10 +161,10 @@ func (a *Aggregator) Flush(ts uint) {
 			results, ok := proc.Flush()
 			if ok {
 				if len(results) == 1 {
-					a.out <- []byte(fmt.Sprintf("%s %f %d", k.key, results[0].val, k.ts))
+					a.out <- formats.Datapoint{Name: k.key, Value: results[0].val, Timestamp: uint64(k.ts)}
 				} else {
 					for _, result := range results {
-						a.out <- []byte(fmt.Sprintf("%s.%s %f %d", k.key, result.fcnName, result.val, k.ts))
+						a.out <- formats.Datapoint{Name: fmt.Sprintf("%s.%s", k.key, result.fcnName), Value: results[0].val, Timestamp: uint64(k.ts)}
 					}
 				}
 			}
@@ -182,23 +179,19 @@ func (a *Aggregator) Shutdown() {
 	a.wg.Wait()
 }
 
-func (a *Aggregator) AddMaybe(buf [][]byte, val float64, ts uint32) bool {
-	if !a.PreMatch(buf[0]) {
+func (a *Aggregator) AddMaybe(dp formats.Datapoint) bool {
+	if !a.PreMatchString(dp.Name) {
 		return false
 	}
 
 	if a.DropRaw {
-		_, ok := a.matchWithCache(buf[0])
+		_, ok := a.matchWithCacheString(dp.Name)
 		if !ok {
 			return false
 		}
 	}
 
-	a.in <- msg{
-		buf,
-		val,
-		ts,
-	}
+	a.in <- dp
 
 	return a.DropRaw
 }
@@ -206,6 +199,16 @@ func (a *Aggregator) AddMaybe(buf [][]byte, val float64, ts uint32) bool {
 //PreMatch checks if the specified metric matches the specified prefix and/or substring
 //If prefix isn't explicitly specified it will be derived from the regex where possible.
 //If this returns false the metric will not be passed through to the main regex matching stage.
+func (a *Aggregator) PreMatchString(s string) bool {
+	if len(a.Prefix) > 0 && !strings.HasPrefix(s, a.Prefix) {
+		return false
+	}
+	if len(a.Sub) > 0 && !strings.Contains(s, a.Sub) {
+		return false
+	}
+	return true
+}
+
 func (a *Aggregator) PreMatch(buf []byte) bool {
 	if len(a.prefix) > 0 && !bytes.HasPrefix(buf, a.prefix) {
 		return false
@@ -233,6 +236,10 @@ func (a *Aggregator) match(key []byte) (string, bool) {
 }
 
 // matchWithCache returns whether there was a match, and under which key, if so.
+func (a *Aggregator) matchWithCacheString(key string) (string, bool) {
+	return a.matchWithCache([]byte(key))
+}
+
 func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
 	if a.reCache == nil {
 		return a.match(key)
@@ -267,13 +274,14 @@ func (a *Aggregator) run() {
 		select {
 		case msg := <-a.in:
 			// note, we rely here on the fact that the packet has already been validated
-			outKey, ok := a.matchWithCache(msg.buf[0])
+			outKey, ok := a.matchWithCacheString(msg.Name)
 			if !ok {
 				continue
 			}
-			ts := uint(msg.ts)
+			//TODO: m.conraux Remove int casting logic
+			ts := uint(msg.Timestamp)
 			quantized := ts - (ts % a.Interval)
-			a.AddOrCreate(outKey, msg.ts, quantized, msg.val)
+			a.AddOrCreate(outKey, uint32(ts), quantized, msg.Value)
 		case now := <-a.tick:
 			thresh := now.Add(-time.Duration(a.Wait) * time.Second)
 			a.Flush(uint(thresh.Unix()))

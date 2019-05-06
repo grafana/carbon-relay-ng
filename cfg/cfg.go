@@ -3,52 +3,31 @@ package cfg
 import (
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/validate"
-	m20 "github.com/metrics20/go-metrics20/carbon20"
+	"github.com/graphite-ng/carbon-relay-ng/input"
 )
 
 type Config struct {
-	Listen_addr             string
-	TCP_workers             int
-	UDP_workers             int
-	Plain_read_timeout      Duration
-	Pickle_addr             string
-	Pickle_read_timeout     Duration
-	Admin_addr              string
-	Http_addr               string
-	Spool_dir               string
-	Kafka                   Kafka
-	Amqp                    Amqp
-	Max_procs               int
-	First_only              bool
-	Init                    Init
-	Instance                string
-	Log_level               string
-	Instrumentation         instrumentation
-	Bad_metrics_max_age     string
-	Pid_file                string
-	Validation_level_legacy validate.LevelLegacy
-	Validation_level_m20    validate.LevelM20
-	Validate_order          bool
-	BlackList               []string
-	Aggregation             []Aggregation
-	Route                   []Route
-	Rewriter                []Rewriter
+	InputsRaw []map[string]interface{} `toml:"inputs, omitempty"`
+	Inputs    []input.Input            `toml:"-"`
+
+	Admin_addr          string
+	Http_addr           string
+	Spool_dir           string
+	Max_procs           int
+	First_only          bool
+	Init                Init
+	Instance            string
+	Log_level           string
+	Bad_metrics_max_age string
+	Pid_file            string
+	BlackList           []string
+	Aggregation         []Aggregation
+	Route               []Route
+	Rewriter            []Rewriter
 }
 
 func NewConfig() Config {
-	return Config{
-		TCP_workers: 1,
-		UDP_workers: 1,
-		Plain_read_timeout: Duration{
-			2 * time.Minute,
-		},
-		Pickle_read_timeout: Duration{
-			2 * time.Minute,
-		},
-		Validation_level_legacy: validate.LevelLegacy{m20.MediumLegacy},
-		Validation_level_m20:    validate.LevelM20{m20.MediumM20},
-	}
+	return Config{}
 }
 
 type Duration struct {
@@ -129,33 +108,6 @@ type Rewriter struct {
 	Max int
 }
 
-type Amqp struct {
-	Amqp_enabled   bool
-	Amqp_host      string
-	Amqp_port      int
-	Amqp_vhost     string
-	Amqp_user      string
-	Amqp_password  string
-	Amqp_exchange  string
-	Amqp_queue     string
-	Amqp_key       string
-	Amqp_durable   bool
-	Amqp_exclusive bool
-}
-
-type Kafka struct {
-	Kafka_brokers           []string
-	Kafka_topic             string
-	Kafka_auto_offset_reset string
-	Kafka_consumer_group    string
-	Kafka_enabled           bool
-}
-
 type Init struct {
 	Cmds []string
-}
-
-type instrumentation struct {
-	Graphite_addr     string
-	Graphite_interval int
 }

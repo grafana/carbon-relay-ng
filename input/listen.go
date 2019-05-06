@@ -1,10 +1,11 @@
 package input
 
 import (
-	"bytes"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/graphite-ng/carbon-relay-ng/formats"
 
 	"github.com/jpillora/backoff"
 	reuse "github.com/libp2p/go-reuseport"
@@ -14,13 +15,13 @@ import (
 // Listener takes care of TCP/UDP networking
 // and relies on the Handler to take care of reading data
 type Listener struct {
+	BaseInput
 	wg          sync.WaitGroup
 	kind        string // the kind of associated handler
 	addr        string
 	readTimeout time.Duration
 	tcpWorkers  []tcpWorker
 	udpWorkers  []udpWorker
-	Handler     Handler
 	shutdown    chan struct{}
 	HandleConn  func(l *Listener, c net.Conn)
 	HandleData  func(l *Listener, data []byte, src net.Addr)
@@ -46,12 +47,12 @@ type udpWorker struct {
 }
 
 // NewListener creates a new listener.
-func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDPWorkerCount int, handler Handler) *Listener {
+func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDPWorkerCount int, handler formats.FormatHandler) *Listener {
 	return &Listener{
-		kind:        handler.Kind(),
+		BaseInput:   BaseInput{handler: handler, name: addr},
+		kind:        handler.KindS(),
 		addr:        addr,
 		readTimeout: readTimeout,
-		Handler:     handler,
 		shutdown:    make(chan struct{}),
 		HandleConn:  handleConn,
 		HandleData:  handleData,
@@ -66,9 +67,10 @@ func (l *Listener) Name() string {
 }
 
 // Start initiliaze the TCP and UDP workers and the consumer loop
-func (l *Listener) Start() error {
+func (l *Listener) Start(dispatcher Dispatcher) error {
 	// listeners are set up outside of accept* here so they can interrupt startup
 
+	l.Dispatcher = dispatcher
 	// create TCP workers
 	for i := 0; i < len(l.tcpWorkers); i++ {
 		err := l.tcpWorkers[i].listen(l)
@@ -100,10 +102,10 @@ func (l *Listener) Start() error {
 }
 
 // Stop will close all the TCP and UDP listeners
-func (l *Listener) Stop() bool {
+func (l *Listener) Stop() error {
 	close(l.shutdown)
 	l.wg.Wait()
-	return true
+	return nil
 }
 
 func (l *Listener) run(worker worker) {
@@ -208,19 +210,17 @@ func (w *tcpWorker) acceptTcpConn(l *Listener, conn net.Conn) {
 func handleConn(l *Listener, c net.Conn) {
 	log.Debugf("%s handler: new tcp connection from %v", l.kind, c.RemoteAddr())
 
-	err := l.Handler.Handle(c)
-
+	err := l.handleReader(c)
 	var remoteInfo string
-
 	rAddr := c.RemoteAddr()
 	if rAddr != nil {
 		remoteInfo = " for " + rAddr.String()
 	}
 	if err != nil {
-		log.Warnf("%s handler%s returned: %s. closing conn", l.kind, remoteInfo, err)
+		log.Warnf("%s handler[%s][%s] returned: %s. closing conn", l.Name(), l.handler.KindS(), remoteInfo, err)
 		return
 	}
-	log.Debugf("%s handler%s returned. closing conn", l.kind, remoteInfo)
+	log.Debugf("%s handler[%s][%s] returned. closing conn", l.Name(), l.handler.KindS(), remoteInfo)
 }
 
 func (w *udpWorker) close() {
@@ -243,7 +243,9 @@ func (w *udpWorker) consume(l *Listener) {
 				return
 			}
 		}
-		l.HandleData(l, buffer[:b], src)
+		data := buffer[:b]
+		log.Debugf("%s handler: udp packet from %v (length: %d)", l.kind, src, data)
+		l.handle(data)
 	}
 }
 
@@ -262,13 +264,5 @@ func (w *udpWorker) protocol() string {
 
 // handleData does the necessary logging and invocation of the handler
 func handleData(l *Listener, data []byte, src net.Addr) {
-	log.Debugf("%s handler: udp packet from %v (length: %d)", l.kind, src, len(data))
-
-	err := l.Handler.Handle(bytes.NewReader(data))
-
-	if err != nil {
-		log.Warnf("%s handler: %s", l.kind, err)
-		return
-	}
-	log.Debugf("%s handler finished", l.kind)
+	l.handle(data)
 }

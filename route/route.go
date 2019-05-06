@@ -5,6 +5,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/graphite-ng/carbon-relay-ng/formats"
+
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
@@ -36,8 +38,9 @@ func (c baseConfig) Dests() []*dest.Destination {
 }
 
 type Route interface {
-	Dispatch(buf []byte)
+	Dispatch(formats.Datapoint)
 	Match(s []byte) bool
+	MatchString(s string) bool
 	Snapshot() Snapshot
 	Key() string
 	Type() string
@@ -119,27 +122,27 @@ func (route *baseRoute) run() {
 	}
 }
 
-func (route *SendAllMatch) Dispatch(buf []byte) {
+func (route *SendAllMatch) Dispatch(d formats.Datapoint) {
 	conf := route.config.Load().(Config)
 
 	for _, dest := range conf.Dests() {
-		if dest.Match(buf) {
+		if dest.MatchString(d.Name) {
 			// dest should handle this as quickly as it can
-			log.Tracef("route %s sending to dest %s: %s", route.key, dest.Key, buf)
-			dest.In <- buf
+			log.Tracef("route %s sending to dest %s: %s", route.key, dest.Key, d)
+			dest.In <- d
 			route.rm.OutMetrics.Inc()
 		}
 	}
 }
 
-func (route *SendFirstMatch) Dispatch(buf []byte) {
+func (route *SendFirstMatch) Dispatch(d formats.Datapoint) {
 	conf := route.config.Load().(Config)
 
 	for _, dest := range conf.Dests() {
-		if dest.Match(buf) {
+		if dest.MatchString(d.Name) {
 			// dest should handle this as quickly as it can
-			log.Tracef("route %s sending to dest %s: %s", route.key, dest.Key, buf)
-			dest.In <- buf
+			log.Tracef("route %s sending to dest %s: %s", route.key, dest.Key, d)
+			dest.In <- d
 			route.rm.OutMetrics.Inc()
 			break
 		}
@@ -152,6 +155,11 @@ func (route *baseRoute) Key() string {
 
 func (route *baseRoute) Type() string {
 	return route.routeType
+}
+
+func (route *baseRoute) MatchString(s string) bool {
+	conf := route.config.Load().(Config)
+	return conf.Matcher().MatchString(s)
 }
 
 func (route *baseRoute) Match(s []byte) bool {

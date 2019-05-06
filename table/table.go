@@ -1,12 +1,13 @@
 package table
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/graphite-ng/carbon-relay-ng/formats"
 
 	"github.com/BurntSushi/toml"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
@@ -17,26 +18,21 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
-	"github.com/graphite-ng/carbon-relay-ng/validate"
-	m20 "github.com/metrics20/go-metrics20/carbon20"
 	log "github.com/sirupsen/logrus"
 )
 
 type TableConfig struct {
-	Validation_level_legacy validate.LevelLegacy
-	Validation_level_m20    validate.LevelM20
-	Validate_order          bool
-	rewriters               []rewriter.RW
-	aggregators             []*aggregator.Aggregator
-	blacklist               []*matcher.Matcher
-	routes                  []route.Route
+	rewriters   []rewriter.RW
+	aggregators []*aggregator.Aggregator
+	blacklist   []*matcher.Matcher
+	routes      []route.Route
 }
 
 type Table struct {
 	sync.Mutex              // only needed for the multiple writers
 	config     atomic.Value // for reading and writing
 	SpoolDir   string
-	In         chan []byte `json:"-"` // channel api to trade in some performance for encapsulation, for aggregators
+	In         chan formats.Datapoint `json:"-"` // channel api to trade in some performance for encapsulation, for aggregators
 	bad        *badmetrics.BadMetrics
 	tm         *metrics.TableMetrics
 }
@@ -54,15 +50,12 @@ func New(config cfg.Config) *Table {
 		sync.Mutex{},
 		atomic.Value{},
 		config.Spool_dir,
-		make(chan []byte),
+		make(chan formats.Datapoint),
 		nil,
 		metrics.NewTableMetrics(),
 	}
 
 	t.config.Store(TableConfig{
-		config.Validation_level_legacy,
-		config.Validation_level_m20,
-		config.Validate_order,
 		make([]rewriter.RW, 0),
 		make([]*aggregator.Aggregator, 0),
 		make([]*matcher.Matcher, 0),
@@ -70,14 +63,14 @@ func New(config cfg.Config) *Table {
 	})
 
 	go func() {
-		for buf := range t.In {
-			t.DispatchAggregate(buf)
+		for dp := range t.In {
+			t.DispatchAggregate(dp)
 		}
 	}()
 	return t
 }
 
-func (table *Table) GetIn() chan []byte {
+func (table *Table) GetIn() chan formats.Datapoint {
 	return table.In
 }
 
@@ -96,93 +89,88 @@ func (table *Table) Bad() *badmetrics.BadMetrics {
 // it dispatches incoming metrics into matching aggregators and routes,
 // after checking against the blacklist
 // buf is assumed to have no whitespace at the end
-func (table *Table) Dispatch(buf []byte) {
+func (table *Table) Dispatch(dp formats.Datapoint) {
 
 	defer metrics.ObserveSince(table.tm.RoutingDuration, time.Now())
-	buf_copy := make([]byte, len(buf))
-	copy(buf_copy, buf)
-	log.Tracef("table received packet %s", buf_copy)
+	log.Tracef("table received packet %+v", dp)
+	key := dp.Name
 
 	table.tm.In.Inc()
 
 	conf := table.config.Load().(TableConfig)
 
-	key, val, ts, err := m20.ValidatePacket(buf_copy, conf.Validation_level_legacy.Level, conf.Validation_level_m20.Level)
-	if err != nil {
-		table.bad.Add(key, buf_copy, err)
-		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeInvalid).Inc()
-		return
-	}
+	// key, val, ts, err := m20.ValidatePacket(buf_copy, conf.Validation_level_legacy.Level, conf.Validation_level_m20.Level)
+	// if err != nil {
+	// 	table.bad.Add(key, buf_copy, err)
+	// 	table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeInvalid).Inc()
+	// 	return
+	// }
 
-	if conf.Validate_order {
-		err = validate.Ordered(key, ts)
-		if err != nil {
-			table.bad.Add(key, buf_copy, err)
-			table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeOutOfOrder).Inc()
-			return
-		}
-	}
-
-	fields := bytes.Fields(buf_copy)
+	// if conf.Validate_order {
+	// 	err = validate.Ordered(key, ts)
+	// 	if err != nil {
+	// 		table.bad.Add(key, buf_copy, err)
+	// 		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeOutOfOrder).Inc()
+	// 		return
+	// 	}
+	// }
 
 	for _, matcher := range conf.blacklist {
-		if matcher.Match(fields[0]) {
+		if matcher.MatchString(key) {
 			table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeBlacklist).Inc()
-			log.Tracef("table dropped %s, matched blacklist entry %s", buf_copy, matcher)
+			log.Tracef("table dropped %s, matched blacklist entry %s", key, matcher)
 			return
 		}
 	}
 
 	for _, rw := range conf.rewriters {
-		fields[0] = rw.Do(fields[0])
+		dp.Name = rw.DoString(dp.Name)
 	}
 
 	for _, aggregator := range conf.aggregators {
 		// we rely on incoming metrics already having been validated
-		dropRaw := aggregator.AddMaybe(fields, val, ts)
+		dropRaw := aggregator.AddMaybe(dp)
 		if dropRaw {
-			log.Tracef("table dropped %s, matched dropRaw aggregator %s", buf_copy, aggregator.Regex)
+			log.Tracef("table dropped %s, matched dropRaw aggregator %s", dp.Name, aggregator.Regex)
 			table.tm.Unrouted.WithLabelValues("drop_after_aggregation").Inc()
 			return
 		}
 	}
 
-	final := bytes.Join(fields, []byte(" "))
-
 	routed := false
 
 	for _, route := range conf.routes {
-		if route.Match(fields[0]) {
+		if route.MatchString(dp.Name) {
 			routed = true
-			log.Tracef("table sending to route: %s", final)
-			route.Dispatch(final)
+			log.Tracef("table sending to route: %s", dp.Name)
+			route.Dispatch(dp)
 		}
 	}
 
 	if !routed {
 		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeUnroutable).Inc()
-		log.Tracef("unrouteable: %s", final)
+		log.Tracef("unrouteable: %s", dp)
 	}
 }
 
 // DispatchAggregate dispatches aggregation output by routing metrics into the matching routes.
 // buf is assumed to have no whitespace at the end
-func (table *Table) DispatchAggregate(buf []byte) {
+func (table *Table) DispatchAggregate(dp formats.Datapoint) {
 	conf := table.config.Load().(TableConfig)
 	routed := false
-	log.Tracef("table received aggregate packet %s", buf)
+	log.Tracef("table received aggregate packet %s", dp)
 
 	for _, route := range conf.routes {
-		if route.Match(buf) {
+		if route.MatchString(dp.Name) {
 			routed = true
-			log.Tracef("table sending to route: %s", buf)
-			route.Dispatch(buf)
+			log.Tracef("table sending to route: %s", dp)
+			route.Dispatch(dp)
 		}
 	}
 
 	if !routed {
 		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeUnroutable).Inc()
-		log.Tracef("unrouteable: %s", buf)
+		log.Tracef("unrouteable: %s", dp)
 	}
 
 }
@@ -687,160 +675,6 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			}
 
 			route, err := route.NewConsistentHashing(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations, routeConfig.RoutingMutations, routeConfig.CacheSize)
-			if err != nil {
-				log.Error(err.Error())
-				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
-			}
-			table.AddRoute(route)
-		case "grafanaNet":
-			var spool bool
-			sslVerify := true
-			var bufSize = int(1e7) // since a message is typically around 100B this is 1GB
-			var flushMaxNum = 5000 // number of metrics
-			var flushMaxWait = 500 // in ms
-			var timeout = 10000    // in ms
-			var concurrency = 100  // number of concurrent connections to tsdb-gw
-			var orgId = 1
-
-			// by merely looking at routeConfig.SslVerify we can't differentiate between the user not specifying the property
-			// (which should default to false) vs specifying it as false explicitly (which should set it to false), as in both
-			// cases routeConfig.SslVerify would simply be set to false.
-			// So, we must look at the metadata returned by the config parser.
-
-			// We don't use grafananet anyway.
-			if routeConfig.SslVerify != nil {
-				sslVerify = *(routeConfig.SslVerify)
-			}
-
-			// Note: toml library allows arbitrary casing of properties,
-			// and the map keys are these properties as specified by user
-			// so we can't look up directly
-			if routeConfig.Spool {
-				spool = routeConfig.Spool
-			}
-			if routeConfig.BufSize != 0 {
-				bufSize = routeConfig.BufSize
-			}
-			if routeConfig.FlushMaxNum != 0 {
-				flushMaxNum = routeConfig.FlushMaxNum
-			}
-			if routeConfig.FlushMaxWait != 0 {
-				flushMaxWait = routeConfig.FlushMaxWait
-			}
-			if routeConfig.Timeout != 0 {
-				timeout = routeConfig.Timeout
-			}
-			if routeConfig.Concurrency != 0 {
-				concurrency = routeConfig.Concurrency
-			}
-			if routeConfig.OrgId != 0 {
-				orgId = routeConfig.OrgId
-			}
-
-			route, err := route.NewGrafanaNet(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile, spool, sslVerify, routeConfig.Blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
-			if err != nil {
-				log.Error(err.Error())
-				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
-			}
-			table.AddRoute(route)
-		case "kafkaMdm":
-			var bufSize = int(1e7)  // since a message is typically around 100B this is 1GB
-			var flushMaxNum = 10000 // number of metrics
-			var flushMaxWait = 500  // in ms
-			var timeout = 2000      // in ms
-			var orgId = 1
-
-			if routeConfig.PartitionBy != "byOrg" && routeConfig.PartitionBy != "bySeries" {
-				return fmt.Errorf("invalid partitionBy for route '%s'", routeConfig.Key)
-			}
-
-			if routeConfig.BufSize != 0 {
-				bufSize = routeConfig.BufSize
-			}
-			if routeConfig.FlushMaxNum != 0 {
-				flushMaxNum = routeConfig.FlushMaxNum
-			}
-			if routeConfig.FlushMaxWait != 0 {
-				flushMaxWait = routeConfig.FlushMaxWait
-			}
-			if routeConfig.Timeout != 0 {
-				timeout = routeConfig.Timeout
-			}
-			if routeConfig.OrgId != 0 {
-				orgId = routeConfig.OrgId
-			}
-
-			route, err := route.NewKafkaMdm(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, routeConfig.Blocking)
-			if err != nil {
-				log.Error(err.Error())
-				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
-			}
-			table.AddRoute(route)
-		case "pubsub":
-			var codec = "gzip"
-			var format = "plain"                    // aka graphite 'linemode'
-			var bufSize = int(1e7)                  // since a message is typically around 100B this is 1GB
-			var flushMaxSize = int(1e7) - int(4096) // 5e6 = 5MB. max size of message. Note google limits to 10M, but we want to limit to less to account for overhead
-			var flushMaxWait = 1000                 // in ms
-
-			if routeConfig.Codec != "" {
-				codec = routeConfig.Codec
-			}
-			if routeConfig.Format != "" {
-				format = routeConfig.Format
-			}
-			if routeConfig.BufSize != 0 {
-				bufSize = routeConfig.BufSize
-			}
-			if routeConfig.FlushMaxSize != 0 {
-				flushMaxSize = routeConfig.FlushMaxSize
-			}
-			if routeConfig.FlushMaxWait != 0 {
-				flushMaxWait = routeConfig.FlushMaxWait
-			}
-
-			route, err := route.NewPubSub(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Project, routeConfig.Topic, format, codec, bufSize, flushMaxSize, flushMaxWait, routeConfig.Blocking)
-			if err != nil {
-				log.Error(err.Error())
-				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
-			}
-			table.AddRoute(route)
-		case "cloudWatch":
-			var bufSize = int(1e7)            // since a message is typically around 100B this is 1GB
-			var flushMaxSize = int(20)        // Amazon limits to 20 MetricDatum/PutMetricData request https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_limits.html
-			var flushMaxWait = 10000          // in ms
-			var storageResolution = int64(60) // Default CloudWatch resolution is 60s
-			var awsProfile = ""
-			var awsRegion = ""
-			var awsNamespace = ""
-			var awsDimensions [][]string
-
-			if routeConfig.BufSize != 0 {
-				bufSize = routeConfig.BufSize
-			}
-			if routeConfig.FlushMaxSize != 0 {
-				flushMaxSize = routeConfig.FlushMaxSize
-			}
-			if routeConfig.FlushMaxWait != 0 {
-				flushMaxWait = routeConfig.FlushMaxWait
-			}
-			if routeConfig.Profile != "" {
-				awsProfile = routeConfig.Profile
-			}
-			if routeConfig.Region != "" {
-				awsRegion = routeConfig.Region
-			}
-			if routeConfig.Namespace != "" {
-				awsNamespace = routeConfig.Namespace
-			}
-			if len(routeConfig.Dimensions) > 0 {
-				awsDimensions = routeConfig.Dimensions
-			}
-			if routeConfig.StorageResolution != 0 {
-				storageResolution = routeConfig.StorageResolution
-			}
-
-			route, err := route.NewCloudWatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, awsProfile, awsRegion, awsNamespace, awsDimensions, bufSize, flushMaxSize, flushMaxWait, storageResolution, routeConfig.Blocking)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)

@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"runtime/pprof"
 	"syscall"
 
 	"github.com/davecgh/go-spew/spew"
@@ -18,8 +17,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
-	"github.com/graphite-ng/carbon-relay-ng/input"
-	"github.com/graphite-ng/carbon-relay-ng/input/manager"
 	"github.com/graphite-ng/carbon-relay-ng/logger"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/ui/telnet"
@@ -32,18 +29,14 @@ import (
 )
 
 var (
-	config_file      string
-	config           = cfg.NewConfig()
-	to_dispatch      = make(chan []byte)
-	inputs           []input.Plugin
-	shutdownTimeout  = time.Second * 30 // how long to wait for shutdown
-	table            *tbl.Table
-	cpuprofile       = flag.String("cpuprofile", "", "write cpu profile to file")
-	blockProfileRate = flag.Int("block-profile-rate", 0, "see https://golang.org/pkg/runtime/#SetBlockProfileRate")
-	memProfileRate   = flag.Int("mem-profile-rate", 512*1024, "0 to disable. 1 for max precision (expensive!) see https://golang.org/pkg/runtime/#pkg-variables")
-	enablePprof      = flag.Bool("enable-pprof", false, "Will enable debug endpoints on /debug/pprof/")
-	badMetrics       *badmetrics.BadMetrics
-	Version          = "unknown"
+	config_file     string
+	config          = cfg.NewConfig()
+	to_dispatch     = make(chan []byte)
+	shutdownTimeout = time.Second * 30 // how long to wait for shutdown
+	table           *tbl.Table
+	enablePprof     = flag.Bool("enable-pprof", false, "Will enable debug endpoints on /debug/pprof/")
+	badMetrics      *badmetrics.BadMetrics
+	Version         = "unknown"
 )
 
 func usage() {
@@ -59,8 +52,6 @@ func main() {
 
 	flag.Usage = usage
 	flag.Parse()
-	runtime.SetBlockProfileRate(*blockProfileRate)
-	runtime.MemProfileRate = *memProfileRate
 
 	config_file = "/etc/carbon-relay-ng.ini"
 	if 1 == flag.NArg() {
@@ -88,15 +79,6 @@ func main() {
 	}
 	log.SetLevel(lvl)
 
-	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-	}
-
 	config.Instance = os.Expand(config.Instance, expandVars)
 	if len(config.Instance) == 0 {
 		log.Error("instance identifier cannot be empty")
@@ -123,7 +105,11 @@ func main() {
 
 	}
 
-	log.Error(spew.Sdump(config))
+	err = config.ProcessInputConfig()
+	if err != nil {
+		log.Fatalf("can't initialize listeners config: %s", err)
+	}
+
 	log.Info("initializing routing table...")
 
 	table, err := tbl.InitFromConfig(config, meta)
@@ -140,26 +126,10 @@ func main() {
 		log.Info(line)
 	}
 
-	if config.Listen_addr != "" {
-		inputs = append(inputs, input.NewListener(config.Listen_addr, config.Plain_read_timeout.Duration, config.TCP_workers, config.UDP_workers, input.NewPlain(table)))
-	}
-
-	if config.Pickle_addr != "" {
-		inputs = append(inputs, input.NewListener(config.Pickle_addr, config.Pickle_read_timeout.Duration, config.TCP_workers, config.UDP_workers, input.NewPickle(table)))
-	}
-
-	if config.Amqp.Amqp_enabled == true {
-		inputs = append(inputs, input.NewAMQP(config, table, input.AMQPConnector))
-	}
-	if config.Kafka.Kafka_enabled == true {
-		inputs = append(inputs, input.NewKafka(config, table))
-	}
-
-	for _, in := range inputs {
-		err := in.Start()
+	for _, in := range config.Inputs {
+		err := in.Start(table)
 		if err != nil {
-			log.Error(err.Error())
-			os.Exit(1)
+			log.Fatal(err.Error())
 		}
 	}
 
@@ -179,12 +149,15 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	select {
-	case sig := <-sigChan:
+	sig, ok := <-sigChan
+	if ok {
 		log.Infof("Received signal %q. Shutting down", sig)
 	}
-	if !manager.Stop(inputs, shutdownTimeout) {
-		os.Exit(1)
+	for _, i := range config.Inputs {
+		err = i.Stop()
+		if err != nil {
+			log.Warnf("failed to stop input %s: %s", i.Name, err)
+		}
 	}
 }
 

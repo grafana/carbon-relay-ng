@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/graphite-ng/carbon-relay-ng/formats"
+
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -38,7 +40,7 @@ type Conn struct {
 	conn        *net.TCPConn
 	buffered    *Writer
 	shutdown    chan bool
-	In          chan []byte
+	In          chan formats.Datapoint
 	key         string
 	pickle      bool
 	flush       chan bool
@@ -71,7 +73,7 @@ func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSi
 		// but, it may also be in an error scenario in which case it calls c.close() writing a second time to shutdown,
 		// after checkEOF has called c.close(). so we need enough room
 		shutdown:    make(chan bool, 2),
-		In:          make(chan []byte, connBufSize),
+		In:          make(chan formats.Datapoint, connBufSize),
 		key:         key,
 		up:          true,
 		pickle:      pickle,
@@ -130,7 +132,7 @@ func (c *Conn) checkEOF() {
 // all these messages should potentially be resubmitted, because we're not confident about their delivery
 // note: getting this data means resetting it! so handle it wisely.
 // we also read out the In channel until it blocks.  Don't send any more input after calling this.
-func (c *Conn) getRedo() [][]byte {
+func (c *Conn) getRedo() []formats.Datapoint {
 	// drain In queue in case we still had some data buffered.
 	// normally this channel should already have been closed by the time we call this, but this is hard/complicated to enforce
 	// so instead let's leverage a select. as soon as it blocks (due to chan close or no more input but not closed yet) we know we're
@@ -138,9 +140,9 @@ func (c *Conn) getRedo() [][]byte {
 	defer c.clearRedo()
 	for {
 		select {
-		case buf := <-c.In:
+		case dp := <-c.In:
 			c.bm.BufferedMetrics.Dec()
-			c.keepSafe.Add(buf)
+			c.keepSafe.Add(dp)
 		default:
 			return c.keepSafe.GetAll()
 		}
@@ -168,14 +170,15 @@ func (c *Conn) HandleData() {
 		select { // handle incoming data or flush/shutdown commands
 		// note that Writer.Write() can potentially cause a flush and hence block
 		// choose the size of In based on how long these loop iterations take
-		case buf := <-c.In:
+		case dp := <-c.In:
 			// seems to take about 30 micros when writing log to disk, 10 micros otherwise (100k messages/second)
 			active = time.Now()
 			c.bm.BufferedMetrics.Dec()
 			action = "write"
-			log.Tracef("conn %s HandleData: writing %s", c.key, buf)
-			c.keepSafe.Add(buf)
-			n, err := c.Write(buf)
+			log.Tracef("conn %s HandleData: writing %s", c.key, dp)
+			c.keepSafe.Add(dp)
+
+			n, err := fmt.Fprintf(c, "%s %f %d", dp.Name, dp.Value, dp.Timestamp)
 			if err != nil {
 				log.Warnf("conn %s write error: %s. closing", c.key, err)
 				c.close() // this can take a while but that's ok. this conn won't be used anymore

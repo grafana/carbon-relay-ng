@@ -10,3 +10,4 @@
 test_spool
 spool/*.dat
 *~
+.vscode/

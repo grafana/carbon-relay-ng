@@ -44,6 +44,10 @@ func (m *Matcher) updateInternals() error {
 	return nil
 }
 
+func (m *Matcher) MatchString(s string) bool {
+	return m.Match([]byte(s))
+}
+
 func (m *Matcher) Match(s []byte) bool {
 	if len(m.prefix) > 0 && !bytes.HasPrefix(s, m.prefix) {
 		return false

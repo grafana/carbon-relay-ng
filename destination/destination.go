@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/graphite-ng/carbon-relay-ng/formats"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/util"
 	log "github.com/sirupsen/logrus"
@@ -51,12 +52,12 @@ type Destination struct {
 	RouteName            string
 
 	// set in/via Run()
-	In                  chan []byte        `json:"-"` // incoming metrics
-	shutdown            chan bool          // signals shutdown internally
-	spool               *Spool             // queue used if spooling enabled
-	connUpdates         chan *Conn         // channel for newly created connection. It replaces any previous connection
-	inConnUpdate        chan bool          // to signal when we start a new conn and when we finish
-	setSignalConnOnline chan chan struct{} // the provided chan will be closed when the conn comes online (internal implementation detail)
+	In                  chan formats.Datapoint `json:"-"` // incoming metrics
+	shutdown            chan bool              // signals shutdown internally
+	spool               *Spool                 // queue used if spooling enabled
+	connUpdates         chan *Conn             // channel for newly created connection. It replaces any previous connection
+	inConnUpdate        chan bool              // to signal when we start a new conn and when we finish
+	setSignalConnOnline chan chan struct{}     // the provided chan will be closed when the conn comes online (internal implementation detail)
 	flush               chan bool
 	flushErr            chan error
 	tasks               sync.WaitGroup
@@ -91,6 +92,12 @@ func New(routeName, prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 		RouteName:            routeName,
 	}
 	return dest, nil
+}
+
+func (dest *Destination) MatchString(s string) bool {
+	dest.lockMatcher.Lock()
+	defer dest.lockMatcher.Unlock()
+	return dest.Matcher.MatchString(s)
 }
 
 func (dest *Destination) Match(s []byte) bool {
@@ -167,7 +174,7 @@ func (dest *Destination) Run() {
 	if dest.In != nil {
 		panic(fmt.Sprintf("Run() called on already running dest %q", dest.Key))
 	}
-	dest.In = make(chan []byte)
+	dest.In = make(chan formats.Datapoint)
 	dest.shutdown = make(chan bool)
 	dest.connUpdates = make(chan *Conn)
 	dest.inConnUpdate = make(chan bool)
@@ -244,18 +251,18 @@ func (dest *Destination) WaitOnline() chan struct{} {
 // TODO Decide when to drop this buffer and move on.
 func (dest *Destination) relay() {
 	ticker := time.NewTicker(dest.periodReConn)
-	var toUnspool chan []byte
+	var toUnspool chan formats.Datapoint
 	var conn *Conn
 
 	// try to send the data on the buffered tcp conn
 	// if that's slow or down, discard the data
-	nonBlockingSend := func(buf []byte) {
+	nonBlockingSend := func(dp formats.Datapoint) {
 		select {
 		// this op won't succeed as long as the conn is busy processing/flushing
-		case conn.In <- buf:
+		case conn.In <- dp:
 			conn.bm.BufferedMetrics.Inc()
 		default:
-			log.Tracef("dest %s %s nonBlockingSend -> dropping due to slow conn", dest.Key, buf)
+			log.Tracef("dest %s %s nonBlockingSend -> dropping due to slow conn", dest.Key, dp)
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
@@ -266,12 +273,12 @@ func (dest *Destination) relay() {
 
 	// try to send the data to the spool
 	// if slow or down, drop and move on
-	nonBlockingSpool := func(buf []byte) {
+	nonBlockingSpool := func(dp formats.Datapoint) {
 		select {
-		case dest.spool.InRT <- buf:
-			log.Tracef("dest %s %s nonBlockingSpool -> added to spool", dest.Key, buf)
+		case dest.spool.InRT <- dp:
+			log.Tracef("dest %s %s nonBlockingSpool -> added to spool", dest.Key, dp)
 		default:
-			log.Tracef("dest %s %s nonBlockingSpool -> dropping due to slow spool", dest.Key, buf)
+			log.Tracef("dest %s %s nonBlockingSpool -> dropping due to slow spool", dest.Key, dp)
 			droppedMetricsCounter.WithLabelValues(dest.Key, "slow_pool").Inc()
 		}
 	}
@@ -341,19 +348,19 @@ func (dest *Destination) relay() {
 				dest.spool.Close()
 			}
 			return
-		case buf := <-toUnspool:
+		case dp := <-toUnspool:
 			// we know that conn != nil here because toUnspool is set above
-			log.Tracef("dest %v %s received from spool -> nonBlockingSend", dest.Key, buf)
-			nonBlockingSend(buf)
-		case buf := <-dest.In:
+			log.Tracef("dest %v %s received from spool -> nonBlockingSend", dest.Key, dp)
+			nonBlockingSend(dp)
+		case dp := <-dest.In:
 			if conn != nil {
-				log.Tracef("dest %v %s received from In -> nonBlockingSend", dest.Key, buf)
-				nonBlockingSend(buf)
+				log.Tracef("dest %v %s received from In -> nonBlockingSend", dest.Key, dp)
+				nonBlockingSend(dp)
 			} else if dest.Spool {
-				log.Tracef("dest %v %s received from In -> nonBlockingSpool", dest.Key, buf)
-				nonBlockingSpool(buf)
+				log.Tracef("dest %v %s received from In -> nonBlockingSpool", dest.Key, dp)
+				nonBlockingSpool(dp)
 			} else {
-				log.Tracef("dest %v %s received from In -> no conn no spool -> drop", dest.Key, buf)
+				log.Tracef("dest %v %s received from In -> no conn no spool -> drop", dest.Key, dp)
 				droppedMetricsCounter.WithLabelValues(dest.Key, "conn_down_no_spool").Inc()
 			}
 		}
