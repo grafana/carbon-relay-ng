@@ -1,6 +1,19 @@
 # master/unreleased
 
 * support pickle protocol versions 0, 1, 2, 3 & 4 + accept pickle arrays + send pickle tuples. #341
+* fix different connections to same host:port using same spool file, by adding instance to destination key. #349
+* fix aggregator flush timing + limit concurrent aggregator flushing #354
+* support new tsdbgw response with detailed info about invalid metrics #338
+* add 'count' aggregator. #355
+* Some aggregator improvements and better stats. #361, specifically:
+  - assure aggregation flushing is in timestamp asc order
+  - new stat for number of metrics going into aggregator: `service_is_carbon-relay-ng.instance_is_$instance.mtype_is_counter.unit_is_Metric.direction_is_in.aggregator_is_$aggregator`
+  - new stat for number of metrics going out of aggregator: `service_is_carbon-relay-ng.instance_is_$instance.mtype_is_counter.unit_is_Metric.direction_is_out.aggregator_is_$aggregator`
+  - new stat for number of aggregators waiting to flush: `service_is_carbon-relay-ng.instance_is_$instance.*.unit_is_aggregator.what_is_flush_waiting`
+  - new stats for CPU, memory and golang GC under `carbon-relay-ng.stats.$instance.*
+  - give aggregators a "key" property for use in stats (`$aggregator` above), printed at startup
+  - process pending aggregations more eagerly - instead of waiting - when relay is somewhat loaded.
+
 
 # v0.11.0: memleak fix, new logging, major input refactor and more. Nov 9, 2018
 
