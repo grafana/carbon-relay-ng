@@ -137,6 +137,7 @@
             <table class="table table-condensed">
               <thead>
                 <tr>
+                  <th>Key</th>
                   <th>Function</th>
                   <th>Regex</th>
                   <th>Output format</th>
@@ -149,6 +150,7 @@
               </thead>
               <tbody ng-repeat="a in table.aggregators">
                 <tr>
+                    <td>{{a.Key}}</td>
                     <td>{{a.fun}}</td>
                     <td>{{a.regex}}</td>
                     <td>{{a.OutFmt}}</td>

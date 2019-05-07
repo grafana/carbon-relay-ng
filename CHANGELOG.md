@@ -11,7 +11,7 @@
   - new stat for number of metrics going out of aggregator: `service_is_carbon-relay-ng.instance_is_$instance.mtype_is_counter.unit_is_Metric.direction_is_out.aggregator_is_$aggregator`
   - new stat for number of aggregators waiting to flush: `service_is_carbon-relay-ng.instance_is_$instance.*.unit_is_aggregator.what_is_flush_waiting`
   - new stats for CPU, memory and golang GC under `carbon-relay-ng.stats.$instance.*
-  - give aggregators a "key" property for use in stats (`$aggregator` above), printed at startup
+  - give aggregators a "key" property for use in stats (`$aggregator` above), printed at startup and in web ui.
   - process pending aggregations more eagerly - instead of waiting - when relay is somewhat loaded.
 
 
