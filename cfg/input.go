@@ -118,7 +118,7 @@ func (c *Config) ProcessInputConfig() error {
 		configMap := c.InputsRaw[i]
 		switch configMap["type"].(string) {
 		case ListenerConfigType:
-			n := ListenerConfig{Workers: 1}
+			n := ListenerConfig{Workers: 1, ReadTimeout: 2 * time.Minute}
 			d, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 				WeaklyTypedInput: true,
 				Result:           &n,
