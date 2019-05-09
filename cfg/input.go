@@ -11,7 +11,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"github.com/graphite-ng/carbon-relay-ng/input"
 )
 
@@ -41,16 +41,16 @@ var (
 
 type InputConfig interface {
 	Type() string
-	Format() formats.FormatHandler
+	Format() encoding.FormatAdapter
 	Build() (*input.Input, error)
 }
 
 type baseInputConfig struct {
-	FormatOptions formats.FormatOptions `mapstructure:"format_options,omitempty"`
-	Format        formats.FormatName    `mapstructure:"format,omitempty"`
+	FormatOptions encoding.FormatOptions `mapstructure:"format_options,omitempty"`
+	Format        encoding.FormatName    `mapstructure:"format,omitempty"`
 }
 
-func (bc baseInputConfig) Handler() (formats.FormatHandler, error) {
+func (bc baseInputConfig) Handler() (encoding.FormatAdapter, error) {
 	return bc.Format.ToHandler(bc.FormatOptions)
 }
 

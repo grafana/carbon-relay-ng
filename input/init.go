@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 )
 
 type Input interface {
 	Name() string
-	Format() formats.FormatName
-	Handler() formats.FormatHandler
+	Format() encoding.FormatName
+	Handler() encoding.FormatAdapter
 	Start(d Dispatcher) error
 	Stop() error
 }
@@ -19,16 +19,16 @@ type Input interface {
 type BaseInput struct {
 	Dispatcher Dispatcher
 	name       string
-	handler    formats.FormatHandler
+	handler    encoding.FormatAdapter
 }
 
 func (b *BaseInput) Name() string {
 	return b.name
 }
-func (b *BaseInput) Handler() formats.FormatHandler {
+func (b *BaseInput) Handler() encoding.FormatAdapter {
 	return b.handler
 }
-func (b *BaseInput) Format() formats.FormatName {
+func (b *BaseInput) Format() encoding.FormatName {
 	return b.handler.Kind()
 }
 
@@ -52,7 +52,7 @@ func (b *BaseInput) handle(msg []byte) error {
 type Dispatcher interface {
 	// Dispatch runs data validation and processing
 	// implementations must not reuse buf after returning
-	Dispatch(dp formats.Datapoint)
+	Dispatch(dp encoding.Datapoint)
 	// IncNumInvalid marks protocol-level decoding failures
 	// does not apply to carbon as the protocol is trivial and any parse failure
 	// is a message failure (handled in Dispatch)

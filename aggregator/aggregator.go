@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 
 	"github.com/graphite-ng/carbon-relay-ng/clock"
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
@@ -17,8 +17,8 @@ import (
 type Aggregator struct {
 	Fun          string `json:"fun"`
 	procConstr   func(val float64, ts uint32) Processor
-	in           chan formats.Datapoint `json:"-"` // incoming metrics, already split in 3 fields
-	out          chan formats.Datapoint // outgoing metrics
+	in           chan encoding.Datapoint `json:"-"` // incoming metrics, already split in 3 fields
+	out          chan encoding.Datapoint // outgoing metrics
 	Regex        string                 `json:"regex,omitempty"`
 	Prefix       string                 `json:"prefix,omitempty"`
 	Sub          string                 `json:"substring,omitempty"`
@@ -72,11 +72,11 @@ func regexToPrefix(regex string) []byte {
 }
 
 // New creates an aggregator
-func New(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan formats.Datapoint) (*Aggregator, error) {
+func New(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan encoding.Datapoint) (*Aggregator, error) {
 	return NewMocked(fun, regex, prefix, sub, outFmt, cache, interval, wait, dropRaw, out, 2000, time.Now, clock.AlignedTick(time.Duration(interval)*time.Second))
 }
 
-func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan formats.Datapoint, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
+func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan encoding.Datapoint, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
 	regexObj, err := regexp.Compile(regex)
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 	a := &Aggregator{
 		Fun:          fun,
 		procConstr:   procConstr,
-		in:           make(chan formats.Datapoint, inBuf),
+		in:           make(chan encoding.Datapoint, inBuf),
 		out:          out,
 		Regex:        regex,
 		Sub:          sub,
@@ -161,10 +161,10 @@ func (a *Aggregator) Flush(ts uint) {
 			results, ok := proc.Flush()
 			if ok {
 				if len(results) == 1 {
-					a.out <- formats.Datapoint{Name: k.key, Value: results[0].val, Timestamp: uint64(k.ts)}
+					a.out <- encoding.Datapoint{Name: k.key, Value: results[0].val, Timestamp: uint64(k.ts)}
 				} else {
 					for _, result := range results {
-						a.out <- formats.Datapoint{Name: fmt.Sprintf("%s.%s", k.key, result.fcnName), Value: results[0].val, Timestamp: uint64(k.ts)}
+						a.out <- encoding.Datapoint{Name: fmt.Sprintf("%s.%s", k.key, result.fcnName), Value: results[0].val, Timestamp: uint64(k.ts)}
 					}
 				}
 			}
@@ -179,7 +179,7 @@ func (a *Aggregator) Shutdown() {
 	a.wg.Wait()
 }
 
-func (a *Aggregator) AddMaybe(dp formats.Datapoint) bool {
+func (a *Aggregator) AddMaybe(dp encoding.Datapoint) bool {
 	if !a.PreMatchString(dp.Name) {
 		return false
 	}

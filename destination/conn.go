@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
 	"github.com/prometheus/client_golang/prometheus"
@@ -40,7 +40,7 @@ type Conn struct {
 	conn        *net.TCPConn
 	buffered    *Writer
 	shutdown    chan bool
-	In          chan formats.Datapoint
+	In          chan encoding.Datapoint
 	key         string
 	pickle      bool
 	flush       chan bool
@@ -73,7 +73,7 @@ func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSi
 		// but, it may also be in an error scenario in which case it calls c.close() writing a second time to shutdown,
 		// after checkEOF has called c.close(). so we need enough room
 		shutdown:    make(chan bool, 2),
-		In:          make(chan formats.Datapoint, connBufSize),
+		In:          make(chan encoding.Datapoint, connBufSize),
 		key:         key,
 		up:          true,
 		pickle:      pickle,
@@ -132,7 +132,7 @@ func (c *Conn) checkEOF() {
 // all these messages should potentially be resubmitted, because we're not confident about their delivery
 // note: getting this data means resetting it! so handle it wisely.
 // we also read out the In channel until it blocks.  Don't send any more input after calling this.
-func (c *Conn) getRedo() []formats.Datapoint {
+func (c *Conn) getRedo() []encoding.Datapoint {
 	// drain In queue in case we still had some data buffered.
 	// normally this channel should already have been closed by the time we call this, but this is hard/complicated to enforce
 	// so instead let's leverage a select. as soon as it blocks (due to chan close or no more input but not closed yet) we know we're

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 
 	"github.com/jpillora/backoff"
 	reuse "github.com/libp2p/go-reuseport"
@@ -47,7 +47,7 @@ type udpWorker struct {
 }
 
 // NewListener creates a new listener.
-func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDPWorkerCount int, handler formats.FormatHandler) *Listener {
+func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDPWorkerCount int, handler encoding.FormatAdapter) *Listener {
 	return &Listener{
 		BaseInput:   BaseInput{handler: handler, name: addr},
 		kind:        handler.KindS(),

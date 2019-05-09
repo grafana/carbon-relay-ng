@@ -1,4 +1,4 @@
-package formats
+package encoding
 
 import "fmt"
 
@@ -6,7 +6,7 @@ type FormatOptions struct {
 	Strict bool `mapstructure:"strict"`
 }
 
-type FormatHandler interface {
+type FormatAdapter interface {
 	Process(msg []byte) (Datapoint, error)
 	Output(dp Datapoint) []byte
 	KindS() string
@@ -15,7 +15,7 @@ type FormatHandler interface {
 
 type FormatName string
 
-func (f FormatName) ToHandler(fo FormatOptions) (FormatHandler, error) {
+func (f FormatName) ToHandler(fo FormatOptions) (FormatAdapter, error) {
 	switch f {
 	case PlainFormat:
 		return NewPlain(fo.Strict), nil

@@ -1,4 +1,4 @@
-package formats
+package encoding
 
 import (
 	"bytes"
@@ -18,15 +18,15 @@ var (
 
 const PlainFormat FormatName = "plain"
 
-type PlainHandler struct {
+type PlainAdapter struct {
 	Validate bool
 }
 
-func NewPlain(validate bool) PlainHandler {
-	return PlainHandler{Validate: validate}
+func NewPlain(validate bool) PlainAdapter {
+	return PlainAdapter{Validate: validate}
 }
 
-func (p PlainHandler) validateKey(key []byte) error {
+func (p PlainAdapter) validateKey(key []byte) error {
 	if p.Validate {
 		for i := 0; i < len(key); i++ {
 			if key[i] == 0 {
@@ -40,19 +40,19 @@ func (p PlainHandler) validateKey(key []byte) error {
 	return nil
 }
 
-func (p PlainHandler) KindS() string {
+func (p PlainAdapter) KindS() string {
 	return string(PlainFormat)
 }
 
-func (p PlainHandler) Kind() FormatName {
+func (p PlainAdapter) Kind() FormatName {
 	return PlainFormat
 }
 
-func (p PlainHandler) Output(dp Datapoint) []byte {
+func (p PlainAdapter) Output(dp Datapoint) []byte {
 	return []byte(fmt.Sprintf("%s %f %d", dp.Name, dp.Value, dp.Timestamp))
 }
 
-func (p PlainHandler) Process(msg []byte) (Datapoint, error) {
+func (p PlainAdapter) Process(msg []byte) (Datapoint, error) {
 	d := Datapoint{}
 	fields := bytes.Fields(msg)
 	if len(fields) != 3 {

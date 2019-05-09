@@ -3,7 +3,7 @@ package destination
 import (
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
 	"github.com/graphite-ng/carbon-relay-ng/nsqd"
 	log "github.com/sirupsen/logrus"
@@ -14,14 +14,14 @@ import (
 // QoS (RT vs Bulk) and controllable i/o rates
 type Spool struct {
 	key          string
-	InRT         chan formats.Datapoint
-	InBulk       chan formats.Datapoint
-	Out          chan formats.Datapoint
+	InRT         chan encoding.Datapoint
+	InBulk       chan encoding.Datapoint
+	Out          chan encoding.Datapoint
 	spoolSleep   time.Duration // how long to wait between stores to spool
 	unspoolSleep time.Duration // how long to wait between loads from spool
 
 	queue       *nsqd.DiskQueue
-	queueBuffer chan formats.Datapoint // buffer metrics into queue because it can block
+	queueBuffer chan encoding.Datapoint // buffer metrics into queue because it can block
 
 	shutdownWriter chan bool
 	shutdownBuffer chan bool
@@ -39,13 +39,13 @@ func NewSpool(key, spoolDir string, bufSize int, maxBytesPerFile, syncEvery int6
 	queue := nsqd.NewDiskQueue(dqName, spoolDir, maxBytesPerFile, syncEvery, syncPeriod).(*nsqd.DiskQueue)
 	s := Spool{
 		key:            key,
-		InRT:           make(chan formats.Datapoint, 10),
-		InBulk:         make(chan formats.Datapoint),
+		InRT:           make(chan encoding.Datapoint, 10),
+		InBulk:         make(chan encoding.Datapoint),
 		Out:            NewSlowChan(queue.ReadChan(), unspoolSleep),
 		spoolSleep:     spoolSleep,
 		unspoolSleep:   unspoolSleep,
 		queue:          queue,
-		queueBuffer:    make(chan formats.Datapoint, bufSize),
+		queueBuffer:    make(chan encoding.Datapoint, bufSize),
 		shutdownWriter: make(chan bool),
 		shutdownBuffer: make(chan bool),
 		sm:             metrics.NewSpoolMetrics("destination", key, nil),
@@ -57,7 +57,7 @@ func NewSpool(key, spoolDir string, bufSize int, maxBytesPerFile, syncEvery int6
 	return &s
 }
 
-func (s *Spool) write(dp formats.Datapoint, writeType string) {
+func (s *Spool) write(dp encoding.Datapoint, writeType string) {
 	s.sm.IncomingMetrics.WithLabelValues(writeType).Inc()
 	pre := time.Now()
 	log.Debugf("spool %v satisfying spool `%s`", s.key, writeType)
@@ -98,7 +98,7 @@ func (s *Spool) Writer() {
 	}
 }
 
-func (s *Spool) Ingest(bulkData []formats.Datapoint) {
+func (s *Spool) Ingest(bulkData []encoding.Datapoint) {
 	for _, dp := range bulkData {
 		s.InBulk <- dp
 		time.Sleep(s.spoolSleep)
@@ -106,7 +106,7 @@ func (s *Spool) Ingest(bulkData []formats.Datapoint) {
 }
 
 func (s *Spool) Buffer() {
-	h := formats.NewPlain(false)
+	h := encoding.NewPlain(false)
 	for {
 		select {
 		case <-s.shutdownBuffer:

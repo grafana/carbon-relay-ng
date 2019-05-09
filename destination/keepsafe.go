@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 )
 
 // keepSafe is a buffer which retains
@@ -13,8 +13,8 @@ import (
 // but don't rely on that
 type keepSafe struct {
 	initialCap int
-	safeOld    []formats.Datapoint
-	safeRecent []formats.Datapoint
+	safeOld    []encoding.Datapoint
+	safeRecent []encoding.Datapoint
 	periodKeep time.Duration
 	closed     chan struct{}
 	wg         sync.WaitGroup
@@ -24,8 +24,8 @@ type keepSafe struct {
 func NewKeepSafe(initialCap int, periodKeep time.Duration) *keepSafe {
 	k := &keepSafe{
 		initialCap: initialCap,
-		safeOld:    make([]formats.Datapoint, 0, initialCap),
-		safeRecent: make([]formats.Datapoint, 0, initialCap),
+		safeOld:    make([]encoding.Datapoint, 0, initialCap),
+		safeRecent: make([]encoding.Datapoint, 0, initialCap),
 		periodKeep: periodKeep,
 		closed:     make(chan struct{}),
 	}
@@ -44,23 +44,23 @@ func (k *keepSafe) keepClean() {
 		case <-tick.C:
 			k.Lock()
 			k.safeOld = k.safeRecent
-			k.safeRecent = make([]formats.Datapoint, 0, k.initialCap)
+			k.safeRecent = make([]encoding.Datapoint, 0, k.initialCap)
 			k.Unlock()
 		}
 	}
 }
 
-func (k *keepSafe) Add(dp formats.Datapoint) {
+func (k *keepSafe) Add(dp encoding.Datapoint) {
 	k.Lock()
 	k.safeRecent = append(k.safeRecent, dp)
 	k.Unlock()
 }
 
-func (k *keepSafe) GetAll() []formats.Datapoint {
+func (k *keepSafe) GetAll() []encoding.Datapoint {
 	k.Lock()
 	ret := append(k.safeOld, k.safeRecent...)
-	k.safeOld = make([]formats.Datapoint, 0, k.initialCap)
-	k.safeRecent = make([]formats.Datapoint, 0, k.initialCap)
+	k.safeOld = make([]encoding.Datapoint, 0, k.initialCap)
+	k.safeRecent = make([]encoding.Datapoint, 0, k.initialCap)
 	k.Unlock()
 	return ret
 }

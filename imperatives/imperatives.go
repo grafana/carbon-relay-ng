@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/destination"
@@ -164,7 +164,7 @@ type Table interface {
 	DelRoute(key string) error
 	UpdateDestination(key string, index int, opts map[string]string) error
 	UpdateRoute(key string, opts map[string]string) error
-	GetIn() chan formats.Datapoint
+	GetIn() chan encoding.Datapoint
 	GetSpoolDir() string
 }
 
@@ -407,7 +407,7 @@ func readAddRewriter(s *toki.Scanner, table Table) error {
 	}
 	new := string(t.Value)
 
-	// token can be a word if it's a negative number. we should probably not have a separate number token, since numbers could be in so many formats
+	// token can be a word if it's a negative number. we should probably not have a separate number token, since numbers could be in so many encoding
 	// and we try out Atoi (or whatever fits) anyway.
 	if t = s.Next(); t.Token != num && t.Token != word {
 		return errFmtAddRewriter

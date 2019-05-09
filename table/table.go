@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 
 	"github.com/BurntSushi/toml"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
@@ -32,7 +32,7 @@ type Table struct {
 	sync.Mutex              // only needed for the multiple writers
 	config     atomic.Value // for reading and writing
 	SpoolDir   string
-	In         chan formats.Datapoint `json:"-"` // channel api to trade in some performance for encapsulation, for aggregators
+	In         chan encoding.Datapoint `json:"-"` // channel api to trade in some performance for encapsulation, for aggregators
 	bad        *badmetrics.BadMetrics
 	tm         *metrics.TableMetrics
 }
@@ -50,7 +50,7 @@ func New(config cfg.Config) *Table {
 		sync.Mutex{},
 		atomic.Value{},
 		config.Spool_dir,
-		make(chan formats.Datapoint),
+		make(chan encoding.Datapoint),
 		nil,
 		metrics.NewTableMetrics(),
 	}
@@ -70,7 +70,7 @@ func New(config cfg.Config) *Table {
 	return t
 }
 
-func (table *Table) GetIn() chan formats.Datapoint {
+func (table *Table) GetIn() chan encoding.Datapoint {
 	return table.In
 }
 
@@ -89,7 +89,7 @@ func (table *Table) Bad() *badmetrics.BadMetrics {
 // it dispatches incoming metrics into matching aggregators and routes,
 // after checking against the blacklist
 // buf is assumed to have no whitespace at the end
-func (table *Table) Dispatch(dp formats.Datapoint) {
+func (table *Table) Dispatch(dp encoding.Datapoint) {
 
 	defer metrics.ObserveSince(table.tm.RoutingDuration, time.Now())
 	log.Tracef("table received packet %+v", dp)
@@ -155,7 +155,7 @@ func (table *Table) Dispatch(dp formats.Datapoint) {
 
 // DispatchAggregate dispatches aggregation output by routing metrics into the matching routes.
 // buf is assumed to have no whitespace at the end
-func (table *Table) DispatchAggregate(dp formats.Datapoint) {
+func (table *Table) DispatchAggregate(dp encoding.Datapoint) {
 	conf := table.config.Load().(TableConfig)
 	routed := false
 	log.Tracef("table received aggregate packet %s", dp)

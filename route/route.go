@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
@@ -38,7 +38,7 @@ func (c baseConfig) Dests() []*dest.Destination {
 }
 
 type Route interface {
-	Dispatch(formats.Datapoint)
+	Dispatch(encoding.Datapoint)
 	Match(s []byte) bool
 	MatchString(s string) bool
 	Snapshot() Snapshot
@@ -122,7 +122,7 @@ func (route *baseRoute) run() {
 	}
 }
 
-func (route *SendAllMatch) Dispatch(d formats.Datapoint) {
+func (route *SendAllMatch) Dispatch(d encoding.Datapoint) {
 	conf := route.config.Load().(Config)
 
 	for _, dest := range conf.Dests() {
@@ -135,7 +135,7 @@ func (route *SendAllMatch) Dispatch(d formats.Datapoint) {
 	}
 }
 
-func (route *SendFirstMatch) Dispatch(d formats.Datapoint) {
+func (route *SendFirstMatch) Dispatch(d encoding.Datapoint) {
 	conf := route.config.Load().(Config)
 
 	for _, dest := range conf.Dests() {

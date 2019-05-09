@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 
 	"github.com/coocood/freecache"
 
@@ -177,7 +177,7 @@ func (cs *ConsistentHashing) GetDestinationForName(name []byte) (*dest.Destinati
 	return d, nil
 }
 
-func (cs *ConsistentHashing) Dispatch(dp formats.Datapoint) {
+func (cs *ConsistentHashing) Dispatch(dp encoding.Datapoint) {
 	dest, err := cs.GetDestinationForNameString(dp.Name)
 	if err != nil {
 		log.Errorf("can't process metric `%s`: %s", dp.Name, err)

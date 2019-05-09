@@ -1,4 +1,4 @@
-package formats
+package encoding
 
 // import (
 // 	"bufio"
@@ -12,14 +12,14 @@ package formats
 // )
 
 // // Internal Format is an kinda-optimized serialization to be used between relays
-// type InternalFormatHandler struct {
+// type InternalFormatAdapter struct {
 // }
 
-// func (b *InternalFormatHandler) Kind() string {
+// func (b *InternalFormatAdapter) Kind() string {
 // 	return "internal"
 // }
 
-// func (b *InternalFormatHandler) Handle(c io.Reader) error {
+// func (b *InternalFormatAdapter) Handle(c io.Reader) error {
 // 	r := bufio.NewReaderSize(c, 1024)
 // 	log.Debug("Launching internal format handler")
 // 	for {

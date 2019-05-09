@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/util"
 	log "github.com/sirupsen/logrus"
@@ -52,7 +52,7 @@ type Destination struct {
 	RouteName            string
 
 	// set in/via Run()
-	In                  chan formats.Datapoint `json:"-"` // incoming metrics
+	In                  chan encoding.Datapoint `json:"-"` // incoming metrics
 	shutdown            chan bool              // signals shutdown internally
 	spool               *Spool                 // queue used if spooling enabled
 	connUpdates         chan *Conn             // channel for newly created connection. It replaces any previous connection
@@ -174,7 +174,7 @@ func (dest *Destination) Run() {
 	if dest.In != nil {
 		panic(fmt.Sprintf("Run() called on already running dest %q", dest.Key))
 	}
-	dest.In = make(chan formats.Datapoint)
+	dest.In = make(chan encoding.Datapoint)
 	dest.shutdown = make(chan bool)
 	dest.connUpdates = make(chan *Conn)
 	dest.inConnUpdate = make(chan bool)
@@ -251,12 +251,12 @@ func (dest *Destination) WaitOnline() chan struct{} {
 // TODO Decide when to drop this buffer and move on.
 func (dest *Destination) relay() {
 	ticker := time.NewTicker(dest.periodReConn)
-	var toUnspool chan formats.Datapoint
+	var toUnspool chan encoding.Datapoint
 	var conn *Conn
 
 	// try to send the data on the buffered tcp conn
 	// if that's slow or down, discard the data
-	nonBlockingSend := func(dp formats.Datapoint) {
+	nonBlockingSend := func(dp encoding.Datapoint) {
 		select {
 		// this op won't succeed as long as the conn is busy processing/flushing
 		case conn.In <- dp:
@@ -273,7 +273,7 @@ func (dest *Destination) relay() {
 
 	// try to send the data to the spool
 	// if slow or down, drop and move on
-	nonBlockingSpool := func(dp formats.Datapoint) {
+	nonBlockingSpool := func(dp encoding.Datapoint) {
 		select {
 		case dest.spool.InRT <- dp:
 			log.Tracef("dest %s %s nonBlockingSpool -> added to spool", dest.Key, dp)

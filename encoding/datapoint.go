@@ -1,4 +1,4 @@
-package formats
+package encoding
 
 type Datapoint struct {
 	Name      string
