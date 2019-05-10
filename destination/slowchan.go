@@ -15,7 +15,7 @@ func NewSlowChan(backend chan []byte, sleep time.Duration) chan encoding.Datapoi
 	go func(c chan encoding.Datapoint) {
 		time.Sleep(sleep)
 		for v := range backend {
-			d, err := handler.Process(v)
+			d, err := handler.Load(v)
 			if err != nil {
 				logrus.Errorf("can't deserialize metric `%s`", string(v))
 			} else {

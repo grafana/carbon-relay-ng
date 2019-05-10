@@ -7,8 +7,8 @@ type FormatOptions struct {
 }
 
 type FormatAdapter interface {
-	Process(msg []byte) (Datapoint, error)
-	Output(dp Datapoint) []byte
+	Load(msg []byte) (Datapoint, error)
+	Dump(dp Datapoint) []byte
 	KindS() string
 	Kind() FormatName
 }

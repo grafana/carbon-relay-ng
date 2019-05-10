@@ -114,7 +114,7 @@ func (s *Spool) Buffer() {
 		case dp := <-s.queueBuffer:
 			s.sm.Buffer.BufferedMetrics.Dec()
 			pre := time.Now()
-			s.queue.Put(h.Output(dp))
+			s.queue.Put(h.Dump(dp))
 			s.sm.WriteDuration.Observe(time.Since(pre).Seconds())
 		}
 	}

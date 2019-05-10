@@ -48,11 +48,11 @@ func (p PlainAdapter) Kind() FormatName {
 	return PlainFormat
 }
 
-func (p PlainAdapter) Output(dp Datapoint) []byte {
+func (p PlainAdapter) Dump(dp Datapoint) []byte {
 	return []byte(fmt.Sprintf("%s %f %d", dp.Name, dp.Value, dp.Timestamp))
 }
 
-func (p PlainAdapter) Process(msg []byte) (Datapoint, error) {
+func (p PlainAdapter) Load(msg []byte) (Datapoint, error) {
 	d := Datapoint{}
 	fields := bytes.Fields(msg)
 	if len(fields) != 3 {
