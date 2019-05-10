@@ -54,24 +54,38 @@ func (p PlainAdapter) Dump(dp Datapoint) []byte {
 
 func (p PlainAdapter) Load(msg []byte) (Datapoint, error) {
 	d := Datapoint{}
-	fields := bytes.Fields(msg)
-	if len(fields) != 3 {
+
+	start := 0
+	for msg[start] == ' ' {
+		start++
+	}
+	if msg[start] == '.' {
+		start++
+	}
+	firstSpace := bytes.IndexByte(msg[start:], ' ')
+	if firstSpace == -1 {
 		return d, errFieldsNum
 	}
-	// Allow '.foo.bar' -> 'foo.bar'
-	if len(fields[0]) != 0 && fields[0][0] == '.' {
-		fields[0] = fields[0][1:]
+	p.validateKey(msg[start:firstSpace])
+	d.Name = string(msg[start:firstSpace])
+	for msg[firstSpace] == ' ' {
+		firstSpace++
 	}
-	if err := p.validateKey(fields[0]); err != nil {
-		return d, err
+	nextSpace := bytes.IndexByte(msg[firstSpace:], ' ')
+	if nextSpace == -1 {
+		return d, errFieldsNum
 	}
-	d.Name = string(fields[0])
-	v, err := strconv.ParseFloat(string(fields[1]), 64)
+	nextSpace += firstSpace
+	v, err := strconv.ParseFloat(string(msg[firstSpace:nextSpace]), 64)
 	if err != nil {
 		return d, err
 	}
 	d.Value = v
-	ts, err := strconv.ParseUint(string(fields[2]), 10, 32)
+	for msg[nextSpace] == ' ' {
+		nextSpace++
+	}
+
+	ts, err := strconv.ParseUint(string(msg[nextSpace:]), 10, 32)
 	if err != nil {
 		return d, err
 	}
