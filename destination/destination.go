@@ -53,11 +53,11 @@ type Destination struct {
 
 	// set in/via Run()
 	In                  chan encoding.Datapoint `json:"-"` // incoming metrics
-	shutdown            chan bool              // signals shutdown internally
-	spool               *Spool                 // queue used if spooling enabled
-	connUpdates         chan *Conn             // channel for newly created connection. It replaces any previous connection
-	inConnUpdate        chan bool              // to signal when we start a new conn and when we finish
-	setSignalConnOnline chan chan struct{}     // the provided chan will be closed when the conn comes online (internal implementation detail)
+	shutdown            chan bool               // signals shutdown internally
+	spool               *Spool                  // queue used if spooling enabled
+	connUpdates         chan *Conn              // channel for newly created connection. It replaces any previous connection
+	inConnUpdate        chan bool               // to signal when we start a new conn and when we finish
+	setSignalConnOnline chan chan struct{}      // the provided chan will be closed when the conn comes online (internal implementation detail)
 	flush               chan bool
 	flushErr            chan error
 	tasks               sync.WaitGroup
@@ -262,7 +262,7 @@ func (dest *Destination) relay() {
 		case conn.In <- dp:
 			conn.bm.BufferedMetrics.Inc()
 		default:
-			log.Tracef("dest %s %s nonBlockingSend -> dropping due to slow conn", dest.Key, dp)
+			log.Tracef("dest %s %v nonBlockingSend -> dropping due to slow conn", dest.Key, dp)
 			// TODO check if it was because conn closed
 			// we don't want to just buffer everything in memory,
 			// it would probably keep piling up until OOM.  let's just drop the traffic.
@@ -276,9 +276,9 @@ func (dest *Destination) relay() {
 	nonBlockingSpool := func(dp encoding.Datapoint) {
 		select {
 		case dest.spool.InRT <- dp:
-			log.Tracef("dest %s %s nonBlockingSpool -> added to spool", dest.Key, dp)
+			log.Tracef("dest %s %v nonBlockingSpool -> added to spool", dest.Key, dp)
 		default:
-			log.Tracef("dest %s %s nonBlockingSpool -> dropping due to slow spool", dest.Key, dp)
+			log.Tracef("dest %s %v nonBlockingSpool -> dropping due to slow spool", dest.Key, dp)
 			droppedMetricsCounter.WithLabelValues(dest.Key, "slow_pool").Inc()
 		}
 	}
@@ -350,17 +350,17 @@ func (dest *Destination) relay() {
 			return
 		case dp := <-toUnspool:
 			// we know that conn != nil here because toUnspool is set above
-			log.Tracef("dest %v %s received from spool -> nonBlockingSend", dest.Key, dp)
+			log.Tracef("dest %v %v received from spool -> nonBlockingSend", dest.Key, dp)
 			nonBlockingSend(dp)
 		case dp := <-dest.In:
 			if conn != nil {
-				log.Tracef("dest %v %s received from In -> nonBlockingSend", dest.Key, dp)
+				log.Tracef("dest %v %v received from In -> nonBlockingSend", dest.Key, dp)
 				nonBlockingSend(dp)
 			} else if dest.Spool {
-				log.Tracef("dest %v %s received from In -> nonBlockingSpool", dest.Key, dp)
+				log.Tracef("dest %v %v received from In -> nonBlockingSpool", dest.Key, dp)
 				nonBlockingSpool(dp)
 			} else {
-				log.Tracef("dest %v %s received from In -> no conn no spool -> drop", dest.Key, dp)
+				log.Tracef("dest %v %v received from In -> no conn no spool -> drop", dest.Key, dp)
 				droppedMetricsCounter.WithLabelValues(dest.Key, "conn_down_no_spool").Inc()
 			}
 		}

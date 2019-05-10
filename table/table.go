@@ -149,7 +149,7 @@ func (table *Table) Dispatch(dp encoding.Datapoint) {
 
 	if !routed {
 		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeUnroutable).Inc()
-		log.Tracef("unrouteable: %s", dp)
+		log.Tracef("unrouteable: %v", dp)
 	}
 }
 
@@ -158,19 +158,19 @@ func (table *Table) Dispatch(dp encoding.Datapoint) {
 func (table *Table) DispatchAggregate(dp encoding.Datapoint) {
 	conf := table.config.Load().(TableConfig)
 	routed := false
-	log.Tracef("table received aggregate packet %s", dp)
+	log.Tracef("table received aggregate packet %v", dp)
 
 	for _, route := range conf.routes {
 		if route.MatchString(dp.Name) {
 			routed = true
-			log.Tracef("table sending to route: %s", dp)
+			log.Tracef("table sending to route: %v", dp)
 			route.Dispatch(dp)
 		}
 	}
 
 	if !routed {
 		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeUnroutable).Inc()
-		log.Tracef("unrouteable: %s", dp)
+		log.Tracef("unrouteable: %v", dp)
 	}
 
 }

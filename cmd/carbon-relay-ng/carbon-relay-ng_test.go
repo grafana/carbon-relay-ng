@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	log "github.com/sirupsen/logrus"
@@ -257,11 +258,11 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 	// Otherwise, the first metric is sometimes dropped.
 	time.Sleep(5 * time.Millisecond)
 	log.Info("sending metrics to table")
-	ns1 := t1.conditionNumSeen(dp.amount)
-	ns2 := t2.conditionNumSeen(dp.amount)
+	ns1 := t1.conditionNumSeen(dp.Len())
+	ns2 := t2.conditionNumSeen(dp.Len())
 
 	for msg := range dp.All() {
-		table.Dispatch(msg.Buf)
+		table.Dispatch(msg)
 		// give time to write to conn without triggering slow conn (i.e. no faster than 100k/s)
 		// note i'm afraid this sleep masks another issue: data can get reordered.
 		// if you take this sleep away, and run like so:
@@ -272,7 +273,7 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 	}
 	log.Info("waiting for received data")
 	var sleep time.Duration
-	switch dp.amount {
+	switch dp.Len() {
 	case 1000:
 		sleep = 1 * time.Second
 	case 1000000:
@@ -300,7 +301,7 @@ func TestAddRewrite(t *testing.T) {
 
 // just dispatch (coming into table), no matching or sending to route
 func BenchmarkTableDispatch(b *testing.B) {
-	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // size: key = 48, val = 10, ts = 10 -> 70
+	metric70, _ := encoding.NewPlain(false).Load([]byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890"))
 	table := NewTableOrFatal(b, "", "")
 	for i := 0; i < b.N; i++ {
 		table.Dispatch(metric70)
@@ -319,7 +320,8 @@ func BenchmarkTableDisPatchAndEndpointReceive(b *testing.B) {
 	// reminder: go benchmark will invoke this with N = 0, then maybe N = 20, then maybe more
 	// and the time it prints is function run divided by N, which
 	// should be of a more or less stable time, which gets printed
-	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // size: key = 48, val = 10, ts = 10 -> 70
+	metric70, _ := encoding.NewPlain(false).Load([]byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890")) // size: key = 48, val = 10, ts = 10 -> 70
+
 	dest, err := table.GetRoute("test1").GetDestination(0)
 	if err != nil {
 		panic(err)

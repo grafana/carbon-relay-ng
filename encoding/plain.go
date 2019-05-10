@@ -49,7 +49,7 @@ func (p PlainAdapter) Kind() FormatName {
 }
 
 func (p PlainAdapter) Dump(dp Datapoint) []byte {
-	return []byte(fmt.Sprintf("%s %f %d", dp.Name, dp.Value, dp.Timestamp))
+	return []byte(dp.String())
 }
 
 func (p PlainAdapter) Load(msg []byte) (Datapoint, error) {

@@ -4,8 +4,9 @@ package main
 // it does this using a single backing array to save memory allocations
 
 import (
-	"bytes"
 	"fmt"
+
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 )
 
 // so that whatever the timestamp is, if we add it to this, it will always use same amount
@@ -13,62 +14,50 @@ import (
 const tsBase = 1000000000
 
 type dummyPackets struct {
-	key       string
-	amount    int
-	packetLen int
-	scratch   *bytes.Buffer
+	key    string
+	points []encoding.Datapoint
 }
 
 func NewDummyPackets(key string, amount int) *dummyPackets {
-	tpl := "%s.dummyPacket 123 %d"
-	packetLen := 17 + 10 + len(key)
-	scratchBuf := make([]byte, 0, packetLen*amount)
-	scratch := bytes.NewBuffer(scratchBuf)
-	for i := 0; i < amount; i++ {
-		ts := tsBase + i + 1
-		l, err := fmt.Fprintf(scratch, tpl, key, ts)
-		if err != nil {
-			panic(err)
-		}
-		if packetLen != l {
-			panic(fmt.Sprintf("bad packet length (or bad write) at index %d.  supposed len: %d, real len: %d", i, packetLen, l))
-		}
+	tpl := "%s.dummyPacket"
+	val := 123.0
+	ts := tsBase + 1
+	points := make([]encoding.Datapoint, 0, amount)
+	for i := 0; i < len(points); i++ {
+		points = append(points, encoding.Datapoint{
+			Name:      fmt.Sprintf(tpl, key),
+			Value:     val,
+			Timestamp: uint64(ts + i),
+		})
 	}
-	return &dummyPackets{key, amount, packetLen, scratch}
+
+	return &dummyPackets{key, points}
 }
 
-func (dp *dummyPackets) Get(i int) []byte {
-	if i >= dp.amount {
+func (dp *dummyPackets) Len() int {
+	return len(dp.points)
+}
+
+func (dp *dummyPackets) Get(i int) encoding.Datapoint {
+	if i >= len(dp.points) {
 		panic("can't ask for higher index then what we have in dummyPackets")
 	}
-	sliceFull := dp.scratch.Bytes()
-	return sliceFull[dp.packetLen*i : dp.packetLen*(i+1)]
+	return dp.points[i]
 }
 
-type msg struct {
-	Buf []byte
-	Val float64
-	Ts  uint32
-}
-
-func (dp *dummyPackets) All() chan msg {
-	ret := make(chan msg, 10000) // pretty arbitrary, but seems to help perf
-	go func(dp *dummyPackets, ret chan msg) {
-		sliceFull := dp.scratch.Bytes()
-		for i := 0; i < dp.amount; i++ {
-			ret <- msg{
-				sliceFull[dp.packetLen*i : dp.packetLen*(i+1)],
-				123,
-				uint32(tsBase + i + 1),
-			}
+func (dp *dummyPackets) All() chan encoding.Datapoint {
+	ret := make(chan encoding.Datapoint, 10000) // pretty arbitrary, but seems to help perf
+	go func() {
+		for i := 0; i < len(dp.points); i++ {
+			ret <- dp.points[i]
 		}
 		close(ret)
-	}(dp, ret)
+	}()
 	return ret
 }
 
-func mergeAll(in ...chan msg) chan msg {
-	ret := make(chan msg, 10000) // pretty arbitrary, but seems to help perf
+func mergeAll(in ...chan encoding.Datapoint) chan encoding.Datapoint {
+	ret := make(chan encoding.Datapoint, 10000) // pretty arbitrary, but seems to help perf
 	go func() {
 		for _, inChan := range in {
 			for val := range inChan {

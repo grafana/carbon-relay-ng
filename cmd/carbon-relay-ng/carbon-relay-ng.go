@@ -156,7 +156,7 @@ func main() {
 	for _, i := range config.Inputs {
 		err = i.Stop()
 		if err != nil {
-			log.Warnf("failed to stop input %s: %s", i.Name, err)
+			log.Warnf("failed to stop input %s: %s", i.Name(), err)
 		}
 	}
 }

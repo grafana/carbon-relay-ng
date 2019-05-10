@@ -175,7 +175,7 @@ func (c *Conn) HandleData() {
 			active = time.Now()
 			c.bm.BufferedMetrics.Dec()
 			action = "write"
-			log.Tracef("conn %s HandleData: writing %s", c.key, dp)
+			log.Tracef("conn %s HandleData: writing %v", c.key, dp)
 			c.keepSafe.Add(dp)
 
 			n, err := fmt.Fprintf(c, "%s %f %d", dp.Name, dp.Value, dp.Timestamp)

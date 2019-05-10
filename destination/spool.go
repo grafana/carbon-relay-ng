@@ -61,7 +61,7 @@ func (s *Spool) write(dp encoding.Datapoint, writeType string) {
 	s.sm.IncomingMetrics.WithLabelValues(writeType).Inc()
 	pre := time.Now()
 	log.Debugf("spool %v satisfying spool `%s`", s.key, writeType)
-	log.Tracef("spool %s %s Writer -> queue.Put", s.key, dp)
+	log.Tracef("spool %s %v Writer -> queue.Put", s.key, dp)
 	s.queueBuffer <- dp
 	s.sm.Buffer.WriteDuration.Observe(time.Since(pre).Seconds())
 	s.sm.Buffer.BufferedMetrics.Inc()

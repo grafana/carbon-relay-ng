@@ -128,7 +128,7 @@ func (route *SendAllMatch) Dispatch(d encoding.Datapoint) {
 	for _, dest := range conf.Dests() {
 		if dest.MatchString(d.Name) {
 			// dest should handle this as quickly as it can
-			log.Tracef("route %s sending to dest %s: %s", route.key, dest.Key, d)
+			log.Tracef("route %s sending to dest %s: %v", route.key, dest.Key, d)
 			dest.In <- d
 			route.rm.OutMetrics.Inc()
 		}
@@ -141,7 +141,7 @@ func (route *SendFirstMatch) Dispatch(d encoding.Datapoint) {
 	for _, dest := range conf.Dests() {
 		if dest.MatchString(d.Name) {
 			// dest should handle this as quickly as it can
-			log.Tracef("route %s sending to dest %s: %s", route.key, dest.Key, d)
+			log.Tracef("route %s sending to dest %s: %v", route.key, dest.Key, d)
 			dest.In <- d
 			route.rm.OutMetrics.Inc()
 			break

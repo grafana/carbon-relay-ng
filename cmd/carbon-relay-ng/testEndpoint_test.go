@@ -2,15 +2,16 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"net"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/Dieterbe/topic"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,12 +19,12 @@ import (
 type TestEndpoint struct {
 	t              *testing.T
 	ln             net.Listener
-	seen           chan []byte
-	seenBufs       [][]byte
+	seen           chan encoding.Datapoint
+	seenBufs       []encoding.Datapoint
 	shutdown       chan bool
 	shutdownHandle chan bool // to shut down 1 handler. if you start more handlers they'll keep running
 	WhatHaveISeen  chan bool
-	IHaveSeen      chan [][]byte
+	IHaveSeen      chan []encoding.Datapoint
 	addr           string
 	accepts        *topic.Topic
 	numSeen        *topic.Topic
@@ -35,12 +36,12 @@ func NewTestEndpoint(t *testing.T, addr string) *TestEndpoint {
 	return &TestEndpoint{
 		t:              t,
 		addr:           addr,
-		seen:           make(chan []byte),
-		seenBufs:       make([][]byte, 0),
+		seen:           make(chan encoding.Datapoint),
+		seenBufs:       make([]encoding.Datapoint, 0),
 		shutdown:       make(chan bool, 1),
 		shutdownHandle: make(chan bool, 1),
 		WhatHaveISeen:  make(chan bool),
-		IHaveSeen:      make(chan [][]byte),
+		IHaveSeen:      make(chan []encoding.Datapoint),
 		accepts:        topic.New(),
 		numSeen:        topic.New(),
 	}
@@ -84,7 +85,7 @@ func (tE *TestEndpoint) Start() {
 				numSeen += 1
 				tE.numSeen.Broadcast <- numSeen
 			case <-tE.WhatHaveISeen:
-				var c [][]byte
+				var c []encoding.Datapoint
 				c = append(c, tE.seenBufs...)
 				tE.IHaveSeen <- c
 			}
@@ -227,7 +228,7 @@ func (tE *TestEndpoint) conditionNumSeen(desired int) *conditionWatcher {
 }
 
 // arr implements sort.Interface for [][]byte
-type arr [][]byte
+type arr []encoding.Datapoint
 
 func (data arr) Len() int {
 	return len(data)
@@ -236,40 +237,37 @@ func (data arr) Swap(i, j int) {
 	data[i], data[j] = data[j], data[i]
 }
 func (data arr) Less(i, j int) bool {
-	return bytes.Compare(data[i], data[j]) < 0
+	return data[i].Name < data[j].Name
 }
 
 // assume that ref feeds in sorted order, because we rely on that!
-func (tE *TestEndpoint) SeenThisOrFatal(ref chan msg) {
+func (tE *TestEndpoint) SeenThisOrFatal(ref chan encoding.Datapoint) {
 	tE.WhatHaveISeen <- true
 	seen := <-tE.IHaveSeen
 	sort.Sort(arr(seen))
-	getRefBuf := func() []byte {
-		msg := <-ref
-		return msg.Buf
-	}
 	i := 0
-	getSeenBuf := func() []byte {
+	empty := encoding.Datapoint{}
+	getSeenBuf := func() encoding.Datapoint {
 		if len(seen) <= i {
-			return nil
+			return empty
 		}
 		i += 1
 		return seen[i-1]
 	}
 
 	ok := true
-	refBuf := getRefBuf()
+	refBuf := <-ref
 	seenBuf := getSeenBuf()
-	for refBuf != nil || seenBuf != nil {
-		cmp := bytes.Compare(seenBuf, refBuf)
-		if seenBuf == nil || refBuf == nil {
+	for refBuf != empty || seenBuf != empty {
+		cmp := strings.Compare(seenBuf.Name, refBuf.Name)
+		if seenBuf == empty || refBuf == empty {
 			// if one of them is nil, we want it to be counted as "very high", because there's no more input
 			// so in that case, invert the rules
 			cmp *= -1
 		}
 		switch cmp {
 		case 0:
-			refBuf = getRefBuf()
+			refBuf = <-ref
 			seenBuf = getSeenBuf()
 		case 1: // seen bigger than refBuf, i.e. seen is missing a line
 			if ok {
@@ -277,7 +275,7 @@ func (tE *TestEndpoint) SeenThisOrFatal(ref chan msg) {
 			}
 			ok = false
 			tE.t.Errorf("tE %s - %s", tE.addr, refBuf)
-			refBuf = getRefBuf()
+			refBuf = <-ref
 		case -1: // seen is smaller than refBuf, i.e. it has a line more than the ref has
 			if ok {
 				tE.t.Error("diff <reference> <seen>")
@@ -298,6 +296,7 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 		c.Close()
 	}()
 	r := bufio.NewReaderSize(c, 4096)
+	h := encoding.NewPlain(false)
 	for {
 		select {
 		case <-tE.shutdownHandle:
@@ -310,9 +309,8 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 			return
 		}
 		log.Tracef("tE %s %s read", tE.addr, buf)
-		buf_copy := make([]byte, len(buf), len(buf))
-		copy(buf_copy, buf)
-		tE.seen <- buf_copy
+		d, _ := h.Load(buf)
+		tE.seen <- d
 	}
 }
 
