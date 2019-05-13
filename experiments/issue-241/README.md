@@ -2,7 +2,7 @@
 
 # start metrictank docker-dev environment
 
-* use https://github.com/grafana/metrictank/pull/1299 so you have 1s-resolution cpu stats of the host, containers, etc
+* use a recent version of metrictank that has [this pr](https://github.com/grafana/metrictank/pull/1299) merged so you have 1s-resolution cpu stats of the host, containers, etc
 * use docker-dev mt environment, but change scripts/config/storage-schemas.conf to:
 
 ````
