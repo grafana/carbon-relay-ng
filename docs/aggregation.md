@@ -9,7 +9,7 @@ Aggregators can also be (ab)used for quantizing (normalizing timestamps) or rena
 ## input
 
 Any data that "matches" is routed into the aggregator.
-Matching can be done using a prefix, substring and regular expression. They are optional, but incoming data must all of the match options that are set.
+Matching can be done using a prefix, substring and regular expression. They are optional, but incoming data must match all of the options that are set.
 note: prefix and substring are a good way to reduce CPU usage, as it allows to skip regex matching for incoming data if they don't match the substring/prefix.
 (if not specified the prefix will be derived from the regex where possible).
 
