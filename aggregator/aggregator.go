@@ -358,8 +358,9 @@ func (a *Aggregator) run() {
 				for k, v := range a.reCache {
 					if v.seen < cutoff {
 						delete(a.reCache, k)
+					} else {
+						break // stop looking when we don't see old entries. we'll look again soon enough.
 					}
-					break // stop looking when we don't see old entries. we'll look again soon enough.
 				}
 				a.reCacheMutex.Unlock()
 			}
