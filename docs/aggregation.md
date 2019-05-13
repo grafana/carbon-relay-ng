@@ -2,19 +2,48 @@
 Aggregation
 -----------
 
-Aggregation is used to combine data together via aggregation functions, either across time, across series, or across both.
-Aggregators can also be (ab)used for quantizing (normalizing timestamps) or renaming series (use a rewriter instead).
+Aggregation is used to reduce the volume of datapoints, across time, across series, or across both.
+Data corresponding to the same "bucket" (see below) is aggregated using the configured aggregation function such as sum or average.
+Aggregators can also be (ab)used for quantizing (normalizing timestamps) or renaming series (but better to use a rewriter instead).
 
 ## input
 
-any data matching the provided regex is routed into the aggregator.
-each aggregator may have a prefix and/or substring specified, these are used to reduce overhead by pre-filtering the metrics before they are matched against the regex (if not specified the prefix will be derived from the regex where possible).
+Any data that "matches" is routed into the aggregator.
+Matching can be done using a prefix, substring and regular expression. They are optional, but incoming data must match all of the options that are set.
+note: prefix and substring matching is a good way to reduce CPU usage, as it allows skipping regex matching for incoming data if it doesn't match the prefix or substring.
+(if not specified the prefix will be derived from the regex where possible).
 
 ## bucketing
 
-incoming data is bucketed in a bucket per:
+incoming data is grouped together into buckets, where each bucket corresponds to a combination of an output key and an output timestamp.
+
 * output key (which is specified from the format, and can optionally incorporate pieces from the input key via the regex groups,
   so you get flexibility to unite different series into the same bucket, or groups of separate buckets)
+
+  Example:
+  ```
+  regex = '^servers\.(dc[0-9]+)\.(app|proxy)[0-9]+\.(.*)'
+  format = 'aggregates.$1.$2.$3.sum'
+  ```
+
+  If your incoming data has keys like:
+  ```
+  servers.dc1.app1.cpu_usage
+  servers.dc1.app2.cpu_usage
+  servers.dc1.app3.cpu_usage
+  servers.dc1.proxy1.cpu_usage
+  servers.dc1.proxy2.cpu_usage
+  servers.dc1.proxy3.cpu_usage
+  servers.dc2.proxy1.stats.num_requests
+  servers.dc2.proxy2.stats.num_requests
+  ```
+  Then your outbound metrics will look like:
+  ```
+  aggregates.dc1.app.cpu_usage.sum
+  aggregates.dc1.proxy.cpu_usage.sum
+  aggregates.dc2.proxy.stats.num_requests.sum
+  ```
+
 * output timestamp, which is qantized via the interval setting
   (for example with interval=60, input data with timestamps 60001, 60010, 60020, 60030, 60059 will all get timestamp 60000)
 
@@ -42,7 +71,7 @@ percentiles    | a set of different percentiles
 
 * The wait parameter allows up to the specified amount of seconds to wait for values:
 With a wait of 120, metrics can come 2 minutes after the start of the interval and still be included in the aggregation results.  The wait value should be set to the interval plus whatever the data delay is (time difference between timestamps of the data and the wall clock). For most environments the data delay is no more than a few seconds.
-* The fmt parameter dictates what the metric key of the aggregated metric will be.  use $1, $2, etc to refer to groups in the regex
+* The fmt parameter dictates what the metric key of the aggregated metric will be.  use $1, $2, etc to refer to groups in the regex (see "bucketing" above).
   Multi-value aggregators (currently only percentiles) add .pxx at the end of the various metrics they emit.
   Single-value aggregators (currently all others) don't, allowing you to specify keywords like avg, sum, etc wherever into the fmt string you want.
 * Note that we direct incoming values to an aggregation bucket based on the interval the timestamp is in, and the output key it generates.
@@ -52,7 +81,7 @@ With a wait of 120, metrics can come 2 minutes after the start of the interval a
   - aggregation of individual metrics, i.e. packets for the same key, with different timestamps.  For example if you receive values for the same key every second, you can aggregate into minutely buckets by setting interval to 60, and have the fmt yield a unique key for every input metric key.  (~ graphite rollups)
   - the combination: compute aggregates from values seen with different keys, and at multiple points in time.
 
-* `dropRaw=true` will prevent any further processing of the raw series "consumed" by that aggregator (including by other aggregators).  This can be useful for managing cardinality and for quantizing metrics sent at odd intervals.  When using `dropRaw` an aggregator may produce a series with the same name as the input series. Note that this option may slow down table processing, especially with a cold or disable aggregator cache.
+* `dropRaw=true` will prevent any further processing of the raw series "consumed" by an aggregator with this option enabled.  This can be useful for managing cardinality and for quantizing metrics sent at odd intervals.  When using `dropRaw` an aggregator may produce a series with the same name as the input series. Note that this option may slow down table processing, especially with a cold or disabled aggregator cache.
 
 [config examples](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/config.md#aggregators)
 
