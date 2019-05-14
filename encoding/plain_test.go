@@ -27,7 +27,6 @@ func TestValidationInvalid(t *testing.T) {
 		"incorrectFields": []byte("incorrect fields 21300.00 12351123"),
 		"stringValue":     []byte("incorrect_value two 12351123"),
 		"stringTime":      []byte("incorrect_time 1.0 two"),
-		"intValue":        []byte("incorrect_value 1 123131"),
 	}
 	for test, metric := range metrics {
 		t.Run(test, func(t *testing.T) {

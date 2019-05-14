@@ -106,7 +106,7 @@ func (s *Spool) Ingest(bulkData []encoding.Datapoint) {
 }
 
 func (s *Spool) Buffer() {
-	h := encoding.NewPlain(false)
+	h := encoding.NewPlain(false, true)
 	for {
 		select {
 		case <-s.shutdownBuffer:

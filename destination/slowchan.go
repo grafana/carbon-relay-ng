@@ -10,7 +10,7 @@ import (
 
 // note: goroutine doesn't get cleaned until backend closes.  don't instantiate gazillions of these
 func NewSlowChan(backend chan []byte, sleep time.Duration) chan encoding.Datapoint {
-	handler := encoding.NewPlain(false)
+	handler := encoding.NewPlain(false, true)
 	c := make(chan encoding.Datapoint)
 	go func(c chan encoding.Datapoint) {
 		time.Sleep(sleep)
