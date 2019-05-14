@@ -4,6 +4,7 @@ import "fmt"
 
 type FormatOptions struct {
 	Strict bool `mapstructure:"strict"`
+	Unsafe bool `mapstructure:"unsafe"`
 }
 
 type FormatAdapter interface {
@@ -18,7 +19,7 @@ type FormatName string
 func (f FormatName) ToHandler(fo FormatOptions) (FormatAdapter, error) {
 	switch f {
 	case PlainFormat:
-		return NewPlain(fo.Strict), nil
+		return NewPlain(fo.Strict, fo.Unsafe), nil
 	default:
 		return nil, fmt.Errorf("please use a valid \"format\" for `%s`", f)
 	}
