@@ -108,7 +108,6 @@ func (p PlainAdapter) load(msgbuf []byte) (Datapoint, error) {
 		return d, errFieldsNum
 	}
 	nextSpace += firstSpace
-	fmt.Println(msg, msg[firstSpace:nextSpace])
 	v, err := strconv.ParseFloat(msg[firstSpace:nextSpace], 64)
 	if err != nil {
 		return d, err
