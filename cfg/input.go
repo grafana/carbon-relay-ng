@@ -7,8 +7,6 @@ import (
 
 	"github.com/Shopify/sarama"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
@@ -26,7 +24,7 @@ const (
 )
 
 const (
-	handlerErrorFmt = "can't initialize handler for: %s"
+	handlerErrorFmt = "can't initialize handler for %s"
 )
 
 const (
@@ -40,9 +38,8 @@ var (
 )
 
 type InputConfig interface {
-	Type() string
-	Format() encoding.FormatAdapter
-	Build() (*input.Input, error)
+	Handler() (encoding.FormatAdapter, error)
+	Build() (input.Input, error)
 }
 
 type baseInputConfig struct {
@@ -61,7 +58,7 @@ type ListenerConfig struct {
 	ReadTimeout     time.Duration `mapstructure:"read_timeout,omitempty"`
 }
 
-func (c ListenerConfig) Build() (*input.Listener, error) {
+func (c *ListenerConfig) Build() (input.Input, error) {
 	h, err := c.Handler()
 	if err != nil {
 		return nil, fmt.Errorf(handlerErrorFmt, fmt.Sprintf("listener[%s] config: %s", c.ListenAddr, err))
@@ -79,7 +76,7 @@ type KafkaConfig struct {
 	ConsumerGroup   string   `mapstructure:"topic,omitempty"`
 }
 
-func (c KafkaConfig) Build() (*input.Kafka, error) {
+func (c *KafkaConfig) Build() (input.Input, error) {
 	// Validate offset
 	var offset int64
 	switch c.AutoOffsetReset {
@@ -88,7 +85,7 @@ func (c KafkaConfig) Build() (*input.Kafka, error) {
 	case "earliest":
 		offset = sarama.OffsetOldest
 	default:
-		return nil, fmt.Errorf(kafkaInvalidAutoOffsetErrorFmt, offset)
+		return nil, fmt.Errorf(kafkaInvalidAutoOffsetErrorFmt, c.AutoOffsetReset)
 	}
 
 	if len(c.Brokers) == 0 {
@@ -116,31 +113,31 @@ func (c *Config) ProcessInputConfig() error {
 	inputs := make([]input.Input, len(c.InputsRaw))
 	for i := 0; i < len(c.InputsRaw); i++ {
 		configMap := c.InputsRaw[i]
+		var n InputConfig
 		switch configMap["type"].(string) {
+		case KafkaConfigType:
+			n = &KafkaConfig{AutoOffsetReset: "earliest"}
 		case ListenerConfigType:
-			n := ListenerConfig{Workers: 1, ReadTimeout: 2 * time.Minute}
-			d, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-				WeaklyTypedInput: true,
-				Result:           &n,
-				DecodeHook:       mapstructure.StringToTimeDurationHookFunc(),
-			})
-
-			err := d.Decode(configMap)
-			spew.Dump(n)
-			spew.Dump(configMap)
-			if err != nil {
-				return fmt.Errorf(decodingErrorFmt, configMap["type"], err)
-			}
-			l, err := n.Build()
-			if err != nil {
-				return fmt.Errorf(initErrorFmt, configMap["type"], err)
-			}
-			inputs[i] = l
+			n = &ListenerConfig{Workers: 1, ReadTimeout: 2 * time.Minute}
 		case "":
 			return fmt.Errorf("input type can't be \"\"")
 		default:
 			return fmt.Errorf("unknown input type: \"%s\"", configMap["type"])
 		}
+		d, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+			WeaklyTypedInput: true,
+			Result:           &n,
+			DecodeHook:       mapstructure.StringToTimeDurationHookFunc(),
+		})
+		err := d.Decode(configMap)
+		if err != nil {
+			return fmt.Errorf(decodingErrorFmt, configMap["type"], err)
+		}
+		l, err := n.Build()
+		if err != nil {
+			return fmt.Errorf(initErrorFmt, configMap["type"], err)
+		}
+		inputs[i] = l
 	}
 	c.Inputs = inputs
 	return nil

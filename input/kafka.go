@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/Shopify/sarama"
-	"github.com/graphite-ng/carbon-relay-ng/formats"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -64,13 +64,13 @@ func (k *Kafka) close() {
 	}
 }
 
-func (k *Kafka) Stop() bool {
+func (k *Kafka) Stop() error {
 	close(k.closed)
 	k.close()
-	return true
+	return nil
 }
 
-func NewKafka(id string, brokers []string, topic string, autoOffsetReset int64, consumerGroup string, h formats.FormatHandler) *Kafka {
+func NewKafka(id string, brokers []string, topic string, autoOffsetReset int64, consumerGroup string, h encoding.FormatAdapter) *Kafka {
 	kafkaConfig := sarama.NewConfig()
 	if id != "" {
 		kafkaConfig.ClientID = id
@@ -83,7 +83,7 @@ func NewKafka(id string, brokers []string, topic string, autoOffsetReset int64, 
 
 	client, err := sarama.NewConsumerGroup(brokers, consumerGroup, kafkaConfig)
 	if err != nil {
-		log.Errorln("kafka input init failed", err)
+		log.Fatalln("kafka input init failed", err)
 	} else {
 		log.Infoln("kafka input init correctly")
 	}

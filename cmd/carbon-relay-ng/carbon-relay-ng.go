@@ -12,8 +12,6 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/BurntSushi/toml"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -68,8 +66,6 @@ func main() {
 		log.Fatalf("Invalid config file %q: %s", config_file, err.Error())
 	}
 	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
-	spew.Dump(config)
-
 	formatter := &logger.TextFormatter{}
 	formatter.TimestampFormat = "2006-01-02 15:04:05.000"
 	log.SetFormatter(formatter)
@@ -107,7 +103,7 @@ func main() {
 
 	err = config.ProcessInputConfig()
 	if err != nil {
-		log.Fatalf("can't initialize listeners config: %s", err)
+		log.Fatalf("can't initialize inputs config: %s", err)
 	}
 
 	log.Info("initializing routing table...")
