@@ -16,7 +16,6 @@ type Kafka struct {
 	topic      string
 	dispatcher Dispatcher
 	client     sarama.ConsumerGroup
-	consumer   Consumer
 	ctx        context.Context
 	closed     chan bool
 	ready      chan bool
@@ -29,7 +28,7 @@ func (kafka *Kafka) Name() string {
 func (k *Kafka) Start(d Dispatcher) error {
 	k.Dispatcher = d
 
-	k.consumer.ready = make(chan bool, 0)
+	k.ready = make(chan bool, 0)
 
 	go func() {
 		for err := range k.client.Errors() {
@@ -47,10 +46,10 @@ func (k *Kafka) Start(d Dispatcher) error {
 			if err != nil {
 				log.Errorln("kafka input error Consume method ", err)
 			}
-			k.consumer.ready = make(chan bool, 0)
+			k.ready = make(chan bool, 0)
 		}
 	}(k.closed)
-	<-k.consumer.ready // Await till the consumer has been set up
+	<-k.ready // Await till the consumer has been set up
 	log.Infoln("Sarama consumer up and running!...")
 	return nil
 
@@ -79,7 +78,6 @@ func NewKafka(id string, brokers []string, topic string, autoOffsetReset int64, 
 	kafkaConfig.Consumer.Return.Errors = true
 	kafkaConfig.Consumer.Offsets.Initial = autoOffsetReset
 	kafkaConfig.Version = sarama.V2_2_0_0
-	consumer := Consumer{}
 
 	client, err := sarama.NewConsumerGroup(brokers, consumerGroup, kafkaConfig)
 	if err != nil {
@@ -91,17 +89,10 @@ func NewKafka(id string, brokers []string, topic string, autoOffsetReset int64, 
 	return &Kafka{
 		BaseInput: BaseInput{handler: h, name: fmt.Sprintf("kafka[topic=%s;cg=%s;id=%s]", topic, consumerGroup, kafkaConfig.ClientID)},
 		topic:     topic,
-		consumer:  consumer,
 		client:    client,
 		ctx:       context.Background(),
 		closed:    make(chan bool),
 	}
-}
-
-// Consumer represents a Sarama consumer group consumer
-type Consumer struct {
-	ready      chan bool
-	dispatcher Dispatcher
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
