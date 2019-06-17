@@ -64,8 +64,6 @@ func (k *keepSafe) GetAll() [][]byte {
 }
 
 func (k *keepSafe) Stop() {
-	k.Lock()
 	close(k.closed)
 	k.wg.Wait()
-	k.Unlock()
 }
