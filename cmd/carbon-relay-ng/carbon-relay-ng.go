@@ -65,6 +65,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Invalid config file %q: %s", config_file, err.Error())
 	}
+
+	if len(meta.Undecoded()) > 0 {
+		log.Fatalf("Unknown configuration keys in %s: %q", config_file, meta.Undecoded())
+	}
+
 	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
 	formatter := &logger.TextFormatter{}
 	formatter.TimestampFormat = "2006-01-02 15:04:05.000"

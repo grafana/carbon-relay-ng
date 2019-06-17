@@ -19,6 +19,7 @@ const (
 )
 
 const (
+	decoderErrorFmt  = "error while initializing the mapstructure deocoder: %s"
 	decodingErrorFmt = "error while decoding %s structure: %s"
 	initErrorFmt     = "error while initializing %s structure: %s"
 )
@@ -124,12 +125,19 @@ func (c *Config) ProcessInputConfig() error {
 		default:
 			return fmt.Errorf("unknown input type: \"%s\"", configMap["type"])
 		}
-		d, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		// To avoid being catched by the strict decoding
+		delete(configMap, "type")
+
+		d, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+			ErrorUnused:      true,
 			WeaklyTypedInput: true,
 			Result:           &n,
 			DecodeHook:       mapstructure.StringToTimeDurationHookFunc(),
 		})
-		err := d.Decode(configMap)
+		if err != nil {
+			return fmt.Errorf(decoderErrorFmt, err)
+		}
+		err = d.Decode(configMap)
 		if err != nil {
 			return fmt.Errorf(decodingErrorFmt, configMap["type"], err)
 		}
