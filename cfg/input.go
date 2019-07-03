@@ -19,7 +19,7 @@ const (
 )
 
 const (
-	decoderErrorFmt  = "error while initializing the mapstructure deocoder: %s"
+	decoderErrorFmt  = "error while initializing the mapstructure decoder: %s"
 	decodingErrorFmt = "error while decoding %s structure: %s"
 	initErrorFmt     = "error while initializing %s structure: %s"
 )
