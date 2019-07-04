@@ -1,6 +1,7 @@
 package input
 
 import (
+	"bytes"
 	"net"
 	"sync"
 	"time"
@@ -24,7 +25,6 @@ type Listener struct {
 	udpWorkers  []udpWorker
 	shutdown    chan struct{}
 	HandleConn  func(l *Listener, c net.Conn)
-	HandleData  func(l *Listener, data []byte, src net.Addr)
 }
 
 const (
@@ -55,7 +55,6 @@ func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDP
 		readTimeout: readTimeout,
 		shutdown:    make(chan struct{}),
 		HandleConn:  handleConn,
-		HandleData:  handleData,
 		udpWorkers:  make([]udpWorker, UDPWorkerCount),
 		tcpWorkers:  make([]tcpWorker, TCPWorkerCount),
 	}
@@ -229,6 +228,7 @@ func (w *udpWorker) close() {
 
 func (w *udpWorker) consume(l *Listener) {
 	buffer := make([]byte, UDPPacketSize)
+	reader := &bytes.Reader{}
 
 	for {
 		// read a packet into buffer
@@ -245,7 +245,12 @@ func (w *udpWorker) consume(l *Listener) {
 		}
 		data := buffer[:b]
 		log.Debugf("%s handler: udp packet from %v (length: %d)", l.kind, src, data)
-		l.handle(data)
+
+		reader.Reset(data)
+		readErr := l.handleReader(reader)
+		if readErr != nil {
+			log.Debug(readErr)
+		}
 	}
 }
 
@@ -260,9 +265,4 @@ func (w *udpWorker) listen(l *Listener) error {
 
 func (w *udpWorker) protocol() string {
 	return "udp"
-}
-
-// handleData does the necessary logging and invocation of the handler
-func handleData(l *Listener, data []byte, src net.Addr) {
-	l.handle(data)
 }
