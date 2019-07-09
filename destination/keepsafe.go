@@ -43,11 +43,21 @@ func (k *keepSafe) keepClean() {
 			return
 		case <-tick.C:
 			k.Lock()
-			k.safeOld = k.safeRecent
-			k.safeRecent = make([]encoding.Datapoint, 0, k.initialCap)
+			k.expire()
 			k.Unlock()
 		}
 	}
+}
+
+func (k *keepSafe) expire() {
+	swapSlice := k.safeOld[:0]
+	if cap(swapSlice) > 2*k.initialCap {
+		// if the capacity of the former slice is too big then
+		// allocate a smaller one in order to save memory
+		swapSlice = make([]encoding.Datapoint, 0, k.initialCap)
+	}
+	k.safeOld = k.safeRecent
+	k.safeRecent = swapSlice
 }
 
 func (k *keepSafe) Add(dp encoding.Datapoint) {
@@ -58,9 +68,11 @@ func (k *keepSafe) Add(dp encoding.Datapoint) {
 
 func (k *keepSafe) GetAll() []encoding.Datapoint {
 	k.Lock()
-	ret := append(k.safeOld, k.safeRecent...)
-	k.safeOld = make([]encoding.Datapoint, 0, k.initialCap)
-	k.safeRecent = make([]encoding.Datapoint, 0, k.initialCap)
+	ret := make([]encoding.Datapoint, 0, len(k.safeOld)+len(k.safeRecent))
+	ret = append(ret, k.safeOld...)
+	ret = append(ret, k.safeRecent...)
+	k.safeOld = k.safeOld[:0]
+	k.safeRecent = k.safeRecent[:0]
 	k.Unlock()
 	return ret
 }
