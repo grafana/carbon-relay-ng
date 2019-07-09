@@ -538,6 +538,7 @@ func (d *DiskQueue) ioLoop() {
 	var r chan []byte
 
 	syncTicker := time.NewTicker(d.syncTimeout)
+	defer syncTicker.Stop()
 
 	for {
 		count++

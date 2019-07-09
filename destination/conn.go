@@ -160,6 +160,7 @@ func (c *Conn) HandleData() {
 	defer c.wg.Done()
 	periodFlush := c.periodFlush
 	tickerFlush := time.NewTicker(periodFlush)
+	defer tickerFlush.Stop()
 	flushSize := int64(0)
 	start := time.Now()
 

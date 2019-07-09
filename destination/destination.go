@@ -251,6 +251,7 @@ func (dest *Destination) WaitOnline() chan struct{} {
 // TODO Decide when to drop this buffer and move on.
 func (dest *Destination) relay() {
 	ticker := time.NewTicker(dest.periodReConn)
+	defer ticker.Stop()
 	var toUnspool chan encoding.Datapoint
 	var conn *Conn
 

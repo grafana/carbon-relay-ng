@@ -36,6 +36,7 @@ func NewKeepSafe(initialCap int, periodKeep time.Duration) *keepSafe {
 
 func (k *keepSafe) keepClean() {
 	tick := time.NewTicker(k.periodKeep)
+	defer tick.Stop()
 	defer k.wg.Done()
 	for {
 		select {

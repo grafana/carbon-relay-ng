@@ -61,6 +61,7 @@ func (b *BadMetrics) Add(metric []byte, msg []byte, err error) {
 
 func (b *BadMetrics) manage() {
 	clean := time.NewTicker(b.maxAge / 10)
+	defer clean.Stop()
 	for {
 		select {
 		case in := <-b.In:
