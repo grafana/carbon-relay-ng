@@ -41,6 +41,9 @@ func (b *BaseInput) handleReader(r io.Reader) error {
 }
 
 func (b *BaseInput) handle(msg []byte) error {
+	if len(msg) == 0 {
+		return nil
+	}
 	d, err := b.handler.Load(msg)
 	if err != nil {
 		return fmt.Errorf("error while processing `%s`: %s", string(msg), err)

@@ -13,6 +13,7 @@ var (
 	errFieldsNum              = errors.New("incorrect number of fields in metric")
 	errTimestampFormatInvalid = errors.New("timestamp is not unix ts format")
 	errValueInvalid           = errors.New("value is not int or float")
+	errEmptyline              = errors.New("empty line")
 	errFmtNullInKey           = "null char at position %d"
 	errFmtNotAscii            = "non-ascii char at position %d"
 )
@@ -83,6 +84,9 @@ func (p PlainAdapter) Load(msgbuf []byte) (Datapoint, error) {
 func (p PlainAdapter) load(msgbuf []byte) (Datapoint, error) {
 	d := Datapoint{}
 
+	if len(msgbuf) == 0 {
+		return Datapoint{}, errEmptyline
+	}
 	msg := string(msgbuf)
 	start := 0
 	for msg[start] == ' ' {
