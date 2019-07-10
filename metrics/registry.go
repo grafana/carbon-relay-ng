@@ -31,4 +31,5 @@ func init() {
 	sr := NewSafeRegistry()
 	prometheus.DefaultRegisterer = sr
 	prometheus.DefaultGatherer = sr
+	sr.MustRegister(prometheus.NewGoCollector())
 }
