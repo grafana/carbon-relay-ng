@@ -1,10 +1,12 @@
 package destination
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -38,7 +40,7 @@ var newLine = []byte{'\n'}
 
 type Conn struct {
 	conn        *net.TCPConn
-	buffered    *Writer
+	buffered    *bufio.Writer
 	shutdown    chan bool
 	In          chan encoding.Datapoint
 	key         string
@@ -68,7 +70,7 @@ func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSi
 	}
 	connObj := &Conn{
 		conn:     conn,
-		buffered: NewWriter(conn, ioBufSize, key),
+		buffered: bufio.NewWriterSize(conn, ioBufSize),
 		// when we write to shutdown, HandleData() may not be running anymore to read from the chan
 		// but, it may also be in an error scenario in which case it calls c.close() writing a second time to shutdown,
 		// after checkEOF has called c.close(). so we need enough room
@@ -164,6 +166,8 @@ func (c *Conn) HandleData() {
 	flushSize := int64(0)
 	start := time.Now()
 
+	writeBuf := make([]byte, 0, 300)
+
 	for {
 		iterStart := time.Now()
 		var active time.Time
@@ -179,7 +183,13 @@ func (c *Conn) HandleData() {
 			log.Tracef("conn %s HandleData: writing %v", c.key, dp)
 			c.keepSafe.Add(dp)
 
-			n, err := fmt.Fprintf(c, "%s %f %d", dp.Name, dp.Value, dp.Timestamp)
+			writeBuf = append(writeBuf[:0], dp.Name...)
+			writeBuf = append(writeBuf, ' ')
+			writeBuf = strconv.AppendFloat(writeBuf, dp.Value, 'f', -1, 64)
+			writeBuf = append(writeBuf, ' ')
+			writeBuf = strconv.AppendUint(writeBuf, dp.Timestamp, 10)
+
+			n, err := c.Write(writeBuf)
 			if err != nil {
 				log.Warnf("conn %s write error: %s. closing", c.key, err)
 				c.close() // this can take a while but that's ok. this conn won't be used anymore
