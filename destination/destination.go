@@ -174,7 +174,7 @@ func (dest *Destination) Run() {
 	if dest.In != nil {
 		panic(fmt.Sprintf("Run() called on already running dest %q", dest.Key))
 	}
-	dest.In = make(chan encoding.Datapoint)
+	dest.In = make(chan encoding.Datapoint, 50)
 	dest.shutdown = make(chan bool)
 	dest.connUpdates = make(chan *Conn)
 	dest.inConnUpdate = make(chan bool)
@@ -247,6 +247,21 @@ func (dest *Destination) WaitOnline() chan struct{} {
 	return signalConnOnline
 }
 
+func (dest *Destination) nonBlockingSend(dp encoding.Datapoint, conn *Conn) {
+	select {
+	// this op won't succeed as long as the conn is busy processing/flushing
+	case conn.In <- dp:
+		conn.bm.BufferedMetrics.Inc()
+	default:
+		log.Tracef("dest %s %v nonBlockingSend -> dropping due to slow conn", dest.Key, dp)
+		// TODO check if it was because conn closed
+		// we don't want to just buffer everything in memory,
+		// it would probably keep piling up until OOM.  let's just drop the traffic.
+		droppedMetricsCounter.WithLabelValues(dest.Key, "slow_conn").Inc()
+		dest.SlowNow = true
+	}
+}
+
 // TODO func (l *TCPListener) SetDeadline(t time.Time)
 // TODO Decide when to drop this buffer and move on.
 func (dest *Destination) relay() {
@@ -254,23 +269,6 @@ func (dest *Destination) relay() {
 	defer ticker.Stop()
 	var toUnspool chan encoding.Datapoint
 	var conn *Conn
-
-	// try to send the data on the buffered tcp conn
-	// if that's slow or down, discard the data
-	nonBlockingSend := func(dp encoding.Datapoint) {
-		select {
-		// this op won't succeed as long as the conn is busy processing/flushing
-		case conn.In <- dp:
-			conn.bm.BufferedMetrics.Inc()
-		default:
-			log.Tracef("dest %s %v nonBlockingSend -> dropping due to slow conn", dest.Key, dp)
-			// TODO check if it was because conn closed
-			// we don't want to just buffer everything in memory,
-			// it would probably keep piling up until OOM.  let's just drop the traffic.
-			droppedMetricsCounter.WithLabelValues(dest.Key, "slow_conn").Inc()
-			dest.SlowNow = true
-		}
-	}
 
 	// try to send the data to the spool
 	// if slow or down, drop and move on
@@ -287,6 +285,8 @@ func (dest *Destination) relay() {
 	numConnUpdates := 0
 	go dest.updateConn(dest.Addr)
 	var signalConnOnline chan struct{}
+
+	noSpoolDropMetric := droppedMetricsCounter.WithLabelValues(dest.Key, "conn_down_no_spool")
 
 	// this loop/select should never block, we can't hang dest.In or the route & table locks up
 	for {
@@ -352,17 +352,23 @@ func (dest *Destination) relay() {
 		case dp := <-toUnspool:
 			// we know that conn != nil here because toUnspool is set above
 			log.Tracef("dest %v %v received from spool -> nonBlockingSend", dest.Key, dp)
-			nonBlockingSend(dp)
+			dest.nonBlockingSend(dp, conn)
 		case dp := <-dest.In:
 			if conn != nil {
-				log.Tracef("dest %v %v received from In -> nonBlockingSend", dest.Key, dp)
-				nonBlockingSend(dp)
+				if log.IsLevelEnabled(log.TraceLevel) {
+					log.Tracef("dest %v %v received from In -> nonBlockingSend", dest.Key, dp)
+				}
+				dest.nonBlockingSend(dp, conn)
 			} else if dest.Spool {
-				log.Tracef("dest %v %v received from In -> nonBlockingSpool", dest.Key, dp)
+				if log.IsLevelEnabled(log.TraceLevel) {
+					log.Tracef("dest %v %v received from In -> nonBlockingSpool", dest.Key, dp)
+				}
 				nonBlockingSpool(dp)
 			} else {
-				log.Tracef("dest %v %v received from In -> no conn no spool -> drop", dest.Key, dp)
-				droppedMetricsCounter.WithLabelValues(dest.Key, "conn_down_no_spool").Inc()
+				if log.IsLevelEnabled(log.TraceLevel) {
+					log.Tracef("dest %v %v received from In -> no conn no spool -> drop", dest.Key, dp)
+				}
+				noSpoolDropMetric.Inc()
 			}
 		}
 	}
