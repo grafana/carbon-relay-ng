@@ -19,6 +19,9 @@ type FormatName string
 func (f FormatName) ToHandler(fo FormatOptions) (FormatAdapter, error) {
 	switch f {
 	case PlainFormat:
+		if fo.Unsafe {
+			return nil, fmt.Errorf("`unsafe` is disabled for now.")
+		}
 		return NewPlain(fo.Strict, fo.Unsafe), nil
 	case "":
 		return nil, fmt.Errorf("`format` key can't be empty. Possible value: [plain]")
