@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/rcrowley/go-metrics"
+	metrics "github.com/rcrowley/go-metrics"
 )
 
 // Broker represents a single Kafka broker connection. All operations on this object are entirely concurrency-safe.
@@ -47,6 +47,8 @@ type Broker struct {
 	brokerOutgoingByteRate metrics.Meter
 	brokerResponseRate     metrics.Meter
 	brokerResponseSize     metrics.Histogram
+
+	kerberosAuthenticator GSSAPIKerberosAuth
 }
 
 // SASLMechanism specifies the SASL mechanism the client uses to authenticate with the broker
@@ -61,6 +63,7 @@ const (
 	SASLTypeSCRAMSHA256 = "SCRAM-SHA-256"
 	// SASLTypeSCRAMSHA512 represents the SCRAM-SHA-512 mechanism.
 	SASLTypeSCRAMSHA512 = "SCRAM-SHA-512"
+	SASLTypeGSSAPI      = "GSSAPI"
 	// SASLHandshakeV0 is v0 of the Kafka SASL handshake protocol. Client and
 	// server negotiate SASL auth using opaque packets.
 	SASLHandshakeV0 = int16(0)
@@ -844,9 +847,19 @@ func (b *Broker) authenticateViaSASL() error {
 		return b.sendAndReceiveSASLOAuth(b.conf.Net.SASL.TokenProvider)
 	case SASLTypeSCRAMSHA256, SASLTypeSCRAMSHA512:
 		return b.sendAndReceiveSASLSCRAMv1()
+	case SASLTypeGSSAPI:
+		return b.sendAndReceiveKerberos()
 	default:
 		return b.sendAndReceiveSASLPlainAuth()
 	}
+}
+
+func (b *Broker) sendAndReceiveKerberos() error {
+	b.kerberosAuthenticator.Config = &b.conf.Net.SASL.GSSAPI
+	if b.kerberosAuthenticator.NewKerberosClientFunc == nil {
+		b.kerberosAuthenticator.NewKerberosClientFunc = NewKerberosClient
+	}
+	return b.kerberosAuthenticator.Authorize(b)
 }
 
 func (b *Broker) sendAndReceiveSASLHandshake(saslType SASLMechanism, version int16) error {
@@ -905,8 +918,10 @@ func (b *Broker) sendAndReceiveSASLHandshake(saslType SASLMechanism, version int
 	return nil
 }
 
-// Kafka 0.10.0 plans to support SASL Plain and Kerberos as per PR #812 (KIP-43)/(JIRA KAFKA-3149)
-// Some hosted kafka services such as IBM Message Hub already offer SASL/PLAIN auth with Kafka 0.9
+// Kafka 0.10.x supported SASL PLAIN/Kerberos via KAFKA-3149 (KIP-43).
+// Kafka 1.x.x onward added a SaslAuthenticate request/response message which
+// wraps the SASL flow in the Kafka protocol, which allows for returning
+// meaningful errors on authentication failure.
 //
 // In SASL Plain, Kafka expects the auth header to be in the following format
 // Message format (from https://tools.ietf.org/html/rfc4616):
@@ -920,17 +935,33 @@ func (b *Broker) sendAndReceiveSASLHandshake(saslType SASLMechanism, version int
 //   SAFE      = UTF1 / UTF2 / UTF3 / UTF4
 //                  ;; any UTF-8 encoded Unicode character except NUL
 //
+// With SASL v0 handshake and auth then:
 // When credentials are valid, Kafka returns a 4 byte array of null characters.
-// When credentials are invalid, Kafka closes the connection. This does not seem to be the ideal way
-// of responding to bad credentials but thats how its being done today.
+// When credentials are invalid, Kafka closes the connection.
+//
+// With SASL v1 handshake and auth then:
+// When credentials are invalid, Kafka replies with a SaslAuthenticate response
+// containing an error code and message detailing the authentication failure.
 func (b *Broker) sendAndReceiveSASLPlainAuth() error {
+	// default to V0 to allow for backward compatability when SASL is enabled
+	// but not the handshake
 	if b.conf.Net.SASL.Handshake {
-		handshakeErr := b.sendAndReceiveSASLHandshake(SASLTypePlaintext, SASLHandshakeV0)
+
+		handshakeErr := b.sendAndReceiveSASLHandshake(SASLTypePlaintext, b.conf.Net.SASL.Version)
 		if handshakeErr != nil {
 			Logger.Printf("Error while performing SASL handshake %s\n", b.addr)
 			return handshakeErr
 		}
 	}
+
+	if b.conf.Net.SASL.Version == SASLHandshakeV1 {
+		return b.sendAndReceiveV1SASLPlainAuth()
+	}
+	return b.sendAndReceiveV0SASLPlainAuth()
+}
+
+// sendAndReceiveV0SASLPlainAuth flows the v0 sasl auth NOT wrapped in the kafka protocol
+func (b *Broker) sendAndReceiveV0SASLPlainAuth() error {
 
 	length := 1 + len(b.conf.Net.SASL.User) + 1 + len(b.conf.Net.SASL.Password)
 	authBytes := make([]byte, length+4) //4 byte length header + auth data
@@ -965,6 +996,35 @@ func (b *Broker) sendAndReceiveSASLPlainAuth() error {
 	return nil
 }
 
+// sendAndReceiveV1SASLPlainAuth flows the v1 sasl authentication using the kafka protocol
+func (b *Broker) sendAndReceiveV1SASLPlainAuth() error {
+	correlationID := b.correlationID
+
+	requestTime := time.Now()
+
+	bytesWritten, err := b.sendSASLPlainAuthClientResponse(correlationID)
+
+	b.updateOutgoingCommunicationMetrics(bytesWritten)
+
+	if err != nil {
+		Logger.Printf("Failed to write SASL auth header to broker %s: %s\n", b.addr, err.Error())
+		return err
+	}
+
+	b.correlationID++
+
+	bytesRead, err := b.receiveSASLServerResponse(correlationID)
+	b.updateIncomingCommunicationMetrics(bytesRead, time.Since(requestTime))
+
+	// With v1 sasl we get an error message set in the response we can return
+	if err != nil {
+		Logger.Printf("Error returned from broker during SASL flow %s: %s\n", b.addr, err.Error())
+		return err
+	}
+
+	return nil
+}
+
 // sendAndReceiveSASLOAuth performs the authentication flow as described by KIP-255
 // https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=75968876
 func (b *Broker) sendAndReceiveSASLOAuth(provider AccessTokenProvider) error {
@@ -988,7 +1048,7 @@ func (b *Broker) sendAndReceiveSASLOAuth(provider AccessTokenProvider) error {
 	b.updateOutgoingCommunicationMetrics(bytesWritten)
 	b.correlationID++
 
-	bytesRead, err := b.receiveSASLOAuthBearerServerResponse(correlationID)
+	bytesRead, err := b.receiveSASLServerResponse(correlationID)
 	if err != nil {
 		return err
 	}
@@ -1004,7 +1064,7 @@ func (b *Broker) sendAndReceiveSASLSCRAMv1() error {
 		return err
 	}
 
-	scramClient := b.conf.Net.SASL.SCRAMClient
+	scramClient := b.conf.Net.SASL.SCRAMClientGeneratorFunc()
 	if err := scramClient.Begin(b.conf.Net.SASL.User, b.conf.Net.SASL.Password, b.conf.Net.SASL.SCRAMAuthzID); err != nil {
 		return fmt.Errorf("failed to start SCRAM exchange with the server: %s", err.Error())
 	}
@@ -1123,6 +1183,23 @@ func mapToString(extensions map[string]string, keyValSep string, elemSep string)
 	return strings.Join(buf, elemSep)
 }
 
+func (b *Broker) sendSASLPlainAuthClientResponse(correlationID int32) (int, error) {
+	authBytes := []byte("\x00" + b.conf.Net.SASL.User + "\x00" + b.conf.Net.SASL.Password)
+	rb := &SaslAuthenticateRequest{authBytes}
+	req := &request{correlationID: correlationID, clientID: b.conf.ClientID, body: rb}
+	buf, err := encode(req, b.conf.MetricRegistry)
+	if err != nil {
+		return 0, err
+	}
+
+	err = b.conn.SetWriteDeadline(time.Now().Add(b.conf.Net.WriteTimeout))
+	if err != nil {
+		Logger.Printf("Failed to set write deadline when doing SASL auth with broker %s: %s\n", b.addr, err.Error())
+		return 0, err
+	}
+	return b.conn.Write(buf)
+}
+
 func (b *Broker) sendSASLOAuthBearerClientResponse(token *AccessToken, correlationID int32) (int, error) {
 	initialResp, err := buildClientInitialResponse(token)
 	if err != nil {
@@ -1145,7 +1222,7 @@ func (b *Broker) sendSASLOAuthBearerClientResponse(token *AccessToken, correlati
 	return b.conn.Write(buf)
 }
 
-func (b *Broker) receiveSASLOAuthBearerServerResponse(correlationID int32) (int, error) {
+func (b *Broker) receiveSASLServerResponse(correlationID int32) (int, error) {
 
 	buf := make([]byte, responseLengthSize+correlationIDSize)
 
