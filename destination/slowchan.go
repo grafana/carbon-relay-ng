@@ -3,7 +3,7 @@ package destination
 import (
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
 )
@@ -17,7 +17,7 @@ func NewSlowChan(backend chan []byte, sleep time.Duration) chan encoding.Datapoi
 		for v := range backend {
 			d, err := handler.Load(v)
 			if err != nil {
-				logrus.Errorf("can't deserialize metric `%s`", string(v))
+				zap.L().Error("can't deserialize metric", zap.ByteString("payload", v), zap.Error(err))
 			} else {
 				c <- d
 			}

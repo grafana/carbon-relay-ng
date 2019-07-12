@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
 
 	"github.com/coocood/freecache"
@@ -13,7 +15,6 @@ import (
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/serialx/hashring"
-	log "github.com/sirupsen/logrus"
 )
 
 type Mutator struct {
@@ -116,7 +117,11 @@ func NewConsistentHashing(key, prefix, sub, regex string, destinations []*dest.D
 	if err != nil {
 		return nil, fmt.Errorf("can't create the routing mutator: %s", err)
 	}
-	r := &ConsistentHashing{*newBaseRoute(key, "ConsistentHashing"), ring, routeMutator}
+	r := &ConsistentHashing{
+		*newBaseRoute(key, "ConsistentHashing"),
+		ring,
+		routeMutator,
+	}
 	r.config.Store(baseConfig{*m, destinations})
 	for _, dest := range destinations {
 		r.Add(dest)
@@ -180,11 +185,13 @@ func (cs *ConsistentHashing) GetDestinationForName(name []byte) (*dest.Destinati
 func (cs *ConsistentHashing) Dispatch(dp encoding.Datapoint) {
 	dest, err := cs.GetDestinationForNameString(dp.Name)
 	if err != nil {
-		log.Errorf("can't process metric `%s`: %s", dp.Name, err)
+		cs.logger.Error("can't process metric", zap.String("metricName", dp.Name), zap.Error(err))
 		return
 	}
 	// dest should handle this as quickly as it can
-	log.Tracef("route %s sending to dest %s: %s", cs.key, dest.Key, dp.Name)
+	cs.logger.Debug("route sending to dest",
+		zap.String("destinationKey", dest.Key),
+		zap.String("metricName", dp.Name))
 	dest.In <- dp
 	cs.baseRoute.rm.OutMetrics.Inc()
 }

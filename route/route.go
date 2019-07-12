@@ -6,11 +6,11 @@ import (
 	"sync/atomic"
 
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
+	"go.uber.org/zap"
 
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
-	log "github.com/sirupsen/logrus"
 )
 
 // numDropBuffFull       metrics.Counter   // metric drops due to queue full
@@ -69,6 +69,7 @@ type baseRoute struct {
 	routeType string
 	rm        *metrics.RouteMetrics
 	destMap   map[string]*dest.Destination
+	logger    *zap.Logger
 }
 
 func newBaseRoute(key, routeType string) *baseRoute {
@@ -79,6 +80,7 @@ func newBaseRoute(key, routeType string) *baseRoute {
 		routeType,
 		metrics.NewRouteMetrics(key, routeType, nil),
 		map[string]*dest.Destination{},
+		zap.L().With(zap.String("routekey", key)),
 	}
 }
 
@@ -128,7 +130,7 @@ func (route *SendAllMatch) Dispatch(d encoding.Datapoint) {
 	for _, dest := range conf.Dests() {
 		if dest.MatchString(d.Name) {
 			// dest should handle this as quickly as it can
-			log.Tracef("route %s sending to dest %s: %v", route.key, dest.Key, d)
+			route.logger.Debug("route sending to dest", zap.String("destinationKey", dest.Key), zap.Stringer("datapoint", d))
 			dest.In <- d
 			route.rm.OutMetrics.Inc()
 		}
@@ -141,7 +143,7 @@ func (route *SendFirstMatch) Dispatch(d encoding.Datapoint) {
 	for _, dest := range conf.Dests() {
 		if dest.MatchString(d.Name) {
 			// dest should handle this as quickly as it can
-			log.Tracef("route %s sending to dest %s: %v", route.key, dest.Key, d)
+			zap.L().Debug("route %s sending to dest %s: %v", zap.String("destinationKey", dest.Key), zap.Stringer("datapoint", d))
 			dest.In <- d
 			route.rm.OutMetrics.Inc()
 			break

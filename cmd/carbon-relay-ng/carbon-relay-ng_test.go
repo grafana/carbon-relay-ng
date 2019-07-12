@@ -16,7 +16,6 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
-	log "github.com/sirupsen/logrus"
 )
 
 var packets0A *dummyPackets
@@ -115,7 +114,7 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 	os.Mkdir(spoolDir, os.ModePerm)
 	tEWaits := sync.WaitGroup{} // for when we want to wait on both tE's simultaneously
 
-	log.Info("##### START STEP 1: two endpoints, each get data #####")
+	t.Log("##### START STEP 1: two endpoints, each get data #####")
 	// UUU -> up-up-up
 	// UDU -> up-down-up
 	tUUU := NewTestEndpoint(t, ":2005")
@@ -130,14 +129,14 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 	cmd := fmt.Sprintf("addRoute sendAllMatch test1  127.0.0.1:2005 flush=%d  127.0.0.1:2006 spool=true reconn=%d flush=%d", flushMs, reconnMs, flushMs)
 	table := NewTableOrFatal(t, spoolDir, cmd)
 	fmt.Println(table.Print())
-	log.Info("waiting for both connections to establish")
+	t.Log("waiting for both connections to establish")
 	naUUU.AllowBG(100*time.Millisecond, &tEWaits)
 	naUDU.AllowBG(100*time.Millisecond, &tEWaits)
 	tEWaits.Wait()
 	// Give some time for unspooled destination to be marked online.
 	// Otherwise, the first metric is sometimes dropped.
 	time.Sleep(5 * time.Millisecond)
-	log.Info("sending first batch of metrics to table")
+	t.Log("sending first batch of metrics to table")
 	nsUUU := tUUU.conditionNumSeen(1000)
 	nsUDU := tUDU.conditionNumSeen(1000)
 
@@ -151,19 +150,19 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 		// the points in a different order.
 		time.Sleep(1 * time.Microsecond)
 	}
-	log.Info("waiting for received data")
+	t.Log("waiting for received data")
 	nsUUU.AllowBG(1*time.Second, &tEWaits)
 	nsUDU.AllowBG(1*time.Second, &tEWaits)
 	tEWaits.Wait()
-	log.Info("validating received data")
+	t.Log("validating received data")
 	tUUU.SeenThisOrFatal(packets3A.All())
 	tUDU.SeenThisOrFatal(packets3A.All())
 
-	log.Info("##### START STEP 2: tUDU (:2006) goes down (outage) & send more data #####")
+	t.Log("##### START STEP 2: tUDU (:2006) goes down (outage) & send more data #####")
 	// the route will get the redo and flush that to spool
 	tUDU.Close()
 
-	log.Info("sending second batch of metrics to table")
+	t.Log("sending second batch of metrics to table")
 	nsUUU = tUUU.conditionNumSeen(2000)
 	for i := 0; i < 1000; i++ {
 		table.Dispatch(packets3B.Get(i))
@@ -173,19 +172,19 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 		time.Sleep(50 * time.Microsecond) // this suffices on my SSD
 	}
 
-	log.Info("validating received data")
+	t.Log("validating received data")
 	nsUUU.Allow(1 * time.Second)
 	tUUU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All()))
 
-	log.Info("##### START STEP 3: bring tUDU back up, it should receive all data it missed thanks to the spooling. + send new data #####")
+	t.Log("##### START STEP 3: bring tUDU back up, it should receive all data it missed thanks to the spooling. + send new data #####")
 	tUDU = NewTestEndpoint(t, ":2006")
 	na := tUDU.conditionNumAccepts(1)
 	tUDU.Start()
 
-	log.Info("waiting for reconnect")
+	t.Log("waiting for reconnect")
 	na.Allow(time.Duration(reconnMs+50) * time.Millisecond)
 
-	log.Info("sending third batch of metrics to table")
+	t.Log("sending third batch of metrics to table")
 	nsUUU = tUUU.conditionNumSeen(3000)
 	// in theory we only need 2000 points here, but because of the redo buffer it should have sent the first points as well
 	nsUDU = tUDU.conditionNumSeen(3000)
@@ -194,11 +193,11 @@ func test3RangesWith2EndpointAndSpoolInMiddle(t *testing.T, reconnMs, flushMs in
 		time.Sleep(50 * time.Microsecond) // see above
 	}
 
-	log.Info("waiting for received data")
+	t.Log("waiting for received data")
 	nsUUU.PreferBG(1*time.Second, &tEWaits)
 	nsUDU.PreferBG(3*time.Second, &tEWaits)
 	tEWaits.Wait()
-	log.Info("validating received data")
+	t.Log("validating received data")
 	tUUU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All(), packets3C.All()))
 	tUDU.SeenThisOrFatal(mergeAll(packets3A.All(), packets3B.All(), packets3C.All()))
 	tUUU.Close()
@@ -250,14 +249,14 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 	cmd := fmt.Sprintf("addRoute sendAllMatch test1  127.0.0.1:2005 flush=%d  127.0.0.1:2006 spool=true reconn=%d flush=%d", flushMs, reconnMs, flushMs)
 	table := NewTableOrFatal(t, spoolDir, cmd)
 	fmt.Println(table.Print())
-	log.Info("waiting for both connections to establish")
+	t.Log("waiting for both connections to establish")
 	na1.AllowBG(100*time.Millisecond, &tEWaits)
 	na2.AllowBG(100*time.Millisecond, &tEWaits)
 	tEWaits.Wait()
 	// Give some time for unspooled destination to be marked online.
 	// Otherwise, the first metric is sometimes dropped.
 	time.Sleep(5 * time.Millisecond)
-	log.Info("sending metrics to table")
+	t.Log("sending metrics to table")
 	ns1 := t1.conditionNumSeen(dp.Len())
 	ns2 := t2.conditionNumSeen(dp.Len())
 
@@ -271,7 +270,7 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 		// the points in a different order.
 		time.Sleep(100 * time.Nanosecond) // see above
 	}
-	log.Info("waiting for received data")
+	t.Log("waiting for received data")
 	var sleep time.Duration
 	switch dp.Len() {
 	case 1000:
@@ -282,7 +281,7 @@ func test2Endpoints(t *testing.T, reconnMs, flushMs int, dp *dummyPackets) {
 	ns1.AllowBG(sleep, &tEWaits)
 	ns2.AllowBG(sleep, &tEWaits)
 	tEWaits.Wait()
-	log.Info("validating received data")
+	t.Log("validating received data")
 	t1.SeenThisOrFatal(dp.All())
 	t2.SeenThisOrFatal(dp.All())
 

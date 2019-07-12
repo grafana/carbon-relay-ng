@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
+	"go.uber.org/zap"
 
 	"github.com/BurntSushi/toml"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
@@ -18,7 +19,6 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
 	"github.com/graphite-ng/carbon-relay-ng/rewriter"
 	"github.com/graphite-ng/carbon-relay-ng/route"
-	log "github.com/sirupsen/logrus"
 )
 
 type TableConfig struct {
@@ -35,6 +35,7 @@ type Table struct {
 	In         chan encoding.Datapoint `json:"-"` // channel api to trade in some performance for encapsulation, for aggregators
 	bad        *badmetrics.BadMetrics
 	tm         *metrics.TableMetrics
+	logger     *zap.Logger
 }
 
 type TableSnapshot struct {
@@ -53,6 +54,7 @@ func New(config cfg.Config) *Table {
 		make(chan encoding.Datapoint),
 		nil,
 		metrics.NewTableMetrics(),
+		zap.L(),
 	}
 
 	t.config.Store(TableConfig{
@@ -90,35 +92,18 @@ func (table *Table) Bad() *badmetrics.BadMetrics {
 // after checking against the blacklist
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(dp encoding.Datapoint) {
+	tableLogger := table.logger.With(zap.Stringer("datapoint", dp))
 
 	defer metrics.ObserveSince(table.tm.RoutingDuration, time.Now())
-	log.Tracef("table received packet %+v", dp)
-	key := dp.Name
-
+	tableLogger.Debug("table received packet")
 	table.tm.In.Inc()
 
 	conf := table.config.Load().(TableConfig)
 
-	// key, val, ts, err := m20.ValidatePacket(buf_copy, conf.Validation_level_legacy.Level, conf.Validation_level_m20.Level)
-	// if err != nil {
-	// 	table.bad.Add(key, buf_copy, err)
-	// 	table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeInvalid).Inc()
-	// 	return
-	// }
-
-	// if conf.Validate_order {
-	// 	err = validate.Ordered(key, ts)
-	// 	if err != nil {
-	// 		table.bad.Add(key, buf_copy, err)
-	// 		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeOutOfOrder).Inc()
-	// 		return
-	// 	}
-	// }
-
 	for _, matcher := range conf.blacklist {
-		if matcher.MatchString(key) {
+		if matcher.MatchString(dp.Name) {
 			table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeBlacklist).Inc()
-			log.Tracef("table dropped %s, matched blacklist entry %s", key, matcher)
+			tableLogger.Debug("table dropped, matched blacklist entry", zap.Stringer("matcher", matcher))
 			return
 		}
 	}
@@ -131,7 +116,9 @@ func (table *Table) Dispatch(dp encoding.Datapoint) {
 		// we rely on incoming metrics already having been validated
 		dropRaw := aggregator.AddMaybe(dp)
 		if dropRaw {
-			log.Tracef("table dropped %s, matched dropRaw aggregator %s", dp.Name, aggregator.Regex)
+			tableLogger.Debug("table dropped, matched dropRaw aggregator",
+				zap.String("metricName", dp.Name),
+				zap.String("aggregatorRegex", aggregator.Regex))
 			table.tm.Unrouted.WithLabelValues("drop_after_aggregation").Inc()
 			return
 		}
@@ -142,14 +129,14 @@ func (table *Table) Dispatch(dp encoding.Datapoint) {
 	for _, route := range conf.routes {
 		if route.MatchString(dp.Name) {
 			routed = true
-			log.Tracef("table sending to route: %s", dp.Name)
+			tableLogger.Debug("table sending to route")
 			route.Dispatch(dp)
 		}
 	}
 
 	if !routed {
 		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeUnroutable).Inc()
-		log.Tracef("unrouteable: %v", dp)
+		tableLogger.Debug("unrouteable")
 	}
 }
 
@@ -158,19 +145,22 @@ func (table *Table) Dispatch(dp encoding.Datapoint) {
 func (table *Table) DispatchAggregate(dp encoding.Datapoint) {
 	conf := table.config.Load().(TableConfig)
 	routed := false
-	log.Tracef("table received aggregate packet %v", dp)
+
+	tableLogger := table.logger.With(zap.Stringer("datapoint", dp))
+
+	tableLogger.Debug("table received aggregate packet")
 
 	for _, route := range conf.routes {
 		if route.MatchString(dp.Name) {
 			routed = true
-			log.Tracef("table sending to route: %v", dp)
+			tableLogger.Debug("table sending to route")
 			route.Dispatch(dp)
 		}
 	}
 
 	if !routed {
 		table.tm.Unrouted.WithLabelValues(metrics.TableErrorTypeUnroutable).Inc()
-		log.Tracef("unrouteable: %v", dp)
+		tableLogger.Debug("unrouteable")
 	}
 
 }
@@ -546,7 +536,7 @@ func InitFromConfig(config cfg.Config, meta toml.MetaData) (*Table, error) {
 func (table *Table) InitBadMetrics(config cfg.Config) error {
 	maxAge, err := time.ParseDuration(config.Bad_metrics_max_age)
 	if err != nil {
-		log.Errorf("could not parse badMetrics max age: %s", err.Error())
+		table.logger.Error("could not parse badMetrics max age", zap.Error(err))
 		return fmt.Errorf("could not initialize bad metrics")
 	}
 	table.bad = badmetrics.New(maxAge)
@@ -556,10 +546,10 @@ func (table *Table) InitBadMetrics(config cfg.Config) error {
 
 func (table *Table) InitCmd(config cfg.Config) error {
 	for i, cmd := range config.Init.Cmds {
-		log.Infof("applying: %s", cmd)
+		table.logger.Info("applying command", zap.String("command", cmd))
 		err := imperatives.Apply(table, cmd)
 		if err != nil {
-			log.Errorf("could not apply init cmd #%d: %s", i+1, err.Error())
+			table.logger.Error("could not apply init cmd", zap.Int("initCmd", i+1), zap.Error(err))
 			return fmt.Errorf("could not apply init cmd #%d", i+1)
 		}
 	}
@@ -591,7 +581,7 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 
 		m, err := matcher.New(prefix, sub, regex)
 		if err != nil {
-			log.Error(err.Error())
+			table.logger.Error("could not apply blacklist cmd", zap.Error(err))
 			return fmt.Errorf("could not apply blacklist cmd #%d", i+1)
 		}
 
@@ -605,7 +595,7 @@ func (table *Table) InitAggregation(config cfg.Config) error {
 	for i, aggConfig := range config.Aggregation {
 		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.Prefix, aggConfig.Substr, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), aggConfig.DropRaw, table.In)
 		if err != nil {
-			log.Error(err.Error())
+			table.logger.Error("could not add aggregation", zap.Error(err))
 			return fmt.Errorf("could not add aggregation #%d", i+1)
 		}
 
@@ -619,7 +609,7 @@ func (table *Table) InitRewrite(config cfg.Config) error {
 	for i, rewriterConfig := range config.Rewriter {
 		rw, err := rewriter.New(rewriterConfig.Old, rewriterConfig.New, rewriterConfig.Not, rewriterConfig.Max)
 		if err != nil {
-			log.Error(err.Error())
+			table.logger.Error("could not add rewriter", zap.Error(err))
 			return fmt.Errorf("could not add rewriter #%d", i+1)
 		}
 
@@ -631,27 +621,29 @@ func (table *Table) InitRewrite(config cfg.Config) error {
 
 func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 	for _, routeConfig := range config.Route {
+		routeConfigLogger := table.logger.With(zap.String("routeKey", routeConfig.Key))
 		switch routeConfig.Type {
 		case "sendAllMatch":
 			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, true, routeConfig.Key)
 			if err != nil {
-				log.Error(err.Error())
+				routeConfigLogger.Error("could not parse destinations for route", zap.Error(err))
 				return fmt.Errorf("could not parse destinations for route '%s'", routeConfig.Key)
 			}
 			if len(destinations) == 0 {
+				routeConfigLogger.Error("must get at least 1 destination for route")
 				return fmt.Errorf("must get at least 1 destination for route '%s'", routeConfig.Key)
 			}
 
 			route, err := route.NewSendAllMatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations)
 			if err != nil {
-				log.Error(err.Error())
+				routeConfigLogger.Error("error adding route", zap.Error(err))
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
 			}
 			table.AddRoute(route)
 		case "sendFirstMatch":
 			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, true, routeConfig.Key)
 			if err != nil {
-				log.Error(err.Error())
+				routeConfigLogger.Error("could not parse destinations for route", zap.Error(err))
 				return fmt.Errorf("could not parse destinations for route '%s'", routeConfig.Key)
 			}
 			if len(destinations) == 0 {
@@ -660,14 +652,14 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 
 			route, err := route.NewSendFirstMatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations)
 			if err != nil {
-				log.Error(err.Error())
+				routeConfigLogger.Error("error adding route", zap.Error(err))
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
 			}
 			table.AddRoute(route)
 		case "consistentHashing":
 			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, false, routeConfig.Key)
 			if err != nil {
-				log.Error(err.Error())
+				routeConfigLogger.Error("could not parse destinations for route", zap.Error(err))
 				return fmt.Errorf("could not parse destinations for route '%s'", routeConfig.Key)
 			}
 			if len(destinations) < 2 {
@@ -676,7 +668,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 
 			route, err := route.NewConsistentHashing(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations, routeConfig.RoutingMutations, routeConfig.CacheSize)
 			if err != nil {
-				log.Error(err.Error())
+				routeConfigLogger.Error("error adding route", zap.Error(err))
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
 			}
 			table.AddRoute(route)

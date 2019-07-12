@@ -6,20 +6,23 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path"
 	"runtime"
 	"syscall"
 
 	"github.com/BurntSushi/toml"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
-	"github.com/graphite-ng/carbon-relay-ng/logger"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/ui/telnet"
 	"github.com/graphite-ng/carbon-relay-ng/ui/web"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
+	"gopkg.in/yaml.v2"
 
 	"strconv"
 	"strings"
@@ -47,7 +50,6 @@ func usage() {
 }
 
 func main() {
-
 	flag.Usage = usage
 	flag.Parse()
 
@@ -70,15 +72,25 @@ func main() {
 		log.Fatalf("Unknown configuration keys in %s: %q", config_file, meta.Undecoded())
 	}
 
-	//runtime.SetBlockProfileRate(1) // to enable block profiling. in my experience, adds 35% overhead.
-	formatter := &logger.TextFormatter{}
-	formatter.TimestampFormat = "2006-01-02 15:04:05.000"
-	log.SetFormatter(formatter)
-	lvl, err := log.ParseLevel(config.Log_level)
+	// expect logger configuration in the same directory than config file
+	configLogger := path.Dir(config_file)
+	configLogger = path.Join(configLogger, "logger.yaml")
+	zapConfig := zap.Config{}
+	zapConfigFile, err := ioutil.ReadFile(configLogger)
 	if err != nil {
-		log.Fatalf("failed to parse log-level %q: %s", config.Log_level, err.Error())
+		// file doesn't exists, default to developement config
+		zapConfig = zap.NewDevelopmentConfig()
+	} else {
+		err = yaml.Unmarshal(zapConfigFile, zapConfig)
+		if err != nil {
+			log.Fatalf("Cannot unmarshall logger configuration %v: %v", zapConfigFile, err)
+		}
 	}
-	log.SetLevel(lvl)
+	logger, _ := zapConfig.Build()
+	defer logger.Sync()
+	zap.ReplaceGlobals(logger)
+
+	log := zap.S()
 
 	config.Instance = os.Expand(config.Instance, expandVars)
 	if len(config.Instance) == 0 {

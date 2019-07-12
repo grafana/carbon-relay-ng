@@ -12,7 +12,6 @@ import (
 
 	"github.com/Dieterbe/topic"
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
-	log "github.com/sirupsen/logrus"
 )
 
 // TODO see if we can get simplify this type. do we need to track all bufs? can we do it in a more performant way?
@@ -52,7 +51,7 @@ func (tE *TestEndpoint) Start() {
 	if err != nil {
 		panic(err)
 	}
-	log.Infof("tE %s is now listening", tE.addr)
+	tE.t.Logf("tE %s is now listening", tE.addr)
 	tE.ln = ln
 	go func() {
 		numAccepts := 0
@@ -62,18 +61,18 @@ func (tE *TestEndpoint) Start() {
 				return
 			default:
 			}
-			log.Debugf("tE %s waiting for accept", tE.addr)
+			tE.t.Logf("tE %s waiting for accept", tE.addr)
 			conn, err := ln.Accept()
 			// when closing, this can happen: accept tcp [::]:2005: use of closed network connection
 			if err != nil {
-				log.Debugf("tE %s accept error: '%s' -> stopping tE", tE.addr, err)
+				tE.t.Logf("tE %s accept error: '%s' -> stopping tE", tE.addr, err)
 				return
 			}
 			numAccepts += 1
 			tE.accepts.Broadcast <- numAccepts
-			log.Infof("tE %s accepted new conn", tE.addr)
+			tE.t.Logf("tE %s accepted new conn", tE.addr)
 			go tE.handle(conn)
-			defer func() { log.Debugf("tE %s closing conn.", tE.addr); conn.Close() }()
+			defer func() { tE.t.Logf("tE %s closing conn.", tE.addr); conn.Close() }()
 		}
 	}()
 	go func() {
@@ -292,7 +291,7 @@ func (tE *TestEndpoint) SeenThisOrFatal(ref chan encoding.Datapoint) {
 
 func (tE *TestEndpoint) handle(c net.Conn) {
 	defer func() {
-		log.Debugf("tE %s closing conn %s", tE.addr, c)
+		tE.t.Logf("tE %s closing conn %s", tE.addr, c)
 		c.Close()
 	}()
 	r := bufio.NewReaderSize(c, 4096)
@@ -305,23 +304,23 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 		}
 		buf, _, err := r.ReadLine()
 		if err != nil {
-			log.Warnf("tE %s read error: %s. closing handler", tE.addr, err)
+			tE.t.Logf("tE %s read error: %s. closing handler", tE.addr, err)
 			return
 		}
-		log.Tracef("tE %s %s read", tE.addr, buf)
+		tE.t.Logf("tE %s %s read", tE.addr, buf)
 		d, _ := h.Load(buf)
 		tE.seen <- d
 	}
 }
 
 func (tE *TestEndpoint) Close() {
-	log.Debugf("tE %s shutting down accepter (after accept breaks)", tE.addr)
+	tE.t.Logf("tE %s shutting down accepter (after accept breaks)", tE.addr)
 	tE.shutdown <- true
-	log.Debugf("tE %s shutting down handler (after readLine breaks)", tE.addr)
+	tE.t.Logf("tE %s shutting down handler (after readLine breaks)", tE.addr)
 	tE.shutdownHandle <- true
-	log.Debugf("tE %s shutting down listener", tE.addr)
+	tE.t.Logf("tE %s shutting down listener", tE.addr)
 	tE.ln.Close()
-	log.Debugf("tE %s listener down", tE.addr)
+	tE.t.Logf("tE %s listener down", tE.addr)
 }
 
 type TestEndpointCounter struct {
@@ -358,7 +357,7 @@ func (tE *TestEndpointCounter) Start() {
 	if err != nil {
 		panic(err)
 	}
-	log.Infof("tE %s is now listening", tE.addr)
+	tE.t.Logf("tE %s is now listening", tE.addr)
 	tE.ln = ln
 	go func() {
 		for {
@@ -367,24 +366,24 @@ func (tE *TestEndpointCounter) Start() {
 				return
 			default:
 			}
-			log.Debugf("tE %s waiting for accept", tE.addr)
+			tE.t.Logf("tE %s waiting for accept", tE.addr)
 			conn, err := ln.Accept()
 			// when closing, this can happen: accept tcp [::]:2005: use of closed network connection
 			if err != nil {
-				log.Debugf("tE %s accept error: '%s' -> stopping tE", tE.addr, err)
+				tE.t.Logf("tE %s accept error: '%s' -> stopping tE", tE.addr, err)
 				return
 			}
 			tE.accepts <- struct{}{}
-			log.Infof("tE %s accepted new conn", tE.addr)
+			tE.t.Logf("tE %s accepted new conn", tE.addr)
 			go tE.handle(conn)
-			defer func() { log.Debugf("tE %s closing conn.", tE.addr); conn.Close() }()
+			defer func() { tE.t.Logf("tE %s closing conn.", tE.addr); conn.Close() }()
 		}
 	}()
 }
 
 func (tE *TestEndpointCounter) handle(c net.Conn) {
 	defer func() {
-		log.Debugf("tE %s closing conn %s", tE.addr, c)
+		tE.t.Logf("tE %s closing conn %s", tE.addr, c)
 		c.Close()
 	}()
 	r := bufio.NewReaderSize(c, 4096)
@@ -396,7 +395,7 @@ func (tE *TestEndpointCounter) handle(c net.Conn) {
 		}
 		_, _, err := r.ReadLine()
 		if err != nil {
-			log.Warnf("tE %s read error: %s. closing handler", tE.addr, err)
+			tE.t.Logf("tE %s read error: %s. closing handler", tE.addr, err)
 			return
 		}
 		tE.metrics <- struct{}{}
@@ -404,7 +403,7 @@ func (tE *TestEndpointCounter) handle(c net.Conn) {
 }
 
 func (tE *TestEndpointCounter) WaitAccepts(exp int, max time.Duration) {
-	log.Infof("waiting for %d accepts", exp)
+	tE.t.Logf("waiting for %d accepts", exp)
 	timeout := time.Tick(max)
 	val := 0
 	for {
@@ -412,7 +411,7 @@ func (tE *TestEndpointCounter) WaitAccepts(exp int, max time.Duration) {
 		case <-tE.accepts:
 			val += 1
 			if val == exp {
-				log.Infof("seen %d accepts", val)
+				tE.t.Logf("seen %d accepts", val)
 				return
 			}
 		case <-timeout:
@@ -422,7 +421,7 @@ func (tE *TestEndpointCounter) WaitAccepts(exp int, max time.Duration) {
 }
 
 func (tE *TestEndpointCounter) WaitMetrics(exp int, max time.Duration) {
-	log.Infof("waiting until all %d messages received", exp)
+	tE.t.Logf("waiting until all %d messages received", exp)
 	timeout := time.Tick(max)
 	val := 0
 	for {
@@ -430,7 +429,7 @@ func (tE *TestEndpointCounter) WaitMetrics(exp int, max time.Duration) {
 		case <-tE.metrics:
 			val += 1
 			if val == exp {
-				log.Infof("received all %d metrics", exp)
+				tE.t.Logf("received all %d metrics", exp)
 				return
 			}
 		case <-timeout:
@@ -440,11 +439,11 @@ func (tE *TestEndpointCounter) WaitMetrics(exp int, max time.Duration) {
 }
 
 func (tE *TestEndpointCounter) Close() {
-	log.Debugf("tE %s shutting down accepter (after accept breaks)", tE.addr)
+	tE.t.Logf("tE %s shutting down accepter (after accept breaks)", tE.addr)
 	tE.shutdown <- true
-	log.Debugf("tE %s shutting down handler (after readLine breaks)", tE.addr)
+	tE.t.Logf("tE %s shutting down handler (after readLine breaks)", tE.addr)
 	tE.shutdownHandle <- true
-	log.Debugf("tE %s shutting down listener", tE.addr)
+	tE.t.Logf("tE %s shutting down listener", tE.addr)
 	tE.ln.Close()
-	log.Debugf("tE %s listener down", tE.addr)
+	tE.t.Logf("tE %s listener down", tE.addr)
 }

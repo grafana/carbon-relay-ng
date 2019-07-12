@@ -19,7 +19,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/route"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 var table *tbl.Table
@@ -315,7 +315,7 @@ func Start(addr string, c cfg.Config, t *tbl.Table, enableDebug bool) {
 	router.Handle("/routes/{key}", handler(removeRoute)).Methods("DELETE")
 	router.Handle("/routes/{key}/destinations/{index}", handler(removeDestination)).Methods("DELETE")
 	if enableDebug {
-		log.Info("Enabled debug endpoints on /debug/pprof")
+		zap.S().Info("Enabled debug endpoints on /debug/pprof")
 		router.HandleFunc("/debug/pprof/", pprof.Index)
 		router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 		router.HandleFunc("/debug/pprof/profile", pprof.Profile)
@@ -335,7 +335,7 @@ func Start(addr string, c cfg.Config, t *tbl.Table, enableDebug bool) {
 	http.Handle("/", loggedRouter)
 	http.Handle("/metrics", promhttp.Handler())
 
-	log.Infof("admin HTTP listener starting on %v", addr)
+	zap.S().Infof("admin HTTP listener starting on %v", addr)
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())

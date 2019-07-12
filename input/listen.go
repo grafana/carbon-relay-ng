@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
+	"go.uber.org/zap"
 
 	"github.com/jpillora/backoff"
 	reuse "github.com/libp2p/go-reuseport"
-	log "github.com/sirupsen/logrus"
 )
 
 // Listener takes care of TCP/UDP networking
@@ -25,6 +25,7 @@ type Listener struct {
 	udpWorkers  []udpWorker
 	shutdown    chan struct{}
 	HandleConn  func(l *Listener, c net.Conn)
+	logger      *zap.Logger
 }
 
 const (
@@ -57,6 +58,7 @@ func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDP
 		HandleConn:  handleConn,
 		udpWorkers:  make([]udpWorker, UDPWorkerCount),
 		tcpWorkers:  make([]tcpWorker, TCPWorkerCount),
+		logger:      zap.L().With(zap.String("localAddress", addr), zap.String("kind", handler.KindS())),
 	}
 }
 
@@ -115,14 +117,16 @@ func (l *Listener) run(worker worker) {
 		Max: time.Minute,
 	}
 
+	runLogger := l.logger.With(zap.String("protocol", worker.protocol()))
+
 	go func() {
 		<-l.shutdown
-		log.Infof("shutting down %v/%s, closing socket", l.addr, worker.protocol())
+		runLogger.Info("shutting down, closing socket")
 		worker.close()
 	}()
 
 	for {
-		log.Infof("listening on %v/%s", l.addr, worker.protocol())
+		runLogger.Info("listening")
 
 		worker.consume(l)
 
@@ -132,7 +136,7 @@ func (l *Listener) run(worker worker) {
 		default:
 		}
 		for {
-			log.Infof("reopening %v/%s", l.addr, worker.protocol())
+			runLogger.Info("reopening")
 			err := worker.listen(l)
 			if err == nil {
 				backoffCounter.Reset()
@@ -141,12 +145,12 @@ func (l *Listener) run(worker worker) {
 
 			select {
 			case <-l.shutdown:
-				log.Infof("shutting down %v/%s, closing socket", l.addr, worker.protocol())
+				runLogger.Info("shutting down, closing socket")
 				return
 			default:
 			}
 			dur := backoffCounter.Duration()
-			log.Errorf("error listening on %v/%s, retrying after %v: %s", l.addr, worker.protocol(), dur, err)
+			runLogger.Error("error listening, retrying after backoff", zap.Duration("backoff", dur), zap.Error(err))
 			time.Sleep(dur)
 		}
 	}
@@ -164,7 +168,7 @@ func (w *tcpWorker) consume(l *Listener) {
 			case <-l.shutdown:
 				return
 			default:
-				log.Errorf("error accepting on %v/tcp, closing connection: %s", w.listener.Addr().String(), err)
+				l.logger.Error("error accepting tcp connection, closing connection", zap.Error(err))
 				w.listener.Close()
 				return
 			}
@@ -207,19 +211,15 @@ func (w *tcpWorker) acceptTcpConn(l *Listener, conn net.Conn) {
 
 // handleConn does the necessary logging and invocation of the handler
 func handleConn(l *Listener, c net.Conn) {
-	log.Debugf("%s handler: new tcp connection from %v", l.kind, c.RemoteAddr())
+	handleConnLogger := l.logger.With(zap.Stringer("remoteAddress", c.RemoteAddr()))
+	l.logger.Debug("handleConn: new tcp connection")
 
 	err := l.handleReader(c)
-	var remoteInfo string
-	rAddr := c.RemoteAddr()
-	if rAddr != nil {
-		remoteInfo = " for " + rAddr.String()
-	}
 	if err != nil {
-		log.Warnf("%s handler[%s][%s] returned: %s. closing conn", l.Name(), l.handler.KindS(), remoteInfo, err)
+		handleConnLogger.Warn("handleConn returned an error. closing conn", zap.Error(err))
 		return
 	}
-	log.Debugf("%s handler[%s][%s] returned. closing conn", l.Name(), l.handler.KindS(), remoteInfo)
+	handleConnLogger.Debug("handleConn returned. closing conn")
 }
 
 func (w *udpWorker) close() {
@@ -238,18 +238,18 @@ func (w *udpWorker) consume(l *Listener) {
 			case <-l.shutdown:
 				return
 			default:
-				log.Errorf("error reading packet on %v/udp, closing connection: %s", w.packetConn.LocalAddr().String(), err)
+				l.logger.Error("error reading udp packet, closing connection", zap.Error(err))
 				w.packetConn.Close()
 				return
 			}
 		}
 		data := buffer[:b]
-		log.Debugf("%s handler: udp packet from %v (length: %d)", l.kind, src, data)
+		l.logger.Debug("handler: udp packet", zap.Stringer("remoteAddress", src), zap.ByteString("payload", data))
 
 		reader.Reset(data)
 		readErr := l.handleReader(reader)
 		if readErr != nil {
-			log.Debug(readErr)
+			l.logger.Debug("handleReader error", zap.Error(readErr))
 		}
 	}
 }

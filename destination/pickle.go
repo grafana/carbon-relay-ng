@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	"go.uber.org/zap"
+
 	ogorek "github.com/kisielk/og-rek"
-	log "github.com/sirupsen/logrus"
 )
 
 func Pickle(dp *Datapoint) []byte {
@@ -19,7 +20,7 @@ func Pickle(dp *Datapoint) []byte {
 	messageBuf := &bytes.Buffer{}
 	err := binary.Write(messageBuf, binary.BigEndian, uint32(dataBuf.Len()))
 	if err != nil {
-		log.Fatal(err.Error())
+		zap.L().Fatal("pickle error", zap.Error(err))
 	}
 	messageBuf.Write(dataBuf.Bytes())
 	return messageBuf.Bytes()

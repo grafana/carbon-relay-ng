@@ -7,7 +7,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 type Kafka struct {
@@ -19,6 +19,7 @@ type Kafka struct {
 	ctx        context.Context
 	closed     chan bool
 	ready      chan bool
+	logger     *zap.Logger
 }
 
 func (kafka *Kafka) Name() string {
@@ -32,7 +33,7 @@ func (k *Kafka) Start(d Dispatcher) error {
 
 	go func() {
 		for err := range k.client.Errors() {
-			log.Errorln("kafka input error ", err)
+			k.logger.Error("kafka input error ", zap.Error(err))
 		}
 	}()
 	go func(c chan bool) {
@@ -44,22 +45,22 @@ func (k *Kafka) Start(d Dispatcher) error {
 			}
 			err := k.client.Consume(k.ctx, strings.Fields(k.topic), k)
 			if err != nil {
-				log.Errorln("kafka input error Consume method ", err)
+				k.logger.Error("kafka input error Consume method ", zap.Error(err))
 			}
 			k.ready = make(chan bool, 0)
 		}
 	}(k.closed)
 	<-k.ready // Await till the consumer has been set up
-	log.Infoln("Sarama consumer up and running!...")
+	k.logger.Info("Sarama consumer up and running!...")
 	return nil
 
 }
 func (k *Kafka) close() {
 	err := k.client.Close()
 	if err != nil {
-		log.Errorln("kafka input closed with errors.", err)
+		k.logger.Error("kafka input closed with errors.", zap.Error(err))
 	} else {
-		log.Infoln("kafka input closed correctly.")
+		k.logger.Info("kafka input closed correctly.")
 	}
 }
 
@@ -79,11 +80,13 @@ func NewKafka(id string, brokers []string, topic string, autoOffsetReset int64, 
 	kafkaConfig.Consumer.Offsets.Initial = autoOffsetReset
 	kafkaConfig.Version = sarama.V2_2_0_0
 
+	logger := zap.L()
+
 	client, err := sarama.NewConsumerGroup(brokers, consumerGroup, kafkaConfig)
 	if err != nil {
-		log.Fatalln("kafka input init failed", err)
+		logger.Fatal("kafka input init failed", zap.Error(err))
 	} else {
-		log.Infoln("kafka input init correctly")
+		logger.Info("kafka input init correctly")
 	}
 
 	return &Kafka{
@@ -92,6 +95,7 @@ func NewKafka(id string, brokers []string, topic string, autoOffsetReset int64, 
 		client:    client,
 		ctx:       context.Background(),
 		closed:    make(chan bool),
+		logger:    logger,
 	}
 }
 
@@ -114,9 +118,9 @@ func (k *Kafka) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.C
 	// The `ConsumeClaim` itself is called within a goroutine, see:
 	// https://github.com/Shopify/sarama/blob/master/consumer_group.go#L27-L29
 	for message := range claim.Messages() {
-		log.Traceln("metric value:", string(message.Value))
+		k.logger.Debug("metric value:", zap.ByteString("messageValue", message.Value))
 		if err := k.handle(message.Value); err != nil {
-			log.Debugf("invalid message from kafka: %#v", message)
+			k.logger.Debug("invalid message from kafka", zap.ByteString("messageValue", message.Value))
 		}
 		session.MarkMessage(message, "")
 	}

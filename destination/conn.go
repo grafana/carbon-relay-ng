@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
 
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
 	"github.com/prometheus/client_golang/prometheus"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var keepsafe_initial_cap = 100000 // not very important
@@ -56,6 +56,7 @@ type Conn struct {
 
 	droppedMetricsCounter *prometheus.CounterVec
 	bm                    *metrics.BufferMetrics
+	logger                *zap.Logger
 }
 
 func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSize, ioBufSize int) (*Conn, error) {
@@ -86,6 +87,7 @@ func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSi
 		bm: metrics.NewBufferMetrics("destination_conn", key, prometheus.Labels{
 			"address": addr,
 		}, []float64{250, 500, 750, 1000, 1250, 1500}),
+		logger: zap.L().With(zap.String("connectionKey", key)), // prefill key
 	}
 
 	connObj.bm.Size.Set(float64(connBufSize))
@@ -100,7 +102,7 @@ func (c *Conn) isAlive() bool {
 	c.upMutex.RLock()
 	up := c.up
 	c.upMutex.RUnlock()
-	log.Debugf("conn %s .up query responded with %t", c.key, up)
+	c.logger.Debug("conn isAlive", zap.Bool("up", up))
 	return up
 }
 
@@ -114,17 +116,17 @@ func (c *Conn) checkEOF() {
 	for {
 		num, err := c.conn.Read(b)
 		if err == io.EOF {
-			log.Infof("conn %s .conn.Read returned EOF -> conn is closed. closing conn explicitly", c.key)
+			c.logger.Info("conn %s .conn.Read returned EOF -> conn is closed. closing conn explicitly")
 			c.close()
 			return
 		}
 		// just in case i misunderstand something or the remote behaves badly
 		if num != 0 {
-			log.Debugf("conn %s .conn.Read data? did not expect that.  data: %s", c.key, b[:num])
+			c.logger.Debug("conn %s .conn.Read data? did not expect that", zap.ByteString("data", b[:num]))
 			continue
 		}
 		if err != io.EOF {
-			log.Errorf("conn %s checkEOF .conn.Read returned err != EOF, which is unexpected.  closing conn. error: %s", c.key, err)
+			c.logger.Error("conn %s checkEOF .conn.Read returned err != EOF, which is unexpected.  closing conn", zap.Error(err))
 			c.close()
 			return
 		}
@@ -154,7 +156,7 @@ func (c *Conn) getRedo() []encoding.Datapoint {
 func (c *Conn) alive(alive bool) {
 	c.upMutex.Lock()
 	c.up = alive
-	log.Debugf("conn %s .up set to %v", c.key, alive)
+	c.logger.Debug("conn alive", zap.Bool("up", c.up))
 	c.upMutex.Unlock()
 }
 
@@ -180,7 +182,7 @@ func (c *Conn) HandleData() {
 			active = time.Now()
 			c.bm.BufferedMetrics.Dec()
 			action = "write"
-			log.Tracef("conn %s HandleData: writing %v", c.key, dp)
+			c.logger.Debug("conn HandleData: writing datapoint", zap.Stringer("datapoint", dp))
 			c.keepSafe.Add(dp)
 
 			writeBuf = append(writeBuf[:0], dp.Name...)
@@ -191,7 +193,7 @@ func (c *Conn) HandleData() {
 
 			n, err := c.Write(writeBuf)
 			if err != nil {
-				log.Warnf("conn %s write error: %s. closing", c.key, err)
+				c.logger.Warn("conn write error. closing", zap.Error(err))
 				c.close() // this can take a while but that's ok. this conn won't be used anymore
 				return
 			}
@@ -200,37 +202,40 @@ func (c *Conn) HandleData() {
 		case <-tickerFlush.C:
 			active = time.Now()
 			action = "auto-flush"
-			log.Debugf("conn %s HandleData: c.buffered auto-flushing...", c.key)
+			c.logger.Debug("conn HandleData: c.buffered auto-flushing...")
 			err := c.buffered.Flush()
 			if err != nil {
-				log.Warnf("conn %s HandleData c.buffered auto-flush done but with error: %s, closing", c.key, err)
+				c.logger.Warn("conn HandleData c.buffered auto-flush done but with error. closing", zap.Error(err))
 				errCounter.WithLabelValues(c.key, "flush").Inc()
 				c.close()
 				return
 			}
-			log.Debugf("conn %s HandleData c.buffered auto-flush done without error", c.key)
+			c.logger.Debug("conn HandleData c.buffered auto-flush done without error")
 			c.bm.ObserveFlush(time.Since(active), flushSize, metrics.FlushTypeTicker)
 			flushSize = 0
 		case <-c.flush:
 			active = time.Now()
 			action = "manual-flush"
-			log.Debugf("conn %s HandleData: c.buffered manual flushing...", c.key)
+			c.logger.Debug("conn HandleData: c.buffered manual flushing...")
 			err := c.buffered.Flush()
 			c.flushErr <- err
 			if err != nil {
-				log.Warnf("conn %s HandleData c.buffered manual flush done but witth error: %s, closing", c.key, err)
+				c.logger.Warn("conn HandleData c.buffered manual flush done but witth error. closing", zap.Error(err))
 				errCounter.WithLabelValues(c.key, "flush").Inc()
 				c.close()
 				return
 			}
-			log.Infof("conn %s HandleData c.buffered manual flush done without error", c.key)
+			c.logger.Info("conn HandleData c.buffered manual flush done without error")
 			c.bm.ObserveFlush(time.Since(active), flushSize, metrics.FlushTypeManual)
 			flushSize = 0
 		case <-c.shutdown:
-			log.Debugf("conn %s HandleData: shutdown received. returning.", c.key)
+			c.logger.Debug("conn HandleData: shutdown received. returning.")
 			return
 		}
-		log.Debugf("conn %s HandleData %s %s (total iter %v) (use this to tune your In buffering)", c.key, action, time.Since(iterStart), time.Since(start))
+		c.logger.Debug("conn HandleData (use this to tune your In buffering)",
+			zap.String("action", action),
+			zap.Duration("since_iterStart", time.Since(iterStart)),
+			zap.Duration("since_start", time.Since(start)))
 	}
 }
 
@@ -266,32 +271,32 @@ func (c *Conn) Write(buf []byte) (int, error) {
 }
 
 func (c *Conn) Flush() error {
-	log.Debugf("conn %s going to flush my buffer", c.key)
+	c.logger.Debug("conn going to flush my buffer")
 	c.flush <- true
-	log.Debugf("conn %s waiting for flush, getting error.", c.key)
+	c.logger.Debug("conn waiting for flush, getting error.")
 	return <-c.flushErr
 }
 
 func (c *Conn) close() {
 	c.alive(false)
-	log.Debugf("conn %s close() called. sending shutdown", c.key)
+	c.logger.Debug("conn close() called. sending shutdown")
 	c.shutdown <- true
-	log.Debugf("conn %s c.conn.Close()", c.key)
+	c.logger.Debug("conn c.conn.Close()")
 	c.conn.Close()
-	log.Debugf("conn %s c.conn.Close() complete", c.key)
+	c.logger.Debug("conn c.conn.Close() complete")
 }
 
 // Close closes the connection and releases all resources, with the exception of the
 // keepSafe buffer. because the caller of conn needs a chance to collect that data
 func (c *Conn) Close() {
 	c.close()
-	log.Debugf("conn %s Close() waiting", c.key)
+	c.logger.Debug("conn Close() waiting")
 	c.wg.Wait()
-	log.Debugf("conn %s Close() complete", c.key)
+	c.logger.Debug("conn Close() complete")
 }
 
 // clearRedo releases the keepSafe resources
 func (c *Conn) clearRedo() {
-	log.Debugf("conn %s c.keepSafe.Stop()", c.key)
+	c.logger.Debug("conn c.keepSafe.Stop()")
 	c.keepSafe.Stop()
 }

@@ -2,7 +2,6 @@ package destination
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -10,7 +9,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/util"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 func addrInstanceSplit(addr string) (string, string) {
@@ -61,6 +60,7 @@ type Destination struct {
 	flush               chan bool
 	flushErr            chan error
 	tasks               sync.WaitGroup
+	logger              *zap.Logger
 }
 
 // New creates a destination object. Note that it still needs to be told to run via Run().
@@ -90,6 +90,7 @@ func New(routeName, prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 		SpoolSleep:           spoolSleep,
 		UnspoolSleep:         unspoolSleep,
 		RouteName:            routeName,
+		logger:               zap.L().With(zap.String("destinationKey", key)), // prefill key
 	}
 	return dest, nil
 }
@@ -172,7 +173,7 @@ func (dest *Destination) Snapshot() *Destination {
 
 func (dest *Destination) Run() {
 	if dest.In != nil {
-		panic(fmt.Sprintf("Run() called on already running dest %q", dest.Key))
+		dest.logger.Panic("Run() called on already running dest")
 	}
 	dest.In = make(chan encoding.Datapoint, 50)
 	dest.shutdown = make(chan bool)
@@ -214,19 +215,19 @@ func (dest *Destination) Shutdown() error {
 
 // TODO: Fix Instance key update
 func (dest *Destination) updateConn(addr string) {
-	log.Debugf("dest %v (re)connecting to %v", dest.Key, addr)
+	dest.logger.Debug("dest (re)connecting", zap.String("remoteAddress", addr))
 	dest.inConnUpdate <- true
 	defer func() { dest.inConnUpdate <- false }()
 	key := util.Key(dest.RouteName, addr)
 	addr, instance := addrInstanceSplit(addr)
 	conn, err := NewConn(dest.Key, addr, dest.periodFlush, dest.Pickle, dest.connBufSize, dest.ioBufSize)
 	if err != nil {
-		log.Debugf("dest %v: %v", dest.Key, err.Error())
+		dest.logger.Debug("dest updateConn error", zap.Error(err))
 		return
 	}
-	log.Debugf("dest %v connected to %v", dest.Key, addr)
+	dest.logger.Debug("dest connected", zap.String("remoteAddress", addr))
 	if addr != dest.Addr {
-		log.Infof("dest %v update address to %v", dest.Key, addr)
+		dest.logger.Info("dest update address", zap.String("remoteAddress", addr))
 		dest.Addr = addr
 		dest.Instance = instance
 		dest.Key = key
@@ -253,7 +254,7 @@ func (dest *Destination) nonBlockingSend(dp encoding.Datapoint, conn *Conn) {
 	case conn.In <- dp:
 		conn.bm.BufferedMetrics.Inc()
 	default:
-		log.Tracef("dest %s %v nonBlockingSend -> dropping due to slow conn", dest.Key, dp)
+		dest.logger.Debug("dest %s %v nonBlockingSend -> dropping due to slow conn", zap.Stringer("datapoint", dp))
 		// TODO check if it was because conn closed
 		// we don't want to just buffer everything in memory,
 		// it would probably keep piling up until OOM.  let's just drop the traffic.
@@ -275,9 +276,9 @@ func (dest *Destination) relay() {
 	nonBlockingSpool := func(dp encoding.Datapoint) {
 		select {
 		case dest.spool.InRT <- dp:
-			log.Tracef("dest %s %v nonBlockingSpool -> added to spool", dest.Key, dp)
+			dest.logger.Debug("dest nonBlockingSpool -> added to spool", zap.Stringer("datapoint", dp))
 		default:
-			log.Tracef("dest %s %v nonBlockingSpool -> dropping due to slow spool", dest.Key, dp)
+			dest.logger.Debug("dest nonBlockingSpool -> dropping due to slow spool", zap.Stringer("datapoint", dp))
 			droppedMetricsCounter.WithLabelValues(dest.Key, "slow_pool").Inc()
 		}
 	}
@@ -308,7 +309,12 @@ func (dest *Destination) relay() {
 		} else {
 			toUnspool = nil
 		}
-		log.Debugf("dest %v entering select. conn: %v spooling: %v slowLastloop: %v, slowNow: %v spoolQueue: %v", dest.Key, conn != nil, dest.Spool, dest.SlowLastLoop, dest.SlowNow, toUnspool != nil)
+		dest.logger.Debug("dest entering select",
+			zap.Bool("conn", conn != nil),
+			zap.Bool("spool", dest.Spool),
+			zap.Bool("slowLastloop", dest.SlowLastLoop),
+			zap.Bool("slowNow", dest.SlowNow),
+			zap.Bool("spoolQueue", toUnspool != nil))
 		select {
 		case sig := <-dest.setSignalConnOnline:
 			signalConnOnline = sig
@@ -320,7 +326,7 @@ func (dest *Destination) relay() {
 			}
 		case conn = <-dest.connUpdates:
 			dest.Online = true
-			log.Infof("dest %s new conn online", dest.Key)
+			dest.logger.Info("dest new conn online")
 			// new conn? start with a clean slate!
 			dest.SlowLastLoop = false
 			dest.SlowNow = false
@@ -340,7 +346,7 @@ func (dest *Destination) relay() {
 				dest.flushErr <- nil
 			}
 		case <-dest.shutdown:
-			log.Infof("dest %v shutting down. flushing and closing conn", dest.Key)
+			dest.logger.Info("dest shutting down. flushing and closing conn")
 			if conn != nil {
 				conn.Flush()
 				conn.Close()
@@ -351,23 +357,17 @@ func (dest *Destination) relay() {
 			return
 		case dp := <-toUnspool:
 			// we know that conn != nil here because toUnspool is set above
-			log.Tracef("dest %v %v received from spool -> nonBlockingSend", dest.Key, dp)
+			dest.logger.Debug("dest received from spool -> nonBlockingSend", zap.Stringer("datapoint", dp))
 			dest.nonBlockingSend(dp, conn)
 		case dp := <-dest.In:
 			if conn != nil {
-				if log.IsLevelEnabled(log.TraceLevel) {
-					log.Tracef("dest %v %v received from In -> nonBlockingSend", dest.Key, dp)
-				}
+				dest.logger.Debug("dest received from In -> nonBlockingSend", zap.Stringer("datapoint", dp))
 				dest.nonBlockingSend(dp, conn)
 			} else if dest.Spool {
-				if log.IsLevelEnabled(log.TraceLevel) {
-					log.Tracef("dest %v %v received from In -> nonBlockingSpool", dest.Key, dp)
-				}
+				dest.logger.Debug("dest received from In -> nonBlockingSpool", zap.Stringer("datapoint", dp))
 				nonBlockingSpool(dp)
 			} else {
-				if log.IsLevelEnabled(log.TraceLevel) {
-					log.Tracef("dest %v %v received from In -> no conn no spool -> drop", dest.Key, dp)
-				}
+				dest.logger.Debug("dest received from In -> no conn no spool -> drop", zap.Stringer("datapoint", dp))
 				noSpoolDropMetric.Inc()
 			}
 		}

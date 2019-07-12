@@ -3,9 +3,10 @@ package telnet
 import (
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 var muxList []route
@@ -71,7 +72,7 @@ func handleApiRequest(conn net.Conn) {
 		}
 		clean_cmd := strings.TrimSpace(string(buf[:n]))
 		command := strings.Split(clean_cmd, " ")
-		log.Println("received command: '" + clean_cmd + "'")
+		zap.S().Info("received command: '" + clean_cmd + "'")
 		req := Req{command, &conn}
 		fn := getHandler(clean_cmd)
 		if fn != nil {

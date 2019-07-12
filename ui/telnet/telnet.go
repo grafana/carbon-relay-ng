@@ -8,7 +8,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/imperatives"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
 	"github.com/graphite-ng/carbon-relay-ng/telnet"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 var table *tbl.Table
@@ -121,6 +121,6 @@ func Start(addr string, t *tbl.Table) error {
 	telnet.HandleFunc("view", tcpViewHandler)
 	telnet.HandleFunc("help", tcpHelpHandler)
 	telnet.HandleFunc("", tcpDefaultHandler)
-	log.Infof("admin TCP listener starting on %v", addr)
+	zap.S().Infof("admin TCP listener starting on %v", addr)
 	return telnet.ListenAndServe(addr)
 }

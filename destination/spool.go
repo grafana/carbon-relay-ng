@@ -6,7 +6,7 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
 	"github.com/graphite-ng/carbon-relay-ng/nsqd"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // sits in front of nsqd diskqueue.
@@ -26,6 +26,7 @@ type Spool struct {
 	shutdownWriter chan bool
 	shutdownBuffer chan bool
 	sm             *metrics.SpoolMetrics
+	logger         *zap.Logger
 }
 
 // parameters should be tuned so that:
@@ -49,6 +50,7 @@ func NewSpool(key, spoolDir string, bufSize int, maxBytesPerFile, syncEvery int6
 		shutdownWriter: make(chan bool),
 		shutdownBuffer: make(chan bool),
 		sm:             metrics.NewSpoolMetrics("destination", key, nil),
+		logger:         zap.L().With(zap.String("key", key)), // prefill key
 	}
 	s.sm.Buffer.Size.Set(float64(maxBytesPerFile))
 
@@ -60,8 +62,8 @@ func NewSpool(key, spoolDir string, bufSize int, maxBytesPerFile, syncEvery int6
 func (s *Spool) write(dp encoding.Datapoint, writeType string) {
 	s.sm.IncomingMetrics.WithLabelValues(writeType).Inc()
 	pre := time.Now()
-	log.Debugf("spool %v satisfying spool `%s`", s.key, writeType)
-	log.Tracef("spool %s %v Writer -> queue.Put", s.key, dp)
+	s.logger.Debug("spool satisfying", zap.String("writeType", writeType))
+	s.logger.Debug("spool Writer -> queue.Put", zap.Stringer("datapoint", dp))
 	s.queueBuffer <- dp
 	s.sm.Buffer.WriteDuration.Observe(time.Since(pre).Seconds())
 	s.sm.Buffer.BufferedMetrics.Inc()
