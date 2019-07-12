@@ -1,5 +1,5 @@
 language: go
-go: 1.11.x
+go: 1.x
 go_import_path: github.com/graphite-ng/carbon-relay-ng
 script:
 - make
