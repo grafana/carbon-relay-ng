@@ -1,6 +1,7 @@
 VERSION=$(shell git describe --tags --always | sed 's/^v//')
 ARCH="amd64 386"
 OS="linux windows darwin"
+export GO111MODULE := on
 
 
 build:
