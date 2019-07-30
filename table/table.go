@@ -92,7 +92,10 @@ func (table *Table) Bad() *badmetrics.BadMetrics {
 // after checking against the blacklist
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(dp encoding.Datapoint) {
-	tableLogger := table.logger.With(zap.Stringer("datapoint", dp))
+	tableLogger := table.logger
+	if table.logger.Core().Enabled(zap.DebugLevel) {
+		tableLogger = table.logger.With(zap.Stringer("datapoint", dp))
+	}
 
 	defer metrics.ObserveSince(table.tm.RoutingDuration, time.Now())
 	tableLogger.Debug("table received packet")
