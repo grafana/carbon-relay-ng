@@ -42,5 +42,4 @@ require (
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0 // indirect
 	gopkg.in/jcmturner/gokrb5.v7 v7.3.0 // indirect
 	gopkg.in/raintank/schema.v1 v1.0.0-20171130230239-c068e0c9c054
-	gopkg.in/yaml.v2 v2.2.2
 )

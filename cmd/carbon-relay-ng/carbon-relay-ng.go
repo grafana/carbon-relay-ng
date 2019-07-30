@@ -6,12 +6,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
-	"log"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"path"
 	"runtime"
 	"syscall"
 
@@ -22,7 +19,6 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/ui/telnet"
 	"github.com/graphite-ng/carbon-relay-ng/ui/web"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
 
 	"strconv"
 	"strings"
@@ -36,6 +32,7 @@ var (
 	shutdownTimeout = time.Second * 30 // how long to wait for shutdown
 	table           *tbl.Table
 	enablePprof     = flag.Bool("enable-pprof", false, "Will enable debug endpoints on /debug/pprof/")
+	verbose         = flag.Bool("debug", false, "Enable default verbose output")
 	badMetrics      *badmetrics.BadMetrics
 	Version         = "unknown"
 )
@@ -63,34 +60,28 @@ func main() {
 		config_file = val
 	}
 
+	logger, _ := zap.NewProduction()
+
 	meta, err := toml.DecodeFile(config_file, &config)
 	if err != nil {
-		log.Fatalf("Invalid config file %q: %s", config_file, err.Error())
+		logger.Sugar().Fatalf("Invalid config file %q: %s", config_file, err.Error())
 	}
 
 	if len(meta.Undecoded()) > 0 {
-		log.Fatalf("Unknown configuration keys in %s: %q", config_file, meta.Undecoded())
+		logger.Sugar().Fatalf("Unknown configuration keys in %s: %q", config_file, meta.Undecoded())
 	}
 
-	// expect logger configuration in the same directory than config file
-	configLogger := path.Dir(config_file)
-	configLogger = path.Join(configLogger, "logger.yaml")
-	zapConfig := zap.Config{}
-	zapConfigFile, err := ioutil.ReadFile(configLogger)
-	if err != nil {
-		// file doesn't exists, default to developement config
+	var zapConfig zap.Config
+	if *verbose {
 		zapConfig = zap.NewDevelopmentConfig()
 	} else {
-		err = yaml.Unmarshal(zapConfigFile, zapConfig)
-		if err != nil {
-			log.Fatalf("Cannot unmarshall logger configuration %v: %v", zapConfigFile, err)
-		}
+		zapConfig = zap.NewProductionConfig()
 	}
-	logger, _ := zapConfig.Build()
+	logger, _ = zapConfig.Build()
 	defer logger.Sync()
 	zap.ReplaceGlobals(logger)
 
-	log := zap.S()
+	log := logger.Sugar()
 
 	config.Instance = os.Expand(config.Instance, expandVars)
 	if len(config.Instance) == 0 {
