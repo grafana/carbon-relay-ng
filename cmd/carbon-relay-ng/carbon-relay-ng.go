@@ -97,6 +97,9 @@ func main() {
 		log.Error("instance identifier cannot be empty")
 		os.Exit(1)
 	}
+	if len(config.Route) == 0 && config.NoRouteError {
+		log.Fatal("could not find any route in the configuration")
+	}
 
 	log.Infof("===== carbon-relay-ng instance '%s' starting. (version %s) =====", config.Instance, Version)
 

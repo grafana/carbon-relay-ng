@@ -24,6 +24,12 @@ type Config struct {
 	Aggregation         []Aggregation
 	Route               []Route
 	Rewriter            []Rewriter
+
+	// Should we crash if no input can be initialized ?
+	NoInputError bool
+
+	// Should we crash if no routes can be initialized ?
+	NoRouteError bool
 }
 
 func NewConfig() Config {
