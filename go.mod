@@ -20,7 +20,6 @@ require (
 	github.com/kisielk/og-rek v1.0.0
 	github.com/libp2p/go-reuseport v0.0.0-20190411201116-b72b23b78b80
 	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
-	github.com/minio/highwayhash v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pierrec/lz4 v0.0.0-20190701081048-057d66e894a4 // indirect
@@ -28,7 +27,7 @@ require (
 	github.com/prometheus/common v0.6.0 // indirect
 	github.com/prometheus/procfs v0.0.3 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962 // indirect
-	github.com/serialx/hashring v0.0.0-20190515033939-7706f26af194
+	github.com/serialx/hashring v0.0.0-20190422032157-8b2912629002
 	github.com/stretchr/testify v1.3.0
 	github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c
 	github.com/tinylib/msgp v1.1.0 // indirect
