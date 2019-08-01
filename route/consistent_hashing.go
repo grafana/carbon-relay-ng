@@ -6,11 +6,11 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/VictoriaMetrics/fastcache"
+
 	"go.uber.org/zap"
 
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
-
-	"github.com/coocood/freecache"
 
 	dest "github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
@@ -22,20 +22,21 @@ type Mutator struct {
 	Output  []byte
 }
 
-func (m Mutator) MutateMaybe(buf []byte) (out []byte) {
+func (m Mutator) MutateMaybeBuf(dst, buf []byte) (out []byte) {
 	// Not sure if optimized, but hey..
 	matches := m.Matcher.FindSubmatchIndex(buf)
 	if matches != nil {
 		// Sadly expand is still converting our template to string
-		out = m.Matcher.Expand(out, m.Output, buf, matches)
+		return m.Matcher.Expand(dst, m.Output, buf, matches)
 	}
-	return out
+	return dst
 }
 
 type RoutingMutator struct {
 	sync.RWMutex
 	Table []*Mutator
-	cache *freecache.Cache
+	cache *fastcache.Cache
+	pool  *sync.Pool
 }
 
 func NewRoutingMutator(table map[string]string, cacheSize int) (*RoutingMutator, error) {
@@ -53,12 +54,15 @@ func NewRoutingMutator(table map[string]string, cacheSize int) (*RoutingMutator,
 		return mutators[i].Matcher.String() < mutators[j].Matcher.String()
 	})
 
-	var cache *freecache.Cache
+	// var cache *freecache.Cache
+	var cache *fastcache.Cache
 	if cacheSize > 0 {
-		cache = freecache.NewCache(cacheSize)
+		cache = fastcache.New(cacheSize)
 	}
 	return &RoutingMutator{
-		sync.RWMutex{}, mutators, cache,
+		sync.RWMutex{}, mutators, cache, &sync.Pool{New: func() interface{} {
+			return make([]byte, 0, 100)
+		}},
 	}, nil
 }
 
@@ -71,34 +75,37 @@ func (rm *RoutingMutator) HandleString(key string) (string, bool) {
 }
 
 func (rm *RoutingMutator) HandleBuf(bufKey []byte) ([]byte, bool) {
+	ret := rm.pool.Get().([]byte)
+	defer func() {
+		if len(ret) < 300 {
+			ret = ret[:0]
+			rm.pool.Put(ret)
+		}
+	}()
 	if rm.cache != nil {
-		cachedKey, err := rm.cache.Get(bufKey)
-		if err == nil {
-			// Cache Hit !
-			if cachedKey == nil {
-				return nil, false
-			}
-			return cachedKey, true
+		ret = rm.cache.Get(ret, bufKey)
+		if len(ret) > 0 {
+			return ret, true
 		}
 	}
-	new := rm.mutateMaybe(bufKey)
+	ret = rm.mutateMaybe(ret, bufKey)
 	if rm.cache != nil {
-		rm.cache.Set(bufKey, new, 0)
+		rm.cache.Set(bufKey, ret)
 	}
-	if new == nil {
+	if len(ret) == 0 {
 		return nil, false
 	}
-	return new, true
+	return ret, true
 }
 
-func (rm *RoutingMutator) mutateMaybe(key []byte) []byte {
-	var out []byte
-	for i := 0; i < len(rm.Table) && out == nil; i++ {
-		if out = rm.Table[i].MutateMaybe(key); out != nil {
-			break
-		}
+func (rm *RoutingMutator) mutateMaybe(dst []byte, key []byte) []byte {
+	if dst == nil {
+		dst = []byte{}
 	}
-	return out
+	for i := 0; i < len(rm.Table) && len(dst) == 0; i++ {
+		dst = rm.Table[i].MutateMaybeBuf(dst, key)
+	}
+	return dst
 }
 
 type ConsistentHashing struct {

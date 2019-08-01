@@ -7,9 +7,8 @@ require (
 	github.com/DataDog/zstd v1.4.0 // indirect
 	github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965
 	github.com/Shopify/sarama v1.23.0
+	github.com/VictoriaMetrics/fastcache v1.5.1
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
-	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/coocood/freecache v1.1.0
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/golang/protobuf v1.3.2 // indirect

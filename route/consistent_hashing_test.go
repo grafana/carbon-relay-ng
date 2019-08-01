@@ -2,6 +2,7 @@ package route
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -117,6 +118,66 @@ func TestConsistentHonorMutation(t *testing.T) {
 	assert.Equal(t, destOmeletteEpoisse, destOmeletteLangre)
 }
 
+func TestConsistentOverallDistribution(t *testing.T) {
+	type DistributionTest struct {
+		Entries      int
+		Nodes        int
+		MaxDiffRatio float64
+	}
+	distibTests := []DistributionTest{
+		{1000000, 100, 2},
+		{1000000, 1000, 2},
+		{1000000, 10, 1.5},
+	}
+
+	for _, test := range distibTests {
+		t.Run(fmt.Sprintf("%dEntries%dNodes%fMaxRatio", test.Entries, test.Nodes, test.MaxDiffRatio),
+			func(t *testing.T) {
+				// t.Parallel()
+				n := test.Entries
+
+				chRoute := testBaseCHRoute(test.Nodes)
+
+				dstMap := map[string]int{}
+
+				for i := 0; i < n; i++ {
+					d, err := chRoute.GetDestinationForNameString(strconv.Itoa(i))
+					assert.Nil(t, err)
+					dN, ok := dstMap[d.Key]
+					if !ok {
+						dN = 0
+					}
+					dstMap[d.Key] = dN + 1
+				}
+
+				min := n
+				max := 0
+				for _, hits := range dstMap {
+					if min >= hits {
+						min = hits
+					}
+					if max <= hits {
+						max = hits
+					}
+				}
+				t.Log("Max:", max, "Min:", min)
+				t.Log("Ratio:", float64(max)/float64(min))
+				assert.True(t, float64(max) < test.MaxDiffRatio*float64(min))
+			},
+		)
+	}
+}
+
+func TestConsistentMinimalDistribution(t *testing.T) {
+	chRoute := testBaseCHRoute(1000)
+
+	destTest, err := chRoute.GetDestinationForName([]byte("test"))
+	assert.Nil(t, err)
+	destToto, err := chRoute.GetDestinationForName([]byte("toto"))
+	assert.Nil(t, err)
+	assert.NotEqual(t, destTest, destToto)
+}
+
 func benchRoutingMutation(b *testing.B, cached bool, randKey bool) {
 	var cacheSize = 0
 	if cached {
@@ -124,7 +185,7 @@ func benchRoutingMutation(b *testing.B, cached bool, randKey bool) {
 	}
 
 	rm, err := NewRoutingMutator(map[string]string{
-		"test.(.+)": "$1",
+		"test\\.(.*)": "$1",
 	}, cacheSize)
 	if err != nil {
 		b.Fatalf("can't init routing mutator: %s", err)
@@ -148,7 +209,12 @@ func BenchmarkRoutingMutation(b *testing.B) {
 		Rand  bool
 		Cache bool
 	}
-	cases := []Case{{false, false}, {true, false}, {false, true}, {true, true}}
+	cases := []Case{
+		{false, false},
+		{true, false},
+		{false, true},
+		{true, true},
+	}
 	for _, c := range cases {
 		b.Run(fmt.Sprintf("Cache%sRand%s", strings.Title(fmt.Sprint(c.Cache)), strings.Title(fmt.Sprint(c.Rand))),
 			func(b *testing.B) {
