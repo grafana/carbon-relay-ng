@@ -7,6 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/snappy"
+
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"go.uber.org/zap"
 
@@ -258,8 +261,10 @@ func (table *Table) Flush() error {
 func (table *Table) Shutdown() error {
 	table.Lock()
 	defer table.Unlock()
+	table.logger.Info("shutting down table...")
 	conf := table.config.Load().(TableConfig)
 	for _, route := range conf.routes {
+		table.logger.Info("shutting down route", zap.String("key", route.Key()))
 		err := route.Shutdown()
 		if err != nil {
 			return err
@@ -668,13 +673,71 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			if len(destinations) < 2 {
 				return fmt.Errorf("must get at least 2 destination for route '%s'", routeConfig.Key)
 			}
+			routingMutator, err := route.NewRoutingMutator(routeConfig.RoutingMutations, routeConfig.CacheSize)
+			if err != nil {
+				routeConfigLogger.Error("can't create the routing mutator", zap.Error(err))
+				return fmt.Errorf("can't create the routing mutator: %s", err)
+			}
 
-			route, err := route.NewConsistentHashing(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations, routeConfig.RoutingMutations, routeConfig.CacheSize)
+			route, err := route.NewConsistentHashing(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations, routingMutator)
 			if err != nil {
 				routeConfigLogger.Error("error adding route", zap.Error(err))
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
 			}
 			table.AddRoute(route)
+		case "kafka":
+
+			kafkaCfg := routeConfig.Kafka
+			if kafkaCfg == nil {
+				return fmt.Errorf("error adding route '%s': kafka config is not specified", routeConfig.Key)
+			}
+			var codec kafka.CompressionCodec
+			switch codecStr := kafkaCfg.Codec; codecStr {
+			case "plain":
+				fallthrough
+			case "":
+				codec = nil
+			case "snappy":
+				codec = snappy.NewCompressionCodec()
+			default:
+				return fmt.Errorf("error adding route '%s': unknown codec `%s`", routeConfig.Key, codecStr)
+			}
+
+			if kafkaCfg.Brokers == nil || len(kafkaCfg.Brokers) == 0 {
+				return fmt.Errorf("error adding route '%s': brokers must be specified", routeConfig.Key)
+			}
+
+			if kafkaCfg.Topic == "" {
+				return fmt.Errorf("error adding route '%s': topic must be set", routeConfig.Key)
+			}
+
+			var balancer kafka.Balancer
+			if kafkaCfg.HashBalance {
+				balancer = &kafka.Hash{}
+			}
+
+			writerConfig := kafka.WriterConfig{
+				Brokers:          kafkaCfg.Brokers,
+				Topic:            kafkaCfg.Topic,
+				Balancer:         balancer,
+				CompressionCodec: codec,
+				BatchSize:        kafkaCfg.BatchSize,
+				BatchBytes:       kafkaCfg.BatchBytes,
+				BatchTimeout:     kafkaCfg.BatchTimeout,
+				RequiredAcks:     kafkaCfg.RequiredAcks,
+				Async:            !kafkaCfg.Synchronous,
+				QueueCapacity:    kafkaCfg.QueueCapacity,
+			}
+
+			routingMutator, err := route.NewRoutingMutator(routeConfig.RoutingMutations, routeConfig.CacheSize)
+			if err != nil {
+				routeConfigLogger.Error("can't create the routing mutator", zap.Error(err))
+				return fmt.Errorf("can't create the routing mutator: %s", err)
+			}
+
+			route, err := route.NewKafkaRoute(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, writerConfig, routingMutator)
+			table.AddRoute(route)
+
 		default:
 			return fmt.Errorf("unrecognized route type '%s'", routeConfig.Type)
 		}

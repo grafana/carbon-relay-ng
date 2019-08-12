@@ -61,6 +61,7 @@ type Destination struct {
 	flushErr            chan error
 	tasks               sync.WaitGroup
 	logger              *zap.Logger
+	closer              sync.Once
 }
 
 // New creates a destination object. Note that it still needs to be told to run via Run().
@@ -91,6 +92,7 @@ func New(routeName, prefix, sub, regex, addr, spoolDir string, spool, pickle boo
 		UnspoolSleep:         unspoolSleep,
 		RouteName:            routeName,
 		logger:               zap.L().With(zap.String("destinationKey", key)), // prefill key
+		closer:               sync.Once{},
 	}
 	return dest, nil
 }
@@ -208,7 +210,9 @@ func (dest *Destination) Shutdown() error {
 	if dest.shutdown == nil {
 		return errors.New("not running yet")
 	}
-	dest.shutdown <- true
+	dest.closer.Do(func() {
+		close(dest.shutdown)
+	})
 	dest.tasks.Wait()
 	return nil
 }

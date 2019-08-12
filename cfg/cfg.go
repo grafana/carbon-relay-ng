@@ -82,11 +82,7 @@ type Route struct {
 	SslVerify   *bool  `toml:"ssl_verify,omitempty"`
 	Concurrency int    `toml:"concurrency,omitempty"`
 
-	// kafkaMdm
-	Brokers     []string `toml:"brokers,omitempty"`
-	Topic       string   `toml:"topic,omitempty"` // also used by Google PubSub
-	Codec       string   `toml:"codec,omitempty"` // also used by Google PubSub
-	PartitionBy string   `toml:"partition_by,omitempty"`
+	Kafka *KafkaRouteConfig
 
 	// Google PubSub
 	Project      string `toml:"project,omitempty"`
@@ -105,6 +101,22 @@ type Route struct {
 	CacheSize        int               `toml:"cache_size,omitempty"` // In bytes
 	// Note than the cache will be disabled if <= 0
 	// Then it will minimize at 512KB. To optimize the cache, you need to set it to at least (n * 1024) with n being the max len of your key size
+}
+
+type KafkaRouteConfig struct {
+	// No need to explain theses
+	Brokers      []string      `toml:"brokers,omitempty"`
+	Topic        string        `toml:"topic,omitempty"` // also used by Google PubSub
+	Codec        string        `toml:"codec,omitempty"` // also used by Google PubSub
+	PartitionBy  string        `toml:"partition_by,omitempty"`
+	BatchSize    int           `toml:"batch_size,omitempty"`
+	BatchBytes   int           `toml:"batch_bytes,omitempty"`
+	BatchTimeout time.Duration `toml:"batch_timeout,omitempty"`
+	RequiredAcks int           `toml:"required_acks,omitempty"`
+	Synchronous  bool          `toml:"synchronous_acks,omitempty"`
+	// FireAndForget bool          `toml:"fire_and_forget,omitempty"` <- This will be the default for now as we don't need any consistency
+	HashBalance   bool `toml:"hashing_balancing,omitempty"`
+	QueueCapacity int  `toml:"queue_capacity,omitempty"`
 }
 
 type Rewriter struct {

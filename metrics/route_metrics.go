@@ -27,12 +27,17 @@ func NewRouteMetrics(id, routeType string, additionnalLabels prometheus.Labels) 
 
 	rm.Buffer = NewBufferMetrics(namespace, id, additionnalLabels, nil)
 	// TODO: Add again once package route is refactored
-	// rm.InMetrics = promauto.NewCounter(prometheus.CounterOpts{
-	// 	Namespace:   namespace,
-	// 	Name:        "incoming_metrics_total",
-	// 	Help:        "total number of incoming metrics in a route",
-	// 	ConstLabels: additionnalLabels,
-	// })
+	rm.InMetrics = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace:   namespace,
+		Name:        "incoming_metrics_total",
+		Help:        "total number of incoming metrics in a route",
+		ConstLabels: additionnalLabels,
+	})
+	rm.Errors = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: namespace,
+		Name:      "errors_total",
+		Help:      "total number of errors",
+	}, []string{"error"})
 	rm.OutMetrics = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace:   namespace,
 		Name:        "outgoing_metrics_total",

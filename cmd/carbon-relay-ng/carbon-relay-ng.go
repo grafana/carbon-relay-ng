@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 	"syscall"
 
 	"github.com/BurntSushi/toml"
@@ -160,12 +161,22 @@ func main() {
 	if ok {
 		log.Infof("Received signal %q. Shutting down", sig)
 	}
+	wg := sync.WaitGroup{}
+	wg.Add(len(config.Inputs))
 	for _, i := range config.Inputs {
-		err = i.Stop()
-		if err != nil {
-			log.Warnf("failed to stop input %s: %s", i.Name(), err)
-		}
+		go func() {
+			defer wg.Done()
+			err = i.Stop()
+			if err != nil {
+				log.Warnf("failed to stop input %s: %s", i.Name(), err)
+			}
+		}()
 	}
+	err = table.Shutdown()
+	if err != nil {
+		log.Warnf("failed to stop table: %s", err)
+	}
+	wg.Wait()
 }
 
 func expandVars(in string) (out string) {

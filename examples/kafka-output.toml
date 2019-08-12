@@ -1,0 +1,41 @@
+instance = "${HOST}"
+
+log_level = "info"
+admin_addr = "0.0.0.0:2004"
+http_addr = "0.0.0.0:8081"
+bad_metrics_max_age = "24h"
+
+[[inputs]]
+type = "listener"
+format = "plain"
+listen_addr = "127.0.0.1:4000"
+read_timeout = "120s"
+workers = 5
+
+# [[inputs]]
+# type = "kafka"
+# format = "plain"
+# topic = "test"
+# brokers = ["127.0.0.1:8100"]
+# consumer_group = "hello"
+
+#[[aggregation]]
+#function = 'sum'
+#prefix = 'haggar'
+#substr = ''
+#regex = '(.*)'
+#format = '$1.sum'
+#interval = 60
+#wait = 10
+#cache = true
+
+[[route]]
+key = 'criteo'
+type = 'kafka'
+# routing_mutations = {"mymetric\.(.+)\.end": "$1"}
+# cache_size = 1000000
+    [route.kafka]
+    codec = "plain"
+    topic = "mytopic"
+    brokers = ["localhost:9092"]
+

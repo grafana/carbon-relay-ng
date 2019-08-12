@@ -11,3 +11,4 @@ test_spool
 spool/*.dat
 *~
 .vscode/
+private_scripts/

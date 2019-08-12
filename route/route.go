@@ -80,7 +80,7 @@ func newBaseRoute(key, routeType string) *baseRoute {
 		routeType,
 		metrics.NewRouteMetrics(key, routeType, nil),
 		map[string]*dest.Destination{},
-		zap.L().With(zap.String("routekey", key)),
+		zap.L().With(zap.String("routekey", key), zap.String("route_type", routeType)),
 	}
 }
 

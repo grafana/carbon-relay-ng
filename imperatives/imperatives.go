@@ -388,7 +388,7 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
 		return fmt.Errorf("must get at least 2 destination for route '%s'", key)
 	}
 
-	route, err := route.NewConsistentHashing(key, prefix, sub, regex, destinations, nil, 0)
+	route, err := route.NewConsistentHashing(key, prefix, sub, regex, destinations, nil)
 	if err != nil {
 		return err
 	}
