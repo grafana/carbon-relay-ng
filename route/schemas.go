@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/grafana/metrictank/schema"
 	"github.com/graphite-ng/carbon-relay-ng/persister"
-	"gopkg.in/raintank/schema.v1"
 )
 
 func getSchemas(file string) (persister.WhisperSchemas, error) {
@@ -76,7 +76,6 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas, orgId int) (*sche
 
 	md := schema.MetricData{
 		Name:     name,
-		Metric:   name,
 		Interval: s.Retentions[0].SecondsPerPoint(),
 		Value:    val,
 		Unit:     "unknown",

@@ -24,8 +24,8 @@ import (
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
 
-	"gopkg.in/raintank/schema.v1"
-	"gopkg.in/raintank/schema.v1/msg"
+	"github.com/grafana/metrictank/schema"
+	"github.com/grafana/metrictank/schema/msg"
 )
 
 type GrafanaNet struct {

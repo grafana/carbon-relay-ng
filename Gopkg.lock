@@ -107,12 +107,12 @@
   revision = "e17e99893cb6509f428e1728281c2ad60a6b31e3"
 
 [[projects]]
-  branch = "master"
-  digest = "1:295828d2783075f3d1442ae2fccccfad2016ca711fc7afea0cd46f8e5f695fb6"
-  name = "github.com/codeskyblue/go-uuid"
+  digest = "1:0c31fa2fb2c809d61d640e28cc400087fe205df6ec9623dd1eb91a7de8d4f5d6"
+  name = "github.com/cespare/xxhash"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "952abbca900b023c1a80bc522ff4795db50d9d6c"
+  revision = "3b82fb7d186719faeedd0c2864f868c74fbf79a1"
+  version = "v2.0.0"
 
 [[projects]]
   digest = "1:1b1179a88b2bc7b454811a1c259bf6514cfde6364f5a2d130e84e209cb405879"
@@ -120,6 +120,14 @@
   packages = ["spew"]
   pruneopts = "NUT"
   revision = "2df174808ee097f90d259e432cc04442cf60be21"
+
+[[projects]]
+  branch = "master"
+  digest = "1:3db74f0cf75d9759d2bdfb6cb55f7d7d372c01f847c5e1ab2fe03773dc2bf024"
+  name = "github.com/dgryski/go-jump"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "e1f439676b570800a863c37b78d1f868f51a85fc"
 
 [[projects]]
   branch = "master"
@@ -219,6 +227,18 @@
   revision = "14cafe28513321476c73967a5a4f3454b6129c46"
 
 [[projects]]
+  branch = "master"
+  digest = "1:8d30aa9fbf51ad8c0eb044a7b7644ac08e7dbbd039b4e40fe68978255949735a"
+  name = "github.com/grafana/metrictank"
+  packages = [
+    "cluster/partitioner",
+    "schema",
+    "schema/msg",
+  ]
+  pruneopts = "NUT"
+  revision = "c7715cb2dd264a00e595125ae16771b5696c40d4"
+
+[[projects]]
   digest = "1:ac6d01547ec4f7f673311b4663909269bfb8249952de3279799289467837c3cc"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
@@ -308,13 +328,6 @@
   revision = "87a4384529e0652f5035fb5cc8095faf73ea9b0b"
 
 [[projects]]
-  digest = "1:702871fd067843dac45acf878c75d14fea30ad6084c93a9babfbf79fc9369a61"
-  name = "github.com/raintank/metrictank"
-  packages = ["cluster/partitioner"]
-  pruneopts = "NUT"
-  revision = "c1b3cb1beb4aee2aa66d9d8f3f53a569be73ee73"
-
-[[projects]]
   digest = "1:9229a220e3bac4ea4f4a47eea9f110b690a84ed5b3b058c00aafcb47ec8d9e03"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
@@ -352,12 +365,12 @@
   revision = "20e86122596c457c2d8a0bcd7af3158fbc7dd79e"
 
 [[projects]]
-  digest = "1:5f9202ad4fbceea76631df26de47b4960861ae7bc3889aece44d6aa8e5171dac"
+  digest = "1:c97e8a5e5c435c3287f581cdb4441ba34577ec6ead8422bfedafa6269af7abf6"
   name = "github.com/tinylib/msgp"
   packages = ["msgp"]
   pruneopts = "NUT"
-  revision = "0cea1fa86e8403be1284013014f87ab942056de8"
-  version = "v1.0-beta"
+  revision = "af6442a0fcf6e2a1b824f70dd0c734f01e817751"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -519,17 +532,6 @@
   pruneopts = "NUT"
   revision = "b71aced4a2a1ee80a1cbbd26b85a57623790d7f4"
 
-[[projects]]
-  digest = "1:c07a5fda89d318902a5218459b17afd0034f5ba29fb2a6e376c1316de71e5a95"
-  name = "gopkg.in/raintank/schema.v1"
-  packages = [
-    ".",
-    "msg",
-  ]
-  pruneopts = "NUT"
-  revision = "a323316458b5df84827551e9b6b5f61cb2de423b"
-  version = "v1.4"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -551,17 +553,17 @@
     "github.com/golang/snappy",
     "github.com/gorilla/handlers",
     "github.com/gorilla/mux",
+    "github.com/grafana/metrictank/cluster/partitioner",
+    "github.com/grafana/metrictank/schema",
+    "github.com/grafana/metrictank/schema/msg",
     "github.com/jpillora/backoff",
     "github.com/kisielk/og-rek",
     "github.com/metrics20/go-metrics20/carbon20",
     "github.com/prometheus/procfs",
-    "github.com/raintank/metrictank/cluster/partitioner",
     "github.com/sirupsen/logrus",
     "github.com/streadway/amqp",
     "github.com/stretchr/testify/assert",
     "github.com/taylorchu/toki",
-    "gopkg.in/raintank/schema.v1",
-    "gopkg.in/raintank/schema.v1/msg",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -59,8 +59,8 @@
   name = "github.com/taylorchu/toki"
 
 [[constraint]]
-  name = "gopkg.in/raintank/schema.v1"
-  version = "1.4.0"
+  name = "github.com/grafana/metrictank"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
