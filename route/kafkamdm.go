@@ -227,12 +227,6 @@ func (r *KafkaMdm) run() {
 				continue
 			}
 			md.SetId()
-			// discard invalid MetricData before adding it to the queue
-			err = md.Validate()
-			if err != nil {
-				log.Errorf("KafkaMdm %q: %s", r.key, err)
-				continue
-			}
 			metrics = append(metrics, md)
 			if len(metrics) == r.flushMaxNum {
 				flush()
