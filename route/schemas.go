@@ -9,7 +9,6 @@ import (
 
 	"github.com/grafana/metrictank/schema"
 	"github.com/graphite-ng/carbon-relay-ng/persister"
-	log "github.com/sirupsen/logrus"
 )
 
 func getSchemas(file string) (persister.WhisperSchemas, error) {
@@ -90,7 +89,6 @@ func parseMetric(buf []byte, schemas persister.WhisperSchemas, orgId int) (*sche
 	// this will check for an invalid name and tags
 	err = md.Validate()
 	if err != nil {
-		log.Errorf("parsed metric is invalid %s: %s", md.Name, err)
 		return nil, err
 	}
 

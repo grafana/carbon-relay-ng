@@ -223,7 +223,7 @@ func (r *KafkaMdm) run() {
 			r.numBuffered.Dec(1)
 			md, err := parseMetric(buf, r.schemas, r.orgId)
 			if err != nil {
-				log.Errorf("KafkaMdm %q: %s", r.key, err)
+				log.Errorf("KafkaMdm %q: parseMetric failed, skipping metric: %s", r.key, err)
 				continue
 			}
 			md.SetId()
