@@ -59,6 +59,7 @@ func handleApiRequest(conn net.Conn) {
 	buf := make([]byte, 1024)
 	// Read the incoming connection into the buffer.
 	for {
+		conn.Write([]byte("inspecting status is fine, but making changes on-the-fly is an experimental feature\n"))
 		n, err := conn.Read(buf)
 		if err != nil {
 			if err == io.EOF {

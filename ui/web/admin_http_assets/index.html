@@ -48,6 +48,11 @@
 
   <div class="container" role="main" ng-controller="MainCtl">
     <div>
+	    <div class="jumbotron">
+	    <p class="lead">This webUI is good for looking at the current state and configuration.
+	    <br/>Making changes via the webUI is <b>experimental</b>
+	    </p>
+	    </div>
       <div class="row" ng-cloak>
         <alert ng-repeat="alert in alerts">{{alert.msg}}</alert>
         <div class="col-md-12">
