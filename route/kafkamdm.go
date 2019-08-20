@@ -127,6 +127,7 @@ func (r *KafkaMdm) run() {
 	ticker := time.NewTicker(r.flushMaxWait)
 	var client sarama.Client
 	var err error
+	attempts := 0
 
 	for r.producer == nil {
 		client, err = sarama.NewClient(r.brokers, r.saramaCfg)
@@ -134,6 +135,12 @@ func (r *KafkaMdm) run() {
 			log.Warnf("kafkaMdm %q: %s", r.key, err)
 			// sleep before trying to connect again.
 			time.Sleep(time.Second)
+			attempts++
+			// fail after 300 attempts
+			if attempts > 300 {
+				log.Fatalf("kafkaMdm %q: no kafka brokers available for more than 5 minutes", r.key)
+			}
+			continue
 		} else if err != nil {
 			log.Fatalf("kafkaMdm %q: failed to initialize kafka producer. %s", r.key, err)
 		}
@@ -143,7 +150,7 @@ func (r *KafkaMdm) run() {
 			log.Fatalf("kafkaMdm %q: failed to get partitions for topic %s - %s", r.key, r.topic, err)
 		}
 		if len(partitions) < 1 {
-			log.Fatalf("kafkaMdm %q: failed to get partitions for topic %s", r.key, r.topic)
+			log.Fatalf("kafkaMdm %q: retrieved 0 partitions for topic %s\nThis might indicate that kafka is not in a ready state.", r.key, r.topic)
 		}
 
 		r.numPartitions = int32(len(partitions))
