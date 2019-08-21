@@ -138,7 +138,7 @@ func (r *KafkaMdm) run() {
 			attempts++
 			// fail after 300 attempts
 			if attempts > 300 {
-				log.Fatalf("kafkaMdm %q: no kafka brokers available for more than 5 minutes", r.key)
+				log.Fatalf("kafkaMdm %q: no kafka brokers available.", r.key)
 			}
 			continue
 		} else if err != nil {
