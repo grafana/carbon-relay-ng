@@ -14,22 +14,23 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/Shopify/sarama"
+	"github.com/grafana/metrictank/cluster/partitioner"
+	"github.com/grafana/metrictank/schema"
 	"github.com/graphite-ng/carbon-relay-ng/persister"
-	"github.com/raintank/metrictank/cluster/partitioner"
-	"gopkg.in/raintank/schema.v1"
 )
 
 type KafkaMdm struct {
 	baseRoute
-	saramaCfg   *sarama.Config
-	producer    sarama.SyncProducer
-	topic       string
-	brokers     []string
-	buf         chan []byte
-	partitioner *partitioner.Kafka
-	schemas     persister.WhisperSchemas
-	blocking    bool
-	dispatch    func(chan []byte, []byte, metrics.Gauge, metrics.Counter)
+	saramaCfg     *sarama.Config
+	producer      sarama.SyncProducer
+	topic         string
+	numPartitions int32
+	brokers       []string
+	buf           chan []byte
+	partitioner   *partitioner.Kafka
+	schemas       persister.WhisperSchemas
+	blocking      bool
+	dispatch      func(chan []byte, []byte, metrics.Gauge, metrics.Counter)
 
 	orgId int // organisation to publish data under
 
@@ -124,18 +125,45 @@ func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy
 func (r *KafkaMdm) run() {
 	metrics := make([]*schema.MetricData, 0, r.flushMaxNum)
 	ticker := time.NewTicker(r.flushMaxWait)
+	var client sarama.Client
 	var err error
+	attempts := 0
 
 	for r.producer == nil {
-		r.producer, err = sarama.NewSyncProducer(r.brokers, r.saramaCfg)
+		client, err = sarama.NewClient(r.brokers, r.saramaCfg)
 		if err == sarama.ErrOutOfBrokers {
 			log.Warnf("kafkaMdm %q: %s", r.key, err)
 			// sleep before trying to connect again.
 			time.Sleep(time.Second)
+			attempts++
+			// fail after 300 attempts
+			if attempts > 300 {
+				log.Fatalf("kafkaMdm %q: no kafka brokers available.", r.key)
+			}
+			continue
 		} else if err != nil {
 			log.Fatalf("kafkaMdm %q: failed to initialize kafka producer. %s", r.key, err)
 		}
+
+		partitions, err := client.Partitions(r.topic)
+		if err != nil {
+			log.Fatalf("kafkaMdm %q: failed to get partitions for topic %s - %s", r.key, r.topic, err)
+		}
+		if len(partitions) < 1 {
+			log.Fatalf("kafkaMdm %q: retrieved 0 partitions for topic %s\nThis might indicate that kafka is not in a ready state.", r.key, r.topic)
+		}
+
+		r.numPartitions = int32(len(partitions))
+
+		r.producer, err = sarama.NewSyncProducerFromClient(client)
+		if err != nil {
+			log.Fatalf("kafkaMdm %q: failed to initialize kafka producer. %s", r.key, err)
+		}
 	}
+	// sarama documentation states that we need to call Close() on the client
+	// used to create the SyncProducer
+	defer client.Close()
+
 	log.Infof("kafkaMdm %q: now connected to kafka", r.key)
 
 	// flushes the data to kafka and resets buffer.  blocks until it succeeds
@@ -154,14 +182,14 @@ func (r *KafkaMdm) run() {
 				}
 				size += len(data)
 
-				key, err := r.partitioner.GetPartitionKey(metric, nil)
+				partition, err := r.partitioner.Partition(metric, r.numPartitions)
 				if err != nil {
 					panic(err)
 				}
 				payload[i] = &sarama.ProducerMessage{
-					Key:   sarama.ByteEncoder(key),
-					Topic: r.topic,
-					Value: sarama.ByteEncoder(data),
+					Partition: partition,
+					Topic:     r.topic,
+					Value:     sarama.ByteEncoder(data),
 				}
 			}
 			err = r.producer.SendMessages(payload)
@@ -202,7 +230,7 @@ func (r *KafkaMdm) run() {
 			r.numBuffered.Dec(1)
 			md, err := parseMetric(buf, r.schemas, r.orgId)
 			if err != nil {
-				log.Errorf("KafkaMdm %q: %s", r.key, err)
+				log.Errorf("KafkaMdm %q: parseMetric failed, skipping metric: %s", r.key, err)
 				continue
 			}
 			md.SetId()

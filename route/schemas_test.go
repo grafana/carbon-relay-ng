@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafana/metrictank/schema"
 	"github.com/graphite-ng/carbon-relay-ng/persister"
-	"gopkg.in/raintank/schema.v1"
 )
 
 func getMatchEverythingSchemas() persister.WhisperSchemas {
@@ -37,7 +37,6 @@ func TestParseMetricWithTags(t *testing.T) {
 	sort.Strings(tags)
 	expectedMd := &schema.MetricData{
 		Name:     name,
-		Metric:   name,
 		Interval: 10,
 		Value:    value,
 		Unit:     "unknown",
@@ -60,7 +59,6 @@ func TestParseMetricWithoutTags(t *testing.T) {
 	md, _ := parseMetric(line, schemas, 1)
 	expectedMd := &schema.MetricData{
 		Name:     name,
-		Metric:   name,
 		Interval: 10,
 		Value:    value,
 		Unit:     "unknown",
