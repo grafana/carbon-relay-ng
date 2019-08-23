@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/gzip"
 	"github.com/segmentio/kafka-go/snappy"
 
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
@@ -697,6 +698,8 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				fallthrough
 			case "":
 				codec = nil
+			case "gzip":
+				codec = gzip.NewCompressionCodec()
 			case "snappy":
 				codec = snappy.NewCompressionCodec()
 			default:

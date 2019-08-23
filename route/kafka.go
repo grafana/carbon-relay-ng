@@ -28,6 +28,9 @@ func NewKafkaRoute(key, prefix, sub, regex string, config kafka.WriterConfig, ro
 		Writer:    kafka.NewWriter(config),
 		ctx:       context.TODO(),
 	}
+	if err := metrics.RegisterKafkaMetrics(key, k.Writer); err != nil {
+		return nil, fmt.Errorf("can't register kafka metrics: %s", err)
+	}
 	k.rm = metrics.NewRouteMetrics(key, "kafka", nil)
 	k.logger = k.logger.With(zap.String("kafka_topic", config.Topic))
 

@@ -75,7 +75,7 @@ type KafkaConfig struct {
 	Brokers         []string `mapstructure:"brokers,omitempty"`
 	Topic           string   `mapstructure:"topic,omitempty"`
 	AutoOffsetReset string   `mapstructure:"auto_offset_reset,omitempty"`
-	ConsumerGroup   string   `mapstructure:"topic,omitempty"`
+	ConsumerGroup   string   `mapstructure:"consumer_group,omitempty"`
 }
 
 func (c *KafkaConfig) Build() (input.Input, error) {
