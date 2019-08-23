@@ -10,6 +10,7 @@ import (
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/gzip"
 	"github.com/segmentio/kafka-go/snappy"
+	"github.com/segmentio/kafka-go/zstd"
 
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"go.uber.org/zap"
@@ -700,6 +701,8 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				codec = nil
 			case "gzip":
 				codec = gzip.NewCompressionCodec()
+			case "zstd":
+				codec = zstd.NewCompressionCodec()
 			case "snappy":
 				codec = snappy.NewCompressionCodec()
 			default:
