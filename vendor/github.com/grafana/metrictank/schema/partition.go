@@ -2,10 +2,12 @@ package schema
 
 import (
 	"encoding/binary"
+	"fmt"
 	"hash/fnv"
 
 	"github.com/cespare/xxhash"
 	jump "github.com/dgryski/go-jump"
+	"github.com/grafana/metrictank/util"
 )
 
 type PartitionByMethod uint8
@@ -27,6 +29,20 @@ const (
 	PartitionBySeriesWithTagsFnv
 )
 
+func PartitonMethodFromString(input string) (PartitionByMethod, error) {
+	switch input {
+	case "byOrg":
+		return PartitionByOrg, nil
+	case "bySeries":
+		return PartitionBySeries, nil
+	case "bySeriesWithTags":
+		return PartitionBySeriesWithTags, nil
+	case "bySeriesWithTagsFnv":
+		return PartitionBySeriesWithTagsFnv, nil
+	}
+	return 0, fmt.Errorf("partitionBy must be one of 'byOrg|bySeries|bySeriesWithTags|bySeriesWithTagsFnv'. got %s", input)
+}
+
 func (m *MetricData) PartitionID(method PartitionByMethod, partitions int32) (int32, error) {
 	var partition int32
 
@@ -42,8 +58,8 @@ func (m *MetricData) PartitionID(method PartitionByMethod, partitions int32) (in
 			partition = -partition
 		}
 	case PartitionBySeries:
-		h := fnv.New32a()
-		h.Write([]byte(m.Name))
+		h := util.NewFnv32aStringWriter()
+		h.WriteString(m.Name)
 		partition = int32(h.Sum32()) % partitions
 		if partition < 0 {
 			partition = -partition
@@ -55,8 +71,8 @@ func (m *MetricData) PartitionID(method PartitionByMethod, partitions int32) (in
 		}
 		partition = jump.Hash(h.Sum64(), int(partitions))
 	case PartitionBySeriesWithTagsFnv:
-		h := fnv.New32a()
-		if err := writeSortedTagString(h, m.Name, m.Tags); err != nil {
+		h := util.NewFnv32aStringWriter()
+		if err := writeSortedTagString(&h, m.Name, m.Tags); err != nil {
 			return 0, err
 		}
 		partition = int32(h.Sum32()) % partitions
@@ -85,8 +101,8 @@ func (m *MetricDefinition) PartitionID(method PartitionByMethod, partitions int3
 			partition = -partition
 		}
 	case PartitionBySeries:
-		h := fnv.New32a()
-		h.Write([]byte(m.Name))
+		h := util.NewFnv32aStringWriter()
+		h.WriteString(m.Name)
 		partition = int32(h.Sum32()) % partitions
 		if partition < 0 {
 			partition = -partition
@@ -96,11 +112,11 @@ func (m *MetricDefinition) PartitionID(method PartitionByMethod, partitions int3
 		h.WriteString(m.NameWithTags())
 		partition = jump.Hash(h.Sum64(), int(partitions))
 	case PartitionBySeriesWithTagsFnv:
-		h := fnv.New32a()
+		h := util.NewFnv32aStringWriter()
 		if len(m.nameWithTags) > 0 {
-			h.Write([]byte(m.nameWithTags))
+			h.WriteString(m.nameWithTags)
 		} else {
-			if err := writeSortedTagString(h, m.Name, m.Tags); err != nil {
+			if err := writeSortedTagString(&h, m.Name, m.Tags); err != nil {
 				return 0, err
 			}
 		}

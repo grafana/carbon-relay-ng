@@ -228,15 +228,16 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8d30aa9fbf51ad8c0eb044a7b7644ac08e7dbbd039b4e40fe68978255949735a"
+  digest = "1:e969ef6f8b219110b71c43f4c4097bde0cecc6565a1ff8fd776af10c1c1d7872"
   name = "github.com/grafana/metrictank"
   packages = [
     "cluster/partitioner",
     "schema",
     "schema/msg",
+    "util",
   ]
   pruneopts = "NUT"
-  revision = "c7715cb2dd264a00e595125ae16771b5696c40d4"
+  revision = "36ab5667d40d7d0eaa6677f72940640582be252a"
 
 [[projects]]
   digest = "1:ac6d01547ec4f7f673311b4663909269bfb8249952de3279799289467837c3cc"
@@ -288,6 +289,14 @@
   packages = ["carbon20"]
   pruneopts = "NUT"
   revision = "717ed3a27bf9f8d2469e7ea5b36037a4793eee44"
+
+[[projects]]
+  digest = "1:4e9827f31d4fc1ddd732a0e3af4e863d281dd405adb2bfb96a25cc5346a77caf"
+  name = "github.com/pelletier/go-toml"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "728039f679cbcd4f6a54e080d2219a4c4928c546"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:ab414e66ca8d4ae93fc50eb34f0cff05fc8db3f9abb4223e571958b372f2ad77"
