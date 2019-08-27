@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grafana/metrictank/schema"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/destination"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
@@ -592,7 +593,8 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 		return errFmtAddRouteKafkaMdm
 	}
 	partitionBy := string(t.Value)
-	if partitionBy != "byOrg" && partitionBy != "bySeries" {
+	_, err = schema.PartitonMethodFromString(partitionBy)
+	if err != nil {
 		return errFmtAddRouteKafkaMdm
 	}
 

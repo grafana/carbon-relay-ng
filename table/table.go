@@ -768,10 +768,6 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			var timeout = 2000      // in ms
 			var orgId = 1
 
-			if routeConfig.PartitionBy != "byOrg" && routeConfig.PartitionBy != "bySeries" {
-				return fmt.Errorf("invalid partitionBy for route '%s'", routeConfig.Key)
-			}
-
 			if routeConfig.BufSize != 0 {
 				bufSize = routeConfig.BufSize
 			}
