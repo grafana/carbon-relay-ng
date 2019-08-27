@@ -14,8 +14,10 @@ type Kafka struct {
 	BaseInput
 
 	topic      string
+	groupID    string
 	dispatcher Dispatcher
-	client     sarama.ConsumerGroup
+	client     sarama.Client
+	cg         sarama.ConsumerGroup
 	ctx        context.Context
 	closed     chan bool
 	ready      chan bool
@@ -32,7 +34,7 @@ func (k *Kafka) Start(d Dispatcher) error {
 	k.ready = make(chan bool, 0)
 
 	go func() {
-		for err := range k.client.Errors() {
+		for err := range k.cg.Errors() {
 			k.logger.Error("kafka input error ", zap.Error(err))
 		}
 	}()
@@ -43,7 +45,7 @@ func (k *Kafka) Start(d Dispatcher) error {
 				return
 			default:
 			}
-			err := k.client.Consume(k.ctx, strings.Fields(k.topic), k)
+			err := k.cg.Consume(k.ctx, strings.Fields(k.topic), k)
 			if err != nil {
 				k.logger.Error("kafka input error Consume method ", zap.Error(err))
 			}
@@ -70,21 +72,17 @@ func (k *Kafka) Stop() error {
 	return nil
 }
 
-func NewKafka(id string, brokers []string, topic string, autoOffsetReset int64, consumerGroup string, h encoding.FormatAdapter) *Kafka {
-	kafkaConfig := sarama.NewConfig()
-	if id != "" {
-		kafkaConfig.ClientID = id
-	}
+func NewKafka(brokers []string, topic string, consumerGroup string, kafkaConfig *sarama.Config, h encoding.FormatAdapter) *Kafka {
 
-	kafkaConfig.Consumer.Return.Errors = true
-	kafkaConfig.Consumer.Offsets.Initial = autoOffsetReset
-	kafkaConfig.Version = sarama.V2_2_0_0
+	logger := zap.L().With(zap.String("kafka_topic", topic), zap.String("kafka_consumer_group_id", consumerGroup))
 
-	logger := zap.L()
-
-	client, err := sarama.NewConsumerGroup(brokers, consumerGroup, kafkaConfig)
+	client, err := sarama.NewClient(brokers, kafkaConfig)
 	if err != nil {
-		logger.Fatal("kafka input init failed", zap.Error(err))
+		logger.Fatal("kafka input init client failed", zap.Error(err))
+	}
+	cg, err := sarama.NewConsumerGroup(brokers, consumerGroup, kafkaConfig)
+	if err != nil {
+		logger.Fatal("kafka input init consumer group failed", zap.Error(err))
 	} else {
 		logger.Info("kafka input init correctly")
 	}
@@ -93,6 +91,8 @@ func NewKafka(id string, brokers []string, topic string, autoOffsetReset int64, 
 		BaseInput: BaseInput{handler: h, name: fmt.Sprintf("kafka[topic=%s;cg=%s;id=%s]", topic, consumerGroup, kafkaConfig.ClientID)},
 		topic:     topic,
 		client:    client,
+		cg:        cg,
+		groupID:   consumerGroup,
 		ctx:       context.Background(),
 		closed:    make(chan bool),
 		logger:    logger,
@@ -100,7 +100,7 @@ func NewKafka(id string, brokers []string, topic string, autoOffsetReset int64, 
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
-func (k *Kafka) Setup(sarama.ConsumerGroupSession) error {
+func (k *Kafka) Setup(session sarama.ConsumerGroupSession) error {
 	// Mark the consumer as ready
 	close(k.ready)
 	return nil
@@ -113,10 +113,6 @@ func (k *Kafka) Cleanup(sarama.ConsumerGroupSession) error {
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (k *Kafka) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	// NOTE:
-	// Do not move the code below to a goroutine.
-	// The `ConsumeClaim` itself is called within a goroutine, see:
-	// https://github.com/Shopify/sarama/blob/master/consumer_group.go#L27-L29
 	for message := range claim.Messages() {
 		k.logger.Debug("metric value:", zap.ByteString("messageValue", message.Value))
 		if err := k.handle(message.Value); err != nil {

@@ -15,3 +15,17 @@ func AddrToPath(s string) string {
 func Key(routeName, addr string) string {
 	return routeName + "_" + AddrToPath(addr)
 }
+
+func MaxInt(x, y int) int {
+	if x < y {
+		return y
+	}
+	return x
+}
+
+func MinInt(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
