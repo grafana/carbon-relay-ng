@@ -1,11 +1,13 @@
 package destination
 
 import (
+	"path"
 	"time"
 
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
-	"github.com/graphite-ng/carbon-relay-ng/nsqd"
+	"github.com/graphite-ng/carbon-relay-ng/queue"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"go.uber.org/zap"
 )
 
@@ -20,42 +22,55 @@ type Spool struct {
 	spoolSleep   time.Duration // how long to wait between stores to spool
 	unspoolSleep time.Duration // how long to wait between loads from spool
 
-	queue       *nsqd.DiskQueue
+	queue       *queue.Queue
 	queueBuffer chan encoding.Datapoint // buffer metrics into queue because it can block
 
 	shutdownWriter chan bool
 	shutdownBuffer chan bool
+	shutdownReader chan bool
 	sm             *metrics.SpoolMetrics
 	logger         *zap.Logger
+
+	chunkSize int
 }
 
-// parameters should be tuned so that:
-// can buffer packets for the duration of 1 sync
-// buffer no more then needed, esp if we know the queue is slower then the ingest rate
 func NewSpool(key, spoolDir string, bufSize int, maxBytesPerFile, syncEvery int64, syncPeriod, spoolSleep, unspoolSleep time.Duration) *Spool {
 	dqName := "spool_" + key
-	// bufSize should be tuned to be able to hold the max amount of metrics that can be received
-	// while the disk subsystem is doing a write/sync. Basically set it to the amount of metrics
-	// you receive in a second.
-	queue := nsqd.NewDiskQueue(dqName, spoolDir, maxBytesPerFile, syncEvery, syncPeriod).(*nsqd.DiskQueue)
+	spoolDir = path.Join(spoolDir, dqName)
+	o := opt.Options{
+		BlockCacheCapacity:            1024 * 1024 * 50,
+		BlockRestartInterval:          64,
+		CompactionL0Trigger:           32,
+		CompactionTableSizeMultiplier: 5,
+		WriteBuffer:                   128 * 1024 * 1024,
+		BlockSize:                     512 * 1024,
+	}
+	queue, err := queue.OpenQueue(spoolDir, &o)
+	if err != nil {
+		panic(err)
+	}
+	logger := zap.L().With(zap.String("key", key), zap.String("spool_dir", spoolDir))
 	s := Spool{
 		key:            key,
 		InRT:           make(chan encoding.Datapoint, 10),
 		InBulk:         make(chan encoding.Datapoint),
-		Out:            NewSlowChan(queue.ReadChan(), unspoolSleep),
+		Out:            make(chan encoding.Datapoint, 100),
 		spoolSleep:     spoolSleep,
 		unspoolSleep:   unspoolSleep,
 		queue:          queue,
 		queueBuffer:    make(chan encoding.Datapoint, bufSize),
 		shutdownWriter: make(chan bool),
 		shutdownBuffer: make(chan bool),
+		shutdownReader: make(chan bool),
 		sm:             metrics.NewSpoolMetrics("destination", key, nil),
-		logger:         zap.L().With(zap.String("key", key)), // prefill key
+		logger:         logger,
+		chunkSize:      1000,
 	}
 	s.sm.Buffer.Size.Set(float64(maxBytesPerFile))
 
 	go s.Writer()
 	go s.Buffer()
+	go s.Reader()
 	return &s
 }
 
@@ -69,6 +84,35 @@ func (s *Spool) write(dp encoding.Datapoint, writeType string) {
 	s.sm.Buffer.BufferedMetrics.Inc()
 }
 
+func (s *Spool) Reader() {
+	ch := s.Out
+	queue := s.queue
+
+	h := encoding.NewPlain(false, false)
+	for {
+		if queue.Length() == 0 {
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		i, err := queue.Dequeue()
+		if err != nil {
+			s.logger.Error("failed to dequeue item", zap.Error(err))
+			continue
+		}
+		dp, err := h.Load(i.Value)
+		if err != nil {
+			s.logger.Error("failed to deserialize datapoint", zap.Error(err))
+			continue
+		}
+		select {
+		case <-s.shutdownReader:
+			close(ch)
+			return
+		case ch <- dp:
+		}
+	}
+}
+
 // provides a channel based api to the queue
 func (s *Spool) Writer() {
 	// we always try to serve realtime traffic as much as we can
@@ -80,15 +124,6 @@ func (s *Spool) Writer() {
 	// note that this still allows for channel ops to come in on InRT and to be starved, resulting
 	// in some realtime traffic to be dropped, but that shouldn't be too much of an issue. experience will tell..
 	for {
-		// Poor Man's select preference
-		select {
-		case <-s.shutdownWriter:
-			return
-		case buf := <-s.InRT:
-			s.write(buf, "RT")
-			continue
-		default:
-		}
 		select {
 		case <-s.shutdownWriter:
 			return
@@ -103,20 +138,22 @@ func (s *Spool) Writer() {
 func (s *Spool) Ingest(bulkData []encoding.Datapoint) {
 	for _, dp := range bulkData {
 		s.InBulk <- dp
-		time.Sleep(s.spoolSleep)
 	}
 }
 
 func (s *Spool) Buffer() {
-	h := encoding.NewPlain(false, true)
+	chunk := make([]encoding.Datapoint, 0, s.chunkSize)
+	buf := make([]byte, 0, 200)
 	for {
 		select {
 		case <-s.shutdownBuffer:
 			return
 		case dp := <-s.queueBuffer:
 			s.sm.Buffer.BufferedMetrics.Dec()
+
 			pre := time.Now()
-			s.queue.Put(h.Dump(dp))
+			s.queue.Enqueue(dp.AppendToBuf(buf))
+			chunk = chunk[:0]
 			s.sm.WriteDuration.Observe(time.Since(pre).Seconds())
 		}
 	}

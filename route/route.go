@@ -255,7 +255,7 @@ func (route *baseRoute) addDestination(dest *dest.Destination, extendConfig base
 	route.Lock()
 	defer route.Unlock()
 	conf := route.config.Load().(Config)
-	dest.Run()
+	go dest.Run()
 	newDests := append(conf.Dests(), dest)
 	newConf := extendConfig(baseConfig{*conf.Matcher(), newDests})
 	route.destMap[dest.Key] = dest

@@ -17,7 +17,6 @@ import (
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	tbl "github.com/graphite-ng/carbon-relay-ng/table"
-	"github.com/graphite-ng/carbon-relay-ng/ui/telnet"
 	"github.com/graphite-ng/carbon-relay-ng/ui/web"
 	"go.uber.org/zap"
 
@@ -139,15 +138,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-	}
-
-	if config.Admin_addr != "" {
-		go func() {
-			err := telnet.Start(config.Admin_addr, table)
-			if err != nil {
-				log.Fatalf("Error listening: %s", err.Error())
-			}
-		}()
 	}
 
 	if config.Http_addr != "" {

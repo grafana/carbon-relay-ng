@@ -12,6 +12,7 @@ import (
 	"github.com/segmentio/kafka-go/snappy"
 
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
+	"github.com/graphite-ng/carbon-relay-ng/util"
 	"go.uber.org/zap"
 
 	"github.com/BurntSushi/toml"
@@ -409,37 +410,37 @@ func (table *Table) Print() (str string) {
 
 	t := table.Snapshot()
 	for _, rw := range t.Rewriters {
-		maxRWOld = max(maxRWOld, len(rw.Old))
-		maxRWNew = max(maxRWNew, len(rw.New))
-		maxRWNot = max(maxRWNot, len(rw.Not))
-		maxRWMax = max(maxRWMax, len(fmt.Sprintf("%d", rw.Max)))
+		maxRWOld = util.MaxInt(maxRWOld, len(rw.Old))
+		maxRWNew = util.MaxInt(maxRWNew, len(rw.New))
+		maxRWNot = util.MaxInt(maxRWNot, len(rw.Not))
+		maxRWMax = util.MaxInt(maxRWMax, len(fmt.Sprintf("%d", rw.Max)))
 	}
 	for _, black := range t.Blacklist {
-		maxBPrefix = max(maxBPrefix, len(black.Prefix))
-		maxBSub = max(maxBSub, len(black.Sub))
-		maxBRegex = max(maxBRegex, len(black.Regex))
+		maxBPrefix = util.MaxInt(maxBPrefix, len(black.Prefix))
+		maxBSub = util.MaxInt(maxBSub, len(black.Sub))
+		maxBRegex = util.MaxInt(maxBRegex, len(black.Regex))
 	}
 	for _, agg := range t.Aggregators {
-		maxAFunc = max(maxAFunc, len(agg.Fun))
-		maxARegex = max(maxARegex, len(agg.Regex))
-		maxAPrefix = max(maxAPrefix, len(agg.Prefix))
-		maxASub = max(maxASub, len(agg.Sub))
-		maxAOutFmt = max(maxAOutFmt, len(agg.OutFmt))
-		maxAInterval = max(maxAInterval, len(fmt.Sprintf("%d", agg.Interval)))
-		maxAwait = max(maxAwait, len(fmt.Sprintf("%d", agg.Wait)))
+		maxAFunc = util.MaxInt(maxAFunc, len(agg.Fun))
+		maxARegex = util.MaxInt(maxARegex, len(agg.Regex))
+		maxAPrefix = util.MaxInt(maxAPrefix, len(agg.Prefix))
+		maxASub = util.MaxInt(maxASub, len(agg.Sub))
+		maxAOutFmt = util.MaxInt(maxAOutFmt, len(agg.OutFmt))
+		maxAInterval = util.MaxInt(maxAInterval, len(fmt.Sprintf("%d", agg.Interval)))
+		maxAwait = util.MaxInt(maxAwait, len(fmt.Sprintf("%d", agg.Wait)))
 	}
 	for _, route := range t.Routes {
-		maxRType = max(maxRType, len(route.Type))
-		maxRKey = max(maxRKey, len(route.Key))
-		maxRPrefix = max(maxRPrefix, len(route.Matcher.Prefix))
-		maxRSub = max(maxRSub, len(route.Matcher.Sub))
-		maxRRegex = max(maxRRegex, len(route.Matcher.Regex))
+		maxRType = util.MaxInt(maxRType, len(route.Type))
+		maxRKey = util.MaxInt(maxRKey, len(route.Key))
+		maxRPrefix = util.MaxInt(maxRPrefix, len(route.Matcher.Prefix))
+		maxRSub = util.MaxInt(maxRSub, len(route.Matcher.Sub))
+		maxRRegex = util.MaxInt(maxRRegex, len(route.Matcher.Regex))
 		for _, dest := range route.Dests {
-			maxDPrefix = max(maxDPrefix, len(dest.Matcher.Prefix))
-			maxDSub = max(maxDSub, len(dest.Matcher.Sub))
-			maxDRegex = max(maxDRegex, len(dest.Matcher.Regex))
-			maxDAddr = max(maxDAddr, len(dest.Addr))
-			maxDSpoolDir = max(maxDSpoolDir, len(dest.SpoolDir))
+			maxDPrefix = util.MaxInt(maxDPrefix, len(dest.Matcher.Prefix))
+			maxDSub = util.MaxInt(maxDSub, len(dest.Matcher.Sub))
+			maxDRegex = util.MaxInt(maxDRegex, len(dest.Matcher.Regex))
+			maxDAddr = util.MaxInt(maxDAddr, len(dest.Addr))
+			maxDSpoolDir = util.MaxInt(maxDSpoolDir, len(dest.SpoolDir))
 		}
 	}
 	heaFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRWOld, maxRWNew, maxRWNot, maxRWMax)
@@ -482,8 +483,8 @@ func (table *Table) Print() (str string) {
 	cols = fmt.Sprintf(heaFmtR, "type", "key", "prefix", "substr", "regex")
 	rcols := fmt.Sprintf(heaFmtD, "prefix", "substr", "regex", "addr", "spoolDir", "spool", "pickle", "online")
 	indent := "  "
-	str += cols + underscore(max(len(cols), len(rcols)+len(indent))-1)
-	divider := indent + strings.Repeat("-", max(len(cols)-len(indent), len(rcols))-1) + "\n"
+	str += cols + underscore(util.MaxInt(len(cols), len(rcols)+len(indent))-1)
+	divider := indent + strings.Repeat("-", util.MaxInt(len(cols)-len(indent), len(rcols))-1) + "\n"
 
 	for _, route := range t.Routes {
 		m := route.Matcher
