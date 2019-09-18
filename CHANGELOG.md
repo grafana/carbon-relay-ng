@@ -1,4 +1,4 @@
-# v0.12.0
+# v0.12.0: better pickle support, various fixes and better aggregators
 
 * support pickle protocol versions 0, 1, 2, 3 & 4 + accept pickle arrays + send pickle tuples. #341
 * fix different connections to same host:port using same spool file, by adding instance to destination key. #349
