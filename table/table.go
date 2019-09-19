@@ -740,6 +740,9 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			}
 
 			route, err := route.NewKafkaRoute(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, writerConfig, routingMutator)
+			if err != nil {
+				return fmt.Errorf("Failed to create route: %s", err)
+			}
 			table.AddRoute(route)
 
 		default:
