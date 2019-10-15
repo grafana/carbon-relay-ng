@@ -1,0 +1,23 @@
+instance = "${HOST}"
+
+log_level = "info"
+admin_addr = "0.0.0.0:2004"
+http_addr = "0.0.0.0:8081"
+bad_metrics_max_age = "24h"
+
+[[inputs]]
+type = "listener"
+format = "plain"
+listen_addr = "127.0.0.1:4000"
+read_timeout = "120s"
+workers = 5
+
+[[route]]
+key = 'criteo'
+type = 'bg_metadata'
+    [route.bg_metadata]
+    sharding_factor = 100
+    filter_size = 1000000
+    fault_tolerance = 0.0000001
+    clear_interval = "60s"
+    cache = "/tmp/carbon-relay-ng/cache"

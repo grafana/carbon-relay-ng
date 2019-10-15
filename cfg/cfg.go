@@ -84,6 +84,8 @@ type Route struct {
 
 	Kafka *KafkaRouteConfig
 
+	BgMetadata *BgMetadataRouteConfig `toml:"bg_metadata,omitempty"`
+
 	// Google PubSub
 	Project      string `toml:"project,omitempty"`
 	Format       string `toml:"format,omitempty"`
@@ -117,6 +119,17 @@ type KafkaRouteConfig struct {
 	// FireAndForget bool          `toml:"fire_and_forget,omitempty"` <- This will be the default for now as we don't need any consistency
 	HashBalance   bool `toml:"hashing_balancing,omitempty"`
 	QueueCapacity int  `toml:"queue_capacity,omitempty"`
+}
+
+type BgMetadataRouteConfig struct {
+	// TODO Add option to configure all bloom filter parameters
+	// TODO Add additional configuration to for cassandra
+	ShardingFactor int     `toml:"sharding_factor,omitempty"` // number of shards handling metrics
+	FilterSize     uint    `toml:"filter_size,omitempty"`     // max total number of metrics
+	FaultTolerance float64 `toml:"fault_tolerance,omitempty"` // value 0.0 - 1.0
+	ClearInterval  string  `toml:"clear_interval,omitempty"`  // frequency of filter clearing
+	ClearWait      string  `toml:"clear_wait,omitempty"`      // wait time between each filter clear. defaults to clear_wait/sharding_factor
+	Cache          string  `toml:"cache,omitempty"`           // location of filter storage on disk; feature not enabled if path not provided
 }
 
 type Rewriter struct {
