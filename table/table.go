@@ -10,6 +10,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/go-metrics"
+	"github.com/grafana/metrictank/cluster/partitioner"
 	"github.com/graphite-ng/carbon-relay-ng/aggregator"
 	"github.com/graphite-ng/carbon-relay-ng/badmetrics"
 	"github.com/graphite-ng/carbon-relay-ng/cfg"
@@ -768,8 +769,9 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			var timeout = 2000      // in ms
 			var orgId = 1
 
-			if routeConfig.PartitionBy != "byOrg" && routeConfig.PartitionBy != "bySeries" {
-				return fmt.Errorf("invalid partitionBy for route '%s'", routeConfig.Key)
+			_, err := partitioner.NewKafka(routeConfig.PartitionBy)
+			if err != nil {
+				return fmt.Errorf("config error for route '%s': %s", routeConfig.Key, err.Error())
 			}
 
 			if routeConfig.BufSize != 0 {
