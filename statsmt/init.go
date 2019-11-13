@@ -9,12 +9,12 @@
 // Currently supported outputs are DevNull and Graphite
 package statsmt
 
-var registry *Registry
+var Register *Registry
 
 func init() {
-	registry = NewRegistry()
+	Register = NewRegistry()
 }
 
 func Clear() {
-	registry.Clear()
+	Register.Clear()
 }

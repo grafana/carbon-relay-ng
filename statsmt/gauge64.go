@@ -9,7 +9,7 @@ type Gauge64 uint64
 
 func NewGauge64(name string) *Gauge64 {
 	u := Gauge64(0)
-	return registry.getOrAdd(name, &u).(*Gauge64)
+	return Register.GetOrAdd(name, &u).(*Gauge64)
 }
 
 func (g *Gauge64) Inc() {

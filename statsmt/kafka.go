@@ -22,8 +22,8 @@ type KafkaPartition struct {
 
 func NewKafkaPartition(prefix string) *KafkaPartition {
 	k := KafkaPartition{}
-	registry.getOrAdd(prefix+".offset", &k.Offset)
-	registry.getOrAdd(prefix+".log_size", &k.LogSize)
-	registry.getOrAdd(prefix+".lag", &k.Lag)
+	Register.GetOrAdd(prefix+".offset", &k.Offset)
+	Register.GetOrAdd(prefix+".log_size", &k.LogSize)
+	Register.GetOrAdd(prefix+".lag", &k.Lag)
 	return &k
 }

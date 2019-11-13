@@ -24,7 +24,7 @@ func NewRegistry() *Registry {
 	}
 }
 
-func (r *Registry) getOrAdd(name string, metric GraphiteMetric) GraphiteMetric {
+func (r *Registry) GetOrAdd(name string, metric GraphiteMetric) GraphiteMetric {
 	r.Lock()
 	if existing, ok := r.metrics[name]; ok {
 		if reflect.TypeOf(existing) == reflect.TypeOf(metric) {
@@ -38,7 +38,7 @@ func (r *Registry) getOrAdd(name string, metric GraphiteMetric) GraphiteMetric {
 	return metric
 }
 
-func (r *Registry) list() map[string]GraphiteMetric {
+func (r *Registry) List() map[string]GraphiteMetric {
 	metrics := make(map[string]GraphiteMetric)
 	r.Lock()
 	for name, metric := range r.metrics {
