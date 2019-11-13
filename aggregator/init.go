@@ -15,6 +15,8 @@ var rangeTracker *RangeTracker
 var flushes = util.NewLimiter(1)
 var flushWaiting = stats.Gauge("unit=aggregator.what=flush_waiting")
 
+var aggregatorReporter *AggregatorReporter
+
 func InitMetrics() {
 	numTooOld = stats.Counter("module=aggregator.unit=Metric.what=TooOld")
 	rangeTracker = NewRangeTracker()

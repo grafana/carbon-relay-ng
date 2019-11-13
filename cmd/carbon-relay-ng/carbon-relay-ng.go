@@ -155,6 +155,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("stats: could not initialize process reporter: %v", err)
 		}
+		aggregator.NewAggregatorReporter()
 		statsmt.NewGraphite("carbon-relay-ng.stats."+config.Instance, config.Instrumentation.Graphite_addr, config.Instrumentation.Graphite_interval/1000, 1000, time.Second*10)
 	}
 

@@ -30,21 +30,26 @@ type Aggregator struct {
 	Cache        bool
 	reCache      map[string]CacheEntry
 	reCacheMutex sync.Mutex
-	Interval     uint                          // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
-	Wait         uint                          // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
-	DropRaw      bool                          // drop raw values "consumed" by this aggregator
-	tsList       []uint                        // ordered list of quantized timestamps, so we can flush in correct order
-	aggregations map[uint]map[string]Processor // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
-	snapReq      chan bool                     // chan to issue snapshot requests on
-	snapResp     chan *Aggregator              // chan on which snapshot response gets sent
-	shutdown     chan struct{}                 // chan used internally to shut down
-	wg           sync.WaitGroup                // tracks worker running state
-	now          func() time.Time              // returns current time. wraps time.Now except in some unit tests
-	tick         <-chan time.Time              // controls when to flush
+	Interval     uint                 // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
+	Wait         uint                 // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
+	DropRaw      bool                 // drop raw values "consumed" by this aggregator
+	tsList       []uint               // ordered list of quantized timestamps, so we can flush in correct order
+	aggregations map[uint]aggregation // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
+	snapReq      chan bool            // chan to issue snapshot requests on
+	snapResp     chan *Aggregator     // chan on which snapshot response gets sent
+	shutdown     chan struct{}        // chan used internally to shut down
+	wg           sync.WaitGroup       // tracks worker running state
+	now          func() time.Time     // returns current time. wraps time.Now except in some unit tests
+	tick         <-chan time.Time     // controls when to flush
 
 	Key        string
 	numIn      metrics.Counter
 	numFlushed metrics.Counter
+}
+
+type aggregation struct {
+	count uint32
+	state map[string]Processor
 }
 
 type msg struct {
@@ -112,7 +117,7 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 		Interval:     interval,
 		Wait:         wait,
 		DropRaw:      dropRaw,
-		aggregations: make(map[uint]map[string]Processor),
+		aggregations: make(map[uint]aggregation),
 		snapReq:      make(chan bool),
 		snapResp:     make(chan *Aggregator),
 		shutdown:     make(chan struct{}),
@@ -162,12 +167,14 @@ func (a *Aggregator) setKey() string {
 
 func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value float64) {
 	rangeTracker.Sample(ts)
-	aggByKey, ok := a.aggregations[quantized]
+	agg, ok := a.aggregations[quantized]
 	var proc Processor
 	if ok {
-		proc, ok = aggByKey[key]
+		proc, ok = agg.state[key]
 		if ok {
 			// if both levels exist, we can just add the value and that's it
+			agg.count++
+			a.aggregations[quantized] = agg
 			proc.Add(value, ts)
 		}
 	} else {
@@ -177,8 +184,12 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 		if len(a.tsList) > 1 && a.tsList[len(a.tsList)-2] > quantized {
 			sort.Sort(TsSlice(a.tsList))
 		}
-		a.aggregations[quantized] = make(map[string]Processor)
+		agg = aggregation{
+			state: make(map[string]Processor),
+		}
+		a.aggregations[quantized] = agg
 	}
+
 	if !ok {
 		// note, we only flush where for a given value of now, quantized < now-wait
 		// this means that as long as the clock doesn't go back in time
@@ -187,8 +198,10 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 		// real time, it may never be included in aggregates, but it's up to you to configure your wait
 		// parameter properly. You can use the rangeTracker and numTooOld metrics to help with this
 		if quantized > uint(a.now().Unix())-a.Wait {
+			agg.count++
 			proc = a.procConstr(value, ts)
-			a.aggregations[quantized][key] = proc
+			agg.state[key] = proc
+			a.aggregations[quantized] = agg
 			return
 		}
 		numTooOld.Inc(1)
@@ -207,7 +220,8 @@ func (a *Aggregator) Flush(cutoff uint) {
 		if ts > cutoff {
 			break
 		}
-		for key, proc := range a.aggregations[ts] {
+		agg := a.aggregations[ts]
+		for key, proc := range agg.state {
 			results, ok := proc.Flush()
 			if ok {
 				if len(results) == 1 {
@@ -220,6 +234,9 @@ func (a *Aggregator) Flush(cutoff uint) {
 					}
 				}
 			}
+		}
+		if aggregatorReporter != nil {
+			aggregatorReporter.add(a.Key, uint32(ts), agg.count)
 		}
 		delete(a.aggregations, ts)
 		pos = i
@@ -365,11 +382,15 @@ func (a *Aggregator) run() {
 				a.reCacheMutex.Unlock()
 			}
 		case <-a.snapReq:
-			aggs := make(map[uint]map[string]Processor)
-			for quant := range a.aggregations {
-				aggs[quant] = make(map[string]Processor)
-				for key := range a.aggregations[quant] {
-					aggs[quant][key] = nil
+			aggsCopy := make(map[uint]aggregation)
+			for quant, aggReal := range a.aggregations {
+				stateCopy := make(map[string]Processor)
+				for key := range aggReal.state {
+					stateCopy[key] = nil
+				}
+				aggsCopy[quant] = aggregation{
+					state: stateCopy,
+					count: aggReal.count,
 				}
 			}
 			s := &Aggregator{
@@ -385,7 +406,7 @@ func (a *Aggregator) run() {
 				Interval:     a.Interval,
 				Wait:         a.Wait,
 				DropRaw:      a.DropRaw,
-				aggregations: aggs,
+				aggregations: aggsCopy,
 				now:          time.Now,
 				Key:          a.Key,
 			}
