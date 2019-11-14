@@ -30,17 +30,17 @@ type Aggregator struct {
 	Cache        bool
 	reCache      map[string]CacheEntry
 	reCacheMutex sync.Mutex
-	Interval     uint                 // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
-	Wait         uint                 // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
-	DropRaw      bool                 // drop raw values "consumed" by this aggregator
-	tsList       []uint               // ordered list of quantized timestamps, so we can flush in correct order
-	aggregations map[uint]aggregation // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
-	snapReq      chan bool            // chan to issue snapshot requests on
-	snapResp     chan *Aggregator     // chan on which snapshot response gets sent
-	shutdown     chan struct{}        // chan used internally to shut down
-	wg           sync.WaitGroup       // tracks worker running state
-	now          func() time.Time     // returns current time. wraps time.Now except in some unit tests
-	tick         <-chan time.Time     // controls when to flush
+	Interval     uint                  // expected interval between values in seconds, we will quantize to make sure alginment to interval-spaced timestamps
+	Wait         uint                  // seconds to wait after quantized time value before flushing final outcome and ignoring future values that are sent too late.
+	DropRaw      bool                  // drop raw values "consumed" by this aggregator
+	tsList       []uint                // ordered list of quantized timestamps, so we can flush in correct order
+	aggregations map[uint]*aggregation // aggregations in process: one for each quantized timestamp and output key, i.e. for each output metric.
+	snapReq      chan bool             // chan to issue snapshot requests on
+	snapResp     chan *Aggregator      // chan on which snapshot response gets sent
+	shutdown     chan struct{}         // chan used internally to shut down
+	wg           sync.WaitGroup        // tracks worker running state
+	now          func() time.Time      // returns current time. wraps time.Now except in some unit tests
+	tick         <-chan time.Time      // controls when to flush
 
 	Key        string
 	numIn      metrics.Counter
@@ -117,7 +117,7 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 		Interval:     interval,
 		Wait:         wait,
 		DropRaw:      dropRaw,
-		aggregations: make(map[uint]aggregation),
+		aggregations: make(map[uint]*aggregation),
 		snapReq:      make(chan bool),
 		snapResp:     make(chan *Aggregator),
 		shutdown:     make(chan struct{}),
@@ -174,7 +174,6 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 		if ok {
 			// if both levels exist, we can just add the value and that's it
 			agg.count++
-			a.aggregations[quantized] = agg
 			proc.Add(value, ts)
 		}
 	} else {
@@ -184,7 +183,7 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 		if len(a.tsList) > 1 && a.tsList[len(a.tsList)-2] > quantized {
 			sort.Sort(TsSlice(a.tsList))
 		}
-		agg = aggregation{
+		agg = &aggregation{
 			state: make(map[string]Processor),
 		}
 		a.aggregations[quantized] = agg
@@ -201,7 +200,6 @@ func (a *Aggregator) AddOrCreate(key string, ts uint32, quantized uint, value fl
 			agg.count++
 			proc = a.procConstr(value, ts)
 			agg.state[key] = proc
-			a.aggregations[quantized] = agg
 			return
 		}
 		numTooOld.Inc(1)
@@ -382,13 +380,13 @@ func (a *Aggregator) run() {
 				a.reCacheMutex.Unlock()
 			}
 		case <-a.snapReq:
-			aggsCopy := make(map[uint]aggregation)
+			aggsCopy := make(map[uint]*aggregation)
 			for quant, aggReal := range a.aggregations {
 				stateCopy := make(map[string]Processor)
 				for key := range aggReal.state {
 					stateCopy[key] = nil
 				}
-				aggsCopy[quant] = aggregation{
+				aggsCopy[quant] = &aggregation{
 					state: stateCopy,
 					count: aggReal.count,
 				}
