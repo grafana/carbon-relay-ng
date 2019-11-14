@@ -15,7 +15,7 @@ type MemoryReporter struct {
 }
 
 func NewMemoryReporter() *MemoryReporter {
-	return registry.getOrAdd("memory", &MemoryReporter{}).(*MemoryReporter)
+	return Register.GetOrAdd("memory", &MemoryReporter{}).(*MemoryReporter)
 }
 
 func getGcPercent() int {

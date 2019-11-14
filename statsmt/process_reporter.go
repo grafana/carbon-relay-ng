@@ -20,7 +20,7 @@ func NewProcessReporter() (*ProcessReporter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return registry.getOrAdd("process", &p).(*ProcessReporter), nil
+	return Register.GetOrAdd("process", &p).(*ProcessReporter), nil
 }
 
 func (m *ProcessReporter) ReportGraphite(prefix, buf []byte, now time.Time) []byte {

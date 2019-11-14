@@ -68,7 +68,7 @@ func (g *Graphite) reporter(interval int) {
 		buf := make([]byte, 0)
 
 		var fullPrefix bytes.Buffer
-		for name, metric := range registry.list() {
+		for name, metric := range Register.List() {
 			fullPrefix.Reset()
 			fullPrefix.Write(g.prefix)
 			fullPrefix.WriteString(name)

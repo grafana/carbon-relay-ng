@@ -10,7 +10,7 @@ type Bool struct {
 }
 
 func NewBool(name string) *Bool {
-	return registry.getOrAdd(name, &Bool{}).(*Bool)
+	return Register.GetOrAdd(name, &Bool{}).(*Bool)
 }
 
 func (b *Bool) SetTrue() {

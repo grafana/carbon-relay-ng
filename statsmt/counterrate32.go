@@ -16,7 +16,7 @@ func NewCounterRate32(name string) *CounterRate32 {
 	c := CounterRate32{
 		since: time.Now(),
 	}
-	return registry.getOrAdd(name, &c).(*CounterRate32)
+	return Register.GetOrAdd(name, &c).(*CounterRate32)
 }
 
 func (c *CounterRate32) SetUint32(val uint32) {
