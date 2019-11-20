@@ -32,8 +32,8 @@ fmt:
 test:
 	go test ./...
 
-docker: build-linux
-	./build_docker.sh
+docker-build:
+	docker build . -t carbon-relay-ng
 
 all:
 

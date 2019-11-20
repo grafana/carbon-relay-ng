@@ -30,7 +30,7 @@ bad_metrics_max_age = "24h"
 type = "kafka"
 format = "plain"
 topic = "metrics"
-brokers = ["localhost:9092"]
+brokers = ["kafka:29092"]
 consumer_group_id = "aggregator"
 commit_interval = "1s"
 client_id = "my_carbon"
@@ -44,5 +44,5 @@ prefix = ''
 substr = ''
 # regex = ''
 destinations = [
-'localhost:8080 spool=true pickle=false'
+'netcat:8080 spool=true pickle=false'
 ]

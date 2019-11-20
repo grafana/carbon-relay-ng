@@ -1,0 +1,23 @@
+instance = "${HOST}"
+
+log_level = "info"
+admin_addr = "0.0.0.0:2004"
+http_addr = "0.0.0.0:8081"
+bad_metrics_max_age = "24h"
+
+[[inputs]]
+type = "listener"
+format = "plain"
+listen_addr = "127.0.0.1:4000"
+read_timeout = "120s"
+workers = 5
+strict = true
+
+
+[[route]]
+key = 'criteo'
+type = 'kafka'
+    [route.kafka]
+    codec = "plain"
+    topic = "metrics"
+    brokers = ["kafka:29092"]

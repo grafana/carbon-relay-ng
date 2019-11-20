@@ -1,0 +1,21 @@
+version: "3.7"
+networks:
+  default:
+    external:
+      name: kafka_default
+services:
+  kafka-producer:
+    ports:
+      - "4000:4000"
+    image: carbon-relay-ng
+    volumes:
+     - ./:/config
+    command: -debug /config/kafka-output.toml
+  kafka-consumer:
+    image: carbon-relay-ng
+    volumes:
+     - ./:/config
+    command: -debug /config/kafka-input.toml
+  netcat:
+    build:
+      context: ./  

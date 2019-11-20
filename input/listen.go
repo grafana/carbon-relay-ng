@@ -26,6 +26,7 @@ type Listener struct {
 	shutdown    chan struct{}
 	HandleConn  func(l *Listener, c net.Conn)
 	logger      *zap.Logger
+	instance    string
 }
 
 const (
@@ -48,7 +49,7 @@ type udpWorker struct {
 }
 
 // NewListener creates a new listener.
-func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDPWorkerCount int, handler encoding.FormatAdapter) *Listener {
+func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDPWorkerCount int, handler encoding.FormatAdapter,instance string) *Listener {
 	return &Listener{
 		BaseInput:   BaseInput{handler: handler, name: addr},
 		kind:        handler.KindS(),
@@ -59,6 +60,7 @@ func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDP
 		udpWorkers:  make([]udpWorker, UDPWorkerCount),
 		tcpWorkers:  make([]tcpWorker, TCPWorkerCount),
 		logger:      zap.L().With(zap.String("localAddress", addr), zap.String("kind", handler.KindS())),
+		instance:	instance,
 	}
 }
 
@@ -208,13 +210,18 @@ func (w *tcpWorker) acceptTcpConn(l *Listener, conn net.Conn) {
 	l.HandleConn(l, NewTimeoutConn(conn, l.readTimeout))
 	conn.Close()
 }
-
+func (l *Listener)  getMetadata(hostname string,applicationIp string) map[string]string {
+	metadata:= make(map[string]string)
+	metadata["carbonRelayInstance"] =l.instance
+	metadata["appIpPortSrc"] =applicationIp
+	return metadata
+}
 // handleConn does the necessary logging and invocation of the handler
 func handleConn(l *Listener, c net.Conn) {
 	handleConnLogger := l.logger.With(zap.Stringer("remoteAddress", c.RemoteAddr()))
 	l.logger.Debug("handleConn: new tcp connection")
-
-	err := l.handleReader(c)
+	metadata:= l.getMetadata(l.instance,c.RemoteAddr().String())
+	err := l.handleReader(c,metadata)
 	if err != nil {
 		handleConnLogger.Warn("handleConn returned an error. closing conn", zap.Error(err))
 		return
@@ -247,7 +254,8 @@ func (w *udpWorker) consume(l *Listener) {
 		l.logger.Debug("handler: udp packet", zap.Stringer("remoteAddress", src), zap.ByteString("payload", data))
 
 		reader.Reset(data)
-		readErr := l.handleReader(reader)
+		metadata:= l.getMetadata(l.instance,src.String())
+		readErr := l.handleReader(reader,metadata)
 		if readErr != nil {
 			l.logger.Debug("handleReader error", zap.Error(readErr))
 		}

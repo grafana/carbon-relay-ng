@@ -1,6 +1,7 @@
 package encoding
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -134,13 +135,26 @@ func (p PlainAdapter) load(msgbuf []byte) (Datapoint, error) {
 	for msg[nextSpace] == ' ' {
 		nextSpace++
 	}
+	timestampLen := nextSpace
+	for timestampLen < len(msgbuf) && msg[timestampLen] != ' ' {
+		timestampLen++
+	}
 
-	ts, err := strconv.ParseUint(msg[nextSpace:], 10, 32)
+	ts, err := strconv.ParseUint(msg[nextSpace:timestampLen], 10, 32)
 	if err != nil {
 		return d, err
 	}
 	d.Timestamp = ts
+	setMetadata(msgbuf,&d,timestampLen)
 	return d, nil
+}
+func setMetadata(msgbuf []byte,d *Datapoint,timestampLen int) error {
+	d.Metadata= make(map[string]string)
+	var err error
+	if timestampLen < len(msgbuf) {
+		err=  json.Unmarshal(msgbuf[timestampLen:], &d.Metadata)
+	}
+	return err
 }
 func (p PlainAdapter) loadFaster(msgbuf []byte) (Datapoint, error) {
 	d := Datapoint{}
