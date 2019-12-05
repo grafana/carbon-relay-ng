@@ -46,7 +46,7 @@ type InputConfig interface {
 }
 
 type baseInputConfig struct {
-	FormatOptions encoding.FormatOptions `mapstructure:"format_options,omitempty"`
+	FormatOptions encoding.FormatOptions `mapstructure:",squash"`
 	Format        encoding.FormatName    `mapstructure:"format,omitempty"`
 }
 

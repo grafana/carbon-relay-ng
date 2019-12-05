@@ -3,8 +3,8 @@ package encoding
 import "fmt"
 
 type FormatOptions struct {
-	Strict bool `mapstructure:"strict"`
-	Unsafe bool `mapstructure:"unsafe"`
+	Strict bool `mapstructure:"strict,omitempty"`
+	Unsafe bool `mapstructure:"unsafe,omitempty"`
 }
 
 type FormatAdapter interface {

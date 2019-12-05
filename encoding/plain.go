@@ -13,12 +13,14 @@ var (
 	errFieldsNum              = errors.New("incorrect number of fields in metric")
 	errTimestampFormatInvalid = errors.New("timestamp is not unix ts format")
 	errValueInvalid           = errors.New("value is not int or float")
+	errTwoConsecutiveDot      = "Two consecutive dots at %d and %d index"
 	errEmptyline              = errors.New("empty line")
 	errFmtNullInKey           = "null char at position %d"
 	errFmtNotAscii            = "non-ascii char at position %d"
 )
 
 const PlainFormat FormatName = "plain"
+const dotChar uint8 = '.'
 
 type PlainAdapter struct {
 	Validate         bool
@@ -30,6 +32,8 @@ func NewPlain(validate bool, unsafe bool) PlainAdapter {
 }
 
 func (p PlainAdapter) validateKeyS(key string) error {
+
+	var previousChar uint8 = ' '
 	if p.Validate {
 		for i := 0; i < len(key); i++ {
 			if key[i] == 0 {
@@ -38,12 +42,18 @@ func (p PlainAdapter) validateKeyS(key string) error {
 			if key[i] > unicode.MaxASCII {
 				return fmt.Errorf(errFmtNotAscii, i)
 			}
+			if key[i] == dotChar && key[i] == previousChar {
+				return fmt.Errorf(errTwoConsecutiveDot, i, i-1)
+			}
+			previousChar = key[i]
 		}
 	}
 	return nil
 }
 
 func (p PlainAdapter) validateKey(key []byte) error {
+
+	var previousChar uint8 = ' '
 	if p.Validate {
 		for i := 0; i < len(key); i++ {
 			if key[i] == 0 {
@@ -52,6 +62,10 @@ func (p PlainAdapter) validateKey(key []byte) error {
 			if key[i] > unicode.MaxASCII {
 				return fmt.Errorf(errFmtNotAscii, i)
 			}
+			if key[i] == dotChar && key[i] == previousChar {
+				return fmt.Errorf(errTwoConsecutiveDot, i, i-1)
+			}
+			previousChar = key[i]
 		}
 	}
 	return nil
