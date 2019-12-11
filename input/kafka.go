@@ -111,23 +111,23 @@ func (k *Kafka) Cleanup(sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-func (k *Kafka) getKafkaMetadata(header []*sarama.RecordHeader) map[string]string {
-	metadata:= make(map[string]string)
-	for i:=0;i<len(header);i++ {
-		key:=string(header[i].Key)
-		value:=string(header[i].Value)
-		k.logger.Debug("metadata print",zap.String("key",key),zap.String("value",value))
-		metadata[key] = value
+func (k *Kafka) getKafkaTags(header []*sarama.RecordHeader) map[string]string {
+	tags := make(map[string]string)
+	for i := 0; i < len(header); i++ {
+		key := string(header[i].Key)
+		value := string(header[i].Value)
+		k.logger.Debug("tags print", zap.String("key", key), zap.String("value", value))
+		tags[key] = value
 	}
-	return metadata
+	return tags
 }
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (k *Kafka) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for message := range claim.Messages() {
 		k.logger.Debug("metric value:", zap.ByteString("messageValue", message.Value))
-		metadata:= k.getKafkaMetadata(message.Headers)
-		if err := k.handle(message.Value,metadata); err != nil {
+		tags := k.getKafkaTags(message.Headers)
+		if err := k.handle(message.Value, tags); err != nil {
 			k.logger.Debug("invalid message from kafka", zap.ByteString("messageValue", message.Value))
 		}
 		session.MarkMessage(message, "")

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -257,9 +258,9 @@ func (tE *TestEndpoint) SeenThisOrFatal(ref chan encoding.Datapoint) {
 	ok := true
 	refBuf := <-ref
 	seenBuf := getSeenBuf()
-	for refBuf != empty || seenBuf != empty {
+	for !reflect.DeepEqual(refBuf, empty) || !reflect.DeepEqual(seenBuf, empty) {
 		cmp := strings.Compare(seenBuf.Name, refBuf.Name)
-		if seenBuf == empty || refBuf == empty {
+		if reflect.DeepEqual(refBuf, empty) || reflect.DeepEqual(seenBuf, empty) {
 			// if one of them is nil, we want it to be counted as "very high", because there's no more input
 			// so in that case, invert the rules
 			cmp *= -1
@@ -295,7 +296,7 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 		c.Close()
 	}()
 	r := bufio.NewReaderSize(c, 4096)
-	h := encoding.NewPlain(false, true)
+	h := encoding.NewPlain(false)
 	for {
 		select {
 		case <-tE.shutdownHandle:
@@ -308,7 +309,7 @@ func (tE *TestEndpoint) handle(c net.Conn) {
 			return
 		}
 		tE.t.Logf("tE %s %s read", tE.addr, buf)
-		d, _ := h.Load(buf)
+		d, _ := h.Load(buf, make(encoding.Tags))
 		tE.seen <- d
 	}
 }

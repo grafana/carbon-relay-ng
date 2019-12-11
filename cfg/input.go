@@ -59,8 +59,7 @@ type ListenerConfig struct {
 	Workers         int           `mapstructure:"workers,omitempty"`
 	ListenAddr      string        `mapstructure:"listen_addr,omitempty"`
 	ReadTimeout     time.Duration `mapstructure:"read_timeout,omitempty"`
-	Instance        string
-	MetadataEnable	bool          `mapstructure:"metadata_enable,omitempty"`
+	instance        string
 }
 
 func (c *ListenerConfig) Build() (input.Input, error) {
@@ -68,7 +67,7 @@ func (c *ListenerConfig) Build() (input.Input, error) {
 	if err != nil {
 		return nil, fmt.Errorf(handlerErrorFmt, fmt.Sprintf("listener[%s] config: %s", c.ListenAddr, err))
 	}
-	l := input.NewListener(c.ListenAddr, c.ReadTimeout, c.Workers, c.Workers, h,c.Instance)
+	l := input.NewListener(c.ListenAddr, c.ReadTimeout, c.Workers, c.Workers, h, c.instance)
 	return l, nil
 }
 
@@ -195,7 +194,7 @@ func (c *Config) ProcessInputConfig() error {
 		case KafkaConfigType:
 			n = &KafkaConfig{}
 		case ListenerConfigType:
-			n = &ListenerConfig{Workers: 1, ReadTimeout: 2 * time.Minute,Instance:c.Instance}
+			n = &ListenerConfig{Workers: 1, ReadTimeout: 2 * time.Minute, instance: c.Instance}
 		case "":
 			return fmt.Errorf("input type can't be \"\"")
 		default:

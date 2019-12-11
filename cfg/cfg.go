@@ -106,7 +106,7 @@ type Route struct {
 }
 
 type KafkaRouteConfig struct {
-	Metadata     bool          `toml:"metadata_enable,omitempty"`
+	Tags         bool          `toml:"tags_enable,omitempty"`
 	Brokers      []string      `toml:"brokers,omitempty"`
 	Topic        string        `toml:"topic,omitempty"` // also used by Google PubSub
 	Codec        string        `toml:"codec,omitempty"` // also used by Google PubSub

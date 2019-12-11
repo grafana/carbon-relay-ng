@@ -300,7 +300,7 @@ func TestAddRewrite(t *testing.T) {
 
 // just dispatch (coming into table), no matching or sending to route
 func BenchmarkTableDispatch(b *testing.B) {
-	metric70, _ := encoding.NewPlain(false, true).Load([]byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890"))
+	metric70, _ := encoding.NewPlain(false).Load([]byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890"), make(encoding.Tags))
 	table := NewTableOrFatal(b, "", "")
 	for i := 0; i < b.N; i++ {
 		table.Dispatch(metric70)
@@ -319,7 +319,7 @@ func BenchmarkTableDisPatchAndEndpointReceive(b *testing.B) {
 	// reminder: go benchmark will invoke this with N = 0, then maybe N = 20, then maybe more
 	// and the time it prints is function run divided by N, which
 	// should be of a more or less stable time, which gets printed
-	metric70, _ := encoding.NewPlain(false, true).Load([]byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890")) // size: key = 48, val = 10, ts = 10 -> 70
+	metric70, _ := encoding.NewPlain(false).Load([]byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890"), make(encoding.Tags)) // size: key = 48, val = 10, ts = 10 -> 70
 
 	dest, err := table.GetRoute("test1").GetDestination(0)
 	if err != nil {

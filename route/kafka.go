@@ -56,8 +56,7 @@ func (k *Kafka) Dispatch(dp encoding.Datapoint) {
 		key = newKey
 	}
 
-	err := k.Writer.WriteMessages(k.ctx, kafka.Message{Key: key, Value: []byte(dp.String()), Headers: getKafkaHeader(dp.Metadata)})
-
+	err := k.Writer.WriteMessages(k.ctx, kafka.Message{Key: key, Value: []byte(dp.String()), Headers: getKafkaHeader(dp.Tags)})
 	if err != nil {
 		k.logger.Error("error writing to kafka", zap.Error(err))
 		k.rm.Errors.WithLabelValues(err.Error())
@@ -65,10 +64,10 @@ func (k *Kafka) Dispatch(dp encoding.Datapoint) {
 		k.rm.OutMetrics.Inc()
 	}
 }
-func getKafkaHeader(metadata map[string]string) []kafka.Header {
-	headers := make([]kafka.Header, len(metadata))
+func getKafkaHeader(tags map[string]string) []kafka.Header {
+	headers := make([]kafka.Header, len(tags))
 	i := 0
-	for key, value := range metadata {
+	for key, value := range tags {
 		header := kafka.Header{Key: key, Value: []byte(value)}
 		headers[i] = header
 		i++

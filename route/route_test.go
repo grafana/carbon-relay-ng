@@ -15,7 +15,7 @@ func BenchmarkRouteDispatchMetric(b *testing.B) {
 	}
 
 	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // key = 48, val = 10, ts = 10 -> 70
-	dp, _ := encoding.NewPlain(false, true).Load(metric70)
+	dp, _ := encoding.NewPlain(false).Load(metric70, make(encoding.Tags))
 	for i := 0; i < b.N; i++ {
 		route.Dispatch(dp)
 	}

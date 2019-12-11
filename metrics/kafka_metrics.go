@@ -113,10 +113,10 @@ func (k *KafkaMetrics) Collect(c chan<- prometheus.Metric) {
 		}
 		for suffix, value := range types {
 			m := prometheus.NewGauge(prometheus.GaugeOpts{
-				Namespace: namespace,
-				Subsystem: subsystem,
-				Name:      fmt.Sprintf("%s_%s", name, suffix),
-				Help:      fmt.Sprintf("%s value for %s", suffix, name),
+				Namespace:   namespace,
+				Subsystem:   subsystem,
+				Name:        fmt.Sprintf("%s_%s", name, suffix),
+				Help:        fmt.Sprintf("%s value for %s", suffix, name),
 				ConstLabels: labels,
 			})
 			m.Set(float64(value))

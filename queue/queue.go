@@ -3,9 +3,8 @@ package queue
 // This has been extracted from goque, to tune the queue settings
 
 import (
-	"bytes"
-	"encoding/gob"
 	"errors"
+	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"os"
 	"sync"
 
@@ -49,7 +48,7 @@ func OpenQueue(dataDir string, o *opt.Options) (*Queue, error) {
 }
 
 // Enqueue adds an item to the queue.
-func (q *Queue) Enqueue(value []byte) (*Item, error) {
+func (q *Queue) Enqueue(value []byte, tags encoding.Tags) (*Item, error) {
 	q.Lock()
 	defer q.Unlock()
 
@@ -63,6 +62,7 @@ func (q *Queue) Enqueue(value []byte) (*Item, error) {
 		ID:    q.tail + 1,
 		Key:   encodeID(q.tail + 1),
 		Value: value,
+		Tags:  tags,
 	}
 
 	// Add it to the queue.
@@ -74,24 +74,6 @@ func (q *Queue) Enqueue(value []byte) (*Item, error) {
 	q.tail++
 
 	return item, nil
-}
-
-// EnqueueString is a helper function for Enqueue that accepts a
-// value as a string rather than a byte slice.
-func (q *Queue) EnqueueString(value string) (*Item, error) {
-	return q.Enqueue([]byte(value))
-}
-
-// EnqueueObject is a helper function for Enqueue that accepts any
-// value type, which is then encoded into a byte slice using
-// encoding/gob.
-func (q *Queue) EnqueueObject(value interface{}) (*Item, error) {
-	var buffer bytes.Buffer
-	enc := gob.NewEncoder(&buffer)
-	if err := enc.Encode(value); err != nil {
-		return nil, err
-	}
-	return q.Enqueue(buffer.Bytes())
 }
 
 // Dequeue removes the next item in the queue and returns it.

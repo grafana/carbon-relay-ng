@@ -49,7 +49,7 @@ type udpWorker struct {
 }
 
 // NewListener creates a new listener.
-func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDPWorkerCount int, handler encoding.FormatAdapter,instance string) *Listener {
+func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDPWorkerCount int, handler encoding.FormatAdapter, instance string) *Listener {
 	return &Listener{
 		BaseInput:   BaseInput{handler: handler, name: addr},
 		kind:        handler.KindS(),
@@ -60,7 +60,7 @@ func NewListener(addr string, readTimeout time.Duration, TCPWorkerCount int, UDP
 		udpWorkers:  make([]udpWorker, UDPWorkerCount),
 		tcpWorkers:  make([]tcpWorker, TCPWorkerCount),
 		logger:      zap.L().With(zap.String("localAddress", addr), zap.String("kind", handler.KindS())),
-		instance:	instance,
+		instance:    instance,
 	}
 }
 
@@ -210,18 +210,19 @@ func (w *tcpWorker) acceptTcpConn(l *Listener, conn net.Conn) {
 	l.HandleConn(l, NewTimeoutConn(conn, l.readTimeout))
 	conn.Close()
 }
-func (l *Listener)  getMetadata(hostname string,applicationIp string) map[string]string {
-	metadata:= make(map[string]string)
-	metadata["carbonRelayInstance"] =l.instance
-	metadata["appIpPortSrc"] =applicationIp
-	return metadata
+func (l *Listener) getTags(applicationIp string) encoding.Tags {
+	tags := make(encoding.Tags)
+	tags["carbonRelayInstance"] = l.instance
+	tags["appIpPortSrc"] = applicationIp
+	return tags
 }
+
 // handleConn does the necessary logging and invocation of the handler
 func handleConn(l *Listener, c net.Conn) {
 	handleConnLogger := l.logger.With(zap.Stringer("remoteAddress", c.RemoteAddr()))
 	l.logger.Debug("handleConn: new tcp connection")
-	metadata:= l.getMetadata(l.instance,c.RemoteAddr().String())
-	err := l.handleReader(c,metadata)
+	tags := l.getTags(c.RemoteAddr().String())
+	err := l.handleReader(c, tags)
 	if err != nil {
 		handleConnLogger.Warn("handleConn returned an error. closing conn", zap.Error(err))
 		return
@@ -254,8 +255,8 @@ func (w *udpWorker) consume(l *Listener) {
 		l.logger.Debug("handler: udp packet", zap.Stringer("remoteAddress", src), zap.ByteString("payload", data))
 
 		reader.Reset(data)
-		metadata:= l.getMetadata(l.instance,src.String())
-		readErr := l.handleReader(reader,metadata)
+		tags := l.getTags(src.String())
+		readErr := l.handleReader(reader, tags)
 		if readErr != nil {
 			l.logger.Debug("handleReader error", zap.Error(readErr))
 		}

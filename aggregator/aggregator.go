@@ -19,12 +19,12 @@ type Aggregator struct {
 	procConstr   func(val float64, ts uint32) Processor
 	in           chan encoding.Datapoint `json:"-"` // incoming metrics, already split in 3 fields
 	out          chan encoding.Datapoint // outgoing metrics
-	Regex        string                 `json:"regex,omitempty"`
-	Prefix       string                 `json:"prefix,omitempty"`
-	Sub          string                 `json:"substring,omitempty"`
-	regex        *regexp.Regexp         // compiled version of Regex
-	prefix       []byte                 // automatically generated based on Prefix or regex, for fast preMatch
-	substring    []byte                 // based on Sub, for fast preMatch
+	Regex        string                  `json:"regex,omitempty"`
+	Prefix       string                  `json:"prefix,omitempty"`
+	Sub          string                  `json:"substring,omitempty"`
+	regex        *regexp.Regexp          // compiled version of Regex
+	prefix       []byte                  // automatically generated based on Prefix or regex, for fast preMatch
+	substring    []byte                  // based on Sub, for fast preMatch
 	OutFmt       string
 	outFmt       []byte
 	Cache        bool
