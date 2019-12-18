@@ -7,7 +7,7 @@ Incoming metrics are validated in multiple steps:
 3. order validation
 
 Invalid metrics are dropped and - provided the message could be parsed - can be seen at /badMetrics/timespec.json where timespec is something like 30s, 10m, 24h, etc.
-Carbon-relay-ng exports counters for invalid and out of order metrics (see [monitoring](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/monitoring.md))
+Carbon-relay-ng exports counters for invalid and out of order metrics (see [monitoring](https://github.com/grafana/carbon-relay-ng/blob/master/docs/monitoring.md))
 
 Let's clarify step 2 and 3.
 

@@ -3,7 +3,7 @@
 ## Release vs latest master
 
 Typically, some new code was added to master since the last release.
-See the [changelog](https://github.com/graphite-ng/carbon-relay-ng/blob/master/CHANGELOG.md) or look at the [git log](https://github.com/graphite-ng/carbon-relay-ng/commits/master) for the most up to date information.
+See the [changelog](https://github.com/grafana/carbon-relay-ng/blob/master/CHANGELOG.md) or look at the [git log](https://github.com/grafana/carbon-relay-ng/commits/master) for the most up to date information.
 This may help you decide whether you want the latest release, or the latest code.
 
 ## Linux distribution packages
@@ -19,7 +19,7 @@ We host packages for Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8, 9, 10 (jes
 
 ## Windows
 
-For Windows users, see the included executables along with the release on the [releases](https://github.com/graphite-ng/carbon-relay-ng/releases) page.
+For Windows users, see the included executables along with the release on the [releases](https://github.com/grafana/carbon-relay-ng/releases) page.
 
 ## Docker images
 
@@ -39,11 +39,11 @@ These commands will install the binary as `$GOPATH/bin/carbon-relay-ng`
 
     export GOPATH=/some/path/
     export PATH="$PATH:$GOPATH/bin"
-    go get github.com/graphite-ng/carbon-relay-ng/...
+    go get github.com/grafana/carbon-relay-ng/...
 
 If you want to make your own changes and rebuild:
 
-    cd "$GOPATH/src/github.com/graphite-ng/carbon-relay-ng"
+    cd "$GOPATH/src/github.com/grafana/carbon-relay-ng"
     # e.g. to check out an older version:
     # git checkout 0.10.1
     go get github.com/shuLhan/go-bindata/cmd/go-bindata

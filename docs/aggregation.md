@@ -83,7 +83,7 @@ With a wait of 120, metrics can come 2 minutes after the start of the interval a
 
 * `dropRaw=true` will prevent any further processing of the raw series "consumed" by an aggregator with this option enabled.  This can be useful for managing cardinality and for quantizing metrics sent at odd intervals.  When using `dropRaw` an aggregator may produce a series with the same name as the input series. Note that this option may slow down table processing, especially with a cold or disabled aggregator cache.
 
-[config examples](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/config.md#aggregators)
+[config examples](https://github.com/grafana/carbon-relay-ng/blob/master/docs/config.md#aggregators)
 
 ## output
 
