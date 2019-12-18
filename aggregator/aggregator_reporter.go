@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/statsmt"
+	"github.com/grafana/carbon-relay-ng/statsmt"
 )
 
 // AggregatorReporter reports the state of aggregation buckets when they are known. (after flushing)

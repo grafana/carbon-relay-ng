@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/graphite-ng/carbon-relay-ng/go-whisper"
+	"github.com/grafana/carbon-relay-ng/go-whisper"
 	"github.com/stretchr/testify/assert"
 )
 

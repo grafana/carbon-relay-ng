@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/cfg"
+	"github.com/grafana/carbon-relay-ng/cfg"
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"

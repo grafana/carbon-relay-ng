@@ -22,9 +22,9 @@
 
 * BREAKING: switch to logrus for logging. #317, #326
   If you were previously using log level notice, you should now use info.
-  See [logging docs](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/logging.md) for more info on the log levels.
+  See [logging docs](https://github.com/grafana/carbon-relay-ng/blob/master/docs/logging.md) for more info on the log levels.
 * IMPORTANT: refactor release process, docker tags and package repo. #330, #331
-  see [installation docs](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/installation-building.md)
+  see [installation docs](https://github.com/grafana/carbon-relay-ng/blob/master/docs/installation-building.md)
 * fix memory leak when connections should be closed. #259, #329
 * Rewrite of the inputs. pickle, tcp, udp and data reading.
   They are now plugins, handle errors better, and support timeouts.
@@ -103,7 +103,7 @@ show target address for GrafanaNet routes #244
 rule of thumb: rate in metrics/s times how many seconds you want to be able to buffer in case of downstream issues. memory used will be `bufSize * 100B` or use `bufSize * 150B` to be extra safe.
   - blocking: when the route's buffer fills up, ingestion into the route will slow down/block, providing backpressure to the clients, and also blocking other routes from making progress. use this only if you know what you're doing and have smart clients that can gracefully handle the backpressure
 * monitor queue drops for non-blocking queues
-* [document route options better](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/routes.md)
+* [document route options better](https://github.com/grafana/carbon-relay-ng/blob/master/docs/routes.md)
 * monitor queue size and ram used #218 
 * preliminary support for parsing out the new graphite tag format (kafkaMdm and grafanaNet route only)
 
@@ -181,7 +181,7 @@ See #165
 
 # v0.8: Growing up a little. Dec 21, 2016
 
-- build packages for ubuntu, debian, centos and automatically push to circleCI upon successfull builds (https://github.com/graphite-ng/carbon-relay-ng#installation)
+- build packages for ubuntu, debian, centos and automatically push to circleCI upon successfull builds (https://github.com/grafana/carbon-relay-ng#installation)
 - add pickle input (#140)
 - publish [dashboard on grafana.net](https://grafana.net/dashboards/338) 
 - fix build for go <1.6 (#118)
@@ -197,7 +197,7 @@ See #165
 **known issues**:
 there's some open tickets on github for various smaller issues, but one thing that has been impacting people a lot for a long time now is memory usage growing indefinitely when instrumentation is not configured (because it keeps accumulating internal metrics).
 The solution is to configure `graphite_addr` to an address it can send metrics to (e.g. its own input address)
-see [ticket 50](https://github.com/graphite-ng/carbon-relay-ng/issues/50) for more info
+see [ticket 50](https://github.com/grafana/carbon-relay-ng/issues/50) for more info
 
 # v0.7: 200 stars. May 23, 2016
 

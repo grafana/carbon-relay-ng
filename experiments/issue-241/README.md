@@ -46,7 +46,7 @@ even without count-global, flush takes way too long
 * using the dashboard-aggregation-analyzer.json dashboard and the new carbon-relay-ng dashboard you can analyze whether points were dropped, not accounted for, or incorrect.
 * note the relay prints the aggregator keys at startup. these are used in some of the new metrics in the dashboard.
 
-In dieter's experience so far, trying to reproduce https://github.com/graphite-ng/carbon-relay-ng/issues/241
+In dieter's experience so far, trying to reproduce https://github.com/grafana/carbon-relay-ng/issues/241
 
 * once cpu usage gets above 50~80%, ingestion rate of the relay becomes non steady (no longer a flatline). this is without adjusting fakemetrics, and with fakemetrics reporting a steady output stream.  this can be reproduced by restarting the relay with more or less of the aggregations enabled. it seems when this happens, aggregators are more likely to miss input data. (see new inbound metrics). ingestion rate should always be nice and stable
 * sometimes outbound rate of an aggregator seems to go down whereas inbound was a solid flatline. but you need to be patient to see this happen. sometimes it takes hours. have not seen correlation with any of the containers nor the host taking extra cpu.

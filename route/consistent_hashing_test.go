@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/bmizerany/assert"
-	"github.com/graphite-ng/carbon-relay-ng/destination"
+	"github.com/grafana/carbon-relay-ng/destination"
 )
 
 func TestConsistentHashingComputeRingPosition(t *testing.T) {
