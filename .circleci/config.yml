@@ -1,7 +1,7 @@
 version: 2
 jobs:
   test:
-    working_directory: /go/src/github.com/graphite-ng/carbon-relay-ng
+    working_directory: /go/src/github.com/grafana/carbon-relay-ng
     docker:
       - image: circleci/golang:1.10.3
     steps:
@@ -9,7 +9,7 @@ jobs:
       - run: go test -v -race ./...
 
   build:
-    working_directory: /go/src/github.com/graphite-ng/carbon-relay-ng
+    working_directory: /go/src/github.com/grafana/carbon-relay-ng
     docker:
       - image: circleci/golang:1.10.3
     steps:
