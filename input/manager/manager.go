@@ -3,7 +3,7 @@ package manager
 import (
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/input"
+	"github.com/grafana/carbon-relay-ng/input"
 	log "github.com/sirupsen/logrus"
 )
 

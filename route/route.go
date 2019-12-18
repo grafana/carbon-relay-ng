@@ -6,8 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	dest "github.com/graphite-ng/carbon-relay-ng/destination"
-	"github.com/graphite-ng/carbon-relay-ng/matcher"
+	dest "github.com/grafana/carbon-relay-ng/destination"
+	"github.com/grafana/carbon-relay-ng/matcher"
 	log "github.com/sirupsen/logrus"
 )
 

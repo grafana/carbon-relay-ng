@@ -1,10 +1,10 @@
 package imperatives
 
 import (
-	"github.com/graphite-ng/carbon-relay-ng/aggregator"
-	"github.com/graphite-ng/carbon-relay-ng/matcher"
-	"github.com/graphite-ng/carbon-relay-ng/rewriter"
-	"github.com/graphite-ng/carbon-relay-ng/route"
+	"github.com/grafana/carbon-relay-ng/aggregator"
+	"github.com/grafana/carbon-relay-ng/matcher"
+	"github.com/grafana/carbon-relay-ng/rewriter"
+	"github.com/grafana/carbon-relay-ng/route"
 )
 
 type mockTable struct {

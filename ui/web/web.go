@@ -11,12 +11,12 @@ import (
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/graphite-ng/carbon-relay-ng/aggregator"
-	"github.com/graphite-ng/carbon-relay-ng/cfg"
-	"github.com/graphite-ng/carbon-relay-ng/destination"
-	"github.com/graphite-ng/carbon-relay-ng/rewriter"
-	"github.com/graphite-ng/carbon-relay-ng/route"
-	tbl "github.com/graphite-ng/carbon-relay-ng/table"
+	"github.com/grafana/carbon-relay-ng/aggregator"
+	"github.com/grafana/carbon-relay-ng/cfg"
+	"github.com/grafana/carbon-relay-ng/destination"
+	"github.com/grafana/carbon-relay-ng/rewriter"
+	"github.com/grafana/carbon-relay-ng/route"
+	tbl "github.com/grafana/carbon-relay-ng/table"
 	log "github.com/sirupsen/logrus"
 )
 

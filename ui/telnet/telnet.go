@@ -5,9 +5,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/graphite-ng/carbon-relay-ng/imperatives"
-	tbl "github.com/graphite-ng/carbon-relay-ng/table"
-	"github.com/graphite-ng/carbon-relay-ng/telnet"
+	"github.com/grafana/carbon-relay-ng/imperatives"
+	tbl "github.com/grafana/carbon-relay-ng/table"
+	"github.com/grafana/carbon-relay-ng/telnet"
 	log "github.com/sirupsen/logrus"
 )
 

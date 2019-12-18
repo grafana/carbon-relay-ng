@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/cfg"
-	"github.com/graphite-ng/carbon-relay-ng/imperatives"
-	tbl "github.com/graphite-ng/carbon-relay-ng/table"
+	"github.com/grafana/carbon-relay-ng/cfg"
+	"github.com/grafana/carbon-relay-ng/imperatives"
+	tbl "github.com/grafana/carbon-relay-ng/table"
 	log "github.com/sirupsen/logrus"
 )
 

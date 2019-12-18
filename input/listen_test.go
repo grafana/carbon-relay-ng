@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/cfg"
+	"github.com/grafana/carbon-relay-ng/cfg"
 )
 
 var (

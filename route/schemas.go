@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/grafana/carbon-relay-ng/persister"
 	"github.com/grafana/metrictank/schema"
-	"github.com/graphite-ng/carbon-relay-ng/persister"
 )
 
 func getSchemas(file string) (persister.WhisperSchemas, error) {

@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
-	dest "github.com/graphite-ng/carbon-relay-ng/destination"
-	"github.com/graphite-ng/carbon-relay-ng/matcher"
+	dest "github.com/grafana/carbon-relay-ng/destination"
+	"github.com/grafana/carbon-relay-ng/matcher"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
+	"github.com/grafana/carbon-relay-ng/stats"
 	log "github.com/sirupsen/logrus"
 	"strconv"
 	"strings"

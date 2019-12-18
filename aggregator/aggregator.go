@@ -10,8 +10,8 @@ import (
 	"time"
 
 	metrics "github.com/Dieterbe/go-metrics"
-	"github.com/graphite-ng/carbon-relay-ng/clock"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
+	"github.com/grafana/carbon-relay-ng/clock"
+	"github.com/grafana/carbon-relay-ng/stats"
 )
 
 type Aggregator struct {

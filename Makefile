@@ -48,7 +48,7 @@ deb: build-linux
 		-m "Dieter Plaetinck <dieter@grafana.com>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
-		--url https://github.com/graphite-ng/carbon-relay-ng \
+		--url https://github.com/grafana/carbon-relay-ng \
 		--after-install examples/after_install.sh \
 		-C debian .
 	rm -rf debian
@@ -72,7 +72,7 @@ deb-upstart: build-linux
 		-m "Dieter Plaetinck <dieter@grafana.com>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
-		--url https://github.com/graphite-ng/carbon-relay-ng \
+		--url https://github.com/grafana/carbon-relay-ng \
 		-C debian .
 	rm -rf debian
 
@@ -97,7 +97,7 @@ rpm: build-linux
 		-m "Dieter Plaetinck <dieter@grafana.com>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
-		--url https://github.com/graphite-ng/carbon-relay-ng \
+		--url https://github.com/grafana/carbon-relay-ng \
 		--after-install examples/after_install.sh \
 		-C redhat .
 	rm -rf redhat
@@ -123,7 +123,7 @@ rpm-centos6: build-linux
 		-m "Dieter Plaetinck <dieter@grafana.com>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
-		--url https://github.com/graphite-ng/carbon-relay-ng \
+		--url https://github.com/grafana/carbon-relay-ng \
 		-C redhat .
 	rm -rf redhat
 

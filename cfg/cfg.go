@@ -3,7 +3,7 @@ package cfg
 import (
 	"time"
 
-	"github.com/graphite-ng/carbon-relay-ng/validate"
+	"github.com/grafana/carbon-relay-ng/validate"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
 )
 

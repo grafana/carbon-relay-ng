@@ -12,9 +12,9 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/Dieterbe/go-metrics"
-	dest "github.com/graphite-ng/carbon-relay-ng/destination"
-	"github.com/graphite-ng/carbon-relay-ng/matcher"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
+	dest "github.com/grafana/carbon-relay-ng/destination"
+	"github.com/grafana/carbon-relay-ng/matcher"
+	"github.com/grafana/carbon-relay-ng/stats"
 	log "github.com/sirupsen/logrus"
 )
 

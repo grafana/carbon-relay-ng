@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafana/carbon-relay-ng/persister"
 	"github.com/grafana/metrictank/schema"
-	"github.com/graphite-ng/carbon-relay-ng/persister"
 )
 
 func getMatchEverythingSchemas() persister.WhisperSchemas {

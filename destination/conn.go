@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/graphite-ng/carbon-relay-ng/stats"
+	"github.com/grafana/carbon-relay-ng/stats"
 	log "github.com/sirupsen/logrus"
 )
 

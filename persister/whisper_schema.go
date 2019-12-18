@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/graphite-ng/carbon-relay-ng/go-whisper"
+	"github.com/grafana/carbon-relay-ng/go-whisper"
 )
 
 // Schema represents one schema setting
