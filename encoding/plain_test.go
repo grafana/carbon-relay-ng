@@ -85,10 +85,10 @@ func TestAddGraphiteTagToMetadata(t *testing.T) {
 	}
 	for key, value := range graphiteTags {
 		t.Run(key, func(t *testing.T) {
-			tags := make(Tags)
-			err := addGraphiteTagToTags(value, tags)
+			emptyTags := make(Tags)
+			err := addGraphiteTagToTags(value, emptyTags)
 			assert.NoError(t, err)
-			assert.Equal(t, tags[key], tags)
+			assert.Equal(t, tags[key], emptyTags)
 		})
 	}
 
