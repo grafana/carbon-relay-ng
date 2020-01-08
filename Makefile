@@ -2,6 +2,11 @@ VERSION=$(shell git describe --tags --always | sed 's/^v//')
 ARCH="amd64 386"
 OS="linux windows darwin"
 export GO111MODULE := on
+DOCKER_COMPOSE_CMD=docker-compose -p carbon-relay-ng \
+	-f docker/elasticsearch/docker-compose.yml\
+	-f docker/kafka/docker-compose.yml\
+	-f docker/carbon-relay-ng-kafka-io/docker-compose.yml\
+	--project-directory ./docker/carbon-relay-ng-kafka-io/
 
 build:
 	CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
@@ -33,6 +38,30 @@ fmt:
 
 test: check-formating
 	go test ./...
+
+.start-es:
+	$(DOCKER_COMPOSE_CMD) up -d elasticsearch
+
+.start-kafka:
+	$(DOCKER_COMPOSE_CMD) up -d zookeeper kafka
+	sleep 10
+	$(DOCKER_COMPOSE_CMD) exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 5 --topic metrics
+
+
+docker-start: docker-build .start-es .start-kafka
+	$(DOCKER_COMPOSE_CMD) up -d kafka-producer kafka-consumer
+
+docker-logs:
+	$(DOCKER_COMPOSE_CMD) logs -f kafka-producer kafka-consumer
+
+docker-stop:
+	$(DOCKER_COMPOSE_CMD) down
+
+docker-inject-sample:
+	@echo 'blabla.test;application=wootwootapp 1 3'| $(DOCKER_COMPOSE_CMD) exec -T kafka-producer nc localhost 4000
+	@cat route/fixtures/metrics.txt| $(DOCKER_COMPOSE_CMD) exec -T kafka-producer nc localhost 4000
+
+
 
 docker-build:
 	docker build . -t carbon-relay-ng

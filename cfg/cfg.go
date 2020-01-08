@@ -124,12 +124,24 @@ type KafkaRouteConfig struct {
 type BgMetadataRouteConfig struct {
 	// TODO Add option to configure all bloom filter parameters
 	// TODO Add additional configuration to for cassandra
-	ShardingFactor int     `toml:"sharding_factor,omitempty"` // number of shards handling metrics
-	FilterSize     uint    `toml:"filter_size,omitempty"`     // max total number of metrics
-	FaultTolerance float64 `toml:"fault_tolerance,omitempty"` // value 0.0 - 1.0
-	ClearInterval  string  `toml:"clear_interval,omitempty"`  // frequency of filter clearing
-	ClearWait      string  `toml:"clear_wait,omitempty"`      // wait time between each filter clear. defaults to clear_wait/sharding_factor
-	Cache          string  `toml:"cache,omitempty"`           // location of filter storage on disk; feature not enabled if path not provided
+	ShardingFactor           int                 `toml:"sharding_factor,omitempty"` // number of shards handling metrics
+	FilterSize               uint                `toml:"filter_size,omitempty"`     // max total number of metrics
+	FaultTolerance           float64             `toml:"fault_tolerance,omitempty"` // value 0.0 - 1.0
+	ClearInterval            string              `toml:"clear_interval,omitempty"`  // frequency of filter clearing
+	ClearWait                string              `toml:"clear_wait,omitempty"`      // wait time between each filter clear. defaults to clear_wait/sharding_factor
+	Cache                    string              `toml:"cache,omitempty"`           // location of filter storage on disk; feature not enabled if path not provided
+	StorageAggregationConfig string              `toml:"storage_aggregations,omitempty"`
+	StorageSchemasConfig     string              `toml:"storage_schemas,omitempty"`
+	Storage                  string              `toml:"storage,omitempty"`
+	ESConfig                 *BgMetadataESConfig `toml:"elasticsearch,omitempty"`
+}
+
+type BgMetadataESConfig struct {
+	StorageServer string `toml:"storage_server,omitempty"`
+	BulkSize      uint   `toml:"bulk_size,omitempty,default=1"`
+	Username      string `toml:"username,omitempty"`
+	Password      string `toml:"password,omitempty"`
+	MaxRetry      uint   `toml:"max_retry,omitempty"`
 }
 
 type Rewriter struct {

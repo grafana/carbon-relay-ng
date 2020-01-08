@@ -783,6 +783,24 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			if clearWait > clearInterval/time.Duration(bgMetadataCfg.ShardingFactor) {
 				return fmt.Errorf("error adding route '%s': clear wait value must be less than clear_interval / sharding_factor", routeConfig.Key)
 			}
+			var additionnalCfg interface{} = nil
+			if bgMetadataCfg.Storage != "cassandra" && bgMetadataCfg.Storage != "elasticsearch" && bgMetadataCfg.Storage != "" {
+				return fmt.Errorf("error adding route '%s': storage value must be 'cassandra', 'elasticsearch' or ''", routeConfig.Key)
+			}
+
+			if bgMetadataCfg.Storage == "elasticsearch" {
+				if bgMetadataCfg.ESConfig == nil {
+					return fmt.Errorf("error adding route '%s': ElasticSearch configuration is needed", routeConfig.Key)
+				}
+				if bgMetadataCfg.ESConfig.StorageServer == "" {
+					return fmt.Errorf("error adding route '%s': undefined storage server", routeConfig.Key)
+				}
+				if bgMetadataCfg.ESConfig.BulkSize == 0 {
+					return fmt.Errorf("error adding route '%s': elasticsearch bulk size must be > 0 (not %d)", routeConfig.Key, bgMetadataCfg.ESConfig.BulkSize)
+				}
+
+				additionnalCfg = bgMetadataCfg.ESConfig
+			}
 
 			bloomFilterConfig, err := route.NewBloomFilterConfig(
 				bgMetadataCfg.FilterSize,
@@ -795,14 +813,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			if err != nil {
 				return fmt.Errorf("error adding route '%s': %s", routeConfig.Key, err)
 			}
-
-			route, err := route.NewBgMetadataRoute(
-				routeConfig.Key,
-				routeConfig.Prefix,
-				routeConfig.Substr,
-				routeConfig.Regex,
-				bloomFilterConfig,
-			)
+			route, err := route.NewBgMetadataRoute(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, bgMetadataCfg.StorageAggregationConfig, bgMetadataCfg.StorageSchemasConfig, bloomFilterConfig, bgMetadataCfg.Storage, additionnalCfg)
 			if err != nil {
 				return fmt.Errorf("error adding route '%s': %s", routeConfig.Key, err)
 			}

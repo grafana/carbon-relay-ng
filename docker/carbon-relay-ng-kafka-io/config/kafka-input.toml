@@ -30,7 +30,7 @@ bad_metrics_max_age = "24h"
 type = "kafka"
 format = "plain"
 topic = "metrics"
-brokers = ["localhost:9092"]
+brokers = ["kafka:29092"]
 consumer_group_id = "aggregator"
 commit_interval = "1s"
 client_id = "my_carbon"
@@ -38,11 +38,18 @@ client_id = "my_carbon"
 ## Instrumentation ##
 
 [[route]]
-key = 'carbon-default'
-type = 'sendAllMatch'
-prefix = ''
-substr = ''
-# regex = ''
-destinations = [
-'localhost:8080 spool=true pickle=false'
-]
+key = 'test'
+type = 'bg_metadata'
+    [route.bg_metadata]
+    sharding_factor = 10
+    filter_size = 1000
+    fault_tolerance = 0.0000001
+    clear_interval = "60s"
+    cache = "/tmp/"
+    storage_schemas = "/config/storage-schemas.conf"
+    storage_aggregations = "/config/storage-aggregation.conf"
+    storage = "elasticsearch"
+        [route.bg_metadata.elasticsearch]
+        storage_server = "http://elasticsearch:9200"
+        bulk_size = 2
+        max_retry = 1

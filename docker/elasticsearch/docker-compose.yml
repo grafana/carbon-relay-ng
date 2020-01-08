@@ -1,0 +1,6 @@
+version: "3.7"
+services:
+  elasticsearch:
+    build: "."
+    ports:
+      - "9200:9200"

@@ -13,11 +13,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/graphite-ng/carbon-relay-ng/cfg"
 	"github.com/graphite-ng/carbon-relay-ng/encoding"
 	"github.com/graphite-ng/carbon-relay-ng/matcher"
 	"github.com/graphite-ng/carbon-relay-ng/metrics"
+	"github.com/graphite-ng/carbon-relay-ng/storage"
 	"github.com/willf/bloom"
 	"go.uber.org/zap"
 )
@@ -42,12 +47,17 @@ type BloomFilterConfig struct {
 // BgMetadata contains data required to start, stop and reset a metric metadata producer.
 type BgMetadata struct {
 	baseRoute
-	shards []shard
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
-	bfCfg  BloomFilterConfig
-	mm     metrics.BgMetadataMetrics
+	shards              []shard
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	wg                  sync.WaitGroup
+	bfCfg               BloomFilterConfig
+	mm                  metrics.BgMetadataMetrics
+	metricDirectories   chan string
+	storageSchemas      []storage.StorageSchema
+	storageAggregations []storage.StorageAggregation
+	storage             storage.BgMetadataStorageConnector
+	maxConcurrentWrites chan int
 }
 
 // NewBloomFilterConfig creates a new BloomFilterConfig
@@ -71,11 +81,26 @@ func NewBloomFilterConfig(n uint, p float64, shardingFactor int, cache string, c
 }
 
 // NewBgMetadataRoute creates BgMetadata, starts sharding and filtering incoming metrics.
-func NewBgMetadataRoute(key, prefix, sub, regex string, bfCfg BloomFilterConfig) (*BgMetadata, error) {
+// additionnalCfg should be nil or *cfg.BgMetadataESConfig if elasticsearch
+func NewBgMetadataRoute(key, prefix, sub, regex, aggregationCfg, schemasCfg string, bfCfg BloomFilterConfig, storageName string, additionnalCfg interface{}) (*BgMetadata, error) {
+	// to make value assignments easier
+	var err error
+
 	m := BgMetadata{
-		baseRoute: *newBaseRoute(key, "bg_metadata"),
-		shards:    make([]shard, bfCfg.ShardingFactor),
-		bfCfg:     bfCfg,
+		baseRoute:         *newBaseRoute(key, "bg_metadata"),
+		shards:            make([]shard, bfCfg.ShardingFactor),
+		bfCfg:             bfCfg,
+		metricDirectories: make(chan string),
+	}
+
+	// load schema and aggregation configuration files
+	m.storageAggregations, err = storage.NewStorageAggregations(aggregationCfg)
+	if err != nil {
+		return &m, err
+	}
+	m.storageSchemas, err = storage.NewStorageSchemas(schemasCfg)
+	if err != nil {
+		return &m, err
 	}
 
 	// init every shard with filter
@@ -119,6 +144,30 @@ func NewBgMetadataRoute(key, prefix, sub, regex string, bfCfg BloomFilterConfig)
 	m.rm = metrics.NewRouteMetrics(key, "bg_metadata", nil)
 
 	go m.clearBloomFilter()
+	switch storageName {
+	case "cassandra":
+		m.storage = storage.NewCassandraMetadata()
+		m.maxConcurrentWrites = make(chan int, 1)
+	case "elasticsearch":
+		if v, ok := additionnalCfg.(*cfg.BgMetadataESConfig); ok == true {
+			m.storage = storage.NewBgMetadataElasticSearchConnectorWithDefaults(v)
+			m.maxConcurrentWrites = make(chan int, 1)
+		} else {
+			return &m, fmt.Errorf("missing elasticsearch configuration")
+		}
+
+	default:
+		m.storage = &storage.BgMetadataNoOpStorageConnector{}
+		m.maxConcurrentWrites = make(chan int, 1)
+	}
+
+	promauto.NewGaugeFunc(prometheus.GaugeOpts{
+		Namespace: "bgmetadata",
+		Name:      "pending_storage_writes",
+		Help:      "number of pending storage write requests",
+	}, func() float64 { return float64(len(m.maxConcurrentWrites)) })
+
+	go m.createMetadataDirectories()
 
 	// matcher required to initialise route.Config for routing table, othewise it will panic
 	mt, err := matcher.New(prefix, sub, regex)
@@ -263,6 +312,24 @@ func (m *BgMetadata) deleteCache() error {
 	return nil
 }
 
+func (m *BgMetadata) createMetadataDirectories() error {
+	m.wg.Add(1)
+	defer m.wg.Done()
+	dirFilter := bloom.NewWithEstimates(m.bfCfg.N, m.bfCfg.P)
+	for {
+		select {
+		case <-m.ctx.Done():
+			return nil
+		case dir := <-m.metricDirectories:
+			if !dirFilter.TestString(dir) {
+				dirFilter.AddString(dir)
+				md := storage.NewMetricDirectory(dir)
+				md.UpdateDirectories(m.storage)
+			}
+		}
+	}
+}
+
 // Shutdown cancels the context used in BgMetadata and goroutines
 // It waits for goroutines to close channels and finish before exiting
 func (m *BgMetadata) Shutdown() error {
@@ -285,7 +352,15 @@ func (m *BgMetadata) Dispatch(dp encoding.Datapoint) {
 	if !shard.filter.TestString(dp.Name) {
 		shard.filter.AddString(dp.Name)
 		m.mm.AddedMetrics.Inc()
-		// do nothing for now
+		metricMetadata := storage.NewMetricMetadata(dp.Name, m.storageSchemas, m.storageAggregations)
+		metric := storage.NewMetric(dp.Name, metricMetadata, dp.Tags)
+		// add metric name to directory channel for dirs to be created if needed in a separate goroutine
+		m.metricDirectories <- dp.Name
+		m.maxConcurrentWrites <- 1
+		go func() {
+			m.storage.UpdateMetricMetadata(metric)
+			<-m.maxConcurrentWrites
+		}()
 	} else {
 		// don't output metrics already in the filter
 		m.mm.FilteredMetrics.Inc()

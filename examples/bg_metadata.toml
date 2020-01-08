@@ -21,3 +21,19 @@ type = 'bg_metadata'
     fault_tolerance = 0.0000001
     clear_interval = "60s"
     cache = "/tmp/carbon-relay-ng/cache"
+    storage_schemas = "/tmp/storage-schemas.conf"
+    storage_aggregations = "/tmp/storage-aggregation.conf"
+    storage = "elasticsearch"
+    [route.bg_metadata.elasticsearch]
+        storage_server = "http://localhost:9200"
+        bulk_size = 10000
+
+[[route]]
+key = 'carbon-default'
+type = 'sendAllMatch'
+prefix = ''
+substr = ''
+# regex = ''
+destinations = [
+'localhost:8080 spool=true pickle=false'
+]

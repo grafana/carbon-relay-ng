@@ -35,9 +35,11 @@ func testBgMetadata(t *testing.T) *BgMetadata {
 		prefix = ""
 		sub    = ""
 		regex  = ""
+		sch    = "../examples/storage-schemas.conf"
+		agg    = "../examples/storage-aggregation.conf"
 	)
 	bfc := testBloomFilterConfig()
-	m, _ := NewBgMetadataRoute(key, prefix, sub, regex, bfc)
+	m, _ := NewBgMetadataRoute(key, prefix, sub, regex, agg, sch, bfc, "", nil)
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 	return m
 }
