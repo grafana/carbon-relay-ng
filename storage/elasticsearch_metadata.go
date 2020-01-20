@@ -19,7 +19,7 @@ import (
 
 const (
 	namespace                            = "elasticsearch"
-	metrics_metadata_index               = "biggraphite_metrics"
+	default_metrics_metadata_index       = "biggraphite_metrics"
 	metrics_metadata_index_suffix_format = "_2006-01-02"
 	mapping                              = `
 {
@@ -70,18 +70,20 @@ type BgMetadataElasticSearchConnector struct {
 	BulkSize                uint
 	Mux                     sync.Mutex
 	MaxRetry                uint
+	IndexName               string
 }
 
 type ElasticSearchClient interface {
 	Perform(*http.Request) (*http.Response, error)
 }
 
-func NewBgMetadataElasticSearchConnector(elasticSearchClient ElasticSearchClient, registry prometheus.Registerer, bulkSize, maxRetry uint) *BgMetadataElasticSearchConnector {
+func NewBgMetadataElasticSearchConnector(elasticSearchClient ElasticSearchClient, registry prometheus.Registerer, bulkSize, maxRetry uint, indexName string) *BgMetadataElasticSearchConnector {
 	var esc = BgMetadataElasticSearchConnector{
 		client:     elasticSearchClient,
 		BulkSize:   bulkSize,
 		BulkBuffer: make([]Metric, 0, bulkSize),
 		MaxRetry:   maxRetry,
+		IndexName:  indexName,
 
 		UpdatedMetrics: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
@@ -109,6 +111,9 @@ func NewBgMetadataElasticSearchConnector(elasticSearchClient ElasticSearchClient
 	_ = registry.Register(esc.UpdatedMetrics)
 	_ = registry.Register(esc.WriteDurationMs)
 	_ = registry.Register(esc.DocumentBuildDurationMs)
+	if esc.IndexName == "" {
+		esc.IndexName = default_metrics_metadata_index
+	}
 
 	esc.KnownIndices = map[string]bool{}
 	return &esc
@@ -143,7 +148,7 @@ func NewBgMetadataElasticSearchConnectorWithDefaults(cfg *cfg.BgMetadataESConfig
 		log.Fatalf("Could not create ElasticSearch connector: %w", err)
 	}
 
-	return NewBgMetadataElasticSearchConnector(es, prometheus.DefaultRegisterer, cfg.BulkSize, cfg.MaxRetry)
+	return NewBgMetadataElasticSearchConnector(es, prometheus.DefaultRegisterer, cfg.BulkSize, cfg.MaxRetry, cfg.IndexName)
 }
 
 func (esc *BgMetadataElasticSearchConnector) Close() {
@@ -243,7 +248,7 @@ func (esc *BgMetadataElasticSearchConnector) bulkUpdate(indexName string, metric
 }
 
 func (esc *BgMetadataElasticSearchConnector) getIndex() (string, error) {
-	indexName := metrics_metadata_index + time.Now().Format(metrics_metadata_index_suffix_format)
+	indexName := esc.IndexName + time.Now().Format(metrics_metadata_index_suffix_format)
 
 	_, isKnownIndex := esc.KnownIndices[indexName]
 	if !isKnownIndex {

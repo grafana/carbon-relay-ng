@@ -141,6 +141,7 @@ type BgMetadataESConfig struct {
 	BulkSize      uint   `toml:"bulk_size,omitempty,default=1"`
 	Username      string `toml:"username,omitempty"`
 	Password      string `toml:"password,omitempty"`
+	IndexName     string `toml:"index_name,omitempty"` // index prefix, will be appended with date
 	MaxRetry      uint   `toml:"max_retry,omitempty"`
 }
 

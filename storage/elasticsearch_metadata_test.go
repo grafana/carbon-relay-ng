@@ -22,7 +22,7 @@ import (
 func TestSyncWritesMetricsMetadata(t *testing.T) {
 	mockElasticSearchClient := &mocks.ElasticSearchClient{}
 	registry := prometheus.NewRegistry()
-	esc := NewBgMetadataElasticSearchConnector(mockElasticSearchClient, registry, 10, 0)
+	esc := NewBgMetadataElasticSearchConnector(mockElasticSearchClient, registry, 10, 0, "")
 
 	response := http.Response{Body: ioutil.NopCloser(strings.NewReader("<response>")), StatusCode: 200}
 
@@ -42,7 +42,7 @@ func TestSyncWritesMetricsMetadata(t *testing.T) {
 func TestAsyncWritesMetricsMetadata(t *testing.T) {
 	mockElasticSearchClient := &mocks.ElasticSearchClient{}
 	registry := prometheus.NewRegistry()
-	esc := NewBgMetadataElasticSearchConnector(mockElasticSearchClient, registry, 10, 0)
+	esc := NewBgMetadataElasticSearchConnector(mockElasticSearchClient, registry, 10, 0, "")
 
 	response := http.Response{Body: ioutil.NopCloser(strings.NewReader("<response>")), StatusCode: 200}
 	mockElasticSearchClient.On("Perform", mock.Anything).Return(&response, nil)
@@ -62,7 +62,7 @@ func TestAsyncWritesMetricsMetadata(t *testing.T) {
 func TestHandlesFailureWhenWritingAMetricMetadata(t *testing.T) {
 	mockElasticSearchClient := &mocks.ElasticSearchClient{}
 	registry := prometheus.NewRegistry()
-	esc := NewBgMetadataElasticSearchConnector(mockElasticSearchClient, registry, 1, 1)
+	esc := NewBgMetadataElasticSearchConnector(mockElasticSearchClient, registry, 1, 1, "")
 	response := http.Response{Body: ioutil.NopCloser(strings.NewReader("<response>")), StatusCode: 200}
 	mockElasticSearchClient.On("Perform", mock.Anything).Return(&response, nil).Twice() // getIndex
 	mockElasticSearchClient.On("Perform", mock.Anything).Return(&http.Response{}, errors.New("<error>"))
@@ -79,7 +79,7 @@ func TestHandlesFailureWhenWritingAMetricMetadata(t *testing.T) {
 func TestHandlesRetry(t *testing.T) {
 	mockElasticSearchClient := &mocks.ElasticSearchClient{}
 	registry := prometheus.NewRegistry()
-	esc := NewBgMetadataElasticSearchConnector(mockElasticSearchClient, registry, 1, 2)
+	esc := NewBgMetadataElasticSearchConnector(mockElasticSearchClient, registry, 1, 2, "")
 
 	response := http.Response{Body: ioutil.NopCloser(strings.NewReader("<response>")), StatusCode: 200}
 	badResponse := http.Response{Body: ioutil.NopCloser(strings.NewReader("<response>")), StatusCode: 400}
@@ -161,7 +161,7 @@ func BenchmarkWritesWithBulkSize100(b *testing.B) {
 	if err != nil {
 		b.Fail()
 	}
-	esc := NewBgMetadataElasticSearchConnector(es, prometheus.DefaultRegisterer, 100, 0)
+	esc := NewBgMetadataElasticSearchConnector(es, prometheus.DefaultRegisterer, 100, 0, "")
 	for n := 0; n < b.N; n++ {
 		benchmarkWrites(b, esc, numMetrics)
 	}
