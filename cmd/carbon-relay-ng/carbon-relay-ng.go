@@ -153,7 +153,12 @@ func main() {
 		statsmt.NewMemoryReporter()
 		_, err = statsmt.NewProcessReporter()
 		if err != nil {
-			log.Fatalf("stats: could not initialize process reporter: %v", err)
+			//ProcessReporter depends on /proc which doesn't exist on OSX/Windows
+			if strings.HasSuffix(err.Error(), "stat /proc: no such file or directory") {
+				log.Warn("stats: could not initialize process reporter because /proc does not exist")
+			} else {
+				log.Fatalf("stats: could not initialize process reporter: %v", err)
+			}
 		}
 		aggregator.NewAggregatorReporter()
 		statsmt.NewGraphite("carbon-relay-ng.stats."+config.Instance, config.Instrumentation.Graphite_addr, config.Instrumentation.Graphite_interval/1000, 1000, time.Second*10)
