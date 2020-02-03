@@ -68,7 +68,7 @@ max = -1
 
 ## carbon route
 
-setting        | mandatory | values                                        | default | description 
+setting        | mandatory | values                                        | default | description
 ---------------|-----------|-----------------------------------------------|---------|------------
 key            |     Y     | string                                        | N/A     |
 type           |     Y     | sendAllMatch/sendFirstMatch/consistentHashing | N/A     | send to all destinations vs first matching destination vs distribute via consistent hashing
@@ -112,7 +112,7 @@ destinations = [
 
 ## carbon destination
 
-setting              | mandatory | values        | default | description 
+setting              | mandatory | values        | default | description
 ---------------------|-----------|---------------|---------|------------
 addr                 |     Y     |  string       | N/A     |
 prefix               |     N     |  string       | ""      |
@@ -133,7 +133,7 @@ unspoolsleep         |     N     |  int (micros) | 10      | sleep this many mic
 
 ## grafanaNet route
 
-setting        | mandatory | values      | default | description 
+setting        | mandatory | values      | default | description
 ---------------|-----------|-------------|---------|------------
 key            |     Y     |  string     | N/A     |
 addr           |     Y     |  string     | N/A     |
@@ -178,9 +178,18 @@ schemasFile = 'examples/storage-schemas.conf'
 concurrency=100
 ```
 
+example config with credentials coming from the environment variables
+
+```
+key = 'grafanaNet'
+type = 'grafanaNet'
+addr = "${GRAFANA_NET_ADDR}"
+apikey = "${GRAFANA_NET_USER_ID}:${GRAFANA_NET_API_KEY}"
+```
+
 ## kafkaMdm route
 
-setting        | mandatory | values      | default | description 
+setting        | mandatory | values      | default | description
 ---------------|-----------|-------------|---------|------------
 key            |     Y     |  string     | N/A     |
 brokers        |     Y     |  []string   | N/A     | host:port addresses (if specified as init command or over tcp interface: comma separated)
@@ -200,7 +209,7 @@ orgId          |     N     |  int        | 1       |
 
 ## Google PubSub route
 
-setting        | mandatory | values      | default       | description 
+setting        | mandatory | values      | default       | description
 ---------------|-----------|-------------|---------------|------------
 key            |     Y     |  string     | N/A           |
 project        |     Y     |  string     | N/A           | Google Cloud Project containing the topic
@@ -216,7 +225,7 @@ flushMaxWait   |     N     |  int (ms)   | 1000          | max time to buffer be
 
 ## Cloudwatch
 
-setting          | mandatory | values      | default       | description 
+setting          | mandatory | values      | default       | description
 -----------------|-----------|-------------|---------------|------------
 key              |     Y     |  string     | N/A           |
 profile          |     N     |  string     | N/A           | The Amazon CloudWatch profile to use. For local development needed only. In the cloud, the profile is known.
