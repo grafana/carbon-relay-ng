@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	_ "net/http/pprof"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"runtime"
@@ -57,6 +58,35 @@ func usage() {
 	flag.PrintDefaults()
 }
 
+func readConfigFile(config_file string) (string) {
+	data, err := ioutil.ReadFile(config_file)
+	if err != nil {
+		log.Fatalf("Couldn't read config file %q: %s", config_file, err.Error())
+	}
+
+	return os.Expand(string(data), expandVars)
+
+}
+
+func expandVars(in string) (out string) {
+	switch in {
+	case "HOST":
+		hostname, _ := os.Hostname()
+		// in case hostname is an fqdn or has dots, only take first part
+		parts := strings.SplitN(hostname, ".", 2)
+		return parts[0]
+	case "GRAFANA_NET_ADDR":
+		return os.Getenv("GRAFANA_NET_ADDR")
+	case "GRAFANA_NET_API_KEY":
+		return os.Getenv("GRAFANA_NET_API_KEY")
+	case "GRAFANA_NET_USER_ID":
+		return os.Getenv("GRAFANA_NET_USER_ID")
+	default:
+		return ""
+	}
+}
+
+
 func main() {
 
 	flag.Usage = usage
@@ -74,7 +104,8 @@ func main() {
 		config_file = val
 	}
 
-	meta, err := toml.DecodeFile(config_file, &config)
+	config_str := readConfigFile(config_file)
+	meta, err := toml.Decode(config_str, &config)
 	if err != nil {
 		log.Fatalf("Invalid config file %q: %s", config_file, err.Error())
 	}
@@ -98,7 +129,6 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	config.Instance = os.Expand(config.Instance, expandVars)
 	if len(config.Instance) == 0 {
 		log.Error("instance identifier cannot be empty")
 		os.Exit(1)
@@ -222,17 +252,5 @@ func main() {
 	}
 	if !manager.Stop(inputs, shutdownTimeout) {
 		os.Exit(1)
-	}
-}
-
-func expandVars(in string) (out string) {
-	switch in {
-	case "HOST":
-		hostname, _ := os.Hostname()
-		// in case hostname is an fqdn or has dots, only take first part
-		parts := strings.SplitN(hostname, ".", 2)
-		return parts[0]
-	default:
-		return ""
 	}
 }
