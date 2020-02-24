@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -155,10 +156,11 @@ func NewBgMetadataRoute(key, prefix, sub, regex, aggregationCfg, schemasCfg stri
 		} else {
 			return &m, fmt.Errorf("missing elasticsearch configuration")
 		}
-
-	default:
+	case "noop":
 		m.storage = &storage.BgMetadataNoOpStorageConnector{}
 		m.maxConcurrentWrites = make(chan int, 1)
+	default:
+		log.Fatalf("unknown metadata backend")
 	}
 
 	promauto.NewGaugeFunc(prometheus.GaugeOpts{

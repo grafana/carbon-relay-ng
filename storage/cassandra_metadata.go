@@ -57,7 +57,7 @@ func NewCassandraMetadata() *CassandraConnector {
 	return &cc
 }
 
-func (cc *CassandraConnector) UpdateMetricMetadata(metric Metric) error {
+func (cc *CassandraConnector) UpdateMetricMetadata(metric *Metric) error {
 	err := cc.session.Query(`UPDATE metrics_metadata SET id=?, config=?, updated_on=now() WHERE name=?`,
 		metric.id, metric.config, metric.name).Exec()
 	if err != nil {
@@ -66,7 +66,7 @@ func (cc *CassandraConnector) UpdateMetricMetadata(metric Metric) error {
 	return nil
 }
 
-func (cc *CassandraConnector) InsertDirectory(dir MetricDirectory) error {
+func (cc *CassandraConnector) InsertDirectory(dir *MetricDirectory) error {
 	// TODO Use gocqlx and optimise query creation
 	var queryArgs []string
 	queryArgs = append(queryArgs, dir.name, dir.parent)

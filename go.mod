@@ -24,6 +24,7 @@ require (
 	github.com/jcmturner/gofork v1.0.0 // indirect
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/kisielk/og-rek v1.0.0
+	github.com/lestrrat-go/strftime v1.0.1
 	github.com/libp2p/go-reuseport v0.0.0-20190411201116-b72b23b78b80
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/pierrec/lz4 v2.2.6+incompatible // indirect
