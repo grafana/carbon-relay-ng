@@ -287,7 +287,6 @@ func (esc *BgMetadataElasticSearchConnector) sendAndClearBuffer() error {
 func (esc *BgMetadataElasticSearchConnector) updateInternalMetrics(res *esapi.Response) {
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Println(err)
 			esc.logger.Warn("malformed bulk response", zap.Error(err.(error)))
 		}
 	}()
