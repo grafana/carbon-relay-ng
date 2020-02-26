@@ -6,9 +6,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	_ "net/http/pprof"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"runtime"
@@ -58,7 +58,7 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-func readConfigFile(config_file string) (string) {
+func readConfigFile(config_file string) string {
 	data, err := ioutil.ReadFile(config_file)
 	if err != nil {
 		log.Fatalf("Couldn't read config file %q: %s", config_file, err.Error())
@@ -85,7 +85,6 @@ func expandVars(in string) (out string) {
 		return ""
 	}
 }
-
 
 func main() {
 
