@@ -7,7 +7,9 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -338,4 +340,54 @@ func BenchmarkTableDisPatchAndEndpointReceive(b *testing.B) {
 		b.Fatal(err)
 	}
 	tE.Close()
+}
+
+func TestConfigHostVarInterpolation(t *testing.T) {
+	template := []byte(`host = "${HOST}"`)
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal("failed to parse hostname", err)
+	}
+	expected := fmt.Sprintf(`host = "%s"`, strings.Split(hostname, ".")[0])
+
+	ioutil.WriteFile("/tmp/config.example.toml", template, 0644)
+	config := readConfigFile("/tmp/config.example.toml")
+
+	if config != expected {
+		t.Errorf("Expected interpolated config %s but got %s", expected, config)
+	}
+}
+
+func TestConfigEnvVarInterpolation(t *testing.T) {
+	os.Setenv("GRAFANA_NET_ADDR", "foo.com")
+	os.Setenv("GRAFANA_NET_API_KEY", "wow")
+	os.Setenv("GRAFANA_NET_USER_ID", "123")
+
+	defer os.Unsetenv("GRAFANA_NET_ADDR")
+	defer os.Unsetenv("GRAFANA_NET_API_KEY")
+	defer os.Unsetenv("GRAFANA_NET_USER_ID")
+
+	template := []byte(`
+# [[route]]
+key = 'grafanaNet'
+type = 'grafanaNet'
+addr = "${GRAFANA_NET_ADDR}"
+apikey = "${GRAFANA_NET_USER_ID}:${GRAFANA_NET_API_KEY}"
+`)
+
+	expected_template := `
+# [[route]]
+key = 'grafanaNet'
+type = 'grafanaNet'
+addr = "foo.com"
+apikey = "123:wow"
+`
+
+	ioutil.WriteFile("/tmp/config.example.toml", template, 0644)
+	config := readConfigFile("/tmp/config.example.toml")
+
+	if config != expected_template {
+		t.Errorf("Expected interpolated config %s but got %s", expected_template, config)
+	}
 }
