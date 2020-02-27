@@ -111,6 +111,7 @@ func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy
 	}
 	config.Producer.Return.Successes = true
 	config.Producer.Timeout = time.Duration(timeout) * time.Millisecond
+	config.Producer.Partitioner = sarama.NewManualPartitioner
 	err = config.Validate()
 	if err != nil {
 		log.Fatalf("kafkaMdm %q: failed to validate kafka config. %s", r.key, err)
