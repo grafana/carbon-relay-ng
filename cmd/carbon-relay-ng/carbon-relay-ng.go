@@ -82,7 +82,7 @@ func expandVars(in string) (out string) {
 	case "GRAFANA_NET_USER_ID":
 		return os.Getenv("GRAFANA_NET_USER_ID")
 	default:
-		return ""
+		return "$" + in
 	}
 }
 
