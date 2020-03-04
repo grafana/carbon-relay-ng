@@ -391,3 +391,17 @@ apikey = "123:wow"
 		t.Errorf("Expected interpolated config %s but got %s", expected_template, config)
 	}
 }
+
+func TestConfigDontInterpolateOtherValues(t *testing.T) {
+	template := []byte(`
+regex = '^servers\.(dc[0-9]+)\.(app|proxy)[0-9]+\.(.*)'
+format = 'aggregates.$1.$2.$3.sum'`)
+
+
+	ioutil.WriteFile("/tmp/config.example.toml", template, 0644)
+	config := readConfigFile("/tmp/config.example.toml")
+
+	if config != string(template) {
+		t.Errorf("Expected interpolated config to be unchanged")
+	}
+}
