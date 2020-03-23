@@ -1,5 +1,5 @@
 VERSION=$(shell git describe --tags --always | sed 's/^v//')
-
+export GO111MODULE := on
 
 build:
 	cd ui/web && go-bindata -pkg web admin_http_assets/...
