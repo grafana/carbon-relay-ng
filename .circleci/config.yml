@@ -3,7 +3,7 @@ jobs:
   test:
     working_directory: /go/src/github.com/grafana/carbon-relay-ng
     docker:
-      - image: circleci/golang:1.10.3
+      - image: circleci/golang:1.12
     steps:
       - checkout
       - run: go test -v -race ./...
@@ -11,7 +11,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/grafana/carbon-relay-ng
     docker:
-      - image: circleci/golang:1.10.3
+      - image: circleci/golang:1.12
     steps:
       - checkout
       - run: go get github.com/shuLhan/go-bindata/cmd/go-bindata
@@ -37,7 +37,7 @@ jobs:
       - attach_workspace:
           at: .
       - run: gem install fpm
-      - run: make packages 
+      - run: make packages
       - setup_remote_docker
       - run: make docker
       - run: docker save -o build/carbon-relay-ng.tar raintank/carbon-relay-ng
