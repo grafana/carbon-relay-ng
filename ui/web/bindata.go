@@ -169,7 +169,7 @@ func bindataAdminhttpassetsAngularresourceminjs() (*asset, error) {
 		size:        3292,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -1532,7 +1532,7 @@ func bindataAdminhttpassetsAngularminjs() (*asset, error) {
 		size:        100287,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -1635,7 +1635,7 @@ func bindataAdminhttpassetsAppjs() (*asset, error) {
 		size:        4894,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -1743,7 +1743,7 @@ func bindataAdminhttpassetsBootstrapthememincss() (*asset, error) {
 		size:        18860,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -2419,7 +2419,7 @@ func bindataAdminhttpassetsBootstrapmincss() (*asset, error) {
 		size:        109518,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -2753,7 +2753,7 @@ func bindataAdminhttpassetsBootstrapminjs() (*asset, error) {
 		size:        31819,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -3611,7 +3611,7 @@ func bindataAdminhttpassetsFontsGlyphiconshalflingsregularwoff() (*asset, error)
 		size:        23424,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -3686,7 +3686,7 @@ func bindataAdminhttpassetsHtml5shivminjs() (*asset, error) {
 		size:        2636,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -3818,7 +3818,7 @@ func bindataAdminhttpassetsIndexhtml() (*asset, error) {
 		size:        15858,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -5042,7 +5042,7 @@ func bindataAdminhttpassetsJqueryminjs() (*asset, error) {
 		size:        95786,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -5148,7 +5148,7 @@ func bindataAdminhttpassetsRespondminjs() (*asset, error) {
 		size:        4377,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
@@ -6306,7 +6306,7 @@ func bindataAdminhttpassetsUibootstraptplsjs() (*asset, error) {
 		size:        139270,
 		md5checksum: "",
 		mode:        os.FileMode(436),
-		modTime:     time.Unix(1584519992, 0),
+		modTime:     time.Unix(1584702766, 0),
 	}
 
 	a := &asset{bytes: bytes, info: info}
