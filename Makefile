@@ -21,7 +21,7 @@ carbon-relay-ng:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
 
 test:
-	go test ./...
+	go test -v -race ./...
 
 docker: build-linux
 	./build_docker.sh
