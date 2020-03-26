@@ -90,6 +90,10 @@ jobs:
             fi
 workflows:
   version: 2
+  pr_acceptance:
+    jobs:
+      - test
+      - build
   build_accept_deploy:
     jobs:
       - test
