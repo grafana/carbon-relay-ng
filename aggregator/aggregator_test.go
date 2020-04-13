@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/grafana/carbon-relay-ng/util"
 )
 
 func TestScanner(t *testing.T) {
@@ -220,6 +222,9 @@ func BenchmarkAggregator5Aggregates100PointsPerAggregateWithReCache(b *testing.B
 
 func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, cache bool, b *testing.B) {
 	//fmt.Println("BenchmarkAggregator", aggregates, pointsPerAggregate, "with b.N", b.N)
+	InitMetrics()
+	flushes = util.NewLimiter(1)
+
 	out := make(chan []byte)
 	done := make(chan struct{})
 	go func(match string) {
