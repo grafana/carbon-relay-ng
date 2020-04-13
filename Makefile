@@ -13,12 +13,20 @@ carbon-relay-ng.exe:
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" -o carbon-relay-ng.exe ./cmd/carbon-relay-ng
 
+build-darwin: carbon-relay-ng-darwin
+
+carbon-relay-ng-darwin:
+	cd ui/web && go-bindata -pkg web admin_http_assets/...
+	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" -o carbon-relay-ng-darwin ./cmd/carbon-relay-ng
+
 build-linux: carbon-relay-ng
 
 carbon-relay-ng:
 	cd ui/web && go-bindata -pkg web admin_http_assets/...
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
+	cp carbon-relay-ng carbon-relay-ng-linux
 
 test:
 	go test -v -race ./...

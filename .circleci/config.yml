@@ -22,11 +22,14 @@ jobs:
       # so for now, we just let it slip and assume devs will do a good enough job maintaining the generated data
       # - git diff --exit-code
       - run: make build-win
+      - run: make build-darwin
       - persist_to_workspace:
           root: .
           paths:
             - carbon-relay-ng
             - carbon-relay-ng.exe
+            - carbon-relay-ng-darwin
+            - carbon-relay-ng-linux
 
   package:
     docker:
