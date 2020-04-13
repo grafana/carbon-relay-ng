@@ -81,12 +81,18 @@ jobs:
 
                docker load -i build/carbon-relay-ng.tar
                docker login -u $DOCKER_USER -p $DOCKER_KEY
+
+               # push to both raintank and grafana orgs for now, switch to just grafana at some point in the future
                docker push raintank/carbon-relay-ng:$version
+               docker push grafana/carbon-relay-ng:$version
                # only versions without a hyphen - e.g. actual releases - are tagged as latest.
                # in-between-release versions are tagged as master.
                tag=latest
                [[ "$version" == *-* ]] && tag=master
+
+                # push to both raintank and grafana orgs for now, switch to just grafana at some point in the future
                docker push raintank/carbon-relay-ng:$tag
+               docker push grafana/carbon-relay-ng:$tag
             fi
 workflows:
   version: 2
