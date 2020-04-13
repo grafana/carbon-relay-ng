@@ -62,8 +62,8 @@ type GrafanaNet struct {
 // NewGrafanaNet creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
 // ignores spool for now
-func NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile string, spool, sslVerify, blocking bool, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId int) (Route, error) {
-	m, err := matcher.New(prefix, sub, regex)
+func NewGrafanaNet(key, prefix, notPrefix, sub, notSub, regex, notRegex, addr, apiKey, schemasFile string, spool, sslVerify, blocking bool, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId int) (Route, error) {
+	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return nil, err
 	}

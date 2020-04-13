@@ -5,17 +5,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Dieterbe/go-metrics"
-	dest "github.com/grafana/carbon-relay-ng/destination"
-	"github.com/grafana/carbon-relay-ng/matcher"
+	"strconv"
+	"strings"
 
+	"github.com/Dieterbe/go-metrics"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	dest "github.com/grafana/carbon-relay-ng/destination"
+	"github.com/grafana/carbon-relay-ng/matcher"
 	"github.com/grafana/carbon-relay-ng/stats"
 	log "github.com/sirupsen/logrus"
-	"strconv"
-	"strings"
 )
 
 // Publishes data points to the native AWS metrics service: CloudWatch
@@ -51,8 +51,8 @@ type CloudWatch struct {
 
 // NewCloudWatch creates a route that writes metrics to the AWS service CloudWatch
 // We will automatically run the route and the destination
-func NewCloudWatch(key, prefix, sub, regex, awsProfile, awsRegion, awsNamespace string, awsDimensions [][]string, bufSize, flushMaxSize, flushMaxWait int, storageResolution int64, blocking bool) (Route, error) {
-	m, err := matcher.New(prefix, sub, regex)
+func NewCloudWatch(key, prefix, notPrefix, sub, notSub, regex, notRegex, awsProfile, awsRegion, awsNamespace string, awsDimensions [][]string, bufSize, flushMaxSize, flushMaxWait int, storageResolution int64, blocking bool) (Route, error) {
+	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return nil, err
 	}

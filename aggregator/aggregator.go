@@ -20,11 +20,17 @@ type Aggregator struct {
 	in           chan msg       `json:"-"` // incoming metrics, already split in 3 fields
 	out          chan []byte    // outgoing metrics
 	Regex        string         `json:"regex,omitempty"`
+	NotRegex     string         `json:"notRegex,omitempty"`
 	Prefix       string         `json:"prefix,omitempty"`
+	NotPrefix    string         `json:"notPrefix,omitempty"`
 	Sub          string         `json:"substring,omitempty"`
+	NotSub       string         `json:"notSubstring,omitempty"`
 	regex        *regexp.Regexp // compiled version of Regex
+	notRegex     *regexp.Regexp // compiled version of NotRegex
 	prefix       []byte         // automatically generated based on Prefix or regex, for fast preMatch
+	notPrefix    []byte         // automatically generated based on NotPrefix or notRegex, for fast preMatch
 	substring    []byte         // based on Sub, for fast preMatch
+	notSubstring []byte         // based on NotSub, for fast preMatch
 	OutFmt       string
 	outFmt       []byte
 	Cache        bool
@@ -87,13 +93,17 @@ func regexToPrefix(regex string) []byte {
 }
 
 // New creates an aggregator
-func New(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte) (*Aggregator, error) {
+func New(fun, regex, notRegex, prefix, notPrefix, sub, notSub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte) (*Aggregator, error) {
 	ticker := clock.AlignedTick(time.Duration(interval)*time.Second, time.Duration(wait)*time.Second, 2)
-	return NewMocked(fun, regex, prefix, sub, outFmt, cache, interval, wait, dropRaw, out, 2000, time.Now, ticker)
+	return NewMocked(fun, regex, notRegex, prefix, notPrefix, sub, notSub, outFmt, cache, interval, wait, dropRaw, out, 2000, time.Now, ticker)
 }
 
-func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
+func NewMocked(fun, regex, notRegex, prefix, notPrefix, sub, notSub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
 	regexObj, err := regexp.Compile(regex)
+	if err != nil {
+		return nil, err
+	}
+	notRegexObj, err := regexp.Compile(notRegex)
 	if err != nil {
 		return nil, err
 	}
@@ -108,9 +118,13 @@ func NewMocked(fun, regex, prefix, sub, outFmt string, cache bool, interval, wai
 		in:           make(chan msg, inBuf),
 		out:          out,
 		Regex:        regex,
+		NotRegex:     notRegex,
 		Sub:          sub,
+		NotSub:       notSub,
 		regex:        regexObj,
+		notRegex:     notRegexObj,
 		substring:    []byte(sub),
+		notSubstring: []byte(notSub),
 		OutFmt:       outFmt,
 		outFmt:       []byte(outFmt),
 		Cache:        cache,

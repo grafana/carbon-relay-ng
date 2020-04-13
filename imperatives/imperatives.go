@@ -43,12 +43,15 @@ const (
 	sumFn
 	num
 	optPrefix
+	optNotPrefix
 	optAddr
 	optCache
 	optDropRaw
 	optBlocking
 	optSub
+	optNotSub
 	optRegex
+	optNotRegex
 	optFlush
 	optReconn
 	optConnBufSize
@@ -96,12 +99,15 @@ var tokens = []toki.Def{
 	{Token: modDest, Pattern: "modDest"},
 	{Token: modRoute, Pattern: "modRoute"},
 	{Token: optPrefix, Pattern: "prefix="},
+	{Token: optNotPrefix, Pattern: "notPrefix="},
 	{Token: optAddr, Pattern: "addr="},
 	{Token: optCache, Pattern: "cache="},
 	{Token: optDropRaw, Pattern: "dropRaw="},
 	{Token: optBlocking, Pattern: "blocking="},
 	{Token: optSub, Pattern: "sub="},
+	{Token: optNotSub, Pattern: "notSub="},
 	{Token: optRegex, Pattern: "regex="},
+	{Token: optNotRegex, Pattern: "notRegex="},
 	{Token: optFlush, Pattern: "flush="},
 	{Token: optReconn, Pattern: "reconn="},
 	{Token: optConnBufSize, Pattern: "connbuf="},
@@ -213,8 +219,11 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 	fun := string(t.Value[:len(t.Value)-1]) // strip trailing space
 
 	regex := ""
+	notRegex := ""
 	prefix := ""
+	notPrefix := ""
 	sub := ""
+	notSub := ""
 
 	t = s.Next()
 	// handle old syntax of a raw regex
@@ -230,16 +239,31 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 				return errFmtAddAgg
 			}
 			prefix = string(t.Value)
+		case optNotPrefix:
+			if t = s.Next(); t.Token != word {
+				return errFmtAddAgg
+			}
+			notPrefix = string(t.Value)
 		case optSub:
 			if t = s.Next(); t.Token != word {
 				return errFmtAddAgg
 			}
 			sub = string(t.Value)
+		case optNotSub:
+			if t = s.Next(); t.Token != word {
+				return errFmtAddAgg
+			}
+			notSub = string(t.Value)
 		case optRegex:
 			if t = s.Next(); t.Token != word {
 				return errFmtAddAgg
 			}
 			regex = string(t.Value)
+		case optNotRegex:
+			if t = s.Next(); t.Token != word {
+				return errFmtAddAgg
+			}
+			notRegex = string(t.Value)
 		default:
 			return fmt.Errorf("unexpected token %d %q", t.Token, t.Value)
 		}
@@ -301,7 +325,7 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	agg, err := aggregator.New(fun, regex, prefix, sub, outFmt, cache, uint(interval), uint(wait), dropRaw, table.GetIn())
+	agg, err := aggregator.New(fun, regex, notRegex, prefix, notPrefix, sub, notSub, outFmt, cache, uint(interval), uint(wait), dropRaw, table.GetIn())
 	if err != nil {
 		return err
 	}
@@ -312,8 +336,11 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 
 func readAddBlack(s *toki.Scanner, table Table) error {
 	prefix := ""
+	notPrefix := ""
 	sub := ""
+	notSub := ""
 	regex := ""
+	notRegex := ""
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddBlack
@@ -325,21 +352,36 @@ func readAddBlack(s *toki.Scanner, table Table) error {
 			return errFmtAddBlack
 		}
 		prefix = string(t.Value)
+	case "notPrefix":
+		if t = s.Next(); t.Token != word {
+			return errFmtAddBlack
+		}
+		notPrefix = string(t.Value)
 	case "sub":
 		if t = s.Next(); t.Token != word {
 			return errFmtAddBlack
 		}
 		sub = string(t.Value)
+	case "notSub":
+		if t = s.Next(); t.Token != word {
+			return errFmtAddBlack
+		}
+		notSub = string(t.Value)
 	case "regex":
 		if t = s.Next(); t.Token != word {
 			return errFmtAddBlack
 		}
 		regex = string(t.Value)
+	case "notRegex":
+		if t = s.Next(); t.Token != word {
+			return errFmtAddBlack
+		}
+		notRegex = string(t.Value)
 	default:
 		return errFmtAddBlack
 	}
 
-	m, err := matcher.New(prefix, sub, regex)
+	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return err
 	}
@@ -347,14 +389,14 @@ func readAddBlack(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddRoute(s *toki.Scanner, table Table, constructor func(key, prefix, sub, regex string, destinations []*destination.Destination) (route.Route, error)) error {
+func readAddRoute(s *toki.Scanner, table Table, constructor func(key, prefix, notPrefix, sub, notSub, regex, notRegex string, destinations []*destination.Destination) (route.Route, error)) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
 	}
 	key := string(t.Value)
 
-	prefix, sub, regex, err := readRouteOpts(s)
+	prefix, notPrefix, sub, notSub, regex, notRegex, err := readRouteOpts(s)
 	if err != nil {
 		return err
 	}
@@ -367,7 +409,7 @@ func readAddRoute(s *toki.Scanner, table Table, constructor func(key, prefix, su
 		return fmt.Errorf("must get at least 1 destination for route '%s'", key)
 	}
 
-	route, err := constructor(key, prefix, sub, regex, destinations)
+	route, err := constructor(key, prefix, notPrefix, sub, notSub, regex, notRegex, destinations)
 	if err != nil {
 		return err
 	}
@@ -382,7 +424,7 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
 	}
 	key := string(t.Value)
 
-	prefix, sub, regex, err := readRouteOpts(s)
+	prefix, notPrefix, sub, notSub, regex, notRegex, err := readRouteOpts(s)
 	if err != nil {
 		return err
 	}
@@ -395,7 +437,7 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
 		return fmt.Errorf("must get at least 2 destination for route '%s'", key)
 	}
 
-	route, err := route.NewConsistentHashing(key, prefix, sub, regex, destinations)
+	route, err := route.NewConsistentHashing(key, prefix, notPrefix, sub, notSub, regex, notRegex, destinations)
 	if err != nil {
 		return err
 	}
@@ -409,7 +451,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 	}
 	key := string(t.Value)
 
-	prefix, sub, regex, err := readRouteOpts(s)
+	prefix, notPrefix, sub, notSub, regex, notRegex, err := readRouteOpts(s)
 	if err != nil {
 		return err
 	}
@@ -542,7 +584,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	route, err := route.NewGrafanaNet(key, prefix, sub, regex, addr, apiKey, schemasFile, spool, sslVerify, blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
+	route, err := route.NewGrafanaNet(key, prefix, notPrefix, sub, notSub, regex, notRegex, addr, apiKey, schemasFile, spool, sslVerify, blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
 	if err != nil {
 		return err
 	}
@@ -556,7 +598,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 	}
 	key := string(t.Value)
 
-	prefix, sub, regex, err := readRouteOpts(s)
+	prefix, notPrefix, sub, notSub, regex, notRegex, err := readRouteOpts(s)
 	if err != nil {
 		return err
 	}
@@ -674,7 +716,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	route, err := route.NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy, brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, blocking)
+	route, err := route.NewKafkaMdm(key, prefix, notPrefix, sub, notSub, regex, notRegex, topic, codec, schemasFile, partitionBy, brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, blocking)
 	if err != nil {
 		return err
 	}
@@ -689,7 +731,7 @@ func readAddRoutePubSub(s *toki.Scanner, table Table) error {
 	}
 	key := string(t.Value)
 
-	prefix, sub, regex, err := readRouteOpts(s)
+	prefix, notPrefix, sub, notSub, regex, notRegex, err := readRouteOpts(s)
 	if err != nil {
 		return err
 	}
@@ -779,7 +821,7 @@ func readAddRoutePubSub(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	route, err := route.NewPubSub(key, prefix, sub, regex, project, topic, format, codec, bufSize, flushMaxSize, flushMaxWait, blocking)
+	route, err := route.NewPubSub(key, prefix, notPrefix, sub, notSub, regex, notRegex, project, topic, format, codec, bufSize, flushMaxSize, flushMaxWait, blocking)
 	if err != nil {
 		return err
 	}
@@ -943,7 +985,7 @@ func readDestinations(s *toki.Scanner, table Table, allowMatcher bool, routeKey 
 }
 
 func readDestination(s *toki.Scanner, table Table, allowMatcher bool, routeKey string) (dest *destination.Destination, err error) {
-	var prefix, sub, regex, addr, spoolDir string
+	var prefix, notPrefix, sub, notSub, regex, notRegex, addr, spoolDir string
 	var spool, pickle bool
 	flush := 1000
 	reconn := 10000
@@ -972,16 +1014,31 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool, routeKey s
 				return nil, errFmtAddRoute
 			}
 			prefix = string(t.Value)
+		case optNotPrefix:
+			if t = s.Next(); t.Token != word {
+				return nil, errFmtAddRoute
+			}
+			notPrefix = string(t.Value)
 		case optSub:
 			if t = s.Next(); t.Token != word {
 				return nil, errFmtAddRoute
 			}
 			sub = string(t.Value)
+		case optNotSub:
+			if t = s.Next(); t.Token != word {
+				return nil, errFmtAddRoute
+			}
+			notSub = string(t.Value)
 		case optRegex:
 			if t = s.Next(); t.Token != word {
 				return nil, errFmtAddRoute
 			}
 			regex = string(t.Value)
+		case optNotRegex:
+			if t = s.Next(); t.Token != word {
+				return nil, errFmtAddRoute
+			}
+			notRegex = string(t.Value)
 		case optFlush:
 			if t = s.Next(); t.Token != num {
 				return nil, errFmtAddRoute
@@ -1096,7 +1153,7 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool, routeKey s
 	if !allowMatcher && (prefix != "" || sub != "" || regex != "") {
 		return nil, fmt.Errorf("matching options (prefix, sub, and regex) not allowed for this route type")
 	}
-	return destination.New(routeKey, prefix, sub, regex, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep)
+	return destination.New(routeKey, prefix, notPrefix, sub, notSub, regex, notRegex, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep)
 }
 
 func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
@@ -1113,33 +1170,48 @@ func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bo
 	return destinations, nil
 }
 
-func readRouteOpts(s *toki.Scanner) (prefix, sub, regex string, err error) {
+func readRouteOpts(s *toki.Scanner) (prefix, notPrefix, sub, notSub, regex, notRegex string, err error) {
 	for {
 		t := s.Next()
 		switch t.Token {
 		case toki.EOF:
 			return
 		case toki.Error:
-			return "", "", "", errors.New("read the error token instead of one i recognize")
+			return "", "", "", "", "", "", errors.New("read the error token instead of one i recognize")
 		case optPrefix:
 			if t = s.Next(); t.Token != word {
-				return "", "", "", errors.New("bad prefix option")
+				return "", "", "", "", "", "", errors.New("bad prefix option")
 			}
 			prefix = string(t.Value)
+		case optNotPrefix:
+			if t = s.Next(); t.Token != word {
+				return "", "", "", "", "", "", errors.New("bad notPrefix option")
+			}
+			notPrefix = string(t.Value)
 		case optSub:
 			if t = s.Next(); t.Token != word {
-				return "", "", "", errors.New("bad sub option")
+				return "", "", "", "", "", "", errors.New("bad sub option")
 			}
 			sub = string(t.Value)
+		case optNotSub:
+			if t = s.Next(); t.Token != word {
+				return "", "", "", "", "", "", errors.New("bad notSub option")
+			}
+			notSub = string(t.Value)
 		case optRegex:
 			if t = s.Next(); t.Token != word {
-				return "", "", "", errors.New("bad regex option")
+				return "", "", "", "", "", "", errors.New("bad regex option")
 			}
 			regex = string(t.Value)
+		case optNotRegex:
+			if t = s.Next(); t.Token != word {
+				return "", "", "", "", "", "", errors.New("bad notRegex option")
+			}
+			notRegex = string(t.Value)
 		case sep:
 			return
 		default:
-			return "", "", "", fmt.Errorf("unrecognized option '%s'", t.Value)
+			return "", "", "", "", "", "", fmt.Errorf("unrecognized option '%s'", t.Value)
 		}
 	}
 }

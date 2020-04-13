@@ -153,8 +153,11 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 		Key                  string
 		Type                 string
 		Prefix               string
+		NotPrefix            string
 		Substring            string
+		NotSubstring         string
 		Regex                string
+		NotRegex             string
 		Address              string
 		Spool                bool
 		Pickle               bool
@@ -174,6 +177,9 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 	}
 	dest, err := destination.New(
 		req.Key,
+		"",
+		"",
+		"",
 		"",
 		"",
 		"",
@@ -200,9 +206,9 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 	var e error
 	switch req.Type {
 	case "sendAllMatch":
-		ro, e = route.NewSendAllMatch(req.Key, req.Prefix, req.Substring, req.Regex, []*destination.Destination{dest})
+		ro, e = route.NewSendAllMatch(req.Key, req.Prefix, req.NotPrefix, req.Substring, req.NotSubstring, req.Regex, req.NotRegex, []*destination.Destination{dest})
 	case "sendFirstMatch":
-		ro, e = route.NewSendFirstMatch(req.Key, req.Prefix, req.Substring, req.Regex, []*destination.Destination{dest})
+		ro, e = route.NewSendFirstMatch(req.Key, req.Prefix, req.NotPrefix, req.Substring, req.NotSubstring, req.Regex, req.NotRegex, []*destination.Destination{dest})
 	default:
 		return nil, &handlerError{nil, "unknown route type: " + req.Type, http.StatusBadRequest}
 	}
@@ -214,20 +220,23 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 
 func parseAggregateRequest(r *http.Request) (*aggregator.Aggregator, *handlerError) {
 	var request struct {
-		Fun       string
-		OutFmt    string
-		Cache     bool
-		Interval  uint
-		Wait      uint
-		DropRaw   bool
-		Regex     string
-		Prefix    string `json:"omitempty"`
-		Substring string `json:"omitempty"`
+		Fun          string
+		OutFmt       string
+		Cache        bool
+		Interval     uint
+		Wait         uint
+		DropRaw      bool
+		Regex        string `json:"regex,omitempty"`
+		NotRegex     string `json:"notRegex,omitempty"`
+		Prefix       string `json:"prefix,omitempty"`
+		NotPrefix    string `json:"notPrefix,omitempty"`
+		Substring    string `json:"substring,omitempty"`
+		NotSubstring string `json:"notSubstring,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
 	}
-	aggregate, err := aggregator.New(request.Fun, request.Regex, request.Prefix, request.Substring, request.OutFmt, request.Cache, request.Interval, request.Wait, request.DropRaw, table.In)
+	aggregate, err := aggregator.New(request.Fun, request.Regex, request.NotRegex, request.Prefix, request.NotPrefix, request.Substring, request.NotSubstring, request.OutFmt, request.Cache, request.Interval, request.Wait, request.DropRaw, table.In)
 	if err != nil {
 		return nil, &handlerError{err, "Couldn't create aggregator", http.StatusBadRequest}
 	}

@@ -62,8 +62,8 @@ type PubSub struct {
 
 // NewPubSub creates a route that writes metrics to a Google PubSub topic
 // We will automatically run the route and the destination
-func NewPubSub(key, prefix, sub, regex, project, topic, format, codec string, bufSize, flushMaxSize, flushMaxWait int, blocking bool) (Route, error) {
-	m, err := matcher.New(prefix, sub, regex)
+func NewPubSub(key, prefix, notPrefix, sub, notSub, regex, notRegex, project, topic, format, codec string, bufSize, flushMaxSize, flushMaxWait int, blocking bool) (Route, error) {
+	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return nil, err
 	}

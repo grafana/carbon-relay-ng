@@ -51,8 +51,8 @@ type KafkaMdm struct {
 
 // NewKafkaMdm creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
-func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool) (Route, error) {
-	m, err := matcher.New(prefix, sub, regex)
+func NewKafkaMdm(key, prefix, notPrefix, sub, notSub, regex, notRegex, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool) (Route, error) {
+	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return nil, err
 	}

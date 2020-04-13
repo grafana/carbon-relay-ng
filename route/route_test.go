@@ -8,7 +8,7 @@ import (
 
 // just sending into route, no matching or sending to dest
 func BenchmarkRouteDispatchMetric(b *testing.B) {
-	route, err := NewSendAllMatch("", "", "", "", make([]*destination.Destination, 0))
+	route, err := NewSendAllMatch("", "", "", "", "", "", "", make([]*destination.Destination, 0))
 	if err != nil {
 		b.Fatal(err)
 	}
