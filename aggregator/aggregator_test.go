@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/carbon-relay-ng/matcher"
 	"github.com/grafana/carbon-relay-ng/util"
 )
 
@@ -177,8 +178,6 @@ func TestScanner(t *testing.T) {
 	}
 }
 
-var r float64
-
 func BenchmarkProcessorMax(b *testing.B) {
 	procConstr, _ := GetProcessorConstructor("max")
 	proc := procConstr(3, 0)
@@ -186,11 +185,10 @@ func BenchmarkProcessorMax(b *testing.B) {
 		for j := 0; j < 10; j++ {
 			proc.Add(float64(j), uint32(j))
 		}
-		results, ok := proc.Flush()
+		_, ok := proc.Flush()
 		if !ok {
 			panic("why would max produce an invalid output here?")
 		}
-		r = results[0].val
 	}
 }
 
@@ -303,7 +301,11 @@ func benchmarkAggregator(aggregates, pointsPerAggregate int, match string, cache
 	clock.AddTick(tick)
 	bufSize := 2 * aggregates * pointsPerAggregate
 
-	agg, err := NewMocked("sum", regex, "", "", "", "", "", outFmt, cache, 10, 30, false, out, bufSize, clock.Now, tick.C)
+	matcher, err := matcher.New(regex, "", "", "", "", "")
+	if err != nil {
+		b.Fatalf("couldn't create matcher: %q", err)
+	}
+	agg, err := NewMocked("sum", matcher, outFmt, cache, 10, 30, false, out, bufSize, clock.Now, tick.C)
 	if err != nil {
 		b.Fatalf("couldn't create aggregation: %q", err)
 	}

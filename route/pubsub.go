@@ -62,12 +62,7 @@ type PubSub struct {
 
 // NewPubSub creates a route that writes metrics to a Google PubSub topic
 // We will automatically run the route and the destination
-func NewPubSub(key, prefix, notPrefix, sub, notSub, regex, notRegex, project, topic, format, codec string, bufSize, flushMaxSize, flushMaxWait int, blocking bool) (Route, error) {
-	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
-	if err != nil {
-		return nil, err
-	}
-
+func NewPubSub(key string, matcher matcher.Matcher, project, topic, format, codec string, bufSize, flushMaxSize, flushMaxWait int, blocking bool) (Route, error) {
 	r := &PubSub{
 		baseRoute: baseRoute{sync.Mutex{}, atomic.Value{}, key},
 		project:   project,
@@ -117,7 +112,7 @@ func NewPubSub(key, prefix, notPrefix, sub, notSub, regex, notRegex, project, to
 	}
 	r.psTopic = psTopic
 
-	r.config.Store(baseConfig{*m, make([]*dest.Destination, 0)})
+	r.config.Store(baseConfig{matcher, make([]*dest.Destination, 0)})
 	go r.run()
 	return r, nil
 }

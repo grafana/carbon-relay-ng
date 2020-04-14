@@ -325,7 +325,11 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	agg, err := aggregator.New(fun, regex, notRegex, prefix, notPrefix, sub, notSub, outFmt, cache, uint(interval), uint(wait), dropRaw, table.GetIn())
+	matcher, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
+	if err != nil {
+		return err
+	}
+	agg, err := aggregator.New(fun, matcher, outFmt, cache, uint(interval), uint(wait), dropRaw, table.GetIn())
 	if err != nil {
 		return err
 	}
@@ -381,15 +385,15 @@ func readAddBlack(s *toki.Scanner, table Table) error {
 		return errFmtAddBlack
 	}
 
-	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
+	matcher, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return err
 	}
-	table.AddBlacklist(m)
+	table.AddBlacklist(&matcher)
 	return nil
 }
 
-func readAddRoute(s *toki.Scanner, table Table, constructor func(key, prefix, notPrefix, sub, notSub, regex, notRegex string, destinations []*destination.Destination) (route.Route, error)) error {
+func readAddRoute(s *toki.Scanner, table Table, constructor func(key string, matcher matcher.Matcher, destinations []*destination.Destination) (route.Route, error)) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -397,6 +401,11 @@ func readAddRoute(s *toki.Scanner, table Table, constructor func(key, prefix, no
 	key := string(t.Value)
 
 	prefix, notPrefix, sub, notSub, regex, notRegex, err := readRouteOpts(s)
+	if err != nil {
+		return err
+	}
+
+	matcher, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return err
 	}
@@ -409,7 +418,7 @@ func readAddRoute(s *toki.Scanner, table Table, constructor func(key, prefix, no
 		return fmt.Errorf("must get at least 1 destination for route '%s'", key)
 	}
 
-	route, err := constructor(key, prefix, notPrefix, sub, notSub, regex, notRegex, destinations)
+	route, err := constructor(key, matcher, destinations)
 	if err != nil {
 		return err
 	}
@@ -429,6 +438,11 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
 		return err
 	}
 
+	matcher, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
+	if err != nil {
+		return err
+	}
+
 	destinations, err := readDestinations(s, table, false, key)
 	if err != nil {
 		return err
@@ -437,7 +451,7 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
 		return fmt.Errorf("must get at least 2 destination for route '%s'", key)
 	}
 
-	route, err := route.NewConsistentHashing(key, prefix, notPrefix, sub, notSub, regex, notRegex, destinations)
+	route, err := route.NewConsistentHashing(key, matcher, destinations)
 	if err != nil {
 		return err
 	}
@@ -452,6 +466,10 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 	key := string(t.Value)
 
 	prefix, notPrefix, sub, notSub, regex, notRegex, err := readRouteOpts(s)
+	if err != nil {
+		return err
+	}
+	matcher, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return err
 	}
@@ -584,13 +602,14 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	route, err := route.NewGrafanaNet(key, prefix, notPrefix, sub, notSub, regex, notRegex, addr, apiKey, schemasFile, spool, sslVerify, blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
+	route, err := route.NewGrafanaNet(key, matcher, addr, apiKey, schemasFile, spool, sslVerify, blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
 	if err != nil {
 		return err
 	}
 	table.AddRoute(route)
 	return nil
 }
+
 func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 	t := s.Next()
 	if t.Token != word {
@@ -599,6 +618,10 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 	key := string(t.Value)
 
 	prefix, notPrefix, sub, notSub, regex, notRegex, err := readRouteOpts(s)
+	if err != nil {
+		return err
+	}
+	matcher, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return err
 	}
@@ -716,7 +739,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	route, err := route.NewKafkaMdm(key, prefix, notPrefix, sub, notSub, regex, notRegex, topic, codec, schemasFile, partitionBy, brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, blocking)
+	route, err := route.NewKafkaMdm(key, matcher, topic, codec, schemasFile, partitionBy, brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, blocking)
 	if err != nil {
 		return err
 	}
@@ -732,6 +755,10 @@ func readAddRoutePubSub(s *toki.Scanner, table Table) error {
 	key := string(t.Value)
 
 	prefix, notPrefix, sub, notSub, regex, notRegex, err := readRouteOpts(s)
+	if err != nil {
+		return err
+	}
+	matcher, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return err
 	}
@@ -821,7 +848,7 @@ func readAddRoutePubSub(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	route, err := route.NewPubSub(key, prefix, notPrefix, sub, notSub, regex, notRegex, project, topic, format, codec, bufSize, flushMaxSize, flushMaxWait, blocking)
+	route, err := route.NewPubSub(key, matcher, project, topic, format, codec, bufSize, flushMaxSize, flushMaxWait, blocking)
 	if err != nil {
 		return err
 	}
@@ -1180,10 +1207,15 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool, routeKey s
 
 	periodFlush := time.Duration(flush) * time.Millisecond
 	periodReConn := time.Duration(reconn) * time.Millisecond
-	if !allowMatcher && (prefix != "" || sub != "" || regex != "") {
-		return nil, fmt.Errorf("matching options (prefix, sub, and regex) not allowed for this route type")
+	if !allowMatcher && prefix+notPrefix+sub+notSub+regex+notRegex != "" {
+		return nil, fmt.Errorf("matching options (prefix, notPrefix, sub, notSub, regex, notRegex) not allowed for this route type")
 	}
-	return destination.New(routeKey, prefix, notPrefix, sub, notSub, regex, notRegex, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep)
+	matcher, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to initialize matcher: %s", err)
+	}
+
+	return destination.New(routeKey, matcher, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep)
 }
 
 func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {

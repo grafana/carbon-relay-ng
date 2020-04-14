@@ -51,11 +51,7 @@ type CloudWatch struct {
 
 // NewCloudWatch creates a route that writes metrics to the AWS service CloudWatch
 // We will automatically run the route and the destination
-func NewCloudWatch(key, prefix, notPrefix, sub, notSub, regex, notRegex, awsProfile, awsRegion, awsNamespace string, awsDimensions [][]string, bufSize, flushMaxSize, flushMaxWait int, storageResolution int64, blocking bool) (Route, error) {
-	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
-	if err != nil {
-		return nil, err
-	}
+func NewCloudWatch(key string, matcher matcher.Matcher, awsProfile, awsRegion, awsNamespace string, awsDimensions [][]string, bufSize, flushMaxSize, flushMaxWait int, storageResolution int64, blocking bool) (Route, error) {
 
 	r := &CloudWatch{
 		awsProfile:         awsProfile,
@@ -114,7 +110,7 @@ func NewCloudWatch(key, prefix, notPrefix, sub, notSub, regex, notRegex, awsProf
 	// Create new CloudWatch client.
 	r.client = cloudwatch.New(r.session)
 
-	r.config.Store(baseConfig{*m, make([]*dest.Destination, 0)})
+	r.config.Store(baseConfig{matcher, make([]*dest.Destination, 0)})
 	go r.run()
 	return r, nil
 }

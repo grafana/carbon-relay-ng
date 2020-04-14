@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/carbon-relay-ng/aggregator"
 	"github.com/grafana/carbon-relay-ng/cfg"
 	"github.com/grafana/carbon-relay-ng/destination"
+	"github.com/grafana/carbon-relay-ng/matcher"
 	"github.com/grafana/carbon-relay-ng/rewriter"
 	"github.com/grafana/carbon-relay-ng/route"
 	tbl "github.com/grafana/carbon-relay-ng/table"
@@ -177,12 +178,7 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 	}
 	dest, err := destination.New(
 		req.Key,
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
+		matcher.Matcher{},
 		req.Address,
 		table.SpoolDir,
 		req.Spool,
@@ -202,13 +198,18 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 		return nil, &handlerError{err, "unable to create destination", http.StatusBadRequest}
 	}
 
+	matcher, err := matcher.New(req.Prefix, req.NotPrefix, req.Substring, req.NotSubstring, req.Regex, req.NotRegex)
+	if err != nil {
+		return nil, &handlerError{err, "unable to create matcher for route", http.StatusBadRequest}
+	}
+
 	var ro route.Route
 	var e error
 	switch req.Type {
 	case "sendAllMatch":
-		ro, e = route.NewSendAllMatch(req.Key, req.Prefix, req.NotPrefix, req.Substring, req.NotSubstring, req.Regex, req.NotRegex, []*destination.Destination{dest})
+		ro, e = route.NewSendAllMatch(req.Key, matcher, []*destination.Destination{dest})
 	case "sendFirstMatch":
-		ro, e = route.NewSendFirstMatch(req.Key, req.Prefix, req.NotPrefix, req.Substring, req.NotSubstring, req.Regex, req.NotRegex, []*destination.Destination{dest})
+		ro, e = route.NewSendFirstMatch(req.Key, matcher, []*destination.Destination{dest})
 	default:
 		return nil, &handlerError{nil, "unknown route type: " + req.Type, http.StatusBadRequest}
 	}
@@ -236,12 +237,19 @@ func parseAggregateRequest(r *http.Request) (*aggregator.Aggregator, *handlerErr
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
 	}
-	aggregate, err := aggregator.New(request.Fun, request.Regex, request.NotRegex, request.Prefix, request.NotPrefix, request.Substring, request.NotSubstring, request.OutFmt, request.Cache, request.Interval, request.Wait, request.DropRaw, table.In)
+
+	matcher, err := matcher.New(request.Prefix, request.NotPrefix, request.Substring, request.NotSubstring, request.Regex, request.NotRegex)
+	if err != nil {
+		return nil, &handlerError{err, "unable to create matcher for route", http.StatusBadRequest}
+	}
+
+	aggregate, err := aggregator.New(request.Fun, matcher, request.OutFmt, request.Cache, request.Interval, request.Wait, request.DropRaw, table.In)
 	if err != nil {
 		return nil, &handlerError{err, "Couldn't create aggregator", http.StatusBadRequest}
 	}
 	return aggregate, nil
 }
+
 func parseRewriterRequest(r *http.Request) (rewriter.RW, *handlerError) {
 	var request struct {
 		Old string

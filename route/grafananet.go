@@ -62,11 +62,7 @@ type GrafanaNet struct {
 // NewGrafanaNet creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
 // ignores spool for now
-func NewGrafanaNet(key, prefix, notPrefix, sub, notSub, regex, notRegex, addr, apiKey, schemasFile string, spool, sslVerify, blocking bool, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId int) (Route, error) {
-	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
-	if err != nil {
-		return nil, err
-	}
+func NewGrafanaNet(key string, matcher matcher.Matcher, addr, apiKey, schemasFile string, spool, sslVerify, blocking bool, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId int) (Route, error) {
 	schemas, err := getSchemas(schemasFile)
 	if err != nil {
 		return nil, err
@@ -116,7 +112,7 @@ func NewGrafanaNet(key, prefix, notPrefix, sub, notSub, regex, notRegex, addr, a
 		r.in[i] = make(chan []byte, bufSize/r.concurrency)
 		go r.run(r.in[i])
 	}
-	r.config.Store(baseConfig{*m, make([]*dest.Destination, 0)})
+	r.config.Store(baseConfig{matcher, make([]*dest.Destination, 0)})
 
 	// start off with a transport the same as Go's DefaultTransport
 	transport := &http.Transport{

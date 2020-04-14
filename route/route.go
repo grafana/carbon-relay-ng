@@ -76,38 +76,26 @@ type ConsistentHashing struct {
 
 // NewSendAllMatch creates a sendAllMatch route.
 // We will automatically run the route and the given destinations
-func NewSendAllMatch(key, prefix, notPrefix, sub, notSub, regex, notRegex string, destinations []*dest.Destination) (Route, error) {
-	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
-	if err != nil {
-		return nil, err
-	}
+func NewSendAllMatch(key string, matcher matcher.Matcher, destinations []*dest.Destination) (Route, error) {
 	r := &SendAllMatch{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
-	r.config.Store(baseConfig{*m, destinations})
+	r.config.Store(baseConfig{matcher, destinations})
 	r.run()
 	return r, nil
 }
 
 // NewSendFirstMatch creates a sendFirstMatch route.
 // We will automatically run the route and the given destinations
-func NewSendFirstMatch(key, prefix, notPrefix, sub, notSub, regex, notRegex string, destinations []*dest.Destination) (Route, error) {
-	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
-	if err != nil {
-		return nil, err
-	}
+func NewSendFirstMatch(key string, matcher matcher.Matcher, destinations []*dest.Destination) (Route, error) {
 	r := &SendFirstMatch{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
-	r.config.Store(baseConfig{*m, destinations})
+	r.config.Store(baseConfig{matcher, destinations})
 	r.run()
 	return r, nil
 }
 
-func NewConsistentHashing(key, prefix, notPrefix, sub, notSub, regex, notRegex string, destinations []*dest.Destination) (Route, error) {
-	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
-	if err != nil {
-		return nil, err
-	}
+func NewConsistentHashing(key string, matcher matcher.Matcher, destinations []*dest.Destination) (Route, error) {
 	r := &ConsistentHashing{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
 	hasher := NewConsistentHasher(destinations)
-	r.config.Store(consistentHashingConfig{baseConfig{*m, destinations},
+	r.config.Store(consistentHashingConfig{baseConfig{matcher, destinations},
 		&hasher})
 	r.run()
 	return r, nil
@@ -350,7 +338,7 @@ func (route *baseRoute) update(opts map[string]string, extendConfig baseCfgExten
 		if err != nil {
 			return err
 		}
-		conf = extendConfig(baseConfig{*match, conf.Dests()})
+		conf = extendConfig(baseConfig{match, conf.Dests()})
 	}
 	route.config.Store(conf)
 	return nil

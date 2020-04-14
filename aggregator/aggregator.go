@@ -1,36 +1,24 @@
 package aggregator
 
 import (
-	"bytes"
 	"crypto/md5"
 	"fmt"
-	"regexp"
 	"sort"
 	"sync"
 	"time"
 
 	metrics "github.com/Dieterbe/go-metrics"
 	"github.com/grafana/carbon-relay-ng/clock"
+	"github.com/grafana/carbon-relay-ng/matcher"
 	"github.com/grafana/carbon-relay-ng/stats"
 )
 
 type Aggregator struct {
 	Fun          string `json:"fun"`
 	procConstr   func(val float64, ts uint32) Processor
-	in           chan msg       `json:"-"` // incoming metrics, already split in 3 fields
-	out          chan []byte    // outgoing metrics
-	Regex        string         `json:"regex,omitempty"`
-	NotRegex     string         `json:"notRegex,omitempty"`
-	Prefix       string         `json:"prefix,omitempty"`
-	NotPrefix    string         `json:"notPrefix,omitempty"`
-	Sub          string         `json:"substring,omitempty"`
-	NotSub       string         `json:"notSubstring,omitempty"`
-	regex        *regexp.Regexp // compiled version of Regex
-	notRegex     *regexp.Regexp // compiled version of NotRegex
-	prefix       []byte         // automatically generated based on Prefix or regex, for fast preMatch
-	notPrefix    []byte         // automatically generated based on NotPrefix or notRegex, for fast preMatch
-	substring    []byte         // based on Sub, for fast preMatch
-	notSubstring []byte         // based on NotSub, for fast preMatch
+	in           chan msg    `json:"-"` // incoming metrics, already split in 3 fields
+	out          chan []byte // outgoing metrics
+	Matcher      matcher.Matcher
 	OutFmt       string
 	outFmt       []byte
 	Cache        bool
@@ -64,49 +52,13 @@ type msg struct {
 	ts  uint32
 }
 
-// regexToPrefix inspects the regex and returns the longest static prefix part of the regex
-// all inputs for which the regex match, must have this prefix
-func regexToPrefix(regex string) []byte {
-	substr := ""
-	for i := 0; i < len(regex); i++ {
-		ch := regex[i]
-		if i == 0 {
-			if ch == '^' {
-				continue // good we need this
-			} else {
-				break // can't deduce any substring here
-			}
-		}
-		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' {
-			substr += string(ch)
-			// "\." means a dot character
-		} else if ch == 92 && i+1 < len(regex) && regex[i+1] == '.' {
-			substr += "."
-			i += 1
-		} else {
-			//fmt.Println("don't know what to do with", string(ch))
-			// anything more advanced should be regex syntax that is more permissive and hence not a static substring.
-			break
-		}
-	}
-	return []byte(substr)
-}
-
 // New creates an aggregator
-func New(fun, regex, notRegex, prefix, notPrefix, sub, notSub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte) (*Aggregator, error) {
+func New(fun string, matcher matcher.Matcher, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte) (*Aggregator, error) {
 	ticker := clock.AlignedTick(time.Duration(interval)*time.Second, time.Duration(wait)*time.Second, 2)
-	return NewMocked(fun, regex, notRegex, prefix, notPrefix, sub, notSub, outFmt, cache, interval, wait, dropRaw, out, 2000, time.Now, ticker)
+	return NewMocked(fun, matcher, outFmt, cache, interval, wait, dropRaw, out, 2000, time.Now, ticker)
 }
 
-func NewMocked(fun, regex, notRegex, prefix, notPrefix, sub, notSub, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
-	regexObj, err := regexp.Compile(regex)
-	if err != nil {
-		return nil, err
-	}
-	notRegexObj, err := regexp.Compile(notRegex)
-	if err != nil {
-		return nil, err
-	}
+func NewMocked(fun string, matcher matcher.Matcher, outFmt string, cache bool, interval, wait uint, dropRaw bool, out chan []byte, inBuf int, now func() time.Time, tick <-chan time.Time) (*Aggregator, error) {
 	procConstr, err := GetProcessorConstructor(fun)
 	if err != nil {
 		return nil, err
@@ -117,14 +69,7 @@ func NewMocked(fun, regex, notRegex, prefix, notPrefix, sub, notSub, outFmt stri
 		procConstr:   procConstr,
 		in:           make(chan msg, inBuf),
 		out:          out,
-		Regex:        regex,
-		NotRegex:     notRegex,
-		Sub:          sub,
-		NotSub:       notSub,
-		regex:        regexObj,
-		notRegex:     notRegexObj,
-		substring:    []byte(sub),
-		notSubstring: []byte(notSub),
+		Matcher:      matcher,
 		OutFmt:       outFmt,
 		outFmt:       []byte(outFmt),
 		Cache:        cache,
@@ -137,13 +82,6 @@ func NewMocked(fun, regex, notRegex, prefix, notPrefix, sub, notSub, outFmt stri
 		shutdown:     make(chan struct{}),
 		now:          now,
 		tick:         tick,
-	}
-	if prefix != "" {
-		a.prefix = []byte(prefix)
-		a.Prefix = prefix
-	} else {
-		a.prefix = regexToPrefix(regex)
-		a.Prefix = string(a.prefix)
 	}
 	if cache {
 		a.reCache = make(map[string]CacheEntry)
@@ -166,11 +104,17 @@ func (a *Aggregator) setKey() string {
 	h := md5.New()
 	h.Write([]byte(a.Fun))
 	h.Write([]byte("\000"))
-	h.Write([]byte(a.Regex))
+	h.Write([]byte(a.Matcher.Regex))
 	h.Write([]byte("\000"))
-	h.Write([]byte(a.Prefix))
+	h.Write([]byte(a.Matcher.NotRegex))
 	h.Write([]byte("\000"))
-	h.Write([]byte(a.Sub))
+	h.Write([]byte(a.Matcher.Prefix))
+	h.Write([]byte("\000"))
+	h.Write([]byte(a.Matcher.NotPrefix))
+	h.Write([]byte("\000"))
+	h.Write([]byte(a.Matcher.Sub))
+	h.Write([]byte("\000"))
+	h.Write([]byte(a.Matcher.NotSub))
 	h.Write([]byte("\000"))
 	h.Write([]byte(a.OutFmt))
 
@@ -279,7 +223,7 @@ func (a *Aggregator) Shutdown() {
 }
 
 func (a *Aggregator) AddMaybe(buf [][]byte, val float64, ts uint32) bool {
-	if !a.PreMatch(buf[0]) {
+	if !a.Matcher.MatchAllExceptRegex(buf[0]) {
 		return false
 	}
 
@@ -299,39 +243,16 @@ func (a *Aggregator) AddMaybe(buf [][]byte, val float64, ts uint32) bool {
 	return a.DropRaw
 }
 
-//PreMatch checks if the specified metric matches the specified prefix and/or substring
-//If prefix isn't explicitly specified it will be derived from the regex where possible.
-//If this returns false the metric will not be passed through to the main regex matching stage.
-func (a *Aggregator) PreMatch(buf []byte) bool {
-	if len(a.prefix) > 0 && !bytes.HasPrefix(buf, a.prefix) {
-		return false
-	}
-	if len(a.substring) > 0 && !bytes.Contains(buf, a.substring) {
-		return false
-	}
-	return true
-}
-
 type CacheEntry struct {
 	match bool
 	key   string
 	seen  uint32
 }
 
-//
-func (a *Aggregator) match(key []byte) (string, bool) {
-	var dst []byte
-	matches := a.regex.FindSubmatchIndex(key)
-	if matches == nil {
-		return "", false
-	}
-	return string(a.regex.Expand(dst, a.outFmt, key, matches)), true
-}
-
 // matchWithCache returns whether there was a match, and under which key, if so.
 func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
 	if a.reCache == nil {
-		return a.match(key)
+		return a.Matcher.MatchRegexAndExpand(key, a.outFmt)
 	}
 
 	a.reCacheMutex.Lock()
@@ -346,8 +267,7 @@ func (a *Aggregator) matchWithCache(key []byte) (string, bool) {
 		return entry.key, entry.match
 	}
 
-	outKey, ok = a.match(key)
-
+	outKey, ok = a.Matcher.MatchRegexAndExpand(key, a.outFmt)
 	a.reCache[string(key)] = CacheEntry{
 		ok,
 		outKey,
@@ -409,11 +329,7 @@ func (a *Aggregator) run() {
 			s := &Aggregator{
 				Fun:          a.Fun,
 				procConstr:   a.procConstr,
-				Regex:        a.Regex,
-				Prefix:       a.Prefix,
-				Sub:          a.Sub,
-				prefix:       a.prefix,
-				substring:    a.substring,
+				Matcher:      a.Matcher,
 				OutFmt:       a.OutFmt,
 				Cache:        a.Cache,
 				Interval:     a.Interval,

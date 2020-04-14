@@ -153,7 +153,7 @@ func (table *Table) Dispatch(buf []byte) {
 		// we rely on incoming metrics already having been validated
 		dropRaw := aggregator.AddMaybe(fields, val, ts)
 		if dropRaw {
-			log.Tracef("table dropped %s, matched dropRaw aggregator %s", buf_copy, aggregator.Regex)
+			log.Tracef("table dropped %s, matched dropRaw aggregator %s", buf_copy, aggregator.Matcher.Regex)
 			return
 		}
 	}
@@ -442,9 +442,9 @@ func (table *Table) Print() (str string) {
 	for _, agg := range t.Aggregators {
 		maxAKey = max(maxAKey, len(agg.Key))
 		maxAFunc = max(maxAFunc, len(agg.Fun))
-		maxARegex = max(maxARegex, len(agg.Regex))
-		maxAPrefix = max(maxAPrefix, len(agg.Prefix))
-		maxASub = max(maxASub, len(agg.Sub))
+		maxARegex = max(maxARegex, len(agg.Matcher.Regex))
+		maxAPrefix = max(maxAPrefix, len(agg.Matcher.Prefix))
+		maxASub = max(maxASub, len(agg.Matcher.Sub))
 		maxAOutFmt = max(maxAOutFmt, len(agg.OutFmt))
 		maxAInterval = max(maxAInterval, len(fmt.Sprintf("%d", agg.Interval)))
 		maxAwait = max(maxAwait, len(fmt.Sprintf("%d", agg.Wait)))
@@ -496,7 +496,7 @@ func (table *Table) Print() (str string) {
 	cols = fmt.Sprintf(heaFmtA, "key", "func", "regex", "prefix", "substr", "outFmt", "cache", "interval", "wait", "dropRaw")
 	str += cols + underscore(len(cols)-1)
 	for _, agg := range t.Aggregators {
-		str += fmt.Sprintf(rowFmtA, agg.Key, agg.Fun, agg.Regex, agg.Prefix, agg.Sub, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait, agg.DropRaw)
+		str += fmt.Sprintf(rowFmtA, agg.Key, agg.Fun, agg.Matcher.Regex, agg.Matcher.Prefix, agg.Matcher.Sub, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait, agg.DropRaw)
 	}
 
 	str += "\n## Routes:\n"
@@ -624,7 +624,7 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 			return fmt.Errorf("could not apply blacklist cmd #%d", i+1)
 		}
 
-		table.AddBlacklist(m)
+		table.AddBlacklist(&m)
 	}
 
 	return nil
@@ -632,7 +632,11 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 
 func (table *Table) InitAggregation(config cfg.Config) error {
 	for i, aggConfig := range config.Aggregation {
-		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.NotRegex, aggConfig.Prefix, aggConfig.NotPrefix, aggConfig.Substr, aggConfig.NotSubstr, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), aggConfig.DropRaw, table.In)
+		matcher, err := matcher.New(aggConfig.Prefix, aggConfig.NotPrefix, aggConfig.Substr, aggConfig.NotSubstr, aggConfig.Regex, aggConfig.NotRegex)
+		if err != nil {
+			return fmt.Errorf("Failed to instantiate matcher: %s", err)
+		}
+		agg, err := aggregator.New(aggConfig.Function, matcher, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), aggConfig.DropRaw, table.In)
 		if err != nil {
 			log.Error(err.Error())
 			return fmt.Errorf("could not add aggregation #%d", i+1)
@@ -660,6 +664,11 @@ func (table *Table) InitRewrite(config cfg.Config) error {
 
 func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 	for _, routeConfig := range config.Route {
+		matcher, err := matcher.New(routeConfig.Prefix, routeConfig.NotPrefix, routeConfig.Substr, routeConfig.NotSubstr, routeConfig.Regex, routeConfig.NotRegex)
+		if err != nil {
+			return fmt.Errorf("Failed to instantiate matcher: %s", err)
+		}
+
 		switch routeConfig.Type {
 		case "sendAllMatch":
 			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, true, routeConfig.Key)
@@ -671,7 +680,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				return fmt.Errorf("must get at least 1 destination for route '%s'", routeConfig.Key)
 			}
 
-			route, err := route.NewSendAllMatch(routeConfig.Key, routeConfig.Prefix, routeConfig.NotPrefix, routeConfig.Substr, routeConfig.NotSubstr, routeConfig.Regex, routeConfig.NotRegex, destinations)
+			route, err := route.NewSendAllMatch(routeConfig.Key, matcher, destinations)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -687,7 +696,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				return fmt.Errorf("must get at least 1 destination for route '%s'", routeConfig.Key)
 			}
 
-			route, err := route.NewSendFirstMatch(routeConfig.Key, routeConfig.Prefix, routeConfig.NotPrefix, routeConfig.Substr, routeConfig.NotSubstr, routeConfig.Regex, routeConfig.NotRegex, destinations)
+			route, err := route.NewSendFirstMatch(routeConfig.Key, matcher, destinations)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -703,7 +712,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				return fmt.Errorf("must get at least 2 destination for route '%s'", routeConfig.Key)
 			}
 
-			route, err := route.NewConsistentHashing(routeConfig.Key, routeConfig.Prefix, routeConfig.NotPrefix, routeConfig.Substr, routeConfig.NotSubstr, routeConfig.Regex, routeConfig.NotRegex, destinations)
+			route, err := route.NewConsistentHashing(routeConfig.Key, matcher, destinations)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -765,7 +774,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				orgId = routeConfig.OrgId
 			}
 
-			route, err := route.NewGrafanaNet(routeConfig.Key, routeConfig.Prefix, routeConfig.NotPrefix, routeConfig.Substr, routeConfig.NotSubstr, routeConfig.Regex, routeConfig.NotRegex, routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile, spool, sslVerify, routeConfig.Blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
+			route, err := route.NewGrafanaNet(routeConfig.Key, matcher, routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile, spool, sslVerify, routeConfig.Blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -799,7 +808,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				orgId = routeConfig.OrgId
 			}
 
-			route, err := route.NewKafkaMdm(routeConfig.Key, routeConfig.Prefix, routeConfig.NotPrefix, routeConfig.Substr, routeConfig.NotSubstr, routeConfig.Regex, routeConfig.NotRegex, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, routeConfig.Blocking)
+			route, err := route.NewKafkaMdm(routeConfig.Key, matcher, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, routeConfig.Blocking)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -828,7 +837,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				flushMaxWait = routeConfig.FlushMaxWait
 			}
 
-			route, err := route.NewPubSub(routeConfig.Key, routeConfig.Prefix, routeConfig.NotPrefix, routeConfig.Substr, routeConfig.NotSubstr, routeConfig.Regex, routeConfig.NotRegex, routeConfig.Project, routeConfig.Topic, format, codec, bufSize, flushMaxSize, flushMaxWait, routeConfig.Blocking)
+			route, err := route.NewPubSub(routeConfig.Key, matcher, routeConfig.Project, routeConfig.Topic, format, codec, bufSize, flushMaxSize, flushMaxWait, routeConfig.Blocking)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -869,7 +878,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				storageResolution = routeConfig.StorageResolution
 			}
 
-			route, err := route.NewCloudWatch(routeConfig.Key, routeConfig.Prefix, routeConfig.NotPrefix, routeConfig.Substr, routeConfig.NotSubstr, routeConfig.Regex, routeConfig.NotRegex, awsProfile, awsRegion, awsNamespace, awsDimensions, bufSize, flushMaxSize, flushMaxWait, storageResolution, routeConfig.Blocking)
+			route, err := route.NewCloudWatch(routeConfig.Key, matcher, awsProfile, awsRegion, awsNamespace, awsDimensions, bufSize, flushMaxSize, flushMaxWait, storageResolution, routeConfig.Blocking)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)

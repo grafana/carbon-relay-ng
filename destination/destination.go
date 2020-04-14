@@ -69,15 +69,11 @@ type Destination struct {
 }
 
 // New creates a destination object. Note that it still needs to be told to run via Run().
-func New(routeName, prefix, notPrefix, sub, notSub, regex, notRegex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration) (*Destination, error) {
-	m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
-	if err != nil {
-		return nil, err
-	}
+func New(routeName string, matcher matcher.Matcher, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration) (*Destination, error) {
 	key := util.Key(routeName, addr)
 	addr, instance := addrInstanceSplit(addr)
 	dest := &Destination{
-		Matcher:              *m,
+		Matcher:              matcher,
 		Addr:                 addr,
 		Instance:             instance,
 		SpoolDir:             spoolDir,
@@ -158,7 +154,7 @@ func (dest *Destination) Update(opts map[string]string) error {
 		if err != nil {
 			return err
 		}
-		dest.UpdateMatcher(*match)
+		dest.UpdateMatcher(match)
 	}
 	return nil
 }
