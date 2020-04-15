@@ -18,8 +18,8 @@ type Matcher struct {
 	// compiled version of Regex
 	regex, notRegex *regexp.Regexp
 
-	Match               matcherFunc
-	MatchAllExceptRegex matcherFunc
+	Match               matcherFunc `json:"-"`
+	MatchAllExceptRegex matcherFunc `json:"-"`
 }
 
 type matcherFunc func([]byte) bool
