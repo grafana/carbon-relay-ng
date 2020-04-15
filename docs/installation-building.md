@@ -17,9 +17,9 @@ See the installation instructions on those pages for how to enable the repositor
 
 We host packages for Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8, 9, 10 (jessie, stretch and buster/testing), Centos6 and Centos7.
 
-## Windows
+## Binaries
 
-For Windows users, see the included executables along with the release on the [releases](https://github.com/grafana/carbon-relay-ng/releases) page.
+Executable Binaries for Linux, Mac, and Windows can be found on the [releases](https://github.com/grafana/carbon-relay-ng/releases) page (starting with v0.13.0) .
 
 ## Docker images
 
@@ -77,4 +77,4 @@ When interesting changes have been merged to master, and they have had a chance 
 * create annotated git tag in the form `v<version>` and push to GitHub
 * wait for CircleCI to complete successfully.
 * create release on GitHub. copy entry from CHANGELOG.md to GitHub release page
-* upload windows build from CircleCI to the release as well.
+* upload platform specific binaries from CircleCI to the release as well.
