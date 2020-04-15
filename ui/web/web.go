@@ -155,8 +155,8 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 		Type                 string
 		Prefix               string
 		NotPrefix            string
-		Substring            string
-		NotSubstring         string
+		Sub                  string
+		NotSub               string
 		Regex                string
 		NotRegex             string
 		Address              string
@@ -198,7 +198,7 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 		return nil, &handlerError{err, "unable to create destination", http.StatusBadRequest}
 	}
 
-	matcher, err := matcher.New(req.Prefix, req.NotPrefix, req.Substring, req.NotSubstring, req.Regex, req.NotRegex)
+	matcher, err := matcher.New(req.Prefix, req.NotPrefix, req.Sub, req.NotSub, req.Regex, req.NotRegex)
 	if err != nil {
 		return nil, &handlerError{err, "unable to create matcher for route", http.StatusBadRequest}
 	}
@@ -221,24 +221,24 @@ func parseRouteRequest(r *http.Request) (route.Route, *handlerError) {
 
 func parseAggregateRequest(r *http.Request) (*aggregator.Aggregator, *handlerError) {
 	var request struct {
-		Fun          string
-		OutFmt       string
-		Cache        bool
-		Interval     uint
-		Wait         uint
-		DropRaw      bool
-		Regex        string `json:"regex,omitempty"`
-		NotRegex     string `json:"notRegex,omitempty"`
-		Prefix       string `json:"prefix,omitempty"`
-		NotPrefix    string `json:"notPrefix,omitempty"`
-		Substring    string `json:"substring,omitempty"`
-		NotSubstring string `json:"notSubstring,omitempty"`
+		Fun       string
+		OutFmt    string
+		Cache     bool
+		Interval  uint
+		Wait      uint
+		DropRaw   bool
+		Regex     string `json:"regex,omitempty"`
+		NotRegex  string `json:"notRegex,omitempty"`
+		Prefix    string `json:"prefix,omitempty"`
+		NotPrefix string `json:"notPrefix,omitempty"`
+		Sub       string `json:"sub,omitempty"`
+		NotSub    string `json:"notSub,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, &handlerError{err, "Couldn't parse json", http.StatusBadRequest}
 	}
 
-	matcher, err := matcher.New(request.Prefix, request.NotPrefix, request.Substring, request.NotSubstring, request.Regex, request.NotRegex)
+	matcher, err := matcher.New(request.Prefix, request.NotPrefix, request.Sub, request.NotSub, request.Regex, request.NotRegex)
 	if err != nil {
 		return nil, &handlerError{err, "unable to create matcher for route", http.StatusBadRequest}
 	}

@@ -9,8 +9,8 @@ import (
 type Matcher struct {
 	Prefix    string `json:"prefix,omitempty"`
 	NotPrefix string `json:"notPrefix,omitempty"`
-	Sub       string `json:"substring,omitempty"`
-	NotSub    string `json:"notSubstring,omitempty"`
+	Sub       string `json:"sub,omitempty"`
+	NotSub    string `json:"notSub,omitempty"`
 	Regex     string `json:"regex,omitempty"`
 	NotRegex  string `json:"notRegex,omitempty"`
 	// internal representation for performance optimization
@@ -28,6 +28,7 @@ func New(prefix, notPrefix, sub, notSub, regex, notRegex string) (Matcher, error
 		Regex:     regex,
 		NotRegex:  notRegex,
 	}
+
 	err := match.updateInternals()
 	if err != nil {
 		return match, err
