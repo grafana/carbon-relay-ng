@@ -8,8 +8,5 @@ tag=master
 grep -q "master" .git/HEAD && [[ "$version" != *-* ]] && tag=latest
 
 
-# push to both raintank and grafana orgs for now, switch to just grafana at some point in the future
 docker build --tag=raintank/carbon-relay-ng:$tag .
 docker tag raintank/carbon-relay-ng:$tag raintank/carbon-relay-ng:$version
-docker tag raintank/carbon-relay-ng:$tag grafana/carbon-relay-ng:$tag
-docker tag raintank/carbon-relay-ng:$tag grafana/carbon-relay-ng:version
