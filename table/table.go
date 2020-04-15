@@ -401,24 +401,36 @@ func (table *Table) Print() (str string) {
 	// the default values can be arbitrary (bot not smaller than the column titles),
 	// 'R' stands for Route, 'D' for dest, 'B' blacklist, 'A" for aggregation, 'RW' for rewriter
 	maxBPrefix := 6
+	maxBNotPrefix := 9
 	maxBSub := 6
+	maxBNotSub := 9
 	maxBRegex := 5
+	maxBNotRegex := 8
 	maxAKey := 4
 	maxAFunc := 4
 	maxARegex := 5
+	maxANotRegex := 8
 	maxAPrefix := 6
+	maxANotPrefix := 9
 	maxASub := 6
+	maxANotSub := 9
 	maxAOutFmt := 6
 	maxAInterval := 8
 	maxAwait := 4
 	maxRType := 4
 	maxRKey := 3
 	maxRPrefix := 6
+	maxRNotPrefix := 9
 	maxRSub := 6
+	maxRNotSub := 9
 	maxRRegex := 5
+	maxRNotRegex := 8
 	maxDPrefix := 6
+	maxDNotPrefix := 9
 	maxDSub := 6
+	maxDNotSub := 9
 	maxDRegex := 5
+	maxDNotRegex := 8
 	maxDAddr := 16
 	maxDSpoolDir := 16
 
@@ -436,15 +448,21 @@ func (table *Table) Print() (str string) {
 	}
 	for _, black := range t.Blacklist {
 		maxBPrefix = max(maxBPrefix, len(black.Prefix))
+		maxBNotPrefix = max(maxBNotPrefix, len(black.NotPrefix))
 		maxBSub = max(maxBSub, len(black.Sub))
+		maxBNotSub = max(maxBNotSub, len(black.NotSub))
 		maxBRegex = max(maxBRegex, len(black.Regex))
+		maxBNotRegex = max(maxBNotRegex, len(black.NotRegex))
 	}
 	for _, agg := range t.Aggregators {
 		maxAKey = max(maxAKey, len(agg.Key))
 		maxAFunc = max(maxAFunc, len(agg.Fun))
 		maxARegex = max(maxARegex, len(agg.Matcher.Regex))
+		maxANotRegex = max(maxANotRegex, len(agg.Matcher.NotRegex))
 		maxAPrefix = max(maxAPrefix, len(agg.Matcher.Prefix))
+		maxANotPrefix = max(maxANotPrefix, len(agg.Matcher.NotPrefix))
 		maxASub = max(maxASub, len(agg.Matcher.Sub))
+		maxANotSub = max(maxANotSub, len(agg.Matcher.NotSub))
 		maxAOutFmt = max(maxAOutFmt, len(agg.OutFmt))
 		maxAInterval = max(maxAInterval, len(fmt.Sprintf("%d", agg.Interval)))
 		maxAwait = max(maxAwait, len(fmt.Sprintf("%d", agg.Wait)))
@@ -453,26 +471,32 @@ func (table *Table) Print() (str string) {
 		maxRType = max(maxRType, len(route.Type))
 		maxRKey = max(maxRKey, len(route.Key))
 		maxRPrefix = max(maxRPrefix, len(route.Matcher.Prefix))
+		maxRNotPrefix = max(maxRNotPrefix, len(route.Matcher.NotPrefix))
 		maxRSub = max(maxRSub, len(route.Matcher.Sub))
+		maxRNotSub = max(maxRNotSub, len(route.Matcher.NotSub))
 		maxRRegex = max(maxRRegex, len(route.Matcher.Regex))
+		maxRNotRegex = max(maxRNotRegex, len(route.Matcher.NotRegex))
 		for _, dest := range route.Dests {
 			maxDPrefix = max(maxDPrefix, len(dest.Matcher.Prefix))
+			maxDNotPrefix = max(maxDNotPrefix, len(dest.Matcher.NotPrefix))
 			maxDSub = max(maxDSub, len(dest.Matcher.Sub))
+			maxDNotSub = max(maxDNotSub, len(dest.Matcher.NotSub))
 			maxDRegex = max(maxDRegex, len(dest.Matcher.Regex))
+			maxDNotRegex = max(maxDNotRegex, len(dest.Matcher.NotRegex))
 			maxDAddr = max(maxDAddr, len(dest.Addr))
 			maxDSpoolDir = max(maxDSpoolDir, len(dest.SpoolDir))
 		}
 	}
 	heaFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRWOld, maxRWNew, maxRWNot, maxRWMax)
 	rowFmtRW := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%dd\n", maxRWOld, maxRWNew, maxRWNot, maxRWMax)
-	heaFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBSub, maxBRegex)
-	rowFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBSub, maxBRegex)
-	heaFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-%ds  %%-%ds %%-7s\n", maxAKey, maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
-	rowFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5t  %%-%dd  %%-%dd %%-7t\n", maxAKey, maxAFunc, maxARegex, maxAPrefix, maxASub, maxAOutFmt, maxAInterval, maxAwait)
-	heaFmtR := fmt.Sprintf("  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRType, maxRKey, maxRPrefix, maxRSub, maxRRegex)
-	rowFmtR := fmt.Sprintf("> %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRType, maxRKey, maxRPrefix, maxRSub, maxRRegex)
-	heaFmtD := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-6s  %%-6s\n", maxDPrefix, maxDSub, maxDRegex, maxDAddr, maxDSpoolDir)
-	rowFmtD := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5t  %%-6t  %%-6t\n", maxDPrefix, maxDSub, maxDRegex, maxDAddr, maxDSpoolDir)
+	heaFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBNotPrefix, maxBSub, maxBNotSub, maxBRegex, maxBNotRegex)
+	rowFmtB := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxBPrefix, maxBNotPrefix, maxBSub, maxBNotSub, maxBRegex, maxBNotRegex)
+	heaFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-%ds  %%-%ds %%-7s\n", maxAKey, maxAFunc, maxARegex, maxANotRegex, maxAPrefix, maxANotPrefix, maxASub, maxANotSub, maxAOutFmt, maxAInterval, maxAwait)
+	rowFmtA := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5t  %%-%dd  %%-%dd %%-7t\n", maxAKey, maxAFunc, maxARegex, maxANotRegex, maxAPrefix, maxANotPrefix, maxASub, maxANotSub, maxAOutFmt, maxAInterval, maxAwait)
+	heaFmtR := fmt.Sprintf("  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRType, maxRKey, maxRPrefix, maxRNotPrefix, maxRSub, maxRNotSub, maxRRegex, maxRNotRegex)
+	rowFmtR := fmt.Sprintf("> %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds\n", maxRType, maxRKey, maxRPrefix, maxRNotPrefix, maxRSub, maxRNotSub, maxRRegex, maxRNotRegex)
+	heaFmtD := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5s  %%-6s  %%-6s\n", maxDPrefix, maxDNotPrefix, maxDSub, maxDNotSub, maxDRegex, maxDNotRegex, maxDAddr, maxDSpoolDir)
+	rowFmtD := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-5t  %%-6t  %%-6t\n", maxDPrefix, maxDNotPrefix, maxDSub, maxDNotSub, maxDRegex, maxDNotRegex, maxDAddr, maxDSpoolDir)
 
 	underscore := func(amount int) string {
 		return strings.Repeat("=", amount) + "\n"
@@ -486,29 +510,29 @@ func (table *Table) Print() (str string) {
 	}
 
 	str += "\n## Blacklist:\n"
-	cols = fmt.Sprintf(heaFmtB, "prefix", "substr", "regex")
+	cols = fmt.Sprintf(heaFmtB, "prefix", "notPrefix", "substr", "notSubstr", "regex", "notRegex")
 	str += cols + underscore(len(cols)-1)
 	for _, black := range t.Blacklist {
-		str += fmt.Sprintf(rowFmtB, black.Prefix, black.Sub, black.Regex)
+		str += fmt.Sprintf(rowFmtB, black.Prefix, black.NotPrefix, black.Sub, black.NotSub, black.Regex, black.NotRegex)
 	}
 
 	str += "\n## Aggregations:\n"
-	cols = fmt.Sprintf(heaFmtA, "key", "func", "regex", "prefix", "substr", "outFmt", "cache", "interval", "wait", "dropRaw")
+	cols = fmt.Sprintf(heaFmtA, "key", "func", "regex", "notRegex", "prefix", "notPrefix", "substr", "notSubstr", "outFmt", "cache", "interval", "wait", "dropRaw")
 	str += cols + underscore(len(cols)-1)
 	for _, agg := range t.Aggregators {
-		str += fmt.Sprintf(rowFmtA, agg.Key, agg.Fun, agg.Matcher.Regex, agg.Matcher.Prefix, agg.Matcher.Sub, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait, agg.DropRaw)
+		str += fmt.Sprintf(rowFmtA, agg.Key, agg.Fun, agg.Matcher.Regex, agg.Matcher.NotRegex, agg.Matcher.Prefix, agg.Matcher.NotPrefix, agg.Matcher.Sub, agg.Matcher.NotSub, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait, agg.DropRaw)
 	}
 
 	str += "\n## Routes:\n"
-	cols = fmt.Sprintf(heaFmtR, "type", "key", "prefix", "substr", "regex")
-	rcols := fmt.Sprintf(heaFmtD, "prefix", "substr", "regex", "addr", "spoolDir", "spool", "pickle", "online")
+	cols = fmt.Sprintf(heaFmtR, "type", "key", "prefix", "notPrefix", "substr", "notSubstr", "regex", "notRegex")
+	rcols := fmt.Sprintf(heaFmtD, "prefix", "notPrefix", "substr", "notSubstr", "regex", "notRegex", "addr", "spoolDir", "spool", "pickle", "online")
 	indent := "  "
 	str += cols + underscore(max(len(cols), len(rcols)+len(indent))-1)
 	divider := indent + strings.Repeat("-", max(len(cols)-len(indent), len(rcols))-1) + "\n"
 
 	for _, route := range t.Routes {
 		m := route.Matcher
-		str += fmt.Sprintf(rowFmtR, route.Type, route.Key, m.Prefix, m.Sub, m.Regex)
+		str += fmt.Sprintf(rowFmtR, route.Type, route.Key, m.Prefix, m.NotPrefix, m.Sub, m.NotSub, m.Regex, m.NotRegex)
 		if route.Type == "GrafanaNet" {
 			str += indent + route.Addr + "\n"
 			continue
@@ -520,7 +544,7 @@ func (table *Table) Print() (str string) {
 		str += indent + rcols + divider
 		for _, dest := range route.Dests {
 			m := dest.Matcher
-			str += indent + fmt.Sprintf(rowFmtD, m.Prefix, m.Sub, m.Regex, dest.Addr, dest.SpoolDir, dest.Spool, dest.Pickle, dest.Online)
+			str += indent + fmt.Sprintf(rowFmtD, m.Prefix, m.NotPrefix, m.Sub, m.NotSub, m.Regex, m.NotRegex, dest.Addr, dest.SpoolDir, dest.Spool, dest.Pickle, dest.Online)
 		}
 		str += "\n"
 	}
