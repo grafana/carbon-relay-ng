@@ -34,13 +34,7 @@ func (m matcherFuncs) singleMatcherFunc() matcherFunc {
 		return func(_ []byte) bool { return true }
 	case 1:
 		return m[0]
-	case 2:
-		return func(s []byte) bool { return m[0](s) && m[1](s) }
-	case 3:
-		return func(s []byte) bool { return m[0](s) && m[1](s) && m[2](s) }
 	default:
-		// more than 3 matchers seems like an edge case,
-		// so we take the hit of doing an allocation
 		return func(s []byte) bool {
 			for _, matcherFunc := range m {
 				if !matcherFunc(s) {
