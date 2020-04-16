@@ -899,16 +899,31 @@ func readModDest(s *toki.Scanner, table Table) error {
 				return errFmtModDest
 			}
 			opts["prefix"] = string(t.Value)
+		case optNotPrefix:
+			if t = s.Next(); t.Token != word {
+				return errFmtModDest
+			}
+			opts["notPrefix"] = string(t.Value)
 		case optSub:
 			if t = s.Next(); t.Token != word {
 				return errFmtModDest
 			}
 			opts["sub"] = string(t.Value)
+		case optNotSub:
+			if t = s.Next(); t.Token != word {
+				return errFmtModDest
+			}
+			opts["notSub"] = string(t.Value)
 		case optRegex:
 			if t = s.Next(); t.Token != word {
 				return errFmtModDest
 			}
 			opts["regex"] = string(t.Value)
+		case optNotRegex:
+			if t = s.Next(); t.Token != word {
+				return errFmtModDest
+			}
+			opts["notRegex"] = string(t.Value)
 		default:
 			return errFmtModDest
 		}
@@ -938,16 +953,31 @@ func readModRoute(s *toki.Scanner, table Table) error {
 				return errFmtModDest
 			}
 			opts["prefix"] = string(t.Value)
+		case optNotPrefix:
+			if t = s.Next(); t.Token != word {
+				return errFmtModDest
+			}
+			opts["notPrefix"] = string(t.Value)
 		case optSub:
 			if t = s.Next(); t.Token != word {
 				return errFmtModDest
 			}
 			opts["sub"] = string(t.Value)
+		case optNotSub:
+			if t = s.Next(); t.Token != word {
+				return errFmtModDest
+			}
+			opts["notSub"] = string(t.Value)
 		case optRegex:
 			if t = s.Next(); t.Token != word {
 				return errFmtModDest
 			}
 			opts["regex"] = string(t.Value)
+		case optNotRegex:
+			if t = s.Next(); t.Token != word {
+				return errFmtModDest
+			}
+			opts["notRegex"] = string(t.Value)
 		default:
 			return errFmtModDest
 		}

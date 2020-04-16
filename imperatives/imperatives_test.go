@@ -1,9 +1,10 @@
 package imperatives
 
 import (
-	"github.com/taylorchu/toki"
 	"strings"
 	"testing"
+
+	"github.com/taylorchu/toki"
 )
 
 func TestScanner(t *testing.T) {
@@ -38,6 +39,10 @@ func TestScanner(t *testing.T) {
 		{
 			"addRoute sendFirstMatch analytics regex=(Err/s|wait_time|logger)  graphite.prod:2003 prefix=prod. spool=true pickle=true  graphite.staging:2003 prefix=staging. spool=true pickle=true",
 			[]toki.Token{addRouteSendFirstMatch, word, optRegex, word, sep, word, optPrefix, word, optSpool, optTrue, optPickle, optTrue, sep, word, optPrefix, word, optSpool, optTrue, optPickle, optTrue},
+		},
+		{
+			"addRoute sendFirstMatch myRoute1  127.0.0.1:2003 notPrefix=aaa notSub=bbb notRegex=ccc",
+			[]toki.Token{addRouteSendFirstMatch, word, sep, word, optNotPrefix, word, optNotSub, word, optNotRegex, word},
 		},
 		//{ disabled cause tries to read the schemas.conf file
 		//	"addRoute grafanaNet grafanaNet  http://localhost:8081/metrics your-grafana.net-api-key /path/to/storage-schemas.conf",
