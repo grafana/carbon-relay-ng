@@ -14,7 +14,7 @@ type Matcher struct {
 	Regex     string `json:"regex,omitempty"`
 	NotRegex  string `json:"notRegex,omitempty"`
 	// internal representation for performance optimalization
-	prefix, notPrefix, sub, notSub, prefixFromRegex []byte
+	prefix, notPrefix, sub, notSub, prefixFromRegex, prefixFromNotRegex []byte
 	// compiled version of Regex
 	regex, notRegex *regexp.Regexp
 
@@ -94,6 +94,7 @@ func (m *Matcher) updateInternals() error {
 			return err
 		}
 		m.notRegex = regexObj
+		m.prefixFromNotRegex = regexToPrefix(m.NotRegex)
 	}
 
 	var usedFuncs matcherFuncs
@@ -121,8 +122,11 @@ func (m *Matcher) updateInternals() error {
 		}
 	}
 	if m.notRegex != nil {
-		usedFuncs = append(usedFuncs, m.matchNotRegex)
-		usedFuncsExceptRegex = append(usedFuncsExceptRegex, m.matchNotRegex)
+		if len(m.prefixFromNotRegex) > 0 {
+			usedFuncs = append(usedFuncs, m.matchNotRegexWithPreMatch)
+		} else {
+			usedFuncs = append(usedFuncs, m.matchNotRegex)
+		}
 	}
 
 	m.Match = usedFuncs.singleMatcherFunc()
@@ -159,7 +163,20 @@ func (m *Matcher) matchNotRegex(s []byte) bool {
 	return !m.notRegex.Match(s)
 }
 
+func (m *Matcher) matchNotRegexWithPreMatch(s []byte) bool {
+	if !bytes.HasPrefix(s, m.prefixFromNotRegex) {
+		return true
+	}
+	return !m.notRegex.Match(s)
+}
+
 func (m *Matcher) MatchRegexAndExpand(key, fmt []byte) (string, bool) {
+	if m.notRegex != nil {
+		if !m.matchNotRegexWithPreMatch(key) {
+			return "", false
+		}
+	}
+
 	var dst []byte
 	matches := m.regex.FindSubmatchIndex(key)
 	if matches == nil {

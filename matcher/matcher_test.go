@@ -191,6 +191,28 @@ func TestMatchingRegexAnchored(t *testing.T) {
 	}.Run(t)
 }
 
+func TestMatchingRegexWithFixPrefix(t *testing.T) {
+	tcMatcher{
+		name:  "test regex anchored",
+		regex: "^abc.+",
+		valuesIn: []string{
+			"daaab",
+			"abc",
+			"abcdef",
+		},
+		matches: []bool{
+			false,
+			false,
+			true,
+		},
+		matchesExceptRegex: []bool{
+			false,
+			true,
+			true,
+		},
+	}.Run(t)
+}
+
 func TestMatchingRegexNotAnchored(t *testing.T) {
 	tcMatcher{
 		name:  "test regex not anchored",
@@ -231,7 +253,29 @@ func TestMatchingNotRegexAnchored(t *testing.T) {
 			true,
 		},
 		matchesExceptRegex: []bool{
+			true,
+			true,
+			true,
+		},
+	}.Run(t)
+}
+
+func TestMatchingNotRegexWithFixPrefix(t *testing.T) {
+	tcMatcher{
+		name:     "test not regex with fix prefix",
+		notRegex: "^abc.+",
+		valuesIn: []string{
+			"daab",
+			"abc",
+			"abcabc",
+		},
+		matches: []bool{
+			true,
+			true,
 			false,
+		},
+		matchesExceptRegex: []bool{
+			true,
 			true,
 			true,
 		},
@@ -255,9 +299,9 @@ func TestMatchingNotRegexNotAnchored(t *testing.T) {
 			true,
 		},
 		matchesExceptRegex: []bool{
-			false,
-			false,
-			false,
+			true,
+			true,
+			true,
 			true,
 		},
 	}.Run(t)
@@ -346,10 +390,10 @@ func TestMatchingWith3Conditions(t *testing.T) {
 		},
 		matchesExceptRegex: []bool{
 			false,
-			false,
-			false,
 			true,
 			false,
+			true,
+			true,
 			false,
 			true,
 		},
