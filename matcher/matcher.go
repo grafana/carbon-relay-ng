@@ -31,8 +31,11 @@ type matcherFuncs []matcherFunc
 func (m matcherFuncs) singleMatcherFunc() matcherFunc {
 	switch len(m) {
 	case 0:
+		// when no filter is defined we just let everything pass
 		return func(_ []byte) bool { return true }
 	case 1:
+		// when there is only one element in matcherFuncs we can directly return
+		// it and save the overhead of having to wrap another function around it
 		return m[0]
 	default:
 		return func(s []byte) bool {
@@ -66,6 +69,12 @@ func (m *Matcher) String() string {
 	return fmt.Sprintf("<Matcher. prefix:%q, notPrefix:%q, sub: %q, notSub: %q, regex: %q, notRegex:%q>", m.Prefix, m.NotPrefix, m.Sub, m.NotSub, m.Regex, m.NotRegex)
 }
 
+// updateInternals checks which filters this matcher should use and generates a
+// filter function for each of them.
+// Then it combines all these filter functions into one function
+// which it assigns to Matcher.Match.
+// Furthermore, it combines all filter functions except the "regex" filter into
+// another single filter function and assigns it to Matcher.MatchAllExceptRegex.
 func (m *Matcher) updateInternals() error {
 	m.prefix = []byte(m.Prefix)
 	m.notPrefix = []byte(m.NotPrefix)
