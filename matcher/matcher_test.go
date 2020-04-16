@@ -410,3 +410,19 @@ func BenchmarkMatchRegex(b *testing.B) {
 		matcher.Match(metric70)
 	}
 }
+
+func BenchmarkMatch3Conditions(b *testing.B) {
+	matcher, _ := New("abc", "cba", "", "notpresentstring", "", "")
+	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // key = 48, val = 10, ts = 10 -> 70
+	for i := 0; i < b.N; i++ {
+		matcher.Match(metric70)
+	}
+}
+
+func BenchmarkMatch4Conditions(b *testing.B) {
+	matcher, _ := New("abc", "cba", "klmno", "notpresentstring", "", "")
+	metric70 := []byte("abcde_fghij.klmnopqrst.uv_wxyz.1234567890abcdefg 12345.6789 1234567890") // key = 48, val = 10, ts = 10 -> 70
+	for i := 0; i < b.N; i++ {
+		matcher.Match(metric70)
+	}
+}
