@@ -33,7 +33,7 @@ func (tc tcMatcher) Run(t *testing.T) {
 		if gotMatch != expectMatch {
 			t.Fatalf("%s: Expected match to be %t but got %t: %s", tc.name, expectMatch, gotMatch, value)
 		}
-		gotMatchExceptRegex := matcher.MatchAllExceptRegex([]byte(value))
+		gotMatchExceptRegex := matcher.PreMatch([]byte(value))
 		expectMatchExceptRegex := tc.matchesExceptRegex[idx]
 		if gotMatchExceptRegex != expectMatchExceptRegex {
 			t.Fatalf("%s: Expected matchExceptRegex to be %t but got %t: %s", tc.name, expectMatchExceptRegex, gotMatchExceptRegex, value)

@@ -223,7 +223,7 @@ func (a *Aggregator) Shutdown() {
 }
 
 func (a *Aggregator) AddMaybe(buf [][]byte, val float64, ts uint32) bool {
-	if !a.Matcher.MatchAllExceptRegex(buf[0]) {
+	if !a.Matcher.PreMatch(buf[0]) {
 		return false
 	}
 

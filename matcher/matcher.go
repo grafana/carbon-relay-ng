@@ -13,40 +13,10 @@ type Matcher struct {
 	NotSub    string `json:"notSubstring,omitempty"`
 	Regex     string `json:"regex,omitempty"`
 	NotRegex  string `json:"notRegex,omitempty"`
-	// internal representation for performance optimalization
+	// internal representation for performance optimization
 	prefix, notPrefix, sub, notSub, prefixFromRegex, prefixFromNotRegex []byte
 	// compiled version of Regex
 	regex, notRegex *regexp.Regexp
-
-	Match               matcherFunc `json:"-"`
-	MatchAllExceptRegex matcherFunc `json:"-"`
-}
-
-type matcherFunc func([]byte) bool
-
-type matcherFuncs []matcherFunc
-
-// singleMatcherFunc generates a single matcher function which encapsulates all
-// functions in matcherFuncs
-func (m matcherFuncs) singleMatcherFunc() matcherFunc {
-	switch len(m) {
-	case 0:
-		// when no filter is defined we just let everything pass
-		return func(_ []byte) bool { return true }
-	case 1:
-		// when there is only one element in matcherFuncs we can directly return
-		// it and save the overhead of having to wrap another function around it
-		return m[0]
-	default:
-		return func(s []byte) bool {
-			for _, matcherFunc := range m {
-				if !matcherFunc(s) {
-					return false
-				}
-			}
-			return true
-		}
-	}
 }
 
 func New(prefix, notPrefix, sub, notSub, regex, notRegex string) (Matcher, error) {
@@ -69,12 +39,6 @@ func (m *Matcher) String() string {
 	return fmt.Sprintf("<Matcher. prefix:%q, notPrefix:%q, sub: %q, notSub: %q, regex: %q, notRegex:%q>", m.Prefix, m.NotPrefix, m.Sub, m.NotSub, m.Regex, m.NotRegex)
 }
 
-// updateInternals checks which filters this matcher should use and generates a
-// filter function for each of them.
-// Then it combines all these filter functions into one function
-// which it assigns to Matcher.Match.
-// Furthermore, it combines all filter functions except the "regex" filter into
-// another single filter function and assigns it to Matcher.MatchAllExceptRegex.
 func (m *Matcher) updateInternals() error {
 	m.prefix = []byte(m.Prefix)
 	m.notPrefix = []byte(m.NotPrefix)
@@ -97,92 +61,70 @@ func (m *Matcher) updateInternals() error {
 		m.prefixFromNotRegex = regexToPrefix(m.NotRegex)
 	}
 
-	var usedFuncs matcherFuncs
-	var usedFuncsExceptRegex matcherFuncs
-	if len(m.prefix) > 0 {
-		usedFuncs = append(usedFuncs, m.matchPrefix)
-		usedFuncsExceptRegex = append(usedFuncsExceptRegex, m.matchPrefix)
-	}
-	if len(m.notPrefix) > 0 {
-		usedFuncs = append(usedFuncs, m.matchNotPrefix)
-		usedFuncsExceptRegex = append(usedFuncsExceptRegex, m.matchNotPrefix)
-	}
-	if len(m.sub) > 0 {
-		usedFuncs = append(usedFuncs, m.matchSub)
-		usedFuncsExceptRegex = append(usedFuncsExceptRegex, m.matchSub)
-	}
-	if len(m.notSub) > 0 {
-		usedFuncs = append(usedFuncs, m.matchNotSub)
-		usedFuncsExceptRegex = append(usedFuncsExceptRegex, m.matchNotSub)
-	}
-	if m.regex != nil {
-		usedFuncs = append(usedFuncs, m.matchRegex)
-		if len(m.prefixFromRegex) > 0 {
-			usedFuncsExceptRegex = append(usedFuncsExceptRegex, m.matchPrefixFromRegex)
-		}
-	}
-	if m.notRegex != nil {
-		if len(m.prefixFromNotRegex) > 0 {
-			usedFuncs = append(usedFuncs, m.matchNotRegexWithPreMatch)
-		} else {
-			usedFuncs = append(usedFuncs, m.matchNotRegex)
-		}
-	}
-
-	m.Match = usedFuncs.singleMatcherFunc()
-	m.MatchAllExceptRegex = usedFuncsExceptRegex.singleMatcherFunc()
-
 	return nil
 }
 
-func (m *Matcher) matchPrefix(s []byte) bool {
-	return bytes.HasPrefix(s, m.prefix)
-}
-
-func (m *Matcher) matchNotPrefix(s []byte) bool {
-	return !bytes.HasPrefix(s, m.notPrefix)
-}
-
-func (m *Matcher) matchSub(s []byte) bool {
-	return bytes.Contains(s, m.sub)
-}
-
-func (m *Matcher) matchNotSub(s []byte) bool {
-	return !bytes.Contains(s, m.notSub)
-}
-
-func (m *Matcher) matchRegex(s []byte) bool {
-	return m.regex.Match(s)
-}
-
-func (m *Matcher) matchPrefixFromRegex(s []byte) bool {
-	return bytes.HasPrefix(s, m.prefixFromRegex)
-}
-
-func (m *Matcher) matchNotRegex(s []byte) bool {
-	return !m.notRegex.Match(s)
-}
-
-func (m *Matcher) matchNotRegexWithPreMatch(s []byte) bool {
-	if !bytes.HasPrefix(s, m.prefixFromNotRegex) {
-		return true
+// Match checks the given byte slice against all defined filter conditions
+func (m *Matcher) Match(s []byte) bool {
+	if len(m.prefix) > 0 && !bytes.HasPrefix(s, m.prefix) {
+		return false
 	}
-	return !m.notRegex.Match(s)
-}
-
-func (m *Matcher) MatchRegexAndExpand(key, fmt []byte) (string, bool) {
-	if m.notRegex != nil {
-		if !m.matchNotRegexWithPreMatch(key) {
-			return "", false
+	if len(m.notPrefix) > 0 && bytes.HasPrefix(s, m.notPrefix) {
+		return false
+	}
+	if len(m.sub) > 0 && !bytes.Contains(s, m.sub) {
+		return false
+	}
+	if len(m.notSub) > 0 && bytes.Contains(s, m.notSub) {
+		return false
+	}
+	if m.regex != nil {
+		if (len(m.prefixFromRegex) > 0 && !bytes.HasPrefix(s, m.prefixFromRegex)) || !m.regex.Match(s) {
+			return false
 		}
 	}
+	if m.notRegex != nil {
+		if (len(m.prefixFromNotRegex) == 0 || bytes.HasPrefix(s, m.prefixFromNotRegex)) && m.notRegex.Match(s) {
+			return false
+		}
+	}
+	return true
+}
 
+// PreMatch only checks the conditions which can be evaluated very quickly,
+// while ignoring the ones which are more expensive to evaluate.
+// If it returns false then a metric can be discarded, if it returns true then
+// Match() should be applied to it to know whether it matches all criterias.
+func (m *Matcher) PreMatch(s []byte) bool {
+	if len(m.prefix) > 0 && !bytes.HasPrefix(s, m.prefix) {
+		return false
+	}
+	if len(m.notPrefix) > 0 && bytes.HasPrefix(s, m.notPrefix) {
+		return false
+	}
+	if len(m.sub) > 0 && !bytes.Contains(s, m.sub) {
+		return false
+	}
+	if len(m.notSub) > 0 && bytes.Contains(s, m.notSub) {
+		return false
+	}
+	if len(m.prefixFromRegex) > 0 && !bytes.HasPrefix(s, m.prefixFromRegex) {
+		return false
+	}
+	return true
+}
+
+// MatchRegexAndExpand only matches the given key against the "regex" condition,
+// if it matches then it applies the given template and returns the resulting
+// string as the first return value.
+// The second return value indicates whether the regex matches the given key.
+func (m *Matcher) MatchRegexAndExpand(key, template []byte) (string, bool) {
 	var dst []byte
 	matches := m.regex.FindSubmatchIndex(key)
 	if matches == nil {
 		return "", false
 	}
-	return string(m.regex.Expand(dst, fmt, key, matches)), true
+	return string(m.regex.Expand(dst, template, key, matches)), true
 }
 
 // regexToPrefix inspects the regex and returns the longest static prefix part of the regex
