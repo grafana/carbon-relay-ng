@@ -61,6 +61,7 @@ type Aggregation struct {
 	Regex    string
 	Prefix   string
 	Substr   string
+	Sub      string
 	Format   string
 	Cache    bool
 	Interval int
@@ -73,6 +74,7 @@ type Route struct {
 	Type         string
 	Prefix       string
 	Substr       string
+	Sub          string
 	Regex        string
 	Destinations []string
 

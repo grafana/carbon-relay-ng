@@ -623,7 +623,12 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 
 func (table *Table) InitAggregation(config cfg.Config) error {
 	for i, aggConfig := range config.Aggregation {
-		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.Prefix, aggConfig.Substr, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), aggConfig.DropRaw, table.In)
+		sub := aggConfig.Substr
+		if len(aggConfig.Sub) > 0 {
+			sub = aggConfig.Sub
+		}
+
+		agg, err := aggregator.New(aggConfig.Function, aggConfig.Regex, aggConfig.Prefix, sub, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), aggConfig.DropRaw, table.In)
 		if err != nil {
 			log.Error(err.Error())
 			return fmt.Errorf("could not add aggregation #%d", i+1)
@@ -651,6 +656,11 @@ func (table *Table) InitRewrite(config cfg.Config) error {
 
 func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 	for _, routeConfig := range config.Route {
+		sub := routeConfig.Substr
+		if len(routeConfig.Sub) > 0 {
+			sub = routeConfig.Sub
+		}
+
 		switch routeConfig.Type {
 		case "sendAllMatch":
 			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, true, routeConfig.Key)
@@ -662,7 +672,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				return fmt.Errorf("must get at least 1 destination for route '%s'", routeConfig.Key)
 			}
 
-			route, err := route.NewSendAllMatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations)
+			route, err := route.NewSendAllMatch(routeConfig.Key, routeConfig.Prefix, sub, routeConfig.Regex, destinations)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -678,7 +688,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				return fmt.Errorf("must get at least 1 destination for route '%s'", routeConfig.Key)
 			}
 
-			route, err := route.NewSendFirstMatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations)
+			route, err := route.NewSendFirstMatch(routeConfig.Key, routeConfig.Prefix, sub, routeConfig.Regex, destinations)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -694,7 +704,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				return fmt.Errorf("must get at least 2 destination for route '%s'", routeConfig.Key)
 			}
 
-			route, err := route.NewConsistentHashing(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, destinations)
+			route, err := route.NewConsistentHashing(routeConfig.Key, routeConfig.Prefix, sub, routeConfig.Regex, destinations)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -756,7 +766,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				orgId = routeConfig.OrgId
 			}
 
-			route, err := route.NewGrafanaNet(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile, spool, sslVerify, routeConfig.Blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
+			route, err := route.NewGrafanaNet(routeConfig.Key, routeConfig.Prefix, sub, routeConfig.Regex, routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile, spool, sslVerify, routeConfig.Blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -790,7 +800,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				orgId = routeConfig.OrgId
 			}
 
-			route, err := route.NewKafkaMdm(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, routeConfig.Blocking)
+			route, err := route.NewKafkaMdm(routeConfig.Key, routeConfig.Prefix, sub, routeConfig.Regex, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, routeConfig.Blocking)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -819,7 +829,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				flushMaxWait = routeConfig.FlushMaxWait
 			}
 
-			route, err := route.NewPubSub(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Project, routeConfig.Topic, format, codec, bufSize, flushMaxSize, flushMaxWait, routeConfig.Blocking)
+			route, err := route.NewPubSub(routeConfig.Key, routeConfig.Prefix, sub, routeConfig.Regex, routeConfig.Project, routeConfig.Topic, format, codec, bufSize, flushMaxSize, flushMaxWait, routeConfig.Blocking)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
@@ -860,7 +870,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				storageResolution = routeConfig.StorageResolution
 			}
 
-			route, err := route.NewCloudWatch(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, awsProfile, awsRegion, awsNamespace, awsDimensions, bufSize, flushMaxSize, flushMaxWait, storageResolution, routeConfig.Blocking)
+			route, err := route.NewCloudWatch(routeConfig.Key, routeConfig.Prefix, sub, routeConfig.Regex, awsProfile, awsRegion, awsNamespace, awsDimensions, bufSize, flushMaxSize, flushMaxWait, storageResolution, routeConfig.Blocking)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
