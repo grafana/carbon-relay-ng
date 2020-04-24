@@ -202,6 +202,7 @@ see [ticket 50](https://github.com/grafana/carbon-relay-ng/issues/50) for more i
 # v0.7: 200 stars. May 23, 2016
 
 changes:
+- inverted filter support: notRegex / notSub / notPrefix
 - regex / substring / prefix support for blacklist
 - support more management functionality in admin UI + show dest online status
 - properly set default endpoint settings
