@@ -76,38 +76,26 @@ type ConsistentHashing struct {
 
 // NewSendAllMatch creates a sendAllMatch route.
 // We will automatically run the route and the given destinations
-func NewSendAllMatch(key, prefix, sub, regex string, destinations []*dest.Destination) (Route, error) {
-	m, err := matcher.New(prefix, sub, regex)
-	if err != nil {
-		return nil, err
-	}
+func NewSendAllMatch(key string, matcher matcher.Matcher, destinations []*dest.Destination) (Route, error) {
 	r := &SendAllMatch{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
-	r.config.Store(baseConfig{*m, destinations})
+	r.config.Store(baseConfig{matcher, destinations})
 	r.run()
 	return r, nil
 }
 
 // NewSendFirstMatch creates a sendFirstMatch route.
 // We will automatically run the route and the given destinations
-func NewSendFirstMatch(key, prefix, sub, regex string, destinations []*dest.Destination) (Route, error) {
-	m, err := matcher.New(prefix, sub, regex)
-	if err != nil {
-		return nil, err
-	}
+func NewSendFirstMatch(key string, matcher matcher.Matcher, destinations []*dest.Destination) (Route, error) {
 	r := &SendFirstMatch{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
-	r.config.Store(baseConfig{*m, destinations})
+	r.config.Store(baseConfig{matcher, destinations})
 	r.run()
 	return r, nil
 }
 
-func NewConsistentHashing(key, prefix, sub, regex string, destinations []*dest.Destination) (Route, error) {
-	m, err := matcher.New(prefix, sub, regex)
-	if err != nil {
-		return nil, err
-	}
+func NewConsistentHashing(key string, matcher matcher.Matcher, destinations []*dest.Destination) (Route, error) {
 	r := &ConsistentHashing{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
 	hasher := NewConsistentHasher(destinations)
-	r.config.Store(consistentHashingConfig{baseConfig{*m, destinations},
+	r.config.Store(consistentHashingConfig{baseConfig{matcher, destinations},
 		&hasher})
 	r.run()
 	return r, nil
@@ -314,8 +302,11 @@ func (route *baseRoute) update(opts map[string]string, extendConfig baseCfgExten
 	conf := route.config.Load().(Config)
 	match := conf.Matcher()
 	prefix := match.Prefix
+	notPrefix := match.NotPrefix
 	sub := match.Sub
+	notSub := match.NotSub
 	regex := match.Regex
+	notRegex := match.NotRegex
 	updateMatcher := false
 
 	for name, val := range opts {
@@ -323,22 +314,31 @@ func (route *baseRoute) update(opts map[string]string, extendConfig baseCfgExten
 		case "prefix":
 			prefix = val
 			updateMatcher = true
+		case "notPrefix":
+			notPrefix = val
+			updateMatcher = true
 		case "sub":
 			sub = val
 			updateMatcher = true
+		case "notSub":
+			notSub = val
+			updateMatcher = true
 		case "regex":
 			regex = val
+			updateMatcher = true
+		case "notRegex":
+			notRegex = val
 			updateMatcher = true
 		default:
 			return fmt.Errorf("no such option '%s'", name)
 		}
 	}
 	if updateMatcher {
-		match, err := matcher.New(prefix, sub, regex)
+		match, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 		if err != nil {
 			return err
 		}
-		conf = extendConfig(baseConfig{*match, conf.Dests()})
+		conf = extendConfig(baseConfig{match, conf.Dests()})
 	}
 	route.config.Store(conf)
 	return nil

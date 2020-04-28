@@ -80,16 +80,22 @@
               <thead>
                 <tr>
                   <th>Match prefix</th>
+                  <th>Not match prefix</th>
                   <th>Match substring</th>
+                  <th>Not match substring</th>
                   <th>Match regex</th>
+                  <th>Not match regex</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody ng-repeat="b in table.blacklist">
                 <tr>
                     <td>{{b.prefix}}</td>
+                    <td>{{b.notPrefix}}</td>
                     <td>{{b.substring}}</td>
+                    <td>{{b.notSubstring}}</td>
                     <td>{{b.regex}}</td>
+                    <td>{{b.notRegex}}</td>
                     <td class="text-center"><a ng-click="removeBlacklist($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
                 </tr>
               </tbody>
@@ -217,8 +223,11 @@
                   <th>Route key</th>
                   <th>Route type</th>
                   <th>Match prefix</th>
+                  <th>Not match prefix</th>
                   <th>Match substring</th>
+                  <th>Not match substring</th>
                   <th>Match regex</th>
+                  <th>Not match regex</th>
                   <th>Address</th>
                   <th>Spool</th>
                   <th>Pickle</th>
@@ -231,8 +240,11 @@
                   <td class="info">{{r.key}}</td>
                   <td class="info">{{r.type}}</td>
                   <td class="info">{{r.matcher.prefix}}</td>
+                  <td class="info">{{r.matcher.notPrefix}}</td>
                   <td class="info">{{r.matcher.substring}}</td>
+                  <td class="info">{{r.matcher.notSubstring}}</td>
                   <td class="info">{{r.matcher.regex}}</td>
+                  <td class="info">{{r.matcher.notRegex}}</td>
                   <td class="info" colspan="3"></td>
                   <td class="info" colspan="2"><a ng-click="removeRoute(r.key)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
                 </tr>
@@ -241,8 +253,11 @@
                     <td></td>
                     <td></td>
                     <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.prefix}}</td>
+                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.notPrefix}}</td>
                     <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.substring}}</td>
+                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.notSubstring}}</td>
                     <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.regex}}</td>
+                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.notRegex}}</td>
                     <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.address}}</td>
                     <td ng-class="{'danger': !d.online, 'info': d.online}" class="text-center">
                     <icon ng-show="d.spool" class="glyphicon glyphicon-hdd"/>
@@ -269,10 +284,19 @@
                     <input ng-model="newRoute.Prefix" name="Prefix" class="form-control" placeholder="Prefix">
                   </td>
                   <td class="form-group has-feedback">
+                    <input ng-model="newRoute.NotPrefix" name="NotPrefix" class="form-control" placeholder="NotPrefix">
+                  </td>
+                  <td class="form-group has-feedback">
                     <input ng-model="newRoute.Substring" name="Substring" class="form-control" placeholder="Substring">
                   </td>
                   <td class="form-group has-feedback">
+                    <input ng-model="newRoute.NotSubstring" name="NotSubstring" class="form-control" placeholder="NotSubstring">
+                  </td>
+                  <td class="form-group has-feedback">
                     <input ng-model="newRoute.Regex" name="Regex" class="form-control" placeholder="Regex" ng-pattern="validRegex">
+                  </td>
+                  <td class="form-group has-feedback">
+                    <input ng-model="newRoute.NotRegex" name="Regex" class="form-control" placeholder="NotRegex" ng-pattern="validRegex">
                   </td>
                   <td class="form-group has-feedback">
                     <input ng-model="newRoute.Address" name="Address" class="form-control" required placeholder="Address" ng-pattern="validAddress">

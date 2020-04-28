@@ -51,11 +51,7 @@ type KafkaMdm struct {
 
 // NewKafkaMdm creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
-func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool) (Route, error) {
-	m, err := matcher.New(prefix, sub, regex)
-	if err != nil {
-		return nil, err
-	}
+func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool) (Route, error) {
 	schemas, err := getSchemas(schemasFile)
 	if err != nil {
 		return nil, err
@@ -118,7 +114,7 @@ func NewKafkaMdm(key, prefix, sub, regex, topic, codec, schemasFile, partitionBy
 	}
 	r.saramaCfg = config
 
-	r.config.Store(baseConfig{*m, make([]*dest.Destination, 0)})
+	r.config.Store(baseConfig{matcher, make([]*dest.Destination, 0)})
 	go r.run()
 	return r, nil
 }

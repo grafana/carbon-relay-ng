@@ -69,15 +69,11 @@ type Destination struct {
 }
 
 // New creates a destination object. Note that it still needs to be told to run via Run().
-func New(routeName, prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration) (*Destination, error) {
-	m, err := matcher.New(prefix, sub, regex)
-	if err != nil {
-		return nil, err
-	}
+func New(routeName string, matcher matcher.Matcher, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration) (*Destination, error) {
 	key := util.Key(routeName, addr)
 	addr, instance := addrInstanceSplit(addr)
 	dest := &Destination{
-		Matcher:              *m,
+		Matcher:              matcher,
 		Addr:                 addr,
 		Instance:             instance,
 		SpoolDir:             spoolDir,
@@ -116,8 +112,11 @@ func (dest *Destination) Match(s []byte) bool {
 func (dest *Destination) Update(opts map[string]string) error {
 	match := dest.GetMatcher()
 	prefix := match.Prefix
+	notPrefix := match.NotPrefix
 	sub := match.Sub
+	notSub := match.NotSub
 	regex := match.Regex
+	notRegex := match.NotRegex
 	updateMatcher := false
 	addr := ""
 
@@ -128,11 +127,20 @@ func (dest *Destination) Update(opts map[string]string) error {
 		case "prefix":
 			prefix = val
 			updateMatcher = true
+		case "notPrefix":
+			notPrefix = val
+			updateMatcher = true
 		case "sub":
 			sub = val
 			updateMatcher = true
+		case "notSub":
+			notSub = val
+			updateMatcher = true
 		case "regex":
 			regex = val
+			updateMatcher = true
+		case "notRegex":
+			notRegex = val
 			updateMatcher = true
 		default:
 			return errors.New("no such option: " + name)
@@ -142,11 +150,11 @@ func (dest *Destination) Update(opts map[string]string) error {
 		dest.updateConn(addr)
 	}
 	if updateMatcher {
-		match, err := matcher.New(prefix, sub, regex)
+		match, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 		if err != nil {
 			return err
 		}
-		dest.UpdateMatcher(*match)
+		dest.UpdateMatcher(match)
 	}
 	return nil
 }
