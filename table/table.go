@@ -832,7 +832,7 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 				orgId = routeConfig.OrgId
 			}
 
-			route, err := route.NewKafkaMdm(routeConfig.Key, matcher, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, routeConfig.Blocking)
+			route, err := route.NewKafkaMdm(routeConfig.Key, matcher, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, routeConfig.Blocking, routeConfig.TLSEnabled, routeConfig.TLSSkipVerify, routeConfig.TLSClientCert, routeConfig.TLSClientKey)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)

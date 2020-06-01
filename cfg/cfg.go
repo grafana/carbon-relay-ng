@@ -99,10 +99,14 @@ type Route struct {
 	Concurrency int
 
 	// kafkaMdm
-	Brokers     []string
-	Topic       string // also used by Google PubSub
-	Codec       string // also used by Google PubSub
-	PartitionBy string
+	Brokers       []string
+	Topic         string // also used by Google PubSub
+	Codec         string // also used by Google PubSub
+	PartitionBy   string
+	TLSEnabled    bool   `toml:"tls_enabled"`
+	TLSSkipVerify bool   `toml:"tls_skip_verify"`
+	TLSClientCert string `toml:"tls_client_cert"`
+	TLSClientKey  string `toml:"tls_client_key"`
 
 	// Google PubSub
 	Project      string

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
+	"github.com/Shopify/sarama/tools/tls"
 	dest "github.com/grafana/carbon-relay-ng/destination"
 	"github.com/grafana/carbon-relay-ng/matcher"
 	"github.com/grafana/carbon-relay-ng/stats"
@@ -51,7 +52,7 @@ type KafkaMdm struct {
 
 // NewKafkaMdm creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
-func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool) (Route, error) {
+func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool, tlsEnabled, tlsSkipVerify bool, tlsClientCert, tlsClientKey string) (Route, error) {
 	schemas, err := getSchemas(schemasFile)
 	if err != nil {
 		return nil, err
@@ -99,6 +100,18 @@ func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile,
 	// Because we don't change the flush settings, sarama will try to produce messages
 	// as fast as possible to keep latency low.
 	config := sarama.NewConfig()
+
+	if tlsEnabled {
+		tlsConfig, err := tls.NewConfig(tlsClientCert, tlsClientKey)
+		if err != nil {
+			log.Fatalf("Failed to create TLS config: %s", err)
+		}
+
+		config.Net.TLS.Enable = true
+		config.Net.TLS.Config = tlsConfig
+		config.Net.TLS.Config.InsecureSkipVerify = tlsSkipVerify
+	}
+
 	config.Producer.RequiredAcks = sarama.WaitForAll // Wait for all in-sync replicas to ack the message
 	config.Producer.Retry.Max = 10                   // Retry up to 10 times to produce the message
 	config.Producer.Compression, err = getCompression(codec)

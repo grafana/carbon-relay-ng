@@ -206,6 +206,25 @@ flushMaxNum    |     N     |  int        | 10k     | max number of metrics to bu
 flushMaxWait   |     N     |  int (ms)   | 500     | max time to buffer before triggering flush
 timeout        |     N     |  int (ms)   | 2000    |
 orgId          |     N     |  int        | 1       |
+tls_enabled    |     N     |  bool       | false   | Whether to enable TLS
+tls_skip_verify|     N     |  bool       | false   | Whether to skip TLS server cert verification
+tls_client_cert|     N     |  string     | ""      | Client cert for client authentication (use with tls_enabled and tls_client_key)
+tls_client_key |     N     |  string     | ""      | Client key for client authentication (use with tls_enabled and tls_client_cert)
+
+example config with TLS enabled:
+
+```
+[[route]]
+key = 'my-kafka-route'    
+type = 'kafkaMdm'
+brokers = ['kafka:9092']
+topic = 'mdm'
+codec = 'snappy'
+partitionBy = 'bySeriesWithTags'
+schemasFile = 'conf/storage-schemas.conf'
+tls_enabled = true  
+tls_skip_verify  = false
+```
 
 ## Google PubSub route
 
