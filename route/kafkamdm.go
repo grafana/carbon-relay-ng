@@ -7,17 +7,17 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/Shopify/sarama/tools/tls"
-	dest "github.com/grafana/carbon-relay-ng/destination"
-	"github.com/grafana/carbon-relay-ng/matcher"
-	"github.com/grafana/carbon-relay-ng/stats"
-	"github.com/grafana/carbon-relay-ng/util"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/Shopify/sarama"
-	"github.com/grafana/carbon-relay-ng/persister"
+	"github.com/Shopify/sarama/tools/tls"
 	"github.com/grafana/metrictank/cluster/partitioner"
 	"github.com/grafana/metrictank/schema"
+	log "github.com/sirupsen/logrus"
+
+	dest "github.com/grafana/carbon-relay-ng/destination"
+	"github.com/grafana/carbon-relay-ng/matcher"
+	"github.com/grafana/carbon-relay-ng/persister"
+	"github.com/grafana/carbon-relay-ng/stats"
+	"github.com/grafana/carbon-relay-ng/util"
 )
 
 type KafkaMdm struct {
@@ -52,7 +52,7 @@ type KafkaMdm struct {
 
 // NewKafkaMdm creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
-func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool, tlsEnabled, tlsSkipVerify bool, tlsClientCert, tlsClientKey string) (Route, error) {
+func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool, tlsEnabled, tlsSkipVerify bool, tlsClientCert, tlsClientKey string, saslEnabled bool, saslUsername, saslPassword string) (Route, error) {
 	schemas, err := getSchemas(schemasFile)
 	if err != nil {
 		return nil, err
@@ -110,6 +110,12 @@ func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile,
 		config.Net.TLS.Enable = true
 		config.Net.TLS.Config = tlsConfig
 		config.Net.TLS.Config.InsecureSkipVerify = tlsSkipVerify
+	}
+
+	if saslEnabled {
+		config.Net.SASL.Enable = true
+		config.Net.SASL.User = saslUsername
+		config.Net.SASL.Password = saslPassword
 	}
 
 	config.Producer.RequiredAcks = sarama.WaitForAll // Wait for all in-sync replicas to ack the message
