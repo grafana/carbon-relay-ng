@@ -49,6 +49,8 @@ k + crng + {
 #   a deployment creating the carbon-relay-ng pod
 $ tk show env
 
+# apply the generated resources
+# tk apply env
 ```
 
 # Applying the YAML files
