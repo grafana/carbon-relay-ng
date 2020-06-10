@@ -1,60 +1,74 @@
 # Deploying Carbon-Relay-Ng on Kubernetes
 
-We support two methods of deploying Carbon-Relay-Ng onto Kubernetes, 
-via Ksonnet/Tanka and by directly applying the provided `.yaml` files.
+We support two methods of deploying Carbon-Relay-Ng onto Kubernetes, via Tanka and by directly applying the provided
+`.yaml` files.
 
-# Ksonnet/Tanka
+# Tanka
 
-In this repository in `/ksonnet/lib/carbon-relay-ng` we provide a mixin which can be used in 
-ksonnet to create a simple carbon-relay-ng deployment. 
-Note that the mixin depends on the [ksonnet-util library](https://github.com/grafana/jsonnet-libs/tree/master/ksonnet-util).
+In this repository in `/ksonnet/lib/carbon-relay-ng` we provide a jsonnet library which uses the [ksonnet
+library](https://github.com/ksonnet/ksonnet-lib) to create a simple carbon-relay-ng deployment. This library also
+depends on the [ksonnet-util library](https://github.com/grafana/jsonnet-libs/tree/master/ksonnet-util) for some helper
+functions.
 
-Using the jsonnet bundler and ksonnet, a simple carbon-relay-ng deployment can be created like shown here:
+Using [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com/jsonnet-bundler/jsonnet-bundler), a simple
+carbon-relay-ng deployment can be created like shown here:
+
+Initialize a Tanka environment, this will setup a directory structure and pull in the ksonnet and ksonnet-util
+libraries.
 
 ```
-# if jb isn't already initialized
-jb init
+tk init
+```
 
-# install the carbon-relay-ng mixin,
-# this will also install the dependency github.com/grafana/jsonnet-libs/ksonnet-util
+Install the carbon-relay-ng jsonnet lib:
+
+```
 jb install 'github.com/grafana/carbon-relay-ng/ksonnet/lib/carbon-relay-ng@document_k8s_deployment'
+```
 
-# note that the ksonnet-util library depends on the file 'k.libsonnet' being available in
-# the jsonnet search path, if you don't already have that then it needs to be made available
-jb install github.com/ksonnet/ksonnet-lib/ksonnet.beta.4
-echo "import 'ksonnet.beta.4/k.libsonnet'" > $JSONNET_PATH/k.libsonnet
-
-# now you can use the mixin in ksonnet,
-# this is how an example env with configuration could look like
-$ cat env/main.jsonnet
-local k = import 'ksonnet-util/kausal.libsonnet';
+Now we can setup carbon-relay-ng in an environment:
+```
+# environments/default/main.jsonnet
 local crng = import 'carbon-relay-ng/crng.libsonnet';
 
-k + crng + {
-  _images+:: {
+{
+  crng: crng {
+    _config+:: {
+      namespace: 'mynamespace',
+      crng_route_host: 'https://tsdb-1-<instance name>.hosted-metrics.grafana.net/metrics',
+      crng_user_id: 'api_key',
+      crng_api_key: '<base64 api key>',
+    },
+    _images+:: {
+    },
   },
-  _config+:: {
-    namespace: 'mynamespace',
-    crng_route_host: 'https://tsdb-1-<instance name>.hosted-metrics.grafana.net/metrics',
-    crng_user_id: 'api_key',
-    crng_api_key: '<base64 api key>'
-  }
 }
+```
 
-# generating the resource definitions, using tanka's tk command.
-# this should output 4 resources:
-#   a secret with the base64 encoded api key
-#   a configmap with the carbon-relay-ng.ini and storage-schemas.conf
-#   a service which forwards to the carbon-relay-ng pod
-#   a deployment creating the carbon-relay-ng pod
-$ tk show env
+Tanka can generate the resource definitions, the output should yield 4 resources:
+* a secret with the base64 encoded api key
+* a configmap with the carbon-relay-ng.ini and storage-schemas.conf
+* a service which forwards to the carbon-relay-ng pod
+* a deployment creating the carbon-relay-ng pod
 
-# apply the generated resources
-# tk apply env
+```
+tk show environments/default
+```
+
+Before we apply this, we need to setup the server:
+```
+tk env set environments/default --server <k8s endpoint>
+# or
+tk env set environments/default --server-from-context
+```
+
+Then apply it:
+```
+tk apply environments/default
 ```
 
 # Applying the YAML files
-For users who don't use ksonnet yet, we also provide yaml files which can be used as templates to
+For users who don't use Tanka or ksonnet, we also provide yaml files which can be used as templates to
 create the necessary resources to deploy carbon-relay-ng.
 
 The yaml files are in the directory [/examples/k8s](https://github.com/grafana/carbon-relay-ng/tree/document_k8s_deployment/examples/k8s).
