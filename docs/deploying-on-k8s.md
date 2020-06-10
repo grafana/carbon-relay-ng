@@ -52,3 +52,7 @@ $ tk show env
 ```
 
 # Applying the YAML files
+For users who don't use ksonnet yet, we also provide yaml files which can be used as templates to
+create the necessary resources to deploy carbon-relay-ng.
+
+The yaml files are in the directory [/examples/k8s](https://github.com/grafana/carbon-relay-ng/tree/document_k8s_deployment/examples/k8s).

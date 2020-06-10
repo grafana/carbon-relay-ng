@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: carbon-relay-ng
+  name: carbon-relay-ng
+  namespace: mynamespace
+spec:
+  ports:
+  - name: carbon-relay-ng-carbon
+    port: 2003
+    targetPort: 2003
+  selector:
+    name: carbon-relay-ng

@@ -1,0 +1,59 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    name: carbon-relay-ng
+  name: carbon-relay-ng
+  namespace: mynamespace
+spec:
+  minReadySeconds: 10
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      name: carbon-relay-ng
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        name: carbon-relay-ng
+    spec:
+      containers:
+      - env:
+        - name: INSTANCE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: GRAFANA_NET_ADDR
+          value: https://tsdb-1-<instance name>.hosted-metrics.grafana.net/metrics
+        - name: GRAFANA_NET_USER_ID
+          value: api_key
+        - name: GRAFANA_NET_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: api_key
+              name: crng-metrics-key
+        image: raintank/carbon-relay-ng:master
+        imagePullPolicy: Always
+        name: carbon-relay-ng
+        ports:
+        - containerPort: 2003
+          name: carbon
+        resources:
+          limits:
+            cpu: "4"
+            memory: 10Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
+        volumeMounts:
+        - mountPath: /conf
+          name: carbon-relay-ng-config
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          name: carbon-relay-ng-config
+        name: carbon-relay-ng-config
