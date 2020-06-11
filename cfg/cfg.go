@@ -63,7 +63,8 @@ type Aggregation struct {
 	Prefix    string
 	NotPrefix string
 	Substr    string
-	NotSubstr string
+	Sub       string
+	NotSub    string
 	Format    string
 	Cache     bool
 	Interval  int
@@ -77,7 +78,8 @@ type Route struct {
 	Prefix       string
 	NotPrefix    string
 	Substr       string
-	NotSubstr    string
+	Sub          string
+	NotSub       string
 	Regex        string
 	NotRegex     string
 	Destinations []string

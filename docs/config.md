@@ -21,7 +21,7 @@ Examples:
 # aggregate timer metrics with sums
 function = 'sum'
 prefix = ''
-substr = ''
+sub = ''
 regex = '^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*)'
 format = 'stats.timers._sum_$1.requests.$2'
 interval = 10
@@ -31,7 +31,7 @@ wait = 20
 # aggregate timer metrics with averages
 function = 'avg'
 prefix = ''
-substr = 'requests'
+sub = 'requests'
 regex = '^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*)'
 format = 'stats.timers._avg_$1.requests.$2'
 interval = 5
@@ -44,7 +44,7 @@ cache = true
 # pxx gets appended to the corresponding metric path.
 function = 'percentiles'
 prefix = ''
-substr = 'requests'
+sub = 'requests'
 regex = '^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*)'
 format = 'stats.timers.$1.requests.$2'
 interval = 5
@@ -68,13 +68,13 @@ max = -1
 
 ## carbon route
 
-setting        | mandatory | values                                        | default | description
----------------|-----------|-----------------------------------------------|---------|------------
-key            |     Y     | string                                        | N/A     |
-type           |     Y     | sendAllMatch/sendFirstMatch/consistentHashing | N/A     | send to all destinations vs first matching destination vs distribute via consistent hashing
-prefix         |     N     | string                                        | ""      |
-sub            |     N     | string                                        | ""      |
-regex          |     N     | string                                        | ""      |
+setting | mandatory | values                                        | default | description
+--------|-----------|-----------------------------------------------|---------|------------
+key     |     Y     | string                                        | N/A     |
+type    |     Y     | sendAllMatch/sendFirstMatch/consistentHashing | N/A     | send to all destinations vs first matching destination vs distribute via consistent hashing
+prefix  |     N     | string                                        | ""      |
+sub     |     N     | string                                        | ""      |
+regex   |     N     | string                                        | ""      |
 
 ### Examples
 
@@ -84,7 +84,7 @@ regex          |     N     | string                                        | "" 
 key = 'carbon-default'
 type = 'sendAllMatch'
 # prefix = ''
-# substr = ''
+# sub = ''
 # regex = ''
 destinations = [
   '127.0.0.1:2003 spool=true pickle=false'
@@ -94,7 +94,7 @@ destinations = [
 # all metrics with '=' in them are metrics2.0, send to carbon-tagger service
 key = 'carbon-tagger'
 type = 'sendAllMatch'
-substr = '='
+sub = '='
 destinations = [
   '127.0.0.1:2006'
 ]

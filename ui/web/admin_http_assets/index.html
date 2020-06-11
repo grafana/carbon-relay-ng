@@ -81,8 +81,8 @@
                 <tr>
                   <th>Match prefix</th>
                   <th>Not match prefix</th>
-                  <th>Match substring</th>
-                  <th>Not match substring</th>
+                  <th>Match sub</th>
+                  <th>Not match sub</th>
                   <th>Match regex</th>
                   <th>Not match regex</th>
                   <th>Actions</th>
@@ -92,8 +92,8 @@
                 <tr>
                     <td>{{b.prefix}}</td>
                     <td>{{b.notPrefix}}</td>
-                    <td>{{b.substring}}</td>
-                    <td>{{b.notSubstring}}</td>
+                    <td>{{b.sub}}</td>
+                    <td>{{b.notSub}}</td>
                     <td>{{b.regex}}</td>
                     <td>{{b.notRegex}}</td>
                     <td class="text-center"><a ng-click="removeBlacklist($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
@@ -224,8 +224,8 @@
                   <th>Route type</th>
                   <th>Match prefix</th>
                   <th>Not match prefix</th>
-                  <th>Match substring</th>
-                  <th>Not match substring</th>
+                  <th>Match sub</th>
+                  <th>Not match sub</th>
                   <th>Match regex</th>
                   <th>Not match regex</th>
                   <th>Address</th>
@@ -241,8 +241,8 @@
                   <td class="info">{{r.type}}</td>
                   <td class="info">{{r.matcher.prefix}}</td>
                   <td class="info">{{r.matcher.notPrefix}}</td>
-                  <td class="info">{{r.matcher.substring}}</td>
-                  <td class="info">{{r.matcher.notSubstring}}</td>
+                  <td class="info">{{r.matcher.sub}}</td>
+                  <td class="info">{{r.matcher.notSub}}</td>
                   <td class="info">{{r.matcher.regex}}</td>
                   <td class="info">{{r.matcher.notRegex}}</td>
                   <td class="info" colspan="3"></td>
@@ -254,8 +254,8 @@
                     <td></td>
                     <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.prefix}}</td>
                     <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.notPrefix}}</td>
-                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.substring}}</td>
-                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.notSubstring}}</td>
+                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.sub}}</td>
+                    <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.notSub}}</td>
                     <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.regex}}</td>
                     <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.matcher.notRegex}}</td>
                     <td ng-class="{'danger': !d.online, 'info': d.online}">{{d.address}}</td>
@@ -287,7 +287,7 @@
                     <input ng-model="newRoute.NotPrefix" name="NotPrefix" class="form-control" placeholder="NotPrefix">
                   </td>
                   <td class="form-group has-feedback">
-                    <input ng-model="newRoute.Substring" name="Substring" class="form-control" placeholder="Substring">
+                    <input ng-model="newRoute.Sub" name="Sub" class="form-control" placeholder="Substring">
                   </td>
                   <td class="form-group has-feedback">
                     <input ng-model="newRoute.NotSubstring" name="NotSubstring" class="form-control" placeholder="NotSubstring">

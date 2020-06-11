@@ -402,8 +402,8 @@ func (table *Table) Print() (str string) {
 	// 'R' stands for Route, 'D' for dest, 'B' blacklist, 'A" for aggregation, 'RW' for rewriter
 	maxBPrefix := 6
 	maxBNotPrefix := 9
-	maxBSub := 6
-	maxBNotSub := 9
+	maxBSub := 3
+	maxBNotSub := 6
 	maxBRegex := 5
 	maxBNotRegex := 8
 	maxAKey := 4
@@ -412,8 +412,8 @@ func (table *Table) Print() (str string) {
 	maxANotRegex := 8
 	maxAPrefix := 6
 	maxANotPrefix := 9
-	maxASub := 6
-	maxANotSub := 9
+	maxASub := 3
+	maxANotSub := 6
 	maxAOutFmt := 6
 	maxAInterval := 8
 	maxAwait := 4
@@ -421,14 +421,14 @@ func (table *Table) Print() (str string) {
 	maxRKey := 3
 	maxRPrefix := 6
 	maxRNotPrefix := 9
-	maxRSub := 6
-	maxRNotSub := 9
+	maxRSub := 3
+	maxRNotSub := 6
 	maxRRegex := 5
 	maxRNotRegex := 8
 	maxDPrefix := 6
 	maxDNotPrefix := 9
-	maxDSub := 6
-	maxDNotSub := 9
+	maxDSub := 3
+	maxDNotSub := 6
 	maxDRegex := 5
 	maxDNotRegex := 8
 	maxDAddr := 16
@@ -510,22 +510,22 @@ func (table *Table) Print() (str string) {
 	}
 
 	str += "\n## Blacklist:\n"
-	cols = fmt.Sprintf(heaFmtB, "prefix", "notPrefix", "substr", "notSubstr", "regex", "notRegex")
+	cols = fmt.Sprintf(heaFmtB, "prefix", "notPrefix", "sub", "notSub", "regex", "notRegex")
 	str += cols + underscore(len(cols)-1)
 	for _, black := range t.Blacklist {
 		str += fmt.Sprintf(rowFmtB, black.Prefix, black.NotPrefix, black.Sub, black.NotSub, black.Regex, black.NotRegex)
 	}
 
 	str += "\n## Aggregations:\n"
-	cols = fmt.Sprintf(heaFmtA, "key", "func", "regex", "notRegex", "prefix", "notPrefix", "substr", "notSubstr", "outFmt", "cache", "interval", "wait", "dropRaw")
+	cols = fmt.Sprintf(heaFmtA, "key", "func", "regex", "notRegex", "prefix", "notPrefix", "sub", "notSub", "outFmt", "cache", "interval", "wait", "dropRaw")
 	str += cols + underscore(len(cols)-1)
 	for _, agg := range t.Aggregators {
 		str += fmt.Sprintf(rowFmtA, agg.Key, agg.Fun, agg.Matcher.Regex, agg.Matcher.NotRegex, agg.Matcher.Prefix, agg.Matcher.NotPrefix, agg.Matcher.Sub, agg.Matcher.NotSub, agg.OutFmt, agg.Cache, agg.Interval, agg.Wait, agg.DropRaw)
 	}
 
 	str += "\n## Routes:\n"
-	cols = fmt.Sprintf(heaFmtR, "type", "key", "prefix", "notPrefix", "substr", "notSubstr", "regex", "notRegex")
-	rcols := fmt.Sprintf(heaFmtD, "prefix", "notPrefix", "substr", "notSubstr", "regex", "notRegex", "addr", "spoolDir", "spool", "pickle", "online")
+	cols = fmt.Sprintf(heaFmtR, "type", "key", "prefix", "notPrefix", "sub", "notSub", "regex", "notRegex")
+	rcols := fmt.Sprintf(heaFmtD, "prefix", "notPrefix", "sub", "notSub", "regex", "notRegex", "addr", "spoolDir", "spool", "pickle", "online")
 	indent := "  "
 	str += cols + underscore(max(len(cols), len(rcols)+len(indent))-1)
 	divider := indent + strings.Repeat("-", max(len(cols)-len(indent), len(rcols))-1) + "\n"
@@ -656,7 +656,14 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 
 func (table *Table) InitAggregation(config cfg.Config) error {
 	for i, aggConfig := range config.Aggregation {
-		matcher, err := matcher.New(aggConfig.Prefix, aggConfig.NotPrefix, aggConfig.Substr, aggConfig.NotSubstr, aggConfig.Regex, aggConfig.NotRegex)
+		// for backwards compatibility we need to check both "sub" and "substr",
+		// but "sub" gets preference if both are defined
+		sub := aggConfig.Substr
+		if len(aggConfig.Sub) > 0 {
+			sub = aggConfig.Sub
+		}
+
+		matcher, err := matcher.New(aggConfig.Prefix, aggConfig.NotPrefix, sub, aggConfig.NotSub, aggConfig.Regex, aggConfig.NotRegex)
 		if err != nil {
 			return fmt.Errorf("Failed to instantiate matcher: %s", err)
 		}
@@ -688,7 +695,13 @@ func (table *Table) InitRewrite(config cfg.Config) error {
 
 func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 	for _, routeConfig := range config.Route {
-		matcher, err := matcher.New(routeConfig.Prefix, routeConfig.NotPrefix, routeConfig.Substr, routeConfig.NotSubstr, routeConfig.Regex, routeConfig.NotRegex)
+		// for backwards compatibility we need to check both "sub" and "substr",
+		// but "sub" gets preference if both are defined
+		sub := routeConfig.Substr
+		if len(routeConfig.Sub) > 0 {
+			sub = routeConfig.Sub
+		}
+		matcher, err := matcher.New(routeConfig.Prefix, routeConfig.NotPrefix, sub, routeConfig.NotSub, routeConfig.Regex, routeConfig.NotRegex)
 		if err != nil {
 			return fmt.Errorf("Failed to instantiate matcher: %s", err)
 		}
