@@ -27,8 +27,11 @@ commands:
                sum
              <match>
                regex=<str>                       mandatory. regex to match incoming metrics. supports groups (numbered, see fmt)
+               notRegex=<str>                    regex to check against incoming metrics, inverted (only metrics where the regex doesn't match pass)
                sub=<str>                         substring to match incoming metrics before matching regex (can save you CPU)
+               notSub=<str>                      inverted substring filter, metrics which do not contain this string pass the filter
                prefix=<str>                      prefix to match incoming metrics before matching regex (can save you CPU). If not specified, will try to automatically determine from regex.
+               notPrefix=<str>                   inverted prefix filter, metrics which do not start with this string pass the filter
              <fmt>                               format of output metric. you can use $1, $2, etc to refer to numbered groups
              <interval>                          align odd timestamps of metrics into buckets by this interval in seconds.
              <wait>                              amount of seconds to wait for "late" metric messages before computing and flushing final result.
@@ -41,8 +44,11 @@ commands:
                consistentHashing                 distribute metrics between destinations using a hash algorithm
              <opts>:
                prefix=<str>                      only take in metrics that have this prefix
+               notPrefix=<str>                   only take in metrics that don't have this prefix
                sub=<str>                         only take in metrics that match this substring
+               notSub=<str>                      only take in metrics that don't match this substring
                regex=<regex>                     only take in metrics that match this regex (expensive!)
+               notRegex=<regex>                  only take in metrics that don't match this regex (expensive!)
              <dest>: <addr> <opts>
                <addr>                            a tcp endpoint. i.e. ip:port or hostname:port
                                                  for consistentHashing routes, an instance identifier can also be present:
@@ -50,8 +56,11 @@ commands:
                                                  The instance is used to disambiguate multiple endpoints on the same host, as the Carbon-compatible consistent hashing algorithm does not take the port into account.
                <opts>:
                    prefix=<str>                  only take in metrics that have this prefix
+                   notPrefix=<str>               only take in metrics that don't have this prefix
                    sub=<str>                     only take in metrics that match this substring
+                   notSub=<str>                  only take in metrics that don't match this substring
                    regex=<regex>                 only take in metrics that match this regex (expensive!)
+                   notRegex=<regex>              only take in metrics that don't match this regex (expensive!)
                    flush=<int>                   flush interval in ms
                    reconn=<int>                  reconnection interval in ms
                    pickle={true,false}           pickle output format instead of the default text protocol
@@ -72,12 +81,18 @@ commands:
     modDest <routeKey> <dest> <opts>:            modify dest by updating one or more space separated option strings
                    addr=<addr>                   new tcp address
                    prefix=<str>                  new matcher prefix
+                   notPrefix=<str>               new matcher not prefix
                    sub=<str>                     new matcher substring
+                   notSub=<str>                  new matcher not substring
                    regex=<regex>                 new matcher regex
+                   notRegex=<regex>              new matcher not regex
 
     modRoute <routeKey> <opts>:                  modify route by updating one or more space separated option strings
                    prefix=<str>                  new matcher prefix
+                   notPrefix=<str>               new matcher not prefix
                    sub=<str>                     new matcher substring
+                   notSub=<str>                  new matcher not substring
                    regex=<regex>                 new matcher regex
+                   notRegex=<regex>              new matcher not regex
 
     delRoute <routeKey>                          delete given route

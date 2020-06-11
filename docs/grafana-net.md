@@ -25,15 +25,18 @@ notes:
 * by specifying a prefix, sub or regex you can only send a subset of your metrics to grafana.com hosted metrics
 
 ```
-addRoute grafanaNet key [prefix/sub/regex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
+addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
 ```
 
 
 ### matching options
 
 substring match: `addRoute grafanaNet grafanaNet sub=<substring here>  addr...`
-regex match: `addRoute grafanaNet grafanaNet regex=your-regex-here  addr...`
-prefix match: `addRoute grafanaNet grafanaNet prefix=prefix-match-here  addr...`
+inverted substring match: `addRoute grafanaNet grafanaNet notSub=<substring here>  addr...`
+regex match: `addRoute grafanaNet grafanaNet regex=<regex here>  addr...`
+inverted regex match: `addRoute grafanaNet grafanaNet notRegex=<your regex>  addr...`
+prefix match: `addRoute grafanaNet grafanaNet prefix=<prefix here>  addr...`
+inverted prefix match: `addRoute grafanaNet grafanaNet notPrefix=<prefix here>  addr...`
 
 the options can also be combined (space separated). note two spaces before the address!
 

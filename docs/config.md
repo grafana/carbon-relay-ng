@@ -21,8 +21,11 @@ Examples:
 # aggregate timer metrics with sums
 function = 'sum'
 prefix = ''
+notPrefix = ''
 sub = ''
+notSub = ''
 regex = '^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*)'
+notRegex = ''
 format = 'stats.timers._sum_$1.requests.$2'
 interval = 10
 wait = 20
@@ -31,8 +34,11 @@ wait = 20
 # aggregate timer metrics with averages
 function = 'avg'
 prefix = ''
+notPrefix = ''
 sub = 'requests'
+notSub = ''
 regex = '^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*)'
+notRegex = ''
 format = 'stats.timers._avg_$1.requests.$2'
 interval = 5
 wait = 10
@@ -44,8 +50,11 @@ cache = true
 # pxx gets appended to the corresponding metric path.
 function = 'percentiles'
 prefix = ''
+notPrefix = ''
 sub = 'requests'
+notSub = ''
 regex = '^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*)'
+notRegex = ''
 format = 'stats.timers.$1.requests.$2'
 interval = 5
 wait = 10
@@ -68,13 +77,16 @@ max = -1
 
 ## carbon route
 
-setting | mandatory | values                                        | default | description
---------|-----------|-----------------------------------------------|---------|------------
-key     |     Y     | string                                        | N/A     |
-type    |     Y     | sendAllMatch/sendFirstMatch/consistentHashing | N/A     | send to all destinations vs first matching destination vs distribute via consistent hashing
-prefix  |     N     | string                                        | ""      |
-sub     |     N     | string                                        | ""      |
-regex   |     N     | string                                        | ""      |
+setting        | mandatory | values                                        | default | description
+---------------|-----------|-----------------------------------------------|---------|------------
+key            |     Y     | string                                        | N/A     |
+type           |     Y     | sendAllMatch/sendFirstMatch/consistentHashing | N/A     | send to all destinations vs first matching destination vs distribute via consistent hashing
+prefix         |     N     | string                                        | ""      |
+notPrefix      |     N     | string                                        | ""      |
+sub            |     N     | string                                        | ""      |
+notSub         |     N     | string                                        | ""      |
+regex          |     N     | string                                        | ""      |
+notRegex       |     N     | string                                        | ""      |
 
 ### Examples
 
@@ -84,8 +96,11 @@ regex   |     N     | string                                        | ""      |
 key = 'carbon-default'
 type = 'sendAllMatch'
 # prefix = ''
+# notPrefix = ''
 # sub = ''
+# notSub = ''
 # regex = ''
+# notRegex = ''
 destinations = [
   '127.0.0.1:2003 spool=true pickle=false'
 ]
@@ -116,8 +131,11 @@ setting              | mandatory | values        | default | description
 ---------------------|-----------|---------------|---------|------------
 addr                 |     Y     |  string       | N/A     |
 prefix               |     N     |  string       | ""      |
+notPrefix            |     N     |  string       | ""      |
 sub                  |     N     |  string       | ""      |
+notSub               |     N     |  string       | ""      |
 regex                |     N     |  string       | ""      |
+notRegex             |     N     |  string       | ""      |
 flush                |     N     |  int (ms)     | 1000    | flush interval
 reconn               |     N     |  int (ms)     | 10k     | reconnection interval
 pickle               |     N     |  true/false   | false   | pickle output format instead of the default text protocol
@@ -140,8 +158,11 @@ addr           |     Y     |  string     | N/A     |
 apiKey         |     Y     |  string     | N/A     |
 schemasFile    |     Y     |  string     | N/A     |
 prefix         |     N     |  string     | ""      |
+notPrefix      |     N     |  string     | ""      |
 sub            |     N     |  string     | ""      |
+notSub         |     N     |  string     | ""      |
 regex          |     N     |  string     | ""      |
+notRegex       |     N     |  string     | ""      |
 sslverify      |     N     |  true/false | true    |
 spool          |     N     |  true/false | false   | ** disk spooling. not implemented yet **
 blocking       |     N     |  true/false | false   | if false, full buffer drops data. if true, full buffer puts backpressure on the table, possibly affecting ingestion and other routes
@@ -198,8 +219,11 @@ codec          |     Y     |  string     | N/A     | which compression to use. p
 partitionBy    |     Y     |  string     | N/A     | which fields to shard by. possible values are: byOrg, bySeries, bySeriesWithTags
 schemasFile    |     Y     |  string     | N/A     |
 prefix         |     N     |  string     | ""      |
+notPrefix      |     N     |  string     | ""      |
 sub            |     N     |  string     | ""      |
+notSub         |     N     |  string     | ""      |
 regex          |     N     |  string     | ""      |
+notRegex       |     N     |  string     | ""      |
 blocking       |     N     |  true/false | false   | if false, full buffer drops data. if true, full buffer puts backpressure on the table, possibly affecting ingestion and other routes
 bufSize        |     N     |  int        | 10M     | buffer size. assume +- 100B per message, so 10M is about 1GB of RAM
 flushMaxNum    |     N     |  int        | 10k     | max number of metrics to buffer before triggering flush
@@ -216,8 +240,11 @@ project        |     Y     |  string     | N/A           | Google Cloud Project 
 topic          |     Y     |  string     | N/A           | The Google PubSub topic to publish metrics onto
 codec          |     N     |  string     | gzip          | Optional compression codec to compress published messages. Valid: "none" (no compression), "gzip" (default)
 prefix         |     N     |  string     | ""            |
+notPrefix      |     N     |  string     | ""            |
 sub            |     N     |  string     | ""            |
+notSub         |     N     |  string     | ""            |
 regex          |     N     |  string     | ""            |
+notRegex       |     N     |  string     | ""            |
 blocking       |     N     |  true/false | false         | if false, full buffer drops data. if true, full buffer puts backpressure on the table, possibly affecting ingestion and other routes
 bufSize        |     N     |  int        | 10M           | buffer size. assume +- 100B per message, so 10M is about 1GB of RAM
 flushMaxSize   |     N     |  int        | (10MB - 4KB)  | max message size before triggering flush. The size is before any compression is calculated. PubSub message limit is 10MB but this can be higher if using compression.
@@ -231,8 +258,11 @@ key              |     Y     |  string     | N/A           |
 profile          |     N     |  string     | N/A           | The Amazon CloudWatch profile to use. For local development needed only. In the cloud, the profile is known.
 region           |     Y     |  string     | N/A           | The Amazon Geo region to send metrics into.
 prefix           |     N     |  string     | ""            |
+notPrefix        |     N     |  string     | ""            |
 sub              |     N     |  string     | ""            |
+notSub           |     N     |  string     | ""            |
 regex            |     N     |  string     | ""            |
+notRegex         |     N     |  string     | ""            |
 blocking         |     N     |  true/false | false         | if false, full buffer drops data. if true, full buffer puts backpressure on the table, possibly affecting ingestion and other routes.
 bufSize          |     N     |  int        | 10M           | buffer size. assume +- 100B per message, so 10M is about 1GB of RAM.
 flushMaxSize     |     N     |  int        | 20            | max MetricDatum objects in slice before triggering flush. 20 is currently the CloudWatch max.
