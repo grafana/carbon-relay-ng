@@ -202,7 +202,8 @@ see [ticket 50](https://github.com/grafana/carbon-relay-ng/issues/50) for more i
 # v0.7: 200 stars. May 23, 2016
 
 changes:
-- substring filters have been renamed from "substr" to "sub" and "notSubstr" to "notSub" everywhere, for consistency
+- substring filters have been renamed from "substr" to "sub" and "notSubstr" to "notSub" everywhere, for consistency.
+  change is backwards compatible, the old "substr" parameters are still accepted in all places where they've been accepted before.
 - regex / substring / prefix support for blacklist
 - support more management functionality in admin UI + show dest online status
 - properly set default endpoint settings
