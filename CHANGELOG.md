@@ -1,5 +1,7 @@
 # v0.12.0: better pickle support, various fixes and better aggregators
 
+* substring filters have been renamed from "substr" to "sub" and "notSubstr" to "notSub" everywhere, for consistency.
+  change is backwards compatible, the old "substr" parameters are still accepted in all places where they've been accepted before.
 * support pickle protocol versions 0, 1, 2, 3 & 4 + accept pickle arrays + send pickle tuples. #341
 * fix different connections to same host:port using same spool file, by adding instance to destination key. #349
 * fix aggregator flush timing + limit concurrent aggregator flushing #354
@@ -202,8 +204,6 @@ see [ticket 50](https://github.com/grafana/carbon-relay-ng/issues/50) for more i
 # v0.7: 200 stars. May 23, 2016
 
 changes:
-- substring filters have been renamed from "substr" to "sub" and "notSubstr" to "notSub" everywhere, for consistency.
-  change is backwards compatible, the old "substr" parameters are still accepted in all places where they've been accepted before.
 - regex / substring / prefix support for blacklist
 - support more management functionality in admin UI + show dest online status
 - properly set default endpoint settings
