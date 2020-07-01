@@ -1,7 +1,10 @@
-# v0.12.0: better pickle support, various fixes and better aggregators
+# master / unreleased
 
 * substring filters have been renamed from "substr" to "sub" and "notSubstr" to "notSub" everywhere, for consistency.
   change is backwards compatible, the old "substr" parameters are still accepted in all places where they've been accepted before.
+
+# v0.12.0: better pickle support, various fixes and better aggregators
+
 * support pickle protocol versions 0, 1, 2, 3 & 4 + accept pickle arrays + send pickle tuples. #341
 * fix different connections to same host:port using same spool file, by adding instance to destination key. #349
 * fix aggregator flush timing + limit concurrent aggregator flushing #354
@@ -18,7 +21,6 @@
 * Fix bad regex cache clean up resulting in unbounded growth #365
 * Fix deadlock in keepSafe #369
 * Embed bootstrap, jquery, etc, instead of pulling in from the internet. #371
-
 
 # v0.11.0: memleak fix, new logging, major input refactor and more. Nov 9, 2018
 
