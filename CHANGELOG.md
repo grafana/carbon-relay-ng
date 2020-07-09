@@ -1,7 +1,15 @@
 # master / unreleased
 
+* kafkaMdm route: allow partitionBy bySeriesWithTags. #381
+* Aggregation point tracker (more detailed stats for aggregator). #382
+* fix: Add error check for process reporter so we don't auto-crash for osx/windows. #390
+* Add support for passing grafana.net credentials via environment variables. #393
+* Add a flag to enable /debug/pprof/ on admin http port. #402
+* Inverted filter criteria for matchers. #422
+* Document k8s deployment. #427, #428
 * substring filters have been renamed from "substr" to "sub" and "notSubstr" to "notSub" everywhere, for consistency.
-  change is backwards compatible, the old "substr" parameters are still accepted in all places where they've been accepted before.
+  change is backwards compatible, the old "substr" parameters are still accepted in all places where they've been accepted before. #419, #423
+* kafkaMdm route: TLS + SASL support. #426
 
 # v0.12.0: better pickle support, various fixes and better aggregators
 
