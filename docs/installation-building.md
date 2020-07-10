@@ -23,7 +23,7 @@ Executable Binaries for Linux, Mac, and Windows can be found on the [releases](h
 
 ## Docker images
 
-See [dockerhub](https://hub.docker.com/r/raintank/carbon-relay-ng/).
+See [dockerhub](https://hub.docker.com/r/grafana/carbon-relay-ng/).
 
 You can use these tags:
 

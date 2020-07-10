@@ -36,7 +36,7 @@ spec:
             secretKeyRef:
               key: api_key
               name: crng-metrics-key
-        image: raintank/carbon-relay-ng:master
+        image: grafana/carbon-relay-ng:master
         imagePullPolicy: Always
         name: carbon-relay-ng
         ports:
