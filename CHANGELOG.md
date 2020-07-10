@@ -1,4 +1,4 @@
-# master / unreleased
+# v0.13.0: inverted filters, kafka TLS, and more
 
 * kafkaMdm route: allow partitionBy bySeriesWithTags. #381
 * Aggregation point tracker (more detailed stats for aggregator). #382
