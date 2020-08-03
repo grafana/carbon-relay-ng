@@ -78,4 +78,4 @@ When interesting changes have been merged to master, and they have had a chance 
 * trigger re-run of the CI pipeline to build packages with new version tag
 * wait for CircleCI to complete successfully
 * create release on GitHub. copy entry from CHANGELOG.md to GitHub release page
-* upload platform specific binaries from CircleCI artifacts to the release as well
+* upload platform specific (Linux, Mac and windows) binaries from CircleCI to the release as well
