@@ -52,7 +52,7 @@ type KafkaMdm struct {
 
 // NewKafkaMdm creates a special route that writes to a grafana.net datastore
 // We will automatically run the route and the destination
-func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool, tlsEnabled, tlsSkipVerify bool, tlsClientCert, tlsClientKey string, saslEnabled bool, saslUsername, saslPassword string) (Route, error) {
+func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile, partitionBy string, brokers []string, bufSize, orgId, flushMaxNum, flushMaxWait, timeout int, blocking bool, tlsEnabled, tlsSkipVerify bool, tlsClientCert, tlsClientKey string, saslEnabled bool, saslMechanism string, saslUsername, saslPassword string) (Route, error) {
 	schemas, err := getSchemas(schemasFile)
 	if err != nil {
 		return nil, err
@@ -116,6 +116,13 @@ func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile,
 		config.Net.SASL.Enable = true
 		config.Net.SASL.User = saslUsername
 		config.Net.SASL.Password = saslPassword
+		if saslMechanism == "SCRAM-SHA-256" {
+			config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA256
+			config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA256} }
+		} else if saslMechanism == "SCRAM-SHA-512" {
+			config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
+			config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
+		}
 	}
 
 	config.Producer.RequiredAcks = sarama.WaitForAll // Wait for all in-sync replicas to ack the message
