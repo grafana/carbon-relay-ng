@@ -110,6 +110,7 @@ type Route struct {
 	TLSClientCert string
 	TLSClientKey  string
 	SASLEnabled   bool
+	SASLMechanism string
 	SASLUsername  string
 	SASLPassword  string
 
