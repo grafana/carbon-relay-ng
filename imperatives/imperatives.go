@@ -66,6 +66,7 @@ const (
 	optTLSClientCert
 	optTLSClientKey
 	optSASLEnabled
+	optSASLMechanism
 	optSASLUsername
 	optSASLPassword
 	optUnspoolSleep
@@ -129,6 +130,7 @@ var tokens = []toki.Def{
 	{Token: optTLSClientCert, Pattern: "tlsClientCert="},
 	{Token: optTLSClientKey, Pattern: "tlsClientKey="},
 	{Token: optSASLEnabled, Pattern: "saslEnabled="},
+	{Token: optSASLMechanism, Pattern: "saslMechanism="},
 	{Token: optSASLUsername, Pattern: "saslUsername="},
 	{Token: optSASLPassword, Pattern: "saslPassword="},
 	{Token: optUnspoolSleep, Pattern: "unspoolsleep="},
@@ -169,7 +171,7 @@ var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
 var errFmtAddAgg = errors.New("addAgg <avg|count|delta|derive|last|max|min|stdev|sum> [prefix/sub/regex=,..] <fmt> <interval> <wait> [cache=true/false] [dropRaw=true/false]")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
 var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/sub/regex=,...]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int concurrency=int orgId=int]")
-var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex=,...]  broker topic codec schemasFile partitionBy orgId [blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int tlsEnabled=bool tlsSkipVerify=bool tlsClientKey='<key>' tlsClientCert='<file>' saslEnabled=bool saslUsername='username' saslPassword='password']")
+var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex=,...]  broker topic codec schemasFile partitionBy orgId [blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int tlsEnabled=bool tlsSkipVerify=bool tlsClientKey='<key>' tlsClientCert='<file>' saslEnabled=bool saslMechanism='mechanism' saslUsername='username' saslPassword='password']")
 var errFmtAddRoutePubSub = errors.New("addRoute pubsub key [prefix/sub/regex=,...]  project topic [codec=gzip/none format=plain/pickle blocking=true/false bufSize=int flushMaxSize=int flushMaxWait=int]")
 var errFmtAddDest = errors.New("addDest <routeKey> <dest>") // not implemented yet
 var errFmtAddRewriter = errors.New("addRewriter <old> <new> <max>")
@@ -697,7 +699,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 	var tlsEnabled, tlsSkipVerify bool
 	var tlsClientCert, tlsClientKey string
 	var saslEnabled bool
-	var saslUsername, saslPassword string
+	var saslMechanism, saslUsername, saslPassword string
 
 	t = s.Next()
 	for ; t.Token != toki.EOF; t = s.Next() {
@@ -794,6 +796,12 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 			} else {
 				return errFmtAddRouteKafkaMdm
 			}
+		case optSASLMechanism:
+			t = s.Next()
+			if t.Token != word {
+				return errFmtAddRouteKafkaMdm
+			}
+			saslMechanism = string(t.Value)
 		case optSASLUsername:
 			t = s.Next()
 			if t.Token != word {
@@ -811,7 +819,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	route, err := route.NewKafkaMdm(key, matcher, topic, codec, schemasFile, partitionBy, brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, blocking, tlsEnabled, tlsSkipVerify, tlsClientCert, tlsClientKey, saslEnabled, saslUsername, saslPassword)
+	route, err := route.NewKafkaMdm(key, matcher, topic, codec, schemasFile, partitionBy, brokers, bufSize, orgId, flushMaxNum, flushMaxWait, timeout, blocking, tlsEnabled, tlsSkipVerify, tlsClientCert, tlsClientKey, saslEnabled, saslMechanism, saslUsername, saslPassword)
 	if err != nil {
 		return err
 	}
