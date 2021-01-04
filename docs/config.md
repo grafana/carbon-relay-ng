@@ -254,6 +254,25 @@ tlsEnabled = true
 tlsSkipVerify  = false
 ```
 
+example config with TLS and SASL enabled:
+
+```
+[[route]]
+key = 'my-kafka-route'    
+type = 'kafkaMdm'
+brokers = ['kafka:9092']
+topic = 'mdm'
+codec = 'snappy'
+partitionBy = 'bySeriesWithTags'
+schemasFile = 'conf/storage-schemas.conf'
+tlsEnabled = true
+tlsSkipVerify  = false
+saslEnabled = true
+saslMechanism = 'SCRAM-SHA-512'
+saslUsername = 'user'
+saslPassword = 'password'
+```
+
 ## Google PubSub route
 
 setting        | mandatory | values      | default       | description
