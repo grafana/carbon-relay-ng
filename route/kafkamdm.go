@@ -113,16 +113,18 @@ func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile,
 	}
 
 	if saslEnabled {
-		config.Net.SASL.Enable = true
-		config.Net.SASL.User = saslUsername
-		config.Net.SASL.Password = saslPassword
 		if saslMechanism == "SCRAM-SHA-256" {
 			config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA256
 			config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA256} }
 		} else if saslMechanism == "SCRAM-SHA-512" {
 			config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
 			config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
+		} else {
+			log.Fatalf("Failed to reconize saslMechanism: '%s'", saslMechanism)
 		}
+		config.Net.SASL.Enable = true
+		config.Net.SASL.User = saslUsername
+		config.Net.SASL.Password = saslPassword
 	}
 
 	config.Producer.RequiredAcks = sarama.WaitForAll // Wait for all in-sync replicas to ack the message
