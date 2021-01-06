@@ -235,7 +235,7 @@ tlsSkipVerify  |     N     |  bool       | false   | Whether to skip TLS server 
 tlsClientCert  |     N     |  string     | ""      | Client cert for client authentication
 tlsClientKey   |     N     |  string     | ""      | Client key for client authentication
 saslEnabled    |     N     |  bool       | false   | Whether to enable SASL
-saslMechanism  |     N     |  string     | ""      | SASL Mechanism (SCRAM-SHA-256, SCRAM-SHA-512)
+saslMechanism  |     N     |  string     | ""      | SASL Mechanism (SCRAM-SHA-256 or SCRAM-SHA-512)
 saslUsername   |     N     |  string     | ""      | SASL Username
 saslPassword   |     N     |  string     | ""      | SASL Password
 
