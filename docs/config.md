@@ -5,6 +5,17 @@ You can also create routes, populate the blacklist, etc via the `init` config ar
 
 # Blacklist
 
+entries declare a matcher type followed by a match expression:
+
+type        | metrics are dropped when they
+------------|---------------------------------
+prefix      | have the prefix
+notPrefix   | don't have the prefix
+sub         | contain the substring
+notSub      | don't contain the substring
+regex       | match the regex
+notRegex    | don't match the regex
+
 example:
 ```
 blacklist = [
