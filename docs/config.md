@@ -5,6 +5,17 @@ You can also create routes, populate the blacklist, etc via the `init` config ar
 
 # Blacklist
 
+entries declare a matcher type followed by a match expression:
+
+type        | metrics are dropped when they
+------------|---------------------------------
+prefix      | have the prefix
+notPrefix   | don't have the prefix
+sub         | contain the substring
+notSub      | don't contain the substring
+regex       | match the regular expression
+notRegex    | don't match the regular expression
+
 example:
 ```
 blacklist = [
@@ -12,6 +23,11 @@ blacklist = [
   'regex ^foo\..*\.cpu+'
 ]
 ```
+
+Note:
+
+* regular expression [syntax is documented here](https://golang.org/pkg/regexp/syntax/). But try to avoid regex matching, as it is not as fast as substring/prefix checking.
+* regular expressions are not anchored by default. You can use `^` and `$` to explicitly match from the beginning to the end of the name.
 
 # Aggregators
 
