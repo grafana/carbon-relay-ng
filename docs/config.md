@@ -13,8 +13,8 @@ prefix      | have the prefix
 notPrefix   | don't have the prefix
 sub         | contain the substring
 notSub      | don't contain the substring
-regex       | match the regex
-notRegex    | don't match the regex
+regex       | match the regular expression
+notRegex    | don't match the regular expression
 
 example:
 ```
@@ -23,6 +23,11 @@ blacklist = [
   'regex ^foo\..*\.cpu+'
 ]
 ```
+
+Note:
+
+* regular expression [syntax is documented here](https://golang.org/pkg/regexp/syntax/). But try to avoid regex matching, as it is not as fast as substring/prefix checking.
+* regular expressions are not anchored by default. You can use `^` and `$` to explicitly match from the beginning to the end of the name.
 
 # Aggregators
 
