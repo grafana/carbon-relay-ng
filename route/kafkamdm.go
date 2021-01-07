@@ -119,7 +119,7 @@ func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile,
 		} else if saslMechanism == "SCRAM-SHA-512" {
 			config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
 			config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
-		} else {
+		} else if saslMechanism != "" {
 			log.Fatalf("Failed to reconize saslMechanism: '%s'", saslMechanism)
 		}
 		config.Net.SASL.Enable = true
