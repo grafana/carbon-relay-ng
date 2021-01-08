@@ -8,5 +8,5 @@ tag=master
 grep -q "master" .git/HEAD && [[ "$version" != *-* ]] && tag=latest
 
 
-docker build --tag=raintank/carbon-relay-ng:$tag .
-docker tag raintank/carbon-relay-ng:$tag raintank/carbon-relay-ng:$version
+docker build --tag=grafana/carbon-relay-ng:$tag .
+docker tag grafana/carbon-relay-ng:$tag grafana/carbon-relay-ng:$version
