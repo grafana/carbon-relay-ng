@@ -43,7 +43,7 @@ jobs:
       - run: make packages
       - setup_remote_docker
       - run: make docker
-      - run: docker save -o build/carbon-relay-ng.tar raintank/carbon-relay-ng
+      - run: docker save -o build/carbon-relay-ng.tar grafana/carbon-relay-ng
       - run: git describe --tags --always | sed 's/^v//' > build/version.txt
       - persist_to_workspace:
           root: .
@@ -85,18 +85,12 @@ jobs:
                docker load -i build/carbon-relay-ng.tar
                docker login -u $DOCKER_USER -p $DOCKER_KEY
 
-               # push to both raintank and grafana orgs for now, switch to just grafana at some point in the future
-               docker push raintank/carbon-relay-ng:$version
-               docker tag raintank/carbon-relay-ng:$version grafana/carbon-relay-ng:$version
                docker push grafana/carbon-relay-ng:$version
                # only versions without a hyphen - e.g. actual releases - are tagged as latest.
                # in-between-release versions are tagged as master.
                tag=latest
                [[ "$version" == *-* ]] && tag=master
 
-                # push to both raintank and grafana orgs for now, switch to just grafana at some point in the future
-               docker push raintank/carbon-relay-ng:$tag
-               docker tag raintank/carbon-relay-ng:$tag grafana/carbon-relay-ng:$tag
                docker push grafana/carbon-relay-ng:$tag
             fi
 workflows:

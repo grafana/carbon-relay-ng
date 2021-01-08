@@ -158,7 +158,7 @@ run: build
 	./carbon-relay-ng carbon-relay-ng.ini
 
 run-docker:
-	docker run --rm -p 2003:2003 -p 2004:2004 -p 8081:8081 -v $(CURDIR)/examples:/conf -v $(CURDIR)/spool:/spool raintank/carbon-relay-ng
+	docker run --rm -p 2003:2003 -p 2004:2004 -p 8081:8081 -v $(CURDIR)/examples:/conf -v $(CURDIR)/spool:/spool grafana/carbon-relay-ng
 
 clean:
 	rm -f carbon-relay-ng carbon-relay-ng.exe
