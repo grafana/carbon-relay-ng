@@ -251,6 +251,7 @@ tlsSkipVerify  |     N     |  bool       | false   | Whether to skip TLS server 
 tlsClientCert  |     N     |  string     | ""      | Client cert for client authentication
 tlsClientKey   |     N     |  string     | ""      | Client key for client authentication
 saslEnabled    |     N     |  bool       | false   | Whether to enable SASL
+saslMechanism  |     N     |  string     | ""      | if unset, the PLAIN mechanism is used. You can also specify SCRAM-SHA-256 or SCRAM-SHA-512.
 saslUsername   |     N     |  string     | ""      | SASL Username
 saslPassword   |     N     |  string     | ""      | SASL Password
 
@@ -267,6 +268,25 @@ partitionBy = 'bySeriesWithTags'
 schemasFile = 'conf/storage-schemas.conf'
 tlsEnabled = true
 tlsSkipVerify  = false
+```
+
+example config with TLS and SASL enabled:
+
+```
+[[route]]
+key = 'my-kafka-route'    
+type = 'kafkaMdm'
+brokers = ['kafka:9092']
+topic = 'mdm'
+codec = 'snappy'
+partitionBy = 'bySeriesWithTags'
+schemasFile = 'conf/storage-schemas.conf'
+tlsEnabled = true
+tlsSkipVerify  = false
+saslEnabled = true
+saslMechanism = 'SCRAM-SHA-512'
+saslUsername = 'user'
+saslPassword = 'password'
 ```
 
 ## Google PubSub route

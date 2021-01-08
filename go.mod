@@ -37,6 +37,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c
 	github.com/tinylib/msgp v1.1.0 // indirect
+	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
 	golang.org/x/oauth2 v0.0.0-20180118004544-b28fcf2b08a1 // indirect
 	golang.org/x/text v0.3.1-0.20171227012246-e19ae1496984 // indirect
 	google.golang.org/api v0.0.0-20180122000316-bc96e9251952 // indirect
