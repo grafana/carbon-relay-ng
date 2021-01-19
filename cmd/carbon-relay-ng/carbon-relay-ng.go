@@ -184,10 +184,10 @@ func main() {
 		_, err = statsmt.NewProcessReporter()
 		if err != nil {
 			//ProcessReporter depends on /proc which doesn't exist on OSX/Windows
-			if strings.HasSuffix(err.Error(), "stat /proc: no such file or directory") {
-				log.Warn("stats: could not initialize process reporter because /proc does not exist")
-			} else {
+			if runtime.GOOS == "linux" {
 				log.Fatalf("stats: could not initialize process reporter: %v", err)
+			} else {
+				log.Warnf("stats: could not initialize process reporter: %v", err)
 			}
 		}
 		aggregator.NewAggregatorReporter()
