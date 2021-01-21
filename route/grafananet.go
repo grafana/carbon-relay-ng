@@ -221,7 +221,7 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 		}
 		route.numErrFlush.Inc(1)
 		b := boff.Duration()
-		log.Warnf("GrafanaNet failed to submit data: %s - will try again in %s (this attempt took %s)", err.Error(), b, dur)
+		log.Warnf("GrafanaNet failed to submit data to %s: %s - will try again in %s (this attempt took %s)", route.addr, err.Error(), b, dur)
 		time.Sleep(b)
 		// re-instantiate body, since the previous .Do() attempt would have Read it all the way
 		req.Body = ioutil.NopCloser(bytes.NewReader(body))
