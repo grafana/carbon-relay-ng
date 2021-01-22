@@ -183,11 +183,11 @@ func main() {
 		statsmt.NewMemoryReporter()
 		_, err = statsmt.NewProcessReporter()
 		if err != nil {
-			//ProcessReporter depends on /proc which doesn't exist on OSX/Windows
-			if runtime.GOOS == "linux" {
-				log.Fatalf("stats: could not initialize process reporter: %v", err)
+			// ProcessReporter depends on /proc which does not exists/is not mounted by all platforms (Windows/OSX/FreeBSD)
+			if os.IsNotExist(err) {
+				log.Warnf("stats: could not initialize process - unsupported platform: %v", err)
 			} else {
-				log.Warnf("stats: could not initialize process reporter: %v", err)
+				log.Fatalf("stats: could not initialize process reporter: %v", err)
 			}
 		}
 		aggregator.NewAggregatorReporter()
