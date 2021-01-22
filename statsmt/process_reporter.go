@@ -1,6 +1,7 @@
 package statsmt
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -15,7 +16,17 @@ type ProcessReporter struct {
 func NewProcessReporter() (*ProcessReporter, error) {
 	p := ProcessReporter{}
 	pid := os.Getpid()
-	var err error
+
+	// procfs.NewProc relies on /proc
+	// NewProc returns different errors on different platforms
+	// that make it difficult do isolate errors related to unavailable /proc/PID
+	// This check is compatible with all the platforms, and allow the caller
+	// to inspect the error with os.IsNotExist
+	_, err := os.Stat(fmt.Sprintf("/proc/%v", pid))
+	if err != nil {
+		return nil, err
+	}
+
 	p.proc, err = procfs.NewProc(pid)
 	if err != nil {
 		return nil, err

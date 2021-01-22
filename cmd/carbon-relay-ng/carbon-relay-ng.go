@@ -183,9 +183,9 @@ func main() {
 		statsmt.NewMemoryReporter()
 		_, err = statsmt.NewProcessReporter()
 		if err != nil {
-			//ProcessReporter depends on /proc which doesn't exist on OSX/Windows
-			if strings.HasSuffix(err.Error(), "stat /proc: no such file or directory") {
-				log.Warn("stats: could not initialize process reporter because /proc does not exist")
+			// ProcessReporter depends on /proc which does not exists/is not mounted by all platforms (Windows/OSX/FreeBSD)
+			if os.IsNotExist(err) {
+				log.Warnf("stats: could not initialize process - unsupported platform: %v", err)
 			} else {
 				log.Fatalf("stats: could not initialize process reporter: %v", err)
 			}
