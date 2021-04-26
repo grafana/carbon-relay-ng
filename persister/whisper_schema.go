@@ -40,6 +40,23 @@ func (s WhisperSchemas) Match(metric string) (Schema, bool) {
 	return Schema{}, false
 }
 
+// String() returns the string representation of the whisper schemas.
+// It is equivalent, though not identical to the original schemas that were parsed:
+// * priorities are derivatives of user input (and include position information), or explicitly 0 if unset in input
+// * entries are ordered based on priority
+// * the retentions string is provided exactly as the input
+// * no comments or extraneous whitespace is omitted
+func (s WhisperSchemas) String() string {
+	var buf strings.Builder
+	for _, schema := range s {
+		buf.WriteString(fmt.Sprintf("[%s]\n", schema.Name))
+		buf.WriteString(fmt.Sprintf("pattern = %s\n", schema.Pattern.String()))
+		buf.WriteString(fmt.Sprintf("retentions = %s\n", schema.RetentionStr))
+		buf.WriteString(fmt.Sprintf("priority = %d\n", schema.Priority))
+	}
+	return buf.String()
+}
+
 // ParseRetentionDefs parses retention definitions into a Retentions structure
 func ParseRetentionDefs(retentionDefs string) (whisper.Retentions, error) {
 	retentions := make(whisper.Retentions, 0)

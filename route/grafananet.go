@@ -30,9 +30,10 @@ import (
 
 type GrafanaNet struct {
 	baseRoute
-	addr    string
-	apiKey  string
-	schemas persister.WhisperSchemas
+	addr       string
+	apiKey     string
+	schemas    persister.WhisperSchemas
+	schemasStr string
 
 	bufSize      int // amount of messages we can buffer up. each message is about 100B. so 1e7 is about 1GB.
 	flushMaxNum  int
@@ -71,10 +72,11 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, addr, apiKey, schemasFil
 	cleanAddr := util.AddrToPath(addr)
 
 	r := &GrafanaNet{
-		baseRoute: baseRoute{sync.Mutex{}, atomic.Value{}, key},
-		addr:      addr,
-		apiKey:    apiKey,
-		schemas:   schemas,
+		baseRoute:  baseRoute{sync.Mutex{}, atomic.Value{}, key},
+		addr:       addr,
+		apiKey:     apiKey,
+		schemas:    schemas,
+		schemasStr: schemas.String(),
 
 		bufSize:      bufSize,
 		flushMaxNum:  flushMaxNum,
@@ -143,6 +145,8 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, addr, apiKey, schemasFil
 		Timeout:   r.timeout,
 		Transport: transport,
 	}
+
+	go r.updateSchemas()
 
 	return r, nil
 }
@@ -294,6 +298,54 @@ func (route *GrafanaNet) Flush() error {
 	//conf := route.config.Load().(Config)
 	// no-op. Flush() is currently not called by anything.
 	return nil
+}
+
+func (route *GrafanaNet) updateSchemas() {
+	for range time.Tick(6 * time.Hour) {
+		route.postSchemas()
+	}
+}
+
+func (route *GrafanaNet) postSchemas() {
+	url := route.addr + "/schemas"
+	if strings.HasSuffix(route.addr, "/") {
+		url = route.addr + "schemas"
+	}
+
+	boff := &backoff.Backoff{
+		Min:    10 * time.Minute,
+		Max:    3 * time.Hour,
+		Factor: 1.5,
+		Jitter: true,
+	}
+
+	for {
+		req, err := http.NewRequest("POST", url, strings.NewReader(route.schemasStr))
+		if err != nil {
+			panic(err)
+		}
+		req.Header.Add("Authorization", "Bearer "+route.apiKey)
+		resp, err := route.client.Do(req)
+		if err != nil {
+			boff.Reset()
+			log.Warnf("got error for metrics/schemas: %s", err.Error())
+			time.Sleep(boff.Duration())
+			continue
+		}
+		if resp.StatusCode == http.StatusNotFound {
+			// if grafana cloud is not updated yet for this new feature.
+			// we are still done with our work. no need to log anything
+		} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			// it got accepted, we're done.
+			log.Info("GrafanaNet /metrics/schemas submitted")
+		} else {
+			// if it's neither of the above, let's log it, but make it look not too scary
+			log.Infof("GrafanaNet /metrics/schemas resulted in code %s (should be harmless)", resp.Status)
+		}
+		ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		return
+	}
 }
 
 func (route *GrafanaNet) Shutdown() error {
