@@ -40,10 +40,10 @@ deb: build-linux
 	mkdir -p build/deb-systemd
 	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng debian/lib/systemd/system debian/var/run/carbon-relay-ng debian/usr/lib/tmpfiles.d
 	install carbon-relay-ng debian/usr/bin
-	install examples/carbon-relay-ng.ini debian/etc/carbon-relay-ng/carbon-relay-ng.conf
-	install examples/carbon-relay-ng-tmpfiles.conf debian/usr/lib/tmpfiles.d/carbon-relay-ng.conf
-	install examples/carbon-relay-ng.service debian/lib/systemd/system
-	install man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
+	install -m 0644 examples/carbon-relay-ng.ini debian/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install -m 0644 examples/carbon-relay-ng-tmpfiles.conf debian/usr/lib/tmpfiles.d/carbon-relay-ng.conf
+	install -m 0644 examples/carbon-relay-ng.service debian/lib/systemd/system
+	install -m 0644 man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
 	gzip debian/usr/share/man/man1/carbon-relay-ng.1
 	fpm \
 		-s dir \
@@ -65,8 +65,8 @@ deb-upstart: build-linux
 	mkdir build/deb-upstart
 	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng
 	install carbon-relay-ng debian/usr/bin
-	install examples/carbon-relay-ng.ini debian/etc/carbon-relay-ng/carbon-relay-ng.conf
-	install man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
+	install -m 0644 examples/carbon-relay-ng.ini debian/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install -m 0644 man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
 	gzip debian/usr/share/man/man1/carbon-relay-ng.1
 	fpm \
 		-s dir \
@@ -88,10 +88,10 @@ rpm: build-linux
 	mkdir -p build/centos-7
 	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/lib/systemd/system redhat/var/run/carbon-relay-ng redhat/etc/tmpfiles.d
 	install carbon-relay-ng redhat/usr/bin
-	install man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
-	install examples/carbon-relay-ng.ini redhat/etc/carbon-relay-ng/carbon-relay-ng.conf
-	install examples/carbon-relay-ng-tmpfiles.conf redhat/etc/tmpfiles.d/carbon-relay-ng.conf
-	install examples/carbon-relay-ng.service redhat/lib/systemd/system
+	install -m 0644 man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
+	install -m 0644 examples/carbon-relay-ng.ini redhat/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install -m 0644 examples/carbon-relay-ng-tmpfiles.conf redhat/etc/tmpfiles.d/carbon-relay-ng.conf
+	install -m 0644 examples/carbon-relay-ng.service redhat/lib/systemd/system
 	gzip redhat/usr/share/man/man1/carbon-relay-ng.1
 	fpm \
 		-s dir \
@@ -114,9 +114,9 @@ rpm-centos6: build-linux
 	mkdir build/centos-6
 	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/etc/init redhat/etc/init.d
 	install carbon-relay-ng redhat/usr/bin
-	install man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
-	install examples/carbon-relay-ng.ini redhat/etc/carbon-relay-ng/carbon-relay-ng.conf
-	install examples/carbon-relay-ng.upstart-0.6.5 redhat/etc/init/carbon-relay-ng.conf
+	install -m 0644 man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
+	install -m 0644 examples/carbon-relay-ng.ini redhat/etc/carbon-relay-ng/carbon-relay-ng.conf
+	install -m 0644 examples/carbon-relay-ng.upstart-0.6.5 redhat/etc/init/carbon-relay-ng.conf
 	install examples/carbon-relay-ng.init redhat/etc/init.d/carbon-relay-ng
 	gzip redhat/usr/share/man/man1/carbon-relay-ng.1
 	fpm \
