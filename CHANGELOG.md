@@ -1,4 +1,19 @@
-# v0.13.0: inverted filters, kafka TLS, and more
+# unreleased
+
+Important: 
+Docker images are no longer being pushed to raintank/carbon-relay-ng, only to grafana/carbon-relay-ng
+See https://hub.docker.com/r/grafana/carbon-relay-ng for all Docker image updates.
+
+* Deprecate (remove) pushing to "raintank" docker hub account. #449
+* Kafkamdm: make sasl mechanism configurable. #447
+* Fix panels on dashboard. #387
+* Fix process reporter (/proc) to behave properly in windows, freeBSD. #450
+* GrafanaNet route: periodically post the schemas parsed from storage-schemas.conf (minus file comments) #458
+  (this enables an upcoming new feature which allows customizing the schemas on Grafana Cloud Graphite)
+* Upgrade Sarama, our kafka library from v1.19.0 to v1.23.0 #445
+* add bySeriesWithTagsFnv partitioner for kafka-mdm route #460
+
+# v0.13.0: inverted filters, kafka TLS, and more. July 10, 2020
 
 * kafkaMdm route: allow partitionBy bySeriesWithTags. #381
 * Aggregation point tracker (more detailed stats for aggregator). #382
@@ -11,7 +26,7 @@
   change is backwards compatible, the old "substr" parameters are still accepted in all places where they've been accepted before. #419, #423
 * kafkaMdm route: TLS + SASL support. #426
 
-# v0.12.0: better pickle support, various fixes and better aggregators
+# v0.12.0: better pickle support, various fixes and better aggregators. Sept 18, 2019
 
 * support pickle protocol versions 0, 1, 2, 3 & 4 + accept pickle arrays + send pickle tuples. #341
 * fix different connections to same host:port using same spool file, by adding instance to destination key. #349
