@@ -30,10 +30,7 @@ func New(prefix, notPrefix, sub, notSub, regex, notRegex string) (Matcher, error
 	}
 
 	err := match.updateInternals()
-	if err != nil {
-		return match, err
-	}
-	return match, nil
+	return match, err
 }
 
 func (m *Matcher) String() string {
