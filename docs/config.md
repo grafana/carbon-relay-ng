@@ -232,7 +232,7 @@ key            |     Y     |  string     | N/A     |
 brokers        |     Y     |  []string   | N/A     | host:port addresses (if specified as init command or over tcp interface: comma separated)
 topic          |     Y     |  string     | N/A     |
 codec          |     Y     |  string     | N/A     | which compression to use. possible values: none, gzip, snappy
-partitionBy    |     Y     |  string     | N/A     | which fields to shard by. possible values are: byOrg, bySeries, bySeriesWithTags
+partitionBy    |     Y     |  string     | N/A     | which fields to shard by. possible values are: byOrg, bySeries, bySeriesWithTags, bySeriesWithTagsFnv
 schemasFile    |     Y     |  string     | N/A     |
 prefix         |     N     |  string     | ""      |
 notPrefix      |     N     |  string     | ""      |
