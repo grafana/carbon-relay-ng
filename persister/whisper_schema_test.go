@@ -273,3 +273,44 @@ retentions = 60s:90d
 priority =
 `, nil, "Empty priority")
 }
+
+// TestSchemasString tests that routes.String() matches what we expect
+func TestSchemasString(t *testing.T) {
+	input := `# This is a wild comment
+[first]
+pattern = ^carbon\.
+retentions = 600s:90d,5m:365y
+   [fancy-patt-with-legacy-retentions]
+   pattern = ^patt2.*$
+retentions = 10:10
+priority = 6
+
+# another comment
+
+[hello]
+pattern = .*
+retentions = 10m:90d,10m:365y
+priority = 1`
+
+	exp := `[fancy-patt-with-legacy-retentions]
+pattern = ^patt2.*$
+retentions = 10:10
+priority = 25769803775
+[hello]
+pattern = .*
+retentions = 10m:90d,10m:365y
+priority = 4294967294
+[first]
+pattern = ^carbon\.
+retentions = 600s:90d,5m:365y
+priority = 0
+`
+	schemas, err := parseSchemas(t, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := schemas.String()
+	if exp != got {
+		t.Fatalf("expected %q - got %q", exp, got)
+	}
+}
