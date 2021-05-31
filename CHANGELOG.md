@@ -1,4 +1,4 @@
-# v0.14.0
+# v0.14.0: May 31, 2021
 
 Important: 
 Docker images are no longer being pushed to raintank/carbon-relay-ng, only to grafana/carbon-relay-ng
