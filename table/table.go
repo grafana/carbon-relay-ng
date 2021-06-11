@@ -757,7 +757,11 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			table.AddRoute(route)
 		case "grafanaNet":
 
-			cfg := route.NewGrafanaNetConfig(routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile)
+			cfg, err := route.NewGrafanaNetConfig(routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
+			}
 
 			// by merely looking at a boolean field we can't differentiate between:
 			// * the user not specifying the option (which should leave our config unaffected)

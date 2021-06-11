@@ -513,7 +513,10 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 	schemasFile := string(t.Value)
 	t = s.Next()
 
-	cfg := route.NewGrafanaNetConfig(addr, apiKey, schemasFile)
+	cfg, err := route.NewGrafanaNetConfig(addr, apiKey, schemasFile)
+	if err != nil {
+		return errFmtAddRouteGrafanaNet
+	}
 
 	for ; t.Token != toki.EOF; t = s.Next() {
 		switch t.Token {

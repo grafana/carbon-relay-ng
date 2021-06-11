@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -50,7 +52,22 @@ type GrafanaNetConfig struct {
 	ErrBackoffFactor float64
 }
 
-func NewGrafanaNetConfig(addr, apiKey, schemasFile string) GrafanaNetConfig {
+func NewGrafanaNetConfig(addr, apiKey, schemasFile string) (GrafanaNetConfig, error) {
+
+	u, err := url.Parse(addr)
+	if err != nil || !u.IsAbs() || u.Host == "" { // apparently "http://" is a valid absolute URL (with empty host), but we don't want that
+		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: invalid addr %q. need an absolute http[s] url", addr)
+	}
+
+	if apiKey == "" {
+		return GrafanaNetConfig{}, errors.New("NewGrafanaNetConfig: invalid apiKey")
+	}
+
+	_, err = getSchemas(schemasFile)
+	if err != nil {
+		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: could not read schemasFile %q: %s", schemasFile, err.Error())
+	}
+
 	return GrafanaNetConfig{
 		Addr:        addr,
 		ApiKey:      apiKey,
@@ -68,7 +85,7 @@ func NewGrafanaNetConfig(addr, apiKey, schemasFile string) GrafanaNetConfig {
 
 		ErrBackoffMin:    100 * time.Millisecond,
 		ErrBackoffFactor: 1.5,
-	}
+	}, nil
 }
 
 type GrafanaNet struct {
