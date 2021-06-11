@@ -169,17 +169,17 @@ unspoolsleep         |     N     |  int (micros) | 10      | sleep this many mic
 
 setting        | mandatory | values      | default | description
 ---------------|-----------|-------------|---------|------------
-key            |     Y     |  string     | N/A     |
-addr           |     Y     |  string     | N/A     |
-apiKey         |     Y     |  string     | N/A     |
-schemasFile    |     Y     |  string     | N/A     |
-prefix         |     N     |  string     | ""      |
-notPrefix      |     N     |  string     | ""      |
-sub            |     N     |  string     | ""      |
-notSub         |     N     |  string     | ""      |
-regex          |     N     |  string     | ""      |
-notRegex       |     N     |  string     | ""      |
-sslverify      |     N     |  true/false | true    |
+key            |     Y     |  string     | N/A     | string to identify this route in the UI
+addr           |     Y     |  string     | N/A     | http url to connect to
+apiKey         |     Y     |  string     | N/A     | API key to use (taken from grafana cloud portal)
+schemasFile    |     Y     |  string     | N/A     | storage-schemas.conf file that describes your metrics (the [storage-schemas.conf from Graphite](http://graphite.readthedocs.io/en/latest/config-carbon.html#storage-schemas-conf)
+prefix         |     N     |  string     | ""      | only route metrics that start with this
+notPrefix      |     N     |  string     | ""      | only route metrics that do not start with this
+sub            |     N     |  string     | ""      | only route metrics that contain this in their name
+notSub         |     N     |  string     | ""      | only route metrics that do not contain this in their name
+regex          |     N     |  string     | ""      | only route metrics that match this regular expression
+notRegex       |     N     |  string     | ""      | only route metrics that do not match this regular expression
+sslverify      |     N     |  true/false | true    | verify SSL certificate
 spool          |     N     |  true/false | false   | ** disk spooling. not implemented yet **
 blocking       |     N     |  true/false | false   | if false, full buffer drops data. if true, full buffer puts backpressure on the table, possibly affecting ingestion and other routes
 concurrency    |     N     |  int        | 100     | number of concurrent connections to ingestion endpoint
@@ -187,19 +187,23 @@ bufSize        |     N     |  int        | 10M     | buffer size. assume +- 100B
 flushMaxNum    |     N     |  int        | 5000    | max number of metrics to buffer before triggering flush
 flushMaxWait   |     N     |  int (ms)   | 500     | max time to buffer before triggering flush
 timeout        |     N     |  int (ms)   | 10000   | abort and retry requests to api gateway if takes longer than this.
-orgId          |     N     |  int        | 1       |
-errBackoffMin  |     N     |  int (ms)   | 100     |
-errBackoffFactor|    N     |  float      | 1.5     |
+orgId          |     N     |  int        | 1       | organization ID to claim (only applies when using a special admin api key)
+errBackoffMin  |     N     |  int (ms)   | 100     | initial retry interval in ms for failed http requests
+errBackoffFactor|    N     |  float      | 1.5     | growth factor for the retry interval for failed http requests
 
 ### Example
 example route for https://grafana.com/cloud/metrics
 
 ```
 [[route]]
+# string to identify this route in the UI
 key = 'grafanaNet'
 type = 'grafanaNet'
+# http url to connect to
 addr = 'your-base-url/metrics'
+# API key to use (taken from grafana cloud portal)
 apikey = 'your-grafana.net-api-key'
+# storage-schemas.conf file that describes your metrics (typically taken from your graphite installation)
 schemasFile = 'examples/storage-schemas.conf'
 # require the destination address to have a valid SSL certificate
 #sslverify=true
@@ -355,36 +359,9 @@ storageResolution = 1
 
 ## Imperatives
 
-imperatives can be used in two places:
+Imperatives are commands to add routes, aggregators, etc.
+They are used in two places:
 1) via the TCP command interface
 2) in the init.cmds config setting (as single quoted strings). However, **the structured settings as shown above are the better and recommended way**
-That said, here are some examples:
 
-```
-# a plain carbon route that sends all data to the specified carbon (graphite) server (note the double space separating route options from destination options)
-#'addRoute sendAllMatch carbon-default  your-graphite-server:2003 spool=true pickle=false',
-
-# example route for https://grafana.com/cloud/metrics (note the double space separating route options from destination options)
-#'addRoute grafanaNet grafanaNet  your-base-url/metrics your-grafana.net-api-key /path/to/storage-schemas.conf',
-
-# ignore hosts that don't set their hostname properly via prefix match
-#'addBlack prefix collectd.localhost',
-
-# ignore foo.<anything>.cpu.... via regex match
-#'addBlack regex ^foo\..*\.cpu+',
-
-# aggregate timer metrics with sums
-#'addAgg sum regex=^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*) stats.timers._sum_$1.requests.$2 10 20 cache=true',
-
-# aggregate timer metrics with averages
-#'addAgg avg regex=^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*) sub=requests stats.timers._avg_$1.requests.$2 5 10 dropRaw=false',
-
-# all metrics with '=' in them are metrics2.0, send to carbon-tagger service (note the double space separating route options from destination options)
-#'addRoute sendAllMatch carbon-tagger sub==  127.0.0.1:2006',
-
-# send to the first carbon destination that matches the metric (note the double spaces between destinations and route)
-#'addRoute sendFirstMatch analytics regex=(Err/s|wait_time|logger)  graphite.prod:2003 prefix=prod. spool=true pickle=true  graphite.staging:2003 prefix=staging. spool=true pickle=true'
-
-# send to the Google PubSub topic named "graphite-ingest" in the "myproject" project
-#'addRoute pubsub pubsub  myproject graphite-ingest'
-```
+For more information see [TCP admin interface](tcp-admin-interface.md)

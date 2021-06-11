@@ -19,6 +19,12 @@ type Matcher struct {
 	regex, notRegex *regexp.Regexp
 }
 
+func (m *Matcher) Equals(o Matcher) bool {
+	return m.Prefix == o.Prefix && m.NotPrefix == o.NotPrefix &&
+		m.Sub == o.Sub && m.NotSub == o.NotSub &&
+		m.Regex == o.Regex && m.NotRegex == o.NotRegex
+}
+
 func New(prefix, notPrefix, sub, notSub, regex, notRegex string) (Matcher, error) {
 	match := Matcher{
 		Prefix:    prefix,

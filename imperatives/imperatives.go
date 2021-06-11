@@ -174,7 +174,7 @@ var tokens = []toki.Def{
 var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
 var errFmtAddAgg = errors.New("addAgg <avg|count|delta|derive|last|max|min|stdev|sum> [prefix/sub/regex=,..] <fmt> <interval> <wait> [cache=true/false] [dropRaw=true/false]")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
-var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/sub/regex=,...]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int concurrency=int orgId=int]")
+var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false concurrency=int bufSize=int flushMaxNum=int flushMaxWait=int timeout=int orgId=int errBackoffMin=int errBackoffFactor=float]")
 var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex=,...]  broker topic codec schemasFile partitionBy orgId [blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int tlsEnabled=bool tlsSkipVerify=bool tlsClientKey='<key>' tlsClientCert='<file>' saslEnabled=bool saslMechanism='mechanism' saslUsername='username' saslPassword='password']")
 var errFmtAddRoutePubSub = errors.New("addRoute pubsub key [prefix/sub/regex=,...]  project topic [codec=gzip/none format=plain/pickle blocking=true/false bufSize=int flushMaxSize=int flushMaxWait=int]")
 var errFmtAddDest = errors.New("addDest <routeKey> <dest>") // not implemented yet
@@ -540,6 +540,26 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 			} else {
 				return errFmtAddRouteGrafanaNet
 			}
+		case optSSLVerify:
+			t = s.Next()
+			if t.Token == optTrue || t.Token == optFalse {
+				cfg.SSLVerify, err = strconv.ParseBool(string(t.Value))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optConcurrency:
+			t = s.Next()
+			if t.Token == num {
+				cfg.Concurrency, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
 		case optBufSize:
 			t = s.Next()
 			if t.Token == num {
@@ -571,31 +591,11 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 			} else {
 				return errFmtAddRouteGrafanaNet
 			}
-		case optConcurrency:
-			t = s.Next()
-			if t.Token == num {
-				cfg.Concurrency, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
-				if err != nil {
-					return err
-				}
-			} else {
-				return errFmtAddRouteGrafanaNet
-			}
 		case optTimeout:
 			t = s.Next()
 			if t.Token == num {
 				i, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
 				cfg.Timeout = time.Duration(i) * time.Millisecond
-				if err != nil {
-					return err
-				}
-			} else {
-				return errFmtAddRouteGrafanaNet
-			}
-		case optSSLVerify:
-			t = s.Next()
-			if t.Token == optTrue || t.Token == optFalse {
-				cfg.SSLVerify, err = strconv.ParseBool(string(t.Value))
 				if err != nil {
 					return err
 				}
