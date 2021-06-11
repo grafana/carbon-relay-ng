@@ -188,6 +188,8 @@ flushMaxNum    |     N     |  int        | 5000    | max number of metrics to bu
 flushMaxWait   |     N     |  int (ms)   | 500     | max time to buffer before triggering flush
 timeout        |     N     |  int (ms)   | 10000   | abort and retry requests to api gateway if takes longer than this.
 orgId          |     N     |  int        | 1       |
+errBackoffMin  |     N     |  int (ms)   | 100     |
+errBackoffFactor|    N     |  float      | 1.5     |
 
 ### Example
 example route for https://grafana.com/cloud/metrics
@@ -213,6 +215,10 @@ schemasFile = 'examples/storage-schemas.conf'
 #timeout=10000
 # number of concurrent connections to use for sending data.
 concurrency=100
+# initial retry interval in ms for failed http requests
+#errBackoffMin = 100
+# growth factor for the retry interval for failed http requests
+#errBackoffFactor = 1.5
 ```
 
 example config with credentials coming from the environment variables

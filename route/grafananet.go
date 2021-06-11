@@ -44,6 +44,10 @@ type GrafanaNetConfig struct {
 	SSLVerify    bool
 	Blocking     bool
 	Spool        bool // ignored for now
+
+	// optional http backoff params for posting metrics and schemas
+	ErrBackoffMin    time.Duration
+	ErrBackoffFactor float64
 }
 
 func NewGrafanaNetConfig(addr, apiKey, schemasFile string) GrafanaNetConfig {
@@ -61,6 +65,9 @@ func NewGrafanaNetConfig(addr, apiKey, schemasFile string) GrafanaNetConfig {
 		SSLVerify:    true,
 		Blocking:     false,
 		Spool:        false,
+
+		ErrBackoffMin:    100 * time.Millisecond,
+		ErrBackoffFactor: 1.5,
 	}
 }
 
@@ -229,9 +236,9 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 	req.Header.Add("Authorization", "Bearer "+route.cfg.ApiKey)
 	req.Header.Add("Content-Type", "rt-metric-binary-snappy")
 	boff := &backoff.Backoff{
-		Min:    100 * time.Millisecond,
+		Min:    route.cfg.ErrBackoffMin,
 		Max:    30 * time.Second,
-		Factor: 1.5,
+		Factor: route.cfg.ErrBackoffFactor,
 		Jitter: true,
 	}
 	var dur time.Duration
@@ -330,9 +337,9 @@ func (route *GrafanaNet) postSchemas() {
 	}
 
 	boff := &backoff.Backoff{
-		Min:    10 * time.Minute,
-		Max:    3 * time.Hour,
-		Factor: 1.5,
+		Min:    route.cfg.ErrBackoffMin,
+		Max:    30 * time.Minute,
+		Factor: route.cfg.ErrBackoffFactor,
 		Jitter: true,
 	}
 

@@ -79,6 +79,8 @@ const (
 	optFlushMaxWait
 	optTimeout
 	optSSLVerify
+	optErrBackoffMin
+	optErrBackoffFactor
 	word
 	optConcurrency
 	optOrgId
@@ -143,6 +145,8 @@ var tokens = []toki.Def{
 	{Token: optFlushMaxWait, Pattern: "flushMaxWait="},
 	{Token: optTimeout, Pattern: "timeout="},
 	{Token: optSSLVerify, Pattern: "sslverify="},
+	{Token: optErrBackoffMin, Pattern: "errBackoffMin="},
+	{Token: optErrBackoffFactor, Pattern: "errBackoffFactor="},
 	{Token: optConcurrency, Pattern: "concurrency="},
 	{Token: optOrgId, Pattern: "orgId="},
 	{Token: optPubSubProject, Pattern: "project="},
@@ -595,6 +599,28 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 			} else {
 				return errFmtAddRouteGrafanaNet
 			}
+		case optErrBackoffMin:
+			t = s.Next()
+			if t.Token == num {
+				i, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.ErrBackoffMin = time.Duration(i) * time.Millisecond
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optErrBackoffFactor:
+			t = s.Next()
+			if t.Token == word {
+				cfg.ErrBackoffFactor, err = strconv.ParseFloat(strings.TrimSpace(string(t.Value)), 64)
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+
 		case optOrgId:
 			t = s.Next()
 			if t.Token == num {

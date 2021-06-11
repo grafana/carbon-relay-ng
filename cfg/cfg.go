@@ -94,11 +94,13 @@ type Route struct {
 	Blocking     bool
 
 	// grafanaNet
-	Addr        string
-	ApiKey      string
-	Spool       bool
-	SslVerify   bool
-	Concurrency int
+	Addr             string
+	ApiKey           string
+	Spool            bool
+	SslVerify        bool
+	Concurrency      int
+	ErrBackoffMin    time.Duration
+	ErrBackoffFactor float64
 
 	// kafkaMdm
 	Brokers       []string

@@ -25,7 +25,7 @@ notes:
 * by specifying a prefix, sub or regex you can only send a subset of your metrics to grafana.com hosted metrics
 
 ```
-addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int]")
+addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile [spool=true/false sslverify=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int errBackoffMin=int errBackoffFactor=float]")
 ```
 
 
@@ -54,4 +54,6 @@ other options can appear after the schemasFile, space-separated.
 * timeout: after how many milliseconds to consider a request to the hosted metrics to timeout, so that it will retry later (default 5000)
 * sslverify: disables ssl verifications, useful for test/POC setups with self signed ssl certificates (default true)
 * concurrency: how many independent workers pushing data to grafanacloud (default 10)
+* errBackoffMin: initial retry interval in ms for failed http requests
+* errBackoffFactor: growth factor for the retry interval for failed http requests
 

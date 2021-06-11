@@ -806,6 +806,12 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			if routeConfig.OrgId != 0 {
 				cfg.OrgID = routeConfig.OrgId
 			}
+			if routeConfig.ErrBackoffMin != 0 {
+				cfg.ErrBackoffMin = routeConfig.ErrBackoffMin
+			}
+			if routeConfig.ErrBackoffFactor != 0 {
+				cfg.ErrBackoffFactor = routeConfig.ErrBackoffFactor
+			}
 
 			route, err := route.NewGrafanaNet(routeConfig.Key, matcher, cfg)
 			if err != nil {
