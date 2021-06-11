@@ -756,18 +756,13 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			}
 			table.AddRoute(route)
 		case "grafanaNet":
-			var spool bool
-			sslVerify := true
-			var bufSize = int(1e7) // since a message is typically around 100B this is 1GB
-			var flushMaxNum = 5000 // number of metrics
-			var flushMaxWait = 500 // in ms
-			var timeout = 10000    // in ms
-			var concurrency = 100  // number of concurrent connections to tsdb-gw
-			var orgId = 1
 
-			// by merely looking at routeConfig.SslVerify we can't differentiate between the user not specifying the property
-			// (which should default to false) vs specifying it as false explicitly (which should set it to false), as in both
-			// cases routeConfig.SslVerify would simply be set to false.
+			cfg := route.NewGrafanaNetConfig(routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile)
+
+			// by merely looking at a boolean field we can't differentiate between:
+			// * the user not specifying the option (which should leave our config unaffected)
+			// * the user specifying it as false explicitly (which should set it to false)
+			// both cases result in routeConfig.SslVerify being set to false.
 			// So, we must look at the metadata returned by the config parser.
 
 			routeMeta := meta.Mapping["route"].([]map[string]interface{})
@@ -775,43 +770,44 @@ func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
 			// Note: toml library allows arbitrary casing of properties,
 			// and the map keys are these properties as specified by user
 			// so we can't look up directly
-		OuterLoop:
 			for _, routemeta := range routeMeta {
 				for k, v := range routemeta {
 					if strings.ToLower(k) == "key" && v == routeConfig.Key {
 						for k2, v2 := range routemeta {
 							if strings.ToLower(k2) == "sslverify" {
-								sslVerify = v2.(bool)
-								break OuterLoop
+								cfg.SSLVerify = v2.(bool)
+							}
+							if strings.ToLower(k2) == "spool" {
+								cfg.Spool = v2.(bool)
+							}
+							if strings.ToLower(k2) == "blocking" {
+								cfg.Blocking = v2.(bool)
 							}
 						}
 					}
 				}
 			}
 
-			if routeConfig.Spool {
-				spool = routeConfig.Spool
-			}
 			if routeConfig.BufSize != 0 {
-				bufSize = routeConfig.BufSize
+				cfg.BufSize = routeConfig.BufSize
 			}
 			if routeConfig.FlushMaxNum != 0 {
-				flushMaxNum = routeConfig.FlushMaxNum
+				cfg.FlushMaxNum = routeConfig.FlushMaxNum
 			}
 			if routeConfig.FlushMaxWait != 0 {
-				flushMaxWait = routeConfig.FlushMaxWait
+				cfg.FlushMaxWait = time.Duration(routeConfig.FlushMaxWait) * time.Millisecond
 			}
 			if routeConfig.Timeout != 0 {
-				timeout = routeConfig.Timeout
+				cfg.Timeout = time.Millisecond * time.Duration(routeConfig.Timeout)
 			}
 			if routeConfig.Concurrency != 0 {
-				concurrency = routeConfig.Concurrency
+				cfg.Concurrency = routeConfig.Concurrency
 			}
 			if routeConfig.OrgId != 0 {
-				orgId = routeConfig.OrgId
+				cfg.OrgID = routeConfig.OrgId
 			}
 
-			route, err := route.NewGrafanaNet(routeConfig.Key, matcher, routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile, spool, sslVerify, routeConfig.Blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
+			route, err := route.NewGrafanaNet(routeConfig.Key, matcher, cfg)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)

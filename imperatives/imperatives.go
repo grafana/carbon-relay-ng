@@ -509,21 +509,14 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 	schemasFile := string(t.Value)
 	t = s.Next()
 
-	var spool, blocking bool
-	sslVerify := true
-	var bufSize = int(1e7) // since a message is typically around 100B this is 1GB
-	var flushMaxNum = 5000 // number of metrics
-	var flushMaxWait = 500 // in ms
-	var timeout = 10000    // in ms
-	var concurrency = 100  // number of concurrent connections to tsdb-gw
-	var orgId = 1
+	cfg := route.NewGrafanaNetConfig(addr, apiKey, schemasFile)
 
 	for ; t.Token != toki.EOF; t = s.Next() {
 		switch t.Token {
 		case optBlocking:
 			t = s.Next()
 			if t.Token == optTrue || t.Token == optFalse {
-				blocking, err = strconv.ParseBool(string(t.Value))
+				cfg.Blocking, err = strconv.ParseBool(string(t.Value))
 				if err != nil {
 					return err
 				}
@@ -533,7 +526,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		case optSpool:
 			t = s.Next()
 			if t.Token == optTrue || t.Token == optFalse {
-				spool, err = strconv.ParseBool(string(t.Value))
+				cfg.Spool, err = strconv.ParseBool(string(t.Value))
 				if err != nil {
 					return err
 				}
@@ -543,7 +536,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		case optBufSize:
 			t = s.Next()
 			if t.Token == num {
-				bufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.BufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
 				if err != nil {
 					return err
 				}
@@ -553,7 +546,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		case optFlushMaxNum:
 			t = s.Next()
 			if t.Token == num {
-				flushMaxNum, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.FlushMaxNum, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
 				if err != nil {
 					return err
 				}
@@ -563,7 +556,8 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		case optFlushMaxWait:
 			t = s.Next()
 			if t.Token == num {
-				flushMaxWait, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				i, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.FlushMaxWait = time.Duration(i) * time.Millisecond
 				if err != nil {
 					return err
 				}
@@ -573,7 +567,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		case optConcurrency:
 			t = s.Next()
 			if t.Token == num {
-				concurrency, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.Concurrency, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
 				if err != nil {
 					return err
 				}
@@ -583,7 +577,8 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		case optTimeout:
 			t = s.Next()
 			if t.Token == num {
-				timeout, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				i, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.Timeout = time.Duration(i) * time.Millisecond
 				if err != nil {
 					return err
 				}
@@ -593,7 +588,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		case optSSLVerify:
 			t = s.Next()
 			if t.Token == optTrue || t.Token == optFalse {
-				sslVerify, err = strconv.ParseBool(string(t.Value))
+				cfg.SSLVerify, err = strconv.ParseBool(string(t.Value))
 				if err != nil {
 					return err
 				}
@@ -603,11 +598,11 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		case optOrgId:
 			t = s.Next()
 			if t.Token == num {
-				orgId, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.OrgID, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
 				if err != nil {
 					return err
 				}
-				if orgId < 1 {
+				if cfg.OrgID < 1 {
 					return errOrgId0
 				}
 			} else {
@@ -618,7 +613,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	route, err := route.NewGrafanaNet(key, matcher, addr, apiKey, schemasFile, spool, sslVerify, blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
+	route, err := route.NewGrafanaNet(key, matcher, cfg)
 	if err != nil {
 		return err
 	}
