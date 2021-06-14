@@ -8,23 +8,21 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/Dieterbe/go-metrics"
 	"github.com/grafana/carbon-relay-ng/aggregator"
 	"github.com/grafana/carbon-relay-ng/badmetrics"
-	"github.com/grafana/carbon-relay-ng/cfg"
-	"github.com/grafana/carbon-relay-ng/imperatives"
 	"github.com/grafana/carbon-relay-ng/matcher"
 	"github.com/grafana/carbon-relay-ng/rewriter"
 	"github.com/grafana/carbon-relay-ng/route"
 	"github.com/grafana/carbon-relay-ng/stats"
 	"github.com/grafana/carbon-relay-ng/validate"
-	"github.com/grafana/metrictank/cluster/partitioner"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
 	log "github.com/sirupsen/logrus"
 )
 
 type TableConfig struct {
+	SpoolDir                string
+	BadMetricsMaxAge        time.Duration
 	Validation_level_legacy validate.LevelLegacy
 	Validation_level_m20    validate.LevelM20
 	Validate_order          bool
@@ -32,6 +30,25 @@ type TableConfig struct {
 	aggregators             []*aggregator.Aggregator
 	blacklist               []*matcher.Matcher
 	routes                  []route.Route
+}
+
+func NewTableConfig(spoolDir, badMetricsMaxAge string, vLegacy validate.LevelLegacy, vM20 validate.LevelM20, vOrder bool) (TableConfig, error) {
+	maxAge, err := time.ParseDuration(badMetricsMaxAge)
+	if err != nil {
+		return TableConfig{}, fmt.Errorf("could not parse badMetrics max age: %s", err.Error())
+	}
+
+	return TableConfig{
+		spoolDir,
+		maxAge,
+		vLegacy,
+		vM20,
+		vOrder,
+		make([]rewriter.RW, 0),
+		make([]*aggregator.Aggregator, 0),
+		make([]*matcher.Matcher, 0),
+		make([]route.Route, 0),
+	}, nil
 }
 
 type Table struct {
@@ -55,29 +72,21 @@ type TableSnapshot struct {
 	SpoolDir    string
 }
 
-func New(config cfg.Config) *Table {
+func New(config TableConfig) *Table {
 	t := &Table{
 		sync.Mutex{},
 		atomic.Value{},
-		config.Spool_dir,
+		config.SpoolDir,
 		stats.Counter("unit=Metric.direction=in"),
 		stats.Counter("unit=Err.type=invalid"),
 		stats.Counter("unit=Err.type=out_of_order"),
 		stats.Counter("unit=Metric.direction=blacklist"),
 		stats.Counter("unit=Metric.direction=unroutable"),
 		make(chan []byte),
-		nil,
+		badmetrics.New(config.BadMetricsMaxAge),
 	}
 
-	t.config.Store(TableConfig{
-		config.Validation_level_legacy,
-		config.Validation_level_m20,
-		config.Validate_order,
-		make([]rewriter.RW, 0),
-		make([]*aggregator.Aggregator, 0),
-		make([]*matcher.Matcher, 0),
-		make([]route.Route, 0),
-	})
+	t.config.Store(config)
 
 	go func() {
 		for buf := range t.In {

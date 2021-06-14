@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/carbon-relay-ng/matcher"
 	"github.com/grafana/carbon-relay-ng/rewriter"
 	"github.com/grafana/carbon-relay-ng/route"
+	"github.com/grafana/carbon-relay-ng/table"
 	"github.com/grafana/metrictank/cluster/partitioner"
 	"github.com/taylorchu/toki"
 )
@@ -183,19 +184,7 @@ var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex
 var errFmtModRoute = errors.New("modRoute <routeKey> <prefix/sub/regex=>")           // one or more can be specified at once
 var errOrgId0 = errors.New("orgId must be a number > 0")
 
-type Table interface {
-	AddAggregator(agg *aggregator.Aggregator)
-	AddRewriter(rw rewriter.RW)
-	AddBlacklist(matcher *matcher.Matcher)
-	AddRoute(route route.Route)
-	DelRoute(key string) error
-	UpdateDestination(key string, index int, opts map[string]string) error
-	UpdateRoute(key string, opts map[string]string) error
-	GetIn() chan []byte
-	GetSpoolDir() string
-}
-
-func Apply(table Table, cmd string) error {
+func Apply(table table.Interface, cmd string) error {
 	s := toki.NewScanner(tokens)
 	s.SetInput(strings.Replace(cmd, "  ", " ## ", -1)) // token library skips whitespace but for us double space is significant
 	t := s.Next()
@@ -231,7 +220,7 @@ func Apply(table Table, cmd string) error {
 	}
 }
 
-func readAddAgg(s *toki.Scanner, table Table) error {
+func readAddAgg(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != sumFn && t.Token != avgFn && t.Token != minFn && t.Token != maxFn && t.Token != lastFn && t.Token != deltaFn && t.Token != countFn && t.Token != deriveFn && t.Token != stdevFn {
 		return errors.New("invalid function. need avg/max/min/sum/last/count/delta/derive/stdev")
@@ -358,7 +347,7 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddBlack(s *toki.Scanner, table Table) error {
+func readAddBlack(s *toki.Scanner, table table.Interface) error {
 	prefix := ""
 	notPrefix := ""
 	sub := ""
@@ -413,7 +402,7 @@ func readAddBlack(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddRoute(s *toki.Scanner, table Table, constructor func(key string, matcher matcher.Matcher, destinations []*destination.Destination) (route.Route, error)) error {
+func readAddRoute(s *toki.Scanner, table table.Interface, constructor func(key string, matcher matcher.Matcher, destinations []*destination.Destination) (route.Route, error)) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -446,7 +435,7 @@ func readAddRoute(s *toki.Scanner, table Table, constructor func(key string, mat
 	return nil
 }
 
-func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
+func readAddRouteConsistentHashing(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -478,7 +467,7 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
 	table.AddRoute(route)
 	return nil
 }
-func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
+func readAddRouteGrafanaNet(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRouteGrafanaNet
@@ -650,7 +639,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
+func readAddRouteKafkaMdm(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRouteKafkaMdm
@@ -851,7 +840,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddRoutePubSub(s *toki.Scanner, table Table) error {
+func readAddRoutePubSub(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoutePubSub
@@ -960,7 +949,7 @@ func readAddRoutePubSub(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddRewriter(s *toki.Scanner, table Table) error {
+func readAddRewriter(s *toki.Scanner, table table.Interface) error {
 	var t *toki.Result
 	if t = s.Next(); t.Token != word {
 		return errFmtAddRewriter
@@ -989,7 +978,7 @@ func readAddRewriter(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readDelRoute(s *toki.Scanner, table Table) error {
+func readDelRoute(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errors.New("need route key")
@@ -998,7 +987,7 @@ func readDelRoute(s *toki.Scanner, table Table) error {
 	return table.DelRoute(key)
 }
 
-func readModDest(s *toki.Scanner, table Table) error {
+func readModDest(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -1066,7 +1055,7 @@ func readModDest(s *toki.Scanner, table Table) error {
 	return table.UpdateDestination(key, index, opts)
 }
 
-func readModRoute(s *toki.Scanner, table Table) error {
+func readModRoute(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -1123,7 +1112,7 @@ func readModRoute(s *toki.Scanner, table Table) error {
 // we should read and apply all destinations at once,
 // or at least make sure we apply them to the global datastruct at once,
 // otherwise we can destabilize things / send wrong traffic, etc
-func readDestinations(s *toki.Scanner, table Table, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
+func readDestinations(s *toki.Scanner, table table.Interface, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
 	t := s.Peek()
 	for t.Token != toki.EOF {
 		for t.Token == sep {
@@ -1145,7 +1134,7 @@ func readDestinations(s *toki.Scanner, table Table, allowMatcher bool, routeKey 
 	return destinations, nil
 }
 
-func readDestination(s *toki.Scanner, table Table, allowMatcher bool, routeKey string) (dest *destination.Destination, err error) {
+func readDestination(s *toki.Scanner, table table.Interface, allowMatcher bool, routeKey string) (dest *destination.Destination, err error) {
 	var prefix, notPrefix, sub, notSub, regex, notRegex, addr, spoolDir string
 	var spool, pickle bool
 	flush := 1000
@@ -1322,7 +1311,7 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool, routeKey s
 	return destination.New(routeKey, matcher, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep)
 }
 
-func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
+func ParseDestinations(destinationConfigs []string, table table.Interface, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
 	s := toki.NewScanner(tokens)
 	for _, destinationConfig := range destinationConfigs {
 		s.SetInput(destinationConfig)

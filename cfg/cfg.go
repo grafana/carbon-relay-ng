@@ -3,6 +3,7 @@ package cfg
 import (
 	"time"
 
+	"github.com/grafana/carbon-relay-ng/table"
 	"github.com/grafana/carbon-relay-ng/validate"
 	m20 "github.com/metrics20/go-metrics20/carbon20"
 )
@@ -157,4 +158,8 @@ type Init struct {
 type instrumentation struct {
 	Graphite_addr     string
 	Graphite_interval int
+}
+
+func (c Config) TableConfig() (table.TableConfig, error) {
+	return table.NewTableConfig(c.Spool_dir, c.Bad_metrics_max_age, c.Validation_level_legacy, c.Validation_level_m20, c.Validate_order)
 }

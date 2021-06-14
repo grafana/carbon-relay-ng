@@ -1,53 +1,51 @@
 package cfg
 
-func InitFromConfig(config cfg.Config, meta toml.MetaData) (*Table, error) {
-	table := New(config)
+import (
+	"fmt"
+	"strings"
+	"time"
 
-	err := table.InitBadMetrics(config)
+	"github.com/BurntSushi/toml"
+	"github.com/grafana/carbon-relay-ng/aggregator"
+	"github.com/grafana/carbon-relay-ng/imperatives"
+	"github.com/grafana/carbon-relay-ng/matcher"
+	"github.com/grafana/carbon-relay-ng/rewriter"
+	"github.com/grafana/carbon-relay-ng/route"
+	"github.com/grafana/carbon-relay-ng/table"
+	"github.com/grafana/metrictank/cluster/partitioner"
+	log "github.com/sirupsen/logrus"
+)
+
+func InitTable(table table.Interface, config Config, meta toml.MetaData) error {
+	err := InitCmd(table, config)
 	if err != nil {
-		return table, err
+		return err
 	}
 
-	err = table.InitCmd(config)
+	err = InitBlacklist(table, config)
 	if err != nil {
-		return table, err
+		return err
 	}
 
-	err = table.InitBlacklist(config)
+	err = InitAggregation(table, config)
 	if err != nil {
-		return table, err
+		return err
 	}
 
-	err = table.InitAggregation(config)
+	err = InitRewrite(table, config)
 	if err != nil {
-		return table, err
+		return err
 	}
 
-	err = table.InitRewrite(config)
+	err = InitRoutes(table, config, meta)
 	if err != nil {
-		return table, err
+		return err
 	}
-
-	err = table.InitRoutes(config, meta)
-	if err != nil {
-		return table, err
-	}
-
-	return table, nil
-}
-
-func (table *Table) InitBadMetrics(config cfg.Config) error {
-	maxAge, err := time.ParseDuration(config.Bad_metrics_max_age)
-	if err != nil {
-		log.Errorf("could not parse badMetrics max age: %s", err.Error())
-		return fmt.Errorf("could not initialize bad metrics")
-	}
-	table.bad = badmetrics.New(maxAge)
 
 	return nil
 }
 
-func (table *Table) InitCmd(config cfg.Config) error {
+func InitCmd(table table.Interface, config Config) error {
 	for i, cmd := range config.Init.Cmds {
 		log.Infof("applying: %s", cmd)
 		err := imperatives.Apply(table, cmd)
@@ -60,7 +58,7 @@ func (table *Table) InitCmd(config cfg.Config) error {
 	return nil
 }
 
-func (table *Table) InitBlacklist(config cfg.Config) error {
+func InitBlacklist(table table.Interface, config Config) error {
 	for i, entry := range config.BlackList {
 		parts := strings.SplitN(entry, " ", 2)
 		if len(parts) < 2 {
@@ -103,7 +101,7 @@ func (table *Table) InitBlacklist(config cfg.Config) error {
 	return nil
 }
 
-func (table *Table) InitAggregation(config cfg.Config) error {
+func InitAggregation(table table.Interface, config Config) error {
 	for i, aggConfig := range config.Aggregation {
 		// for backwards compatibility we need to check both "sub" and "substr",
 		// but "sub" gets preference if both are defined
@@ -116,7 +114,7 @@ func (table *Table) InitAggregation(config cfg.Config) error {
 		if err != nil {
 			return fmt.Errorf("Failed to instantiate matcher: %s", err)
 		}
-		agg, err := aggregator.New(aggConfig.Function, matcher, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), aggConfig.DropRaw, table.In)
+		agg, err := aggregator.New(aggConfig.Function, matcher, aggConfig.Format, aggConfig.Cache, uint(aggConfig.Interval), uint(aggConfig.Wait), aggConfig.DropRaw, table.GetIn())
 		if err != nil {
 			log.Error(err.Error())
 			return fmt.Errorf("could not add aggregation #%d", i+1)
@@ -128,7 +126,7 @@ func (table *Table) InitAggregation(config cfg.Config) error {
 	return nil
 }
 
-func (table *Table) InitRewrite(config cfg.Config) error {
+func InitRewrite(table table.Interface, config Config) error {
 	for i, rewriterConfig := range config.Rewriter {
 		rw, err := rewriter.New(rewriterConfig.Old, rewriterConfig.New, rewriterConfig.Not, rewriterConfig.Max)
 		if err != nil {
@@ -142,7 +140,7 @@ func (table *Table) InitRewrite(config cfg.Config) error {
 	return nil
 }
 
-func (table *Table) InitRoutes(config cfg.Config, meta toml.MetaData) error {
+func InitRoutes(table table.Interface, config Config, meta toml.MetaData) error {
 	for _, routeConfig := range config.Route {
 		// for backwards compatibility we need to check both "sub" and "substr",
 		// but "sub" gets preference if both are defined

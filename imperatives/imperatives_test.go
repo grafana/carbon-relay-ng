@@ -7,10 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/carbon-relay-ng/aggregator"
 	"github.com/grafana/carbon-relay-ng/matcher"
-	"github.com/grafana/carbon-relay-ng/rewriter"
 	"github.com/grafana/carbon-relay-ng/route"
+	"github.com/grafana/carbon-relay-ng/table"
 	"github.com/taylorchu/toki"
 )
 
@@ -67,7 +66,7 @@ func TestScanner(t *testing.T) {
 		}
 	}
 
-	table := &mockTable{}
+	table := &table.mockTable{}
 	for _, c := range cases {
 		err := Apply(table, c.cmd)
 		if err != nil {
@@ -75,33 +74,6 @@ func TestScanner(t *testing.T) {
 		}
 	}
 }
-
-type MockTable struct {
-	aggregators []*aggregator.Aggregator
-	rewriters   []rewriter.RW
-	blacklist   []*matcher.Matcher
-	routes      []route.Route
-}
-
-func (m *MockTable) AddAggregator(agg *aggregator.Aggregator) {
-	m.aggregators = append(m.aggregators, agg)
-}
-func (m *MockTable) AddRewriter(rw rewriter.RW) {
-	m.rewriters = append(m.rewriters, rw)
-}
-func (m *MockTable) AddBlacklist(matcher *matcher.Matcher) {
-	m.blacklist = append(m.blacklist, matcher)
-}
-func (m *MockTable) AddRoute(route route.Route) {
-	m.routes = append(m.routes, route)
-}
-func (m *MockTable) DelRoute(key string) error { panic("not implemented") }
-func (m *MockTable) UpdateDestination(key string, index int, opts map[string]string) error {
-	panic("not implemented")
-}
-func (m *MockTable) UpdateRoute(key string, opts map[string]string) error { panic("not implemented") }
-func (m *MockTable) GetIn() chan []byte                                   { panic("not implemented") }
-func (m *MockTable) GetSpoolDir() string                                  { panic("not implemented") }
 
 func TestApply(t *testing.T) {
 
@@ -170,7 +142,7 @@ func TestApply(t *testing.T) {
 	})
 
 	for _, testCase := range testCases {
-		m := &MockTable{}
+		m := &table.MockTable{}
 		err := Apply(m, testCase.cmd)
 		if !testCase.expErr && err != nil {
 			t.Fatalf("testcase with cmd %q expected no error but got error %s", testCase.cmd, err.Error())
@@ -178,10 +150,10 @@ func TestApply(t *testing.T) {
 		if testCase.expErr && err == nil {
 			t.Fatalf("testcase with cmd %q expected error but got no error", testCase.cmd)
 		}
-		if len(m.routes) != 1 {
-			t.Fatalf("testcase with cmd %q resulted in %d routes, not 1", testCase.cmd, len(m.routes))
+		if len(m.Routes) != 1 {
+			t.Fatalf("testcase with cmd %q resulted in %d routes, not 1", testCase.cmd, len(m.Routes))
 		}
-		r, ok := m.routes[0].(*route.GrafanaNet)
+		r, ok := m.Routes[0].(*route.GrafanaNet)
 		if !ok {
 			t.Fatalf("testcase with cmd %q resulted in route of wrong type. needed GrafanaNet", testCase.cmd)
 		}
