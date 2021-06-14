@@ -75,7 +75,7 @@ func TestScanner(t *testing.T) {
 	}
 }
 
-func TestApply(t *testing.T) {
+func TestApplyAddRouteGrafanaNet(t *testing.T) {
 
 	schemasFile, err := ioutil.TempFile("", "carbon-relay-ng-TestApply-schemasFile")
 	if err != nil {
