@@ -369,11 +369,11 @@ func (route *GrafanaNet) postSchemas() {
 		req.Header.Add("Authorization", "Bearer "+route.Cfg.ApiKey)
 		resp, err := route.client.Do(req)
 		if err != nil {
-			boff.Reset()
 			log.Warnf("got error for metrics/schemas: %s", err.Error())
 			time.Sleep(boff.Duration())
 			continue
 		}
+		boff.Reset()
 		if resp.StatusCode == http.StatusNotFound {
 			// if grafana cloud is not updated yet for this new feature.
 			// we are still done with our work. no need to log anything
