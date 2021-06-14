@@ -342,6 +342,7 @@ func (route *GrafanaNet) Flush() error {
 }
 
 func (route *GrafanaNet) updateSchemas() {
+	route.postSchemas()
 	for range time.Tick(6 * time.Hour) {
 		route.postSchemas()
 	}
