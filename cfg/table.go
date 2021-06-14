@@ -258,7 +258,7 @@ func InitRoutes(table table.Interface, config Config, meta toml.MetaData) error 
 				cfg.OrgID = routeConfig.OrgId
 			}
 			if routeConfig.ErrBackoffMin != 0 {
-				cfg.ErrBackoffMin = routeConfig.ErrBackoffMin
+				cfg.ErrBackoffMin = time.Millisecond * time.Duration(routeConfig.ErrBackoffMin)
 			}
 			if routeConfig.ErrBackoffFactor != 0 {
 				cfg.ErrBackoffFactor = routeConfig.ErrBackoffFactor

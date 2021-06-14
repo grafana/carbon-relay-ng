@@ -100,7 +100,7 @@ type Route struct {
 	Spool            bool
 	SslVerify        bool
 	Concurrency      int
-	ErrBackoffMin    time.Duration
+	ErrBackoffMin    int
 	ErrBackoffFactor float64
 
 	// kafkaMdm
