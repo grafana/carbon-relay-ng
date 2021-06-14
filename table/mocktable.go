@@ -32,5 +32,5 @@ func (m *MockTable) UpdateDestination(key string, index int, opts map[string]str
 	panic("not implemented")
 }
 func (m *MockTable) UpdateRoute(key string, opts map[string]string) error { panic("not implemented") }
-func (m *MockTable) GetIn() chan []byte                                   { panic("not implemented") }
-func (m *MockTable) GetSpoolDir() string                                  { panic("not implemented") }
+func (m *MockTable) GetIn() chan []byte                                   { return nil }
+func (m *MockTable) GetSpoolDir() string                                  { return "/fake/non/existant/spooldir/that/shouldnt/be/used" }

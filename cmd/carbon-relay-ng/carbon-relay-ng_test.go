@@ -14,9 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/carbon-relay-ng/cfg"
 	"github.com/grafana/carbon-relay-ng/imperatives"
 	tbl "github.com/grafana/carbon-relay-ng/table"
+	"github.com/grafana/carbon-relay-ng/validate"
+	"github.com/metrics20/go-metrics20/carbon20"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -55,9 +56,14 @@ func init() {
 }
 
 func NewTableOrFatal(tb testing.TB, spool_dir, cmd string) *tbl.Table {
-	table := tbl.New(cfg.Config{
-		Spool_dir: spool_dir,
-	})
+	cfg, _ := tbl.NewTableConfig(
+		spool_dir,
+		"1s",
+		validate.LevelLegacy{Level: carbon20.NoneLegacy},
+		validate.LevelM20{Level: carbon20.NoneM20},
+		false,
+	)
+	table := tbl.New(cfg)
 	fatal := func(err error) {
 		tb.Fatal(err)
 	}

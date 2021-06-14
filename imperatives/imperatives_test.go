@@ -66,7 +66,7 @@ func TestScanner(t *testing.T) {
 		}
 	}
 
-	table := &table.mockTable{}
+	table := &table.MockTable{}
 	for _, c := range cases {
 		err := Apply(table, c.cmd)
 		if err != nil {
