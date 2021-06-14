@@ -196,7 +196,7 @@ func main() {
 
 	log.Info("initializing routing table...")
 
-	tableConfig, err := cfg.TableConfig()
+	tableConfig, err := config.TableConfig()
 	if err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
