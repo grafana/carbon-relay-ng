@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/carbon-relay-ng/matcher"
 	"github.com/grafana/carbon-relay-ng/rewriter"
 	"github.com/grafana/carbon-relay-ng/route"
+	"github.com/grafana/carbon-relay-ng/table"
 	"github.com/grafana/metrictank/cluster/partitioner"
 	"github.com/taylorchu/toki"
 )
@@ -79,6 +80,8 @@ const (
 	optFlushMaxWait
 	optTimeout
 	optSSLVerify
+	optErrBackoffMin
+	optErrBackoffFactor
 	word
 	optConcurrency
 	optOrgId
@@ -143,6 +146,8 @@ var tokens = []toki.Def{
 	{Token: optFlushMaxWait, Pattern: "flushMaxWait="},
 	{Token: optTimeout, Pattern: "timeout="},
 	{Token: optSSLVerify, Pattern: "sslverify="},
+	{Token: optErrBackoffMin, Pattern: "errBackoffMin="},
+	{Token: optErrBackoffFactor, Pattern: "errBackoffFactor="},
 	{Token: optConcurrency, Pattern: "concurrency="},
 	{Token: optOrgId, Pattern: "orgId="},
 	{Token: optPubSubProject, Pattern: "project="},
@@ -170,7 +175,7 @@ var tokens = []toki.Def{
 var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
 var errFmtAddAgg = errors.New("addAgg <avg|count|delta|derive|last|max|min|stdev|sum> [prefix/sub/regex=,..] <fmt> <interval> <wait> [cache=true/false] [dropRaw=true/false]")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
-var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/sub/regex=,...]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int concurrency=int orgId=int]")
+var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false concurrency=int bufSize=int flushMaxNum=int flushMaxWait=int timeout=int orgId=int errBackoffMin=int errBackoffFactor=float]")
 var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex=,...]  broker topic codec schemasFile partitionBy orgId [blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int tlsEnabled=bool tlsSkipVerify=bool tlsClientKey='<key>' tlsClientCert='<file>' saslEnabled=bool saslMechanism='mechanism' saslUsername='username' saslPassword='password']")
 var errFmtAddRoutePubSub = errors.New("addRoute pubsub key [prefix/sub/regex=,...]  project topic [codec=gzip/none format=plain/pickle blocking=true/false bufSize=int flushMaxSize=int flushMaxWait=int]")
 var errFmtAddDest = errors.New("addDest <routeKey> <dest>") // not implemented yet
@@ -179,19 +184,7 @@ var errFmtModDest = errors.New("modDest <routeKey> <dest> <addr/prefix/sub/regex
 var errFmtModRoute = errors.New("modRoute <routeKey> <prefix/sub/regex=>")           // one or more can be specified at once
 var errOrgId0 = errors.New("orgId must be a number > 0")
 
-type Table interface {
-	AddAggregator(agg *aggregator.Aggregator)
-	AddRewriter(rw rewriter.RW)
-	AddBlacklist(matcher *matcher.Matcher)
-	AddRoute(route route.Route)
-	DelRoute(key string) error
-	UpdateDestination(key string, index int, opts map[string]string) error
-	UpdateRoute(key string, opts map[string]string) error
-	GetIn() chan []byte
-	GetSpoolDir() string
-}
-
-func Apply(table Table, cmd string) error {
+func Apply(table table.Interface, cmd string) error {
 	s := toki.NewScanner(tokens)
 	s.SetInput(strings.Replace(cmd, "  ", " ## ", -1)) // token library skips whitespace but for us double space is significant
 	t := s.Next()
@@ -227,7 +220,7 @@ func Apply(table Table, cmd string) error {
 	}
 }
 
-func readAddAgg(s *toki.Scanner, table Table) error {
+func readAddAgg(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != sumFn && t.Token != avgFn && t.Token != minFn && t.Token != maxFn && t.Token != lastFn && t.Token != deltaFn && t.Token != countFn && t.Token != deriveFn && t.Token != stdevFn {
 		return errors.New("invalid function. need avg/max/min/sum/last/count/delta/derive/stdev")
@@ -354,7 +347,7 @@ func readAddAgg(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddBlack(s *toki.Scanner, table Table) error {
+func readAddBlack(s *toki.Scanner, table table.Interface) error {
 	prefix := ""
 	notPrefix := ""
 	sub := ""
@@ -409,7 +402,7 @@ func readAddBlack(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddRoute(s *toki.Scanner, table Table, constructor func(key string, matcher matcher.Matcher, destinations []*destination.Destination) (route.Route, error)) error {
+func readAddRoute(s *toki.Scanner, table table.Interface, constructor func(key string, matcher matcher.Matcher, destinations []*destination.Destination) (route.Route, error)) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -442,7 +435,7 @@ func readAddRoute(s *toki.Scanner, table Table, constructor func(key string, mat
 	return nil
 }
 
-func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
+func readAddRouteConsistentHashing(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -474,7 +467,7 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table Table) error {
 	table.AddRoute(route)
 	return nil
 }
-func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
+func readAddRouteGrafanaNet(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRouteGrafanaNet
@@ -509,21 +502,17 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 	schemasFile := string(t.Value)
 	t = s.Next()
 
-	var spool, blocking bool
-	sslVerify := true
-	var bufSize = int(1e7) // since a message is typically around 100B this is 1GB
-	var flushMaxNum = 5000 // number of metrics
-	var flushMaxWait = 500 // in ms
-	var timeout = 10000    // in ms
-	var concurrency = 100  // number of concurrent connections to tsdb-gw
-	var orgId = 1
+	cfg, err := route.NewGrafanaNetConfig(addr, apiKey, schemasFile)
+	if err != nil {
+		return errFmtAddRouteGrafanaNet
+	}
 
 	for ; t.Token != toki.EOF; t = s.Next() {
 		switch t.Token {
 		case optBlocking:
 			t = s.Next()
 			if t.Token == optTrue || t.Token == optFalse {
-				blocking, err = strconv.ParseBool(string(t.Value))
+				cfg.Blocking, err = strconv.ParseBool(string(t.Value))
 				if err != nil {
 					return err
 				}
@@ -533,57 +522,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		case optSpool:
 			t = s.Next()
 			if t.Token == optTrue || t.Token == optFalse {
-				spool, err = strconv.ParseBool(string(t.Value))
-				if err != nil {
-					return err
-				}
-			} else {
-				return errFmtAddRouteGrafanaNet
-			}
-		case optBufSize:
-			t = s.Next()
-			if t.Token == num {
-				bufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
-				if err != nil {
-					return err
-				}
-			} else {
-				return errFmtAddRouteGrafanaNet
-			}
-		case optFlushMaxNum:
-			t = s.Next()
-			if t.Token == num {
-				flushMaxNum, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
-				if err != nil {
-					return err
-				}
-			} else {
-				return errFmtAddRouteGrafanaNet
-			}
-		case optFlushMaxWait:
-			t = s.Next()
-			if t.Token == num {
-				flushMaxWait, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
-				if err != nil {
-					return err
-				}
-			} else {
-				return errFmtAddRouteGrafanaNet
-			}
-		case optConcurrency:
-			t = s.Next()
-			if t.Token == num {
-				concurrency, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
-				if err != nil {
-					return err
-				}
-			} else {
-				return errFmtAddRouteGrafanaNet
-			}
-		case optTimeout:
-			t = s.Next()
-			if t.Token == num {
-				timeout, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.Spool, err = strconv.ParseBool(string(t.Value))
 				if err != nil {
 					return err
 				}
@@ -593,21 +532,95 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		case optSSLVerify:
 			t = s.Next()
 			if t.Token == optTrue || t.Token == optFalse {
-				sslVerify, err = strconv.ParseBool(string(t.Value))
+				cfg.SSLVerify, err = strconv.ParseBool(string(t.Value))
 				if err != nil {
 					return err
 				}
 			} else {
 				return errFmtAddRouteGrafanaNet
 			}
-		case optOrgId:
+		case optConcurrency:
 			t = s.Next()
 			if t.Token == num {
-				orgId, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.Concurrency, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
 				if err != nil {
 					return err
 				}
-				if orgId < 1 {
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optBufSize:
+			t = s.Next()
+			if t.Token == num {
+				cfg.BufSize, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optFlushMaxNum:
+			t = s.Next()
+			if t.Token == num {
+				cfg.FlushMaxNum, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optFlushMaxWait:
+			t = s.Next()
+			if t.Token == num {
+				i, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.FlushMaxWait = time.Duration(i) * time.Millisecond
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optTimeout:
+			t = s.Next()
+			if t.Token == num {
+				i, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.Timeout = time.Duration(i) * time.Millisecond
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optErrBackoffMin:
+			t = s.Next()
+			if t.Token == num {
+				i, err := strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				cfg.ErrBackoffMin = time.Duration(i) * time.Millisecond
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+		case optErrBackoffFactor:
+			t = s.Next()
+			if t.Token == word {
+				cfg.ErrBackoffFactor, err = strconv.ParseFloat(strings.TrimSpace(string(t.Value)), 64)
+				if err != nil {
+					return err
+				}
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
+
+		case optOrgId:
+			t = s.Next()
+			if t.Token == num {
+				cfg.OrgID, err = strconv.Atoi(strings.TrimSpace(string(t.Value)))
+				if err != nil {
+					return err
+				}
+				if cfg.OrgID < 1 {
 					return errOrgId0
 				}
 			} else {
@@ -618,7 +631,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 		}
 	}
 
-	route, err := route.NewGrafanaNet(key, matcher, addr, apiKey, schemasFile, spool, sslVerify, blocking, bufSize, flushMaxNum, flushMaxWait, timeout, concurrency, orgId)
+	route, err := route.NewGrafanaNet(key, matcher, cfg)
 	if err != nil {
 		return err
 	}
@@ -626,7 +639,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
+func readAddRouteKafkaMdm(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRouteKafkaMdm
@@ -827,7 +840,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddRoutePubSub(s *toki.Scanner, table Table) error {
+func readAddRoutePubSub(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoutePubSub
@@ -936,7 +949,7 @@ func readAddRoutePubSub(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readAddRewriter(s *toki.Scanner, table Table) error {
+func readAddRewriter(s *toki.Scanner, table table.Interface) error {
 	var t *toki.Result
 	if t = s.Next(); t.Token != word {
 		return errFmtAddRewriter
@@ -965,7 +978,7 @@ func readAddRewriter(s *toki.Scanner, table Table) error {
 	return nil
 }
 
-func readDelRoute(s *toki.Scanner, table Table) error {
+func readDelRoute(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errors.New("need route key")
@@ -974,7 +987,7 @@ func readDelRoute(s *toki.Scanner, table Table) error {
 	return table.DelRoute(key)
 }
 
-func readModDest(s *toki.Scanner, table Table) error {
+func readModDest(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -1042,7 +1055,7 @@ func readModDest(s *toki.Scanner, table Table) error {
 	return table.UpdateDestination(key, index, opts)
 }
 
-func readModRoute(s *toki.Scanner, table Table) error {
+func readModRoute(s *toki.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -1099,7 +1112,7 @@ func readModRoute(s *toki.Scanner, table Table) error {
 // we should read and apply all destinations at once,
 // or at least make sure we apply them to the global datastruct at once,
 // otherwise we can destabilize things / send wrong traffic, etc
-func readDestinations(s *toki.Scanner, table Table, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
+func readDestinations(s *toki.Scanner, table table.Interface, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
 	t := s.Peek()
 	for t.Token != toki.EOF {
 		for t.Token == sep {
@@ -1121,7 +1134,7 @@ func readDestinations(s *toki.Scanner, table Table, allowMatcher bool, routeKey 
 	return destinations, nil
 }
 
-func readDestination(s *toki.Scanner, table Table, allowMatcher bool, routeKey string) (dest *destination.Destination, err error) {
+func readDestination(s *toki.Scanner, table table.Interface, allowMatcher bool, routeKey string) (dest *destination.Destination, err error) {
 	var prefix, notPrefix, sub, notSub, regex, notRegex, addr, spoolDir string
 	var spool, pickle bool
 	flush := 1000
@@ -1298,7 +1311,7 @@ func readDestination(s *toki.Scanner, table Table, allowMatcher bool, routeKey s
 	return destination.New(routeKey, matcher, addr, spoolDir, spool, pickle, periodFlush, periodReConn, connBufSize, ioBufSize, spoolBufSize, spoolMaxBytesPerFile, spoolSyncEvery, spoolSyncPeriod, spoolSleep, unspoolSleep)
 }
 
-func ParseDestinations(destinationConfigs []string, table Table, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
+func ParseDestinations(destinationConfigs []string, table table.Interface, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
 	s := toki.NewScanner(tokens)
 	for _, destinationConfig := range destinationConfigs {
 		s.SetInput(destinationConfig)

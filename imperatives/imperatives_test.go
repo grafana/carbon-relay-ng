@@ -1,9 +1,15 @@
 package imperatives
 
 import (
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/grafana/carbon-relay-ng/matcher"
+	"github.com/grafana/carbon-relay-ng/route"
+	"github.com/grafana/carbon-relay-ng/table"
 	"github.com/taylorchu/toki"
 )
 
@@ -60,11 +66,103 @@ func TestScanner(t *testing.T) {
 		}
 	}
 
-	table := &mockTable{}
+	table := &table.MockTable{}
 	for _, c := range cases {
 		err := Apply(table, c.cmd)
 		if err != nil {
 			t.Fatalf("could not apply init cmd %q: %s", c.cmd, err)
+		}
+	}
+}
+
+func TestApplyAddRouteGrafanaNet(t *testing.T) {
+
+	schemasFile, err := ioutil.TempFile("", "carbon-relay-ng-TestApply-schemasFile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(schemasFile.Name())
+	if _, err := schemasFile.Write([]byte("[default]\npattern = .*\nretentions = 10s:1d")); err != nil {
+		t.Fatal(err)
+	}
+	if err := schemasFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	type testCase struct {
+		cmd        string
+		expCfg     route.GrafanaNetConfig
+		expMatcher matcher.Matcher
+		expErr     bool
+	}
+
+	var testCases []testCase
+
+	// trivial case. mostly defaults, so let's rely on the helper that generates the (mostly default) config
+	cfg, err := route.NewGrafanaNetConfig("http://foo", "apiKey", schemasFile.Name())
+	if err != nil {
+		t.Fatal(err) // should never happen
+	}
+	testCases = append(testCases, testCase{
+		cmd:    "addRoute grafanaNet key  http://foo apiKey " + schemasFile.Name(),
+		expCfg: cfg,
+		expErr: false,
+	})
+
+	// advanced case full of all possible settings.
+	testCases = append(testCases, testCase{
+		cmd: "addRoute grafanaNet key prefix=prefix notPrefix=notPrefix sub=sub notSub=notSub regex=regex notRegex=notRegex  http://foo.bar apiKey " + schemasFile.Name() + " spool=true sslverify=false blocking=true concurrency=42 bufSize=123 flushMaxNum=456 flushMaxWait=5 timeout=123 orgId=10010 errBackoffMin=14 errBackoffFactor=1.8",
+		expCfg: route.GrafanaNetConfig{
+			Addr:        "http://foo.bar",
+			ApiKey:      "apiKey",
+			SchemasFile: schemasFile.Name(),
+
+			BufSize:      123,
+			FlushMaxNum:  456,
+			FlushMaxWait: 5 * time.Millisecond,
+			Timeout:      123 * time.Millisecond,
+			Concurrency:  42,
+			OrgID:        10010,
+			SSLVerify:    false,
+			Blocking:     true,
+			Spool:        true,
+
+			ErrBackoffMin:    14 * time.Millisecond,
+			ErrBackoffFactor: 1.8,
+		},
+		expMatcher: matcher.Matcher{
+			Prefix:    "prefix",
+			NotPrefix: "notPrefix",
+			Sub:       "sub",
+			NotSub:    "notSub",
+			Regex:     "regex",
+			NotRegex:  "notRegex",
+		},
+		expErr: false,
+	})
+
+	for _, testCase := range testCases {
+		m := &table.MockTable{}
+		err := Apply(m, testCase.cmd)
+		if !testCase.expErr && err != nil {
+			t.Fatalf("testcase with cmd %q expected no error but got error %s", testCase.cmd, err.Error())
+		}
+		if testCase.expErr && err == nil {
+			t.Fatalf("testcase with cmd %q expected error but got no error", testCase.cmd)
+		}
+		if len(m.Routes) != 1 {
+			t.Fatalf("testcase with cmd %q resulted in %d routes, not 1", testCase.cmd, len(m.Routes))
+		}
+		r, ok := m.Routes[0].(*route.GrafanaNet)
+		if !ok {
+			t.Fatalf("testcase with cmd %q resulted in route of wrong type. needed GrafanaNet", testCase.cmd)
+		}
+		if r.Cfg != testCase.expCfg {
+			t.Fatalf("testcase with cmd %q resulted in wrong config %+v", testCase.cmd, r.Cfg)
+		}
+		snap := r.Snapshot()
+		if !snap.Matcher.Equals(testCase.expMatcher) {
+			t.Fatalf("testcase with cmd %q resulted in wrong matcher %+v", testCase.cmd, snap.Matcher)
 		}
 	}
 }

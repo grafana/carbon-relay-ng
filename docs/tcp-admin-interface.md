@@ -1,7 +1,7 @@
 # TCP Interface
 
 Admin commands that you can execute on a live carbon-relay-ng daemon.
-Note: you can also have a relay execute these commands at bootup via the init.cmds setting
+Note: you can also have carbon-relay-ng execute these commands at bootup via the init.cmds setting, although that is deprecated in favor of the proper [config file](config.md)
 
 
 commands:
@@ -74,7 +74,7 @@ commands:
                    spoolsleep=<int>              sleep this many microseconds(!) in between ingests from bulkdata/redo buffers into spool. default 500
                    unspoolsleep=<int>            sleep this many microseconds(!) in between reads from the spool, when replaying spooled data. default 10
 
-
+    addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile [spool=true/false sslverify=true/false blocking=true/false concurrency=int bufSize=int flushMaxNum=int flushMaxWait=int timeout=int orgId=int errBackoffMin=int errBackoffFactor=float]")
 
     addDest <routeKey> <dest>                    not implemented yet
 
@@ -96,3 +96,36 @@ commands:
                    notRegex=<regex>              new matcher not regex
 
     delRoute <routeKey>                          delete given route
+
+
+
+Here are some examples:
+
+```
+# a plain carbon route that sends all data to the specified carbon (graphite) server (note the double space separating route options from destination options)
+#'addRoute sendAllMatch carbon-default  your-graphite-server:2003 spool=true pickle=false',
+
+# example route for https://grafana.com/cloud/metrics (note the double space separating route options from destination options)
+#'addRoute grafanaNet grafanaNet  your-base-url/metrics your-grafana.net-api-key /path/to/storage-schemas.conf',
+
+# ignore hosts that don't set their hostname properly via prefix match
+#'addBlack prefix collectd.localhost',
+
+# ignore foo.<anything>.cpu.... via regex match
+#'addBlack regex ^foo\..*\.cpu+',
+
+# aggregate timer metrics with sums
+#'addAgg sum regex=^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*) stats.timers._sum_$1.requests.$2 10 20 cache=true',
+
+# aggregate timer metrics with averages
+#'addAgg avg regex=^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*) sub=requests stats.timers._avg_$1.requests.$2 5 10 dropRaw=false',
+
+# all metrics with '=' in them are metrics2.0, send to carbon-tagger service (note the double space separating route options from destination options)
+#'addRoute sendAllMatch carbon-tagger sub==  127.0.0.1:2006',
+
+# send to the first carbon destination that matches the metric (note the double spaces between destinations and route)
+#'addRoute sendFirstMatch analytics regex=(Err/s|wait_time|logger)  graphite.prod:2003 prefix=prod. spool=true pickle=true  graphite.staging:2003 prefix=staging. spool=true pickle=true'
+
+# send to the Google PubSub topic named "graphite-ingest" in the "myproject" project
+#'addRoute pubsub pubsub  myproject graphite-ingest'
+```
