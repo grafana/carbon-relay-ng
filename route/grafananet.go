@@ -58,6 +58,9 @@ func NewGrafanaNetConfig(addr, apiKey, schemasFile string) (GrafanaNetConfig, er
 	if err != nil || !u.IsAbs() || u.Host == "" { // apparently "http://" is a valid absolute URL (with empty host), but we don't want that
 		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: invalid addr %q. need an absolute http[s] url", addr)
 	}
+	if !strings.HasSuffix(u.Path, "/metrics") && !strings.HasSuffix(u.Path, "/metrics/") {
+		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: invalid addr %q. needs to be a /metrics endpoint", addr)
+	}
 
 	if apiKey == "" {
 		return GrafanaNetConfig{}, errors.New("NewGrafanaNetConfig: invalid apiKey")
@@ -90,9 +93,11 @@ func NewGrafanaNetConfig(addr, apiKey, schemasFile string) (GrafanaNetConfig, er
 
 type GrafanaNet struct {
 	baseRoute
-	Cfg        GrafanaNetConfig
-	schemas    persister.WhisperSchemas
-	schemasStr string
+	Cfg         GrafanaNetConfig
+	schemas     persister.WhisperSchemas
+	schemasStr  string
+	addrMetrics string
+	addrSchemas string
 
 	dispatch func(chan []byte, []byte, metrics.Gauge, metrics.Counter)
 	in       []chan []byte
@@ -109,6 +114,29 @@ type GrafanaNet struct {
 	manuFlushSize     metrics.Histogram // only updated after successful flush. not implemented yet
 	numBuffered       metrics.Gauge
 	bufferSize        metrics.Gauge
+}
+
+// getGrafanaNetAddr returns the metrics and schemas address (URL) for a given config URL
+// The URL we instruct customers to use is the url to post metrics to, so that one is obvious
+// but we support posting both to both /graphite/metrics and /metrics , whereas the schemas
+// URL should always get the /graphite prefix.
+func getGrafanaNetAddr(addr string) (string, string) {
+
+	if strings.HasSuffix(addr, "/") {
+		addr = addr[:len(addr)-1]
+	}
+	if !strings.HasSuffix(addr, "/metrics") {
+		panic("getAddr called on an addr that does not end on /metrics or /metrics/ - this is not supported. Normally NewGrafanaNetConfig would already have validated this")
+	}
+	addrMetrics := addr
+
+	baseAddr := strings.TrimSuffix(addrMetrics, "/metrics")
+	if strings.HasSuffix(baseAddr, "/graphite") {
+		baseAddr = strings.TrimSuffix(baseAddr, "/graphite")
+	}
+
+	addrSchemas := baseAddr + "/graphite/config/storageSchema"
+	return addrMetrics, addrSchemas
 }
 
 // NewGrafanaNet creates a special route that writes to a grafana.net datastore
@@ -141,6 +169,8 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, cfg GrafanaNetConfig) (R
 		bufferSize:        stats.Gauge("dest=" + cleanAddr + ".unit=Metric.what=bufferSize"),
 		numDropBuffFull:   stats.Counter("dest=" + cleanAddr + ".unit=Metric.action=drop.reason=queue_full"),
 	}
+
+	r.addrMetrics, r.addrSchemas = getGrafanaNetAddr(cfg.Addr)
 
 	r.bufferSize.Update(int64(cfg.BufSize))
 
@@ -246,7 +276,7 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 	snappyBody.Write(data)
 	snappyBody.Close()
 	body := buffer.Bytes()
-	req, err := http.NewRequest("POST", route.Cfg.Addr, bytes.NewReader(body))
+	req, err := http.NewRequest("POST", route.addrMetrics, bytes.NewReader(body))
 	if err != nil {
 		panic(err)
 	}
@@ -267,7 +297,7 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 		}
 		route.numErrFlush.Inc(1)
 		b := boff.Duration()
-		log.Warnf("GrafanaNet failed to submit data to %s: %s - will try again in %s (this attempt took %s)", route.Cfg.Addr, err.Error(), b, dur)
+		log.Warnf("GrafanaNet failed to submit data to %s: %s - will try again in %s (this attempt took %s)", route.addrMetrics, err.Error(), b, dur)
 		time.Sleep(b)
 		// re-instantiate body, since the previous .Do() attempt would have Read it all the way
 		req.Body = ioutil.NopCloser(bytes.NewReader(body))
@@ -321,7 +351,7 @@ func (route *GrafanaNet) flush(mda schema.MetricDataArray, req *http.Request) (t
 // Dispatch takes in the requested buf or drops it if blocking mode and queue of the shard is full
 func (route *GrafanaNet) Dispatch(buf []byte) {
 	// should return as quickly as possible
-	log.Tracef("route %s sending to dest %s: %s", route.key, route.Cfg.Addr, buf)
+	log.Tracef("route %s sending to dest %s: %s", route.key, route.addrMetrics, buf)
 	buf = bytes.TrimSpace(buf)
 	index := bytes.Index(buf, []byte(" "))
 	if index == -1 {
@@ -350,10 +380,6 @@ func (route *GrafanaNet) updateSchemas() {
 }
 
 func (route *GrafanaNet) postSchemas() {
-	url := route.Cfg.Addr + "/schemas"
-	if strings.HasSuffix(route.Cfg.Addr, "/") {
-		url = route.Cfg.Addr + "schemas"
-	}
 
 	boff := &backoff.Backoff{
 		Min:    route.Cfg.ErrBackoffMin,
@@ -363,7 +389,7 @@ func (route *GrafanaNet) postSchemas() {
 	}
 
 	for {
-		req, err := http.NewRequest("POST", url, strings.NewReader(route.schemasStr))
+		req, err := http.NewRequest("POST", route.addrSchemas, strings.NewReader(route.schemasStr))
 		if err != nil {
 			panic(err)
 		}

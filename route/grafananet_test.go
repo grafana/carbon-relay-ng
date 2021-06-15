@@ -57,9 +57,12 @@ func TestNewGrafanaNetConfig(t *testing.T) {
 		{"/foo/bar", true},
 		{"http://", true},
 		{"https://", true},
-		{"https://a", false},
-		{"http://foo.bar", false},
-		{"https://foo/bar", false},
+		{"https://a", true},
+		{"http://foo.bar", true},
+		{"https://foo/bar", true},
+		{"https://a/metrics", false},
+		{"http://foo.bar/metrics", false},
+		{"https://foo/bar/metrics", false},
 	}
 
 	keyOptions := []option{
@@ -95,6 +98,42 @@ func TestNewGrafanaNetConfig(t *testing.T) {
 		}
 		if testCase.expErr && err == nil {
 			t.Errorf("test with input %+v expected error but got none", testCase.in)
+		}
+	}
+}
+
+func TestGetGrafanaNetAddr(t *testing.T) {
+	type testCase struct {
+		in         string
+		expMetrics string
+		expSchemas string
+	}
+	testCases := []testCase{
+		{
+			"http://foo/metrics",
+			"http://foo/metrics",
+			"http://foo/graphite/config/storageSchema",
+		},
+		{
+			"https://localhost/metrics/",
+			"https://localhost/metrics",
+			"https://localhost/graphite/config/storageSchema",
+		},
+		{
+			"https://foo-us-central1.grafana.com/graphite/metrics",
+			"https://foo-us-central1.grafana.com/graphite/metrics",
+			"https://foo-us-central1.grafana.com/graphite/config/storageSchema",
+		},
+		{
+			"https://foo-us-central1.grafana.com/graphite/metrics/",
+			"https://foo-us-central1.grafana.com/graphite/metrics",
+			"https://foo-us-central1.grafana.com/graphite/config/storageSchema",
+		},
+	}
+	for _, c := range testCases {
+		gotMetrics, gotSchemas := getGrafanaNetAddr(c.in)
+		if gotMetrics != c.expMetrics || gotSchemas != c.expSchemas {
+			t.Errorf("testcase %s mismatch:\nexp metrics addr: %s\ngot metrics addr: %s \nexp schemas addr: %s\ngot schemas addr: %s", c.in, c.expMetrics, gotMetrics, c.expSchemas, gotSchemas)
 		}
 	}
 }
