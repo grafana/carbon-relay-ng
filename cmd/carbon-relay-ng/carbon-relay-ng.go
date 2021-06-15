@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/carbon-relay-ng/input"
 	"github.com/grafana/carbon-relay-ng/input/manager"
 	"github.com/grafana/carbon-relay-ng/logger"
+	"github.com/grafana/carbon-relay-ng/route"
 	"github.com/grafana/carbon-relay-ng/stats"
 	"github.com/grafana/carbon-relay-ng/statsmt"
 	tbl "github.com/grafana/carbon-relay-ng/table"
@@ -48,6 +49,7 @@ var (
 	enablePprof      = flag.Bool("enable-pprof", false, "Will enable debug endpoints on /debug/pprof/")
 	badMetrics       *badmetrics.BadMetrics
 	Version          = "unknown"
+	UserAgent        = "Carbon-relay-NG / unknown"
 )
 
 func usage() {
@@ -88,6 +90,9 @@ func expandVars(in string) (out string) {
 }
 
 func main() {
+
+	UserAgent := fmt.Sprintf("Carbon-relay-NG / %s", Version)
+	route.UserAgent = UserAgent
 
 	flag.Usage = usage
 	flag.Parse()
