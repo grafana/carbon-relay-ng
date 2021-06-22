@@ -1,9 +1,10 @@
 package route
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/grafana/carbon-relay-ng/pkg/test"
 )
 
 func TestNewGrafanaNetConfig(t *testing.T) {
@@ -14,13 +15,17 @@ func TestNewGrafanaNetConfig(t *testing.T) {
 	schemasFile := test.TempFdOrFatal("carbon-relay-ng-TestNewGrafanaNetConfig-schemasFile-valid", "[default]\npattern = .*\nretentions = 10s:1d", t)
 	defer os.Remove(schemasFile.Name())
 
-	otherFile := test.TempFdOrFatal("", "carbon-relay-ng-TestNewGrafanaNetConfig-otherFile", "this is not a schemas file", t)
+	otherFile := test.TempFdOrFatal("carbon-relay-ng-TestNewGrafanaNetConfig-otherFile", "this is not a schemas or aggregation file", t)
 	defer os.Remove(otherFile.Name())
 
+	aggregationFile := test.TempFdOrFatal("carbon-relay-ng-TestNewGrafanaNetConfig-aggregationFile", "[default]\npattern = .*\nxFilesFactor = 0.9", t)
+	defer os.Remove(aggregationFile.Name())
+
 	type input struct {
-		addr        string
-		apiKey      string
-		schemasFile string
+		addr            string
+		apiKey          string
+		schemasFile     string
+		aggregationFile string
 	}
 	type testCase struct {
 		in     input
@@ -58,24 +63,33 @@ func TestNewGrafanaNetConfig(t *testing.T) {
 		{otherFile.Name(), true},
 		{schemasFile.Name(), false},
 	}
+	aggregationFileOptions := []option{
+		{"", true},
+		{"some-path-that-definitely-will-not-exist-for-carbon-relay-ng", true},
+		{otherFile.Name(), true},
+		{aggregationFile.Name(), false},
+	}
 
 	var testCases []testCase
 	for _, addr := range addrOptions {
 		for _, key := range keyOptions {
 			for _, schemasFile := range schemasFileOptions {
-				testCases = append(testCases, testCase{
-					in: input{
-						addr:        addr.str,
-						apiKey:      key.str,
-						schemasFile: schemasFile.str,
-					},
-					expErr: addr.expErr || key.expErr || schemasFile.expErr,
-				})
+				for _, aggregationFile := range aggregationFileOptions {
+					testCases = append(testCases, testCase{
+						in: input{
+							addr:            addr.str,
+							apiKey:          key.str,
+							schemasFile:     schemasFile.str,
+							aggregationFile: aggregationFile.str,
+						},
+						expErr: addr.expErr || key.expErr || schemasFile.expErr || aggregationFile.expErr,
+					})
+				}
 			}
 		}
 	}
 	for _, testCase := range testCases {
-		_, err := NewGrafanaNetConfig(testCase.in.addr, testCase.in.apiKey, testCase.in.schemasFile)
+		_, err := NewGrafanaNetConfig(testCase.in.addr, testCase.in.apiKey, testCase.in.schemasFile, testCase.in.aggregationFile)
 		if !testCase.expErr && err != nil {
 			t.Errorf("test with input %+v expected no error but got %s", testCase.in, err.Error())
 		}
@@ -87,36 +101,42 @@ func TestNewGrafanaNetConfig(t *testing.T) {
 
 func TestGetGrafanaNetAddr(t *testing.T) {
 	type testCase struct {
-		in         string
-		expMetrics string
-		expSchemas string
+		in             string
+		expMetrics     string
+		expSchemas     string
+		expAggregation string
 	}
 	testCases := []testCase{
 		{
 			"http://foo/metrics",
 			"http://foo/metrics",
 			"http://foo/graphite/config/storageSchema",
+			"http://foo/graphite/config/storageAggregation",
 		},
 		{
 			"https://localhost/metrics/",
 			"https://localhost/metrics",
 			"https://localhost/graphite/config/storageSchema",
+			"https://localhost/graphite/config/storageAggregation",
 		},
 		{
 			"https://foo-us-central1.grafana.com/graphite/metrics",
 			"https://foo-us-central1.grafana.com/graphite/metrics",
 			"https://foo-us-central1.grafana.com/graphite/config/storageSchema",
+			"https://foo-us-central1.grafana.com/graphite/config/storageAggregation",
 		},
 		{
 			"https://foo-us-central1.grafana.com/graphite/metrics/",
 			"https://foo-us-central1.grafana.com/graphite/metrics",
 			"https://foo-us-central1.grafana.com/graphite/config/storageSchema",
+			"https://foo-us-central1.grafana.com/graphite/config/storageAggregation",
 		},
 	}
 	for _, c := range testCases {
-		gotMetrics, gotSchemas := getGrafanaNetAddr(c.in)
-		if gotMetrics != c.expMetrics || gotSchemas != c.expSchemas {
-			t.Errorf("testcase %s mismatch:\nexp metrics addr: %s\ngot metrics addr: %s \nexp schemas addr: %s\ngot schemas addr: %s", c.in, c.expMetrics, gotMetrics, c.expSchemas, gotSchemas)
+		gotMetrics, gotSchemas, gotAggregation := getGrafanaNetAddr(c.in)
+		if gotMetrics != c.expMetrics || gotSchemas != c.expSchemas || gotAggregation != c.expAggregation {
+			t.Errorf("testcase %s mismatch:\nexp metrics addr: %s\ngot metrics addr: %s \nexp schemas addr: %s\ngot schemas addr: %s\nexp aggregation addr: %s\ngot aggregation addr: %s",
+				c.in, c.expMetrics, gotMetrics, c.expSchemas, gotSchemas, c.expAggregation, gotAggregation)
 		}
 	}
 }

@@ -14,6 +14,8 @@ github.com/Shopify/sarama v1.23.0 h1:slvlbm7bxyp7sKQbUwha5BQdZTqurhRoI+zbKorVigQ
 github.com/Shopify/sarama v1.23.0/go.mod h1:XLH1GYJnLVE0XCr6KdJGVJRTwY30moWNJ4sERjXX6fs=
 github.com/Shopify/toxiproxy v2.1.4+incompatible h1:TKdv8HiTLgE5wdJuEML90aBgNWsokNbMijUGhmcoBJc=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
+github.com/alyu/configparser v0.0.0-20191103060215-744e9a66e7bc h1:eN2FUvn4J1A31pICABioDYukoh1Tmlei6L3ImZUin/I=
+github.com/alyu/configparser v0.0.0-20191103060215-744e9a66e7bc/go.mod h1:BYq/NZTroWuzkvsTPJgRBqSHGxKMHCz06gtlfY/W5RU=
 github.com/aws/aws-sdk-go v1.15.54 h1:yNFryYgHYlEuNnMM74EZgAaOM2BsJvu77/ev9I9GHlU=
 github.com/aws/aws-sdk-go v1.15.54/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZoCYDt7FT0=
 github.com/bmizerany/assert v0.0.0-20120716205630-e17e99893cb6 h1:tqaG4PIbPslIfl+dhNXWUXRTgPI4Dpx7LaDQ6fS9mGM=
@@ -56,6 +58,8 @@ github.com/gorilla/handlers v1.4.0 h1:XulKRWSQK5uChr4pEgSE4Tc/OcmnU9GJuSwdog/tZs
 github.com/gorilla/handlers v1.4.0/go.mod h1:Qkdc/uu4tH4g6mTK6auzZ766c4CA0Ng8+o/OAirnOIQ=
 github.com/gorilla/mux v0.0.0-20140624184626-14cafe285133 h1:ukbzVQxXffKnAteyOe2SD8pYokHCMYrLVygg6x1tCC0=
 github.com/gorilla/mux v0.0.0-20140624184626-14cafe285133/go.mod h1:1lud6UwP+6orDFRuTfBEV8e9/aOM/c4fVVCaMa2zaAs=
+github.com/grafana/configparser v0.0.0-20210622142741-3e3967fd8d20 h1:vU/muwCTymcNiJZvuYzPtebHNkDPH8FF42QWBGMO3ms=
+github.com/grafana/configparser v0.0.0-20210622142741-3e3967fd8d20/go.mod h1:5kq854/YXuu4gJm0A2hON7r5IeAKTpap20ARcCZSugw=
 github.com/grafana/metrictank v1.0.1-0.20210114150051-52835b9a8775 h1:5DryQe90TlOk9FiaS2fAShAQAkzy4OlSs0DS1LQU9rI=
 github.com/grafana/metrictank v1.0.1-0.20210114150051-52835b9a8775/go.mod h1:+W7kcYMB3XFMCQdmZSrXvqb8KCE84tQMaijapcRbptE=
 github.com/hashicorp/go-uuid v1.0.1 h1:fv1ep09latC32wFoVwnqcnKJGnMSdBanPczbHAYm1BE=

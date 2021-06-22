@@ -26,15 +26,17 @@ import (
 	"github.com/jpillora/backoff"
 	log "github.com/sirupsen/logrus"
 
+	conf "github.com/grafana/carbon-relay-ng/pkg/mt-conf"
 	"github.com/grafana/metrictank/schema"
 	"github.com/grafana/metrictank/schema/msg"
 )
 
 type GrafanaNetConfig struct {
 	// mandatory
-	Addr        string
-	ApiKey      string
-	SchemasFile string
+	Addr            string
+	ApiKey          string
+	SchemasFile     string
+	AggregationFile string
 
 	// optional
 	BufSize      int           // amount of messages we can buffer up.
@@ -52,7 +54,7 @@ type GrafanaNetConfig struct {
 	ErrBackoffFactor float64
 }
 
-func NewGrafanaNetConfig(addr, apiKey, schemasFile string) (GrafanaNetConfig, error) {
+func NewGrafanaNetConfig(addr, apiKey, schemasFile, aggregationFile string) (GrafanaNetConfig, error) {
 
 	u, err := url.Parse(addr)
 	if err != nil || !u.IsAbs() || u.Host == "" { // apparently "http://" is a valid absolute URL (with empty host), but we don't want that
@@ -71,10 +73,16 @@ func NewGrafanaNetConfig(addr, apiKey, schemasFile string) (GrafanaNetConfig, er
 		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: could not read schemasFile %q: %s", schemasFile, err.Error())
 	}
 
+	_, err = conf.ReadAggregations(aggregationFile)
+	if err != nil {
+		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: could not read aggregationFile %q: %s", aggregationFile, err.Error())
+	}
+
 	return GrafanaNetConfig{
-		Addr:        addr,
-		ApiKey:      apiKey,
-		SchemasFile: schemasFile,
+		Addr:            addr,
+		ApiKey:          apiKey,
+		SchemasFile:     schemasFile,
+		AggregationFile: aggregationFile,
 
 		BufSize:      1e7, // since a message is typically around 100B this is 1GB
 		FlushMaxNum:  5000,
@@ -93,11 +101,14 @@ func NewGrafanaNetConfig(addr, apiKey, schemasFile string) (GrafanaNetConfig, er
 
 type GrafanaNet struct {
 	baseRoute
-	Cfg         GrafanaNetConfig
-	schemas     persister.WhisperSchemas
-	schemasStr  string
-	addrMetrics string
-	addrSchemas string
+	Cfg             GrafanaNetConfig
+	schemas         persister.WhisperSchemas
+	aggregation     conf.Aggregations
+	schemasStr      string
+	aggregationStr  string
+	addrMetrics     string
+	addrSchemas     string
+	addrAggregation string
 
 	dispatch func(chan []byte, []byte, metrics.Gauge, metrics.Counter)
 	in       []chan []byte
@@ -116,11 +127,11 @@ type GrafanaNet struct {
 	bufferSize        metrics.Gauge
 }
 
-// getGrafanaNetAddr returns the metrics and schemas address (URL) for a given config URL
+// getGrafanaNetAddr returns the metrics, schemas and aggregation address (URL) for a given config URL
 // The URL we instruct customers to use is the url to post metrics to, so that one is obvious
-// but we support posting both to both /graphite/metrics and /metrics , whereas the schemas
-// URL should always get the /graphite prefix.
-func getGrafanaNetAddr(addr string) (string, string) {
+// but we support posting both to both /graphite/metrics and /metrics , whereas the schemas and
+// aggregation URL should always get the /graphite prefix.
+func getGrafanaNetAddr(addr string) (string, string, string) {
 
 	if strings.HasSuffix(addr, "/") {
 		addr = addr[:len(addr)-1]
@@ -136,7 +147,8 @@ func getGrafanaNetAddr(addr string) (string, string) {
 	}
 
 	addrSchemas := baseAddr + "/graphite/config/storageSchema"
-	return addrMetrics, addrSchemas
+	addrAggregation := baseAddr + "/graphite/config/storageAggregation"
+	return addrMetrics, addrSchemas, addrAggregation
 }
 
 // NewGrafanaNet creates a special route that writes to a grafana.net datastore
@@ -147,13 +159,20 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, cfg GrafanaNetConfig) (R
 		return nil, err
 	}
 
+	aggregation, err := conf.ReadAggregations(cfg.AggregationFile)
+	if err != nil {
+		return nil, err
+	}
+
 	cleanAddr := util.AddrToPath(cfg.Addr)
 
 	r := &GrafanaNet{
-		baseRoute:  baseRoute{sync.Mutex{}, atomic.Value{}, key},
-		Cfg:        cfg,
-		schemas:    schemas,
-		schemasStr: schemas.String(),
+		baseRoute:      baseRoute{sync.Mutex{}, atomic.Value{}, key},
+		Cfg:            cfg,
+		schemas:        schemas,
+		schemasStr:     schemas.String(),
+		aggregation:    aggregation,
+		aggregationStr: aggregation.String(),
 
 		in:       make([]chan []byte, cfg.Concurrency),
 		shutdown: make(chan struct{}),
@@ -170,7 +189,7 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, cfg GrafanaNetConfig) (R
 		numDropBuffFull:   stats.Counter("dest=" + cleanAddr + ".unit=Metric.action=drop.reason=queue_full"),
 	}
 
-	r.addrMetrics, r.addrSchemas = getGrafanaNetAddr(cfg.Addr)
+	r.addrMetrics, r.addrSchemas, r.addrAggregation = getGrafanaNetAddr(cfg.Addr)
 
 	r.bufferSize.Update(int64(cfg.BufSize))
 
@@ -218,6 +237,7 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, cfg GrafanaNetConfig) (R
 	}
 
 	go r.updateSchemas()
+	go r.updateAggregation()
 
 	return r, nil
 }
@@ -374,13 +394,20 @@ func (route *GrafanaNet) Flush() error {
 }
 
 func (route *GrafanaNet) updateSchemas() {
-	route.postSchemas()
+	route.postConfig(route.addrSchemas, route.schemasStr)
 	for range time.Tick(6 * time.Hour) {
-		route.postSchemas()
+		route.postConfig(route.addrSchemas, route.schemasStr)
 	}
 }
 
-func (route *GrafanaNet) postSchemas() {
+func (route *GrafanaNet) updateAggregation() {
+	route.postConfig(route.addrAggregation, route.aggregationStr)
+	for range time.Tick(6 * time.Hour) {
+		route.postConfig(route.addrAggregation, route.aggregationStr)
+	}
+}
+
+func (route *GrafanaNet) postConfig(path, cfg string) {
 
 	boff := &backoff.Backoff{
 		Min:    route.Cfg.ErrBackoffMin,
@@ -390,7 +417,7 @@ func (route *GrafanaNet) postSchemas() {
 	}
 
 	for {
-		req, err := http.NewRequest("POST", route.addrSchemas, strings.NewReader(route.schemasStr))
+		req, err := http.NewRequest("POST", path, strings.NewReader(cfg))
 		if err != nil {
 			panic(err)
 		}
@@ -399,7 +426,7 @@ func (route *GrafanaNet) postSchemas() {
 		req.Header.Add("Carbon-Relay-NG-Instance", Instance)
 		resp, err := route.client.Do(req)
 		if err != nil {
-			log.Warnf("got error for metrics/schemas: %s", err.Error())
+			log.Warnf("got error for %s: %s", path, err.Error())
 			time.Sleep(boff.Duration())
 			continue
 		}
@@ -409,10 +436,10 @@ func (route *GrafanaNet) postSchemas() {
 			// we are still done with our work. no need to log anything
 		} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			// it got accepted, we're done.
-			log.Info("GrafanaNet /metrics/schemas submitted")
+			log.Infof("GrafanaNet %s submitted", path)
 		} else {
 			// if it's neither of the above, let's log it, but make it look not too scary
-			log.Infof("GrafanaNet /metrics/schemas resulted in code %s (should be harmless)", resp.Status)
+			log.Infof("GrafanaNet %s resulted in code %s (should be harmless)", path, resp.Status)
 		}
 		ioutil.ReadAll(resp.Body)
 		resp.Body.Close()

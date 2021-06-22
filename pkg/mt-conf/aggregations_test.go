@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/grafana/carbon-relay-ng/pkg/test"
 )
 
 func TestReadAggregations(t *testing.T) {
@@ -321,5 +322,54 @@ aggregationMethod = average
 				t.Errorf("testcase %q mismatch (-want +got):\n%s", c.title, diff)
 			}
 		}
+	}
+}
+
+// added for carbon-relay-ng
+func TestAggregationString(t *testing.T) {
+	input := `# This is a wild comment
+[first-uses-defaults]
+pattern = ^carbon\.
+   [fancy-patt]
+   pattern = ^patt2.*$
+xFilesFactor = 0.2
+aggregationMethod = avg,min,max
+
+
+
+
+# another comment
+
+[hello] # a comment here
+#[this-should-be-ignored][
+pattern = .* # a comment here also
+# xFilesFactor = 0.2
+aggregationMethod = average,sum,min,last,max`
+
+	exp := `[first-uses-defaults]
+pattern = ^carbon\.
+xFilesFactor = 0.5
+aggregationMethod = avg
+
+[fancy-patt]
+pattern = ^patt2.*$
+xFilesFactor = 0.2
+aggregationMethod = avg,min,max
+
+[hello]
+pattern = .*
+xFilesFactor = 0.5
+aggregationMethod = avg,sum,min,last,max
+`
+
+	fd := test.TempFdOrFatal("TestAggregationString", input, t)
+	defer os.Remove(fd.Name())
+	agg, err := ReadAggregations(fd.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := agg.String()
+	if exp != got {
+		t.Fatalf("expected %q - got %q", exp, got)
 	}
 }

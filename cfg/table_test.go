@@ -16,6 +16,9 @@ func TestTomlToGrafanaNetRoute(t *testing.T) {
 	schemasFile := test.TempFdOrFatal("carbon-relay-ng-TestApply-schemasFile", "[default]\npattern = .*\nretentions = 10s:1d", t)
 	defer os.Remove(schemasFile.Name())
 
+	aggregationFile := test.TempFdOrFatal("carbon-relay-ng-TestApply-aggregationFile", "[default]\npattern = .*", t)
+	defer os.Remove(aggregationFile.Name())
+
 	type testCase struct {
 		title      string
 		cfg        string
@@ -26,7 +29,7 @@ func TestTomlToGrafanaNetRoute(t *testing.T) {
 
 	var testCases []testCase
 
-	cfg, err := route.NewGrafanaNetConfig("http://foo/metrics", "apiKey", schemasFile.Name())
+	cfg, err := route.NewGrafanaNetConfig("http://foo/metrics", "apiKey", schemasFile.Name(), aggregationFile.Name())
 	if err != nil {
 		t.Fatal(err) // should never happen
 	}
@@ -39,6 +42,7 @@ type = 'grafanaNet'
 addr = 'http://foo/metrics'
 apikey = 'apiKey'
 schemasFile = '` + schemasFile.Name() + `'
+aggregationFile = '` + aggregationFile.Name() + `'
 `,
 		expCfg: cfg,
 		expErr: false,
@@ -53,6 +57,7 @@ type             = 'grafanaNet'
 addr             = 'http://foo.bar/metrics'
 apikey           = 'apiKey'
 schemasFile      = '` + schemasFile.Name() + `'
+aggregationFile  = '` + aggregationFile.Name() + `'
 prefix           = 'prefix'
 notPrefix        = 'notPrefix'
 sub              = 'sub'
@@ -72,9 +77,10 @@ errBackoffFactor = 1.8
 orgId            = 10010
 `,
 		expCfg: route.GrafanaNetConfig{
-			Addr:        "http://foo.bar/metrics",
-			ApiKey:      "apiKey",
-			SchemasFile: schemasFile.Name(),
+			Addr:            "http://foo.bar/metrics",
+			ApiKey:          "apiKey",
+			SchemasFile:     schemasFile.Name(),
+			AggregationFile: aggregationFile.Name(),
 
 			BufSize:      123,
 			FlushMaxNum:  456,

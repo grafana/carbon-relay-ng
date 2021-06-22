@@ -156,3 +156,24 @@ func (a Aggregation) Equal(b Aggregation) bool {
 	return true
 
 }
+
+// AggregationToString returns a string of the -user specified- portion of the given conf.Aggregations
+// (not the built-in default rule)
+// (added for carbon-relay-ng)
+func (a Aggregations) String() string {
+	var b strings.Builder
+	for i, a := range a.Data {
+		if i > 0 {
+			fmt.Fprintln(&b)
+		}
+		fmt.Fprintf(&b, "[%s]\n", a.Name)
+		fmt.Fprintf(&b, "pattern = %s\n", a.Pattern.String())
+		fmt.Fprintf(&b, "xFilesFactor = %0.1f\n", a.XFilesFactor)
+		fmt.Fprintf(&b, "aggregationMethod = %s", a.AggregationMethod[0]) // we know there must always be 1 method!
+		for _, m := range a.AggregationMethod[1:] {
+			fmt.Fprintf(&b, ",%s", m.String())
+		}
+		fmt.Fprintln(&b)
+	}
+	return b.String()
+}
