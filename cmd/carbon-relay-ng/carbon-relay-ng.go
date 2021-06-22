@@ -139,6 +139,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	route.Instance = config.Instance
+
 	log.Infof("===== carbon-relay-ng instance '%s' starting. (version %s) =====", config.Instance, Version)
 
 	if os.Getenv("GOMAXPROCS") == "" && config.Max_procs >= 1 {

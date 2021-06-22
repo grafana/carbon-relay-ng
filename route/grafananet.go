@@ -283,6 +283,7 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 	req.Header.Add("Authorization", "Bearer "+route.Cfg.ApiKey)
 	req.Header.Add("Content-Type", "rt-metric-binary-snappy")
 	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Carbon-Relay-NG-Instance", Instance)
 	boff := &backoff.Backoff{
 		Min:    route.Cfg.ErrBackoffMin,
 		Max:    30 * time.Second,
@@ -395,6 +396,7 @@ func (route *GrafanaNet) postSchemas() {
 		}
 		req.Header.Add("Authorization", "Bearer "+route.Cfg.ApiKey)
 		req.Header.Add("User-Agent", UserAgent)
+		req.Header.Add("Carbon-Relay-NG-Instance", Instance)
 		resp, err := route.client.Do(req)
 		if err != nil {
 			log.Warnf("got error for metrics/schemas: %s", err.Error())
