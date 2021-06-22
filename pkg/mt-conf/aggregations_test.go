@@ -20,10 +20,9 @@ func TestReadAggregations(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			title:  "completely empty", // should result in just the default
+			title:  "completely empty",
 			in:     "",
-			expErr: false,
-			expAgg: NewAggregations(),
+			expErr: true,
 		},
 		{
 			title:  "empty name ",

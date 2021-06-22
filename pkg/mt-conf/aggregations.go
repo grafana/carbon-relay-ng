@@ -52,6 +52,10 @@ func ReadAggregations(file string) (Aggregations, error) {
 		return Aggregations{}, err
 	}
 
+	if len(sections) == 0 {
+		return Aggregations{}, errors.New("no aggregation rules found")
+	}
+
 	result := NewAggregations()
 
 	for _, s := range sections {
