@@ -1,13 +1,13 @@
 package imperatives
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/grafana/carbon-relay-ng/matcher"
+	"github.com/grafana/carbon-relay-ng/pkg/test"
 	"github.com/grafana/carbon-relay-ng/route"
 	"github.com/grafana/carbon-relay-ng/table"
 	"github.com/taylorchu/toki"
@@ -77,17 +77,8 @@ func TestScanner(t *testing.T) {
 
 func TestApplyAddRouteGrafanaNet(t *testing.T) {
 
-	schemasFile, err := ioutil.TempFile("", "carbon-relay-ng-TestApply-schemasFile")
-	if err != nil {
-		t.Fatal(err)
-	}
+	schemasFile := test.TempFdOrFatal("carbon-relay-ng-TestApply-schemasFile", "[default]\npattern = .*\nretentions = 10s:1d", t)
 	defer os.Remove(schemasFile.Name())
-	if _, err := schemasFile.Write([]byte("[default]\npattern = .*\nretentions = 10s:1d")); err != nil {
-		t.Fatal(err)
-	}
-	if err := schemasFile.Close(); err != nil {
-		t.Fatal(err)
-	}
 
 	type testCase struct {
 		cmd        string

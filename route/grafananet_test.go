@@ -10,29 +10,12 @@ func TestNewGrafanaNetConfig(t *testing.T) {
 	// set up some test files to use
 	// note: the goal of this test is not to strictly test the correctness of the schemas reading
 	// we have separate tests for that
-	schemasFile, err := ioutil.TempFile("", "carbon-relay-ng-TestNewGrafanaNetConfig-valid")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(schemasFile.Name())
-	if _, err := schemasFile.Write([]byte("[default]\npattern = .*\nretentions = 10s:1d")); err != nil {
-		t.Fatal(err)
-	}
-	if err := schemasFile.Close(); err != nil {
-		t.Fatal(err)
-	}
 
-	otherFile, err := ioutil.TempFile("", "carbon-relay-ng-TestNewGrafanaNetConfig-otherFile")
-	if err != nil {
-		t.Fatal(err)
-	}
+	schemasFile := test.TempFdOrFatal("carbon-relay-ng-TestNewGrafanaNetConfig-schemasFile-valid", "[default]\npattern = .*\nretentions = 10s:1d", t)
+	defer os.Remove(schemasFile.Name())
+
+	otherFile := test.TempFdOrFatal("", "carbon-relay-ng-TestNewGrafanaNetConfig-otherFile", "this is not a schemas file", t)
 	defer os.Remove(otherFile.Name())
-	if _, err := otherFile.Write([]byte("this is not a schemas file")); err != nil {
-		t.Fatal(err)
-	}
-	if err := otherFile.Close(); err != nil {
-		t.Fatal(err)
-	}
 
 	type input struct {
 		addr        string
