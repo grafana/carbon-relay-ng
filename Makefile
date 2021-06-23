@@ -22,6 +22,11 @@ carbon-relay-ng-darwin:
 
 build-linux: carbon-relay-ng
 
+build-bsd:
+	cd ui/web && go-bindata -pkg web admin_http_assets/...
+	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
+	GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" -o carbon-relay-ng-bsd ./cmd/carbon-relay-ng
+
 carbon-relay-ng:
 	cd ui/web && go-bindata -pkg web admin_http_assets/...
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
