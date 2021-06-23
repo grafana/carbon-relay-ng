@@ -46,6 +46,7 @@ data:
     addr = "${GRAFANA_NET_ADDR}"
     apikey = "${GRAFANA_NET_USER_ID}:${GRAFANA_NET_API_KEY}"
     schemasFile = '/conf/storage-schemas.conf'
+    aggregationFile = '/conf/storage-aggregation.conf'
 
     ## Instrumentation ##
     [instrumentation]

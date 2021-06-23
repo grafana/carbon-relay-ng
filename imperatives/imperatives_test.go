@@ -1,13 +1,13 @@
 package imperatives
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/grafana/carbon-relay-ng/matcher"
+	"github.com/grafana/carbon-relay-ng/pkg/test"
 	"github.com/grafana/carbon-relay-ng/route"
 	"github.com/grafana/carbon-relay-ng/table"
 	"github.com/taylorchu/toki"
@@ -77,17 +77,11 @@ func TestScanner(t *testing.T) {
 
 func TestApplyAddRouteGrafanaNet(t *testing.T) {
 
-	schemasFile, err := ioutil.TempFile("", "carbon-relay-ng-TestApply-schemasFile")
-	if err != nil {
-		t.Fatal(err)
-	}
+	schemasFile := test.TempFdOrFatal("carbon-relay-ng-TestApply-schemasFile", "[default]\npattern = .*\nretentions = 10s:1d", t)
 	defer os.Remove(schemasFile.Name())
-	if _, err := schemasFile.Write([]byte("[default]\npattern = .*\nretentions = 10s:1d")); err != nil {
-		t.Fatal(err)
-	}
-	if err := schemasFile.Close(); err != nil {
-		t.Fatal(err)
-	}
+
+	aggregationFile := test.TempFdOrFatal("carbon-relay-ng-TestApply-aggregationFile", "[default]\npattern = .*\nretentions = 10s:1d", t)
+	defer os.Remove(aggregationFile.Name())
 
 	type testCase struct {
 		cmd        string
@@ -99,23 +93,24 @@ func TestApplyAddRouteGrafanaNet(t *testing.T) {
 	var testCases []testCase
 
 	// trivial case. mostly defaults, so let's rely on the helper that generates the (mostly default) config
-	cfg, err := route.NewGrafanaNetConfig("http://foo", "apiKey", schemasFile.Name())
+	cfg, err := route.NewGrafanaNetConfig("http://foo/metrics", "apiKey", schemasFile.Name(), aggregationFile.Name())
 	if err != nil {
 		t.Fatal(err) // should never happen
 	}
 	testCases = append(testCases, testCase{
-		cmd:    "addRoute grafanaNet key  http://foo apiKey " + schemasFile.Name(),
+		cmd:    "addRoute grafanaNet key  http://foo/metrics apiKey " + schemasFile.Name() + " " + aggregationFile.Name(),
 		expCfg: cfg,
 		expErr: false,
 	})
 
 	// advanced case full of all possible settings.
 	testCases = append(testCases, testCase{
-		cmd: "addRoute grafanaNet key prefix=prefix notPrefix=notPrefix sub=sub notSub=notSub regex=regex notRegex=notRegex  http://foo.bar apiKey " + schemasFile.Name() + " spool=true sslverify=false blocking=true concurrency=42 bufSize=123 flushMaxNum=456 flushMaxWait=5 timeout=123 orgId=10010 errBackoffMin=14 errBackoffFactor=1.8",
+		cmd: "addRoute grafanaNet key prefix=prefix notPrefix=notPrefix sub=sub notSub=notSub regex=regex notRegex=notRegex  http://foo.bar/metrics apiKey " + schemasFile.Name() + " " + aggregationFile.Name() + " spool=true sslverify=false blocking=true concurrency=42 bufSize=123 flushMaxNum=456 flushMaxWait=5 timeout=123 orgId=10010 errBackoffMin=14 errBackoffFactor=1.8",
 		expCfg: route.GrafanaNetConfig{
-			Addr:        "http://foo.bar",
-			ApiKey:      "apiKey",
-			SchemasFile: schemasFile.Name(),
+			Addr:            "http://foo.bar/metrics",
+			ApiKey:          "apiKey",
+			SchemasFile:     schemasFile.Name(),
+			AggregationFile: aggregationFile.Name(),
 
 			BufSize:      123,
 			FlushMaxNum:  456,

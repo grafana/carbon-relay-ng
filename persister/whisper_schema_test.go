@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/grafana/carbon-relay-ng/go-whisper"
+	"github.com/grafana/carbon-relay-ng/pkg/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,13 +59,7 @@ func TestParseRetentionDefs(t *testing.T) {
 }
 
 func parseSchemas(t *testing.T, content string) (WhisperSchemas, error) {
-	tmpFile, err := ioutil.TempFile("", "schemas-")
-	if err != nil {
-		t.Fatal(err)
-		return nil, nil
-	}
-	tmpFile.Write([]byte(content))
-	tmpFile.Close()
+	tmpFile := test.TempFdOrFatal("schemas-", content, t)
 
 	schemas, err := ReadWhisperSchemas(tmpFile.Name())
 

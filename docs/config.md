@@ -173,6 +173,7 @@ key            |     Y     |  string     | N/A     | string to identify this rou
 addr           |     Y     |  string     | N/A     | http url to connect to
 apiKey         |     Y     |  string     | N/A     | API key to use (taken from grafana cloud portal)
 schemasFile    |     Y     |  string     | N/A     | storage-schemas.conf file that describes your metrics (the [storage-schemas.conf from Graphite](http://graphite.readthedocs.io/en/latest/config-carbon.html#storage-schemas-conf)
+aggregationFile|     Y     |  string     | N/A     | storage-aggregation.conf file that describes your metrics (the [storage-aggregation.conf from Graphite](https://graphite.readthedocs.io/en/latest/config-carbon.html#storage-aggregation-conf)
 prefix         |     N     |  string     | ""      | only route metrics that start with this
 notPrefix      |     N     |  string     | ""      | only route metrics that do not start with this
 sub            |     N     |  string     | ""      | only route metrics that contain this in their name
@@ -205,6 +206,8 @@ addr = 'your-base-url/metrics'
 apikey = 'your-grafana.net-api-key'
 # storage-schemas.conf file that describes your metrics (typically taken from your graphite installation)
 schemasFile = 'examples/storage-schemas.conf'
+# storage-aggregation.conf file that describes your metrics (typically taken from your graphite installation)
+aggregationFile = 'examples/storage-aggregation.conf'
 # require the destination address to have a valid SSL certificate
 #sslverify=true
 # Number of metrics to spool in in-memory buffer. since a message is typically around 100B this is 1GB

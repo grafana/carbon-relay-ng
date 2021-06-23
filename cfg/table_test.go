@@ -1,29 +1,23 @@
 package cfg
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/grafana/carbon-relay-ng/matcher"
+	"github.com/grafana/carbon-relay-ng/pkg/test"
 	"github.com/grafana/carbon-relay-ng/route"
 	"github.com/grafana/carbon-relay-ng/table"
 )
 
 func TestTomlToGrafanaNetRoute(t *testing.T) {
-	schemasFile, err := ioutil.TempFile("", "carbon-relay-ng-TestApply-schemasFile")
-	if err != nil {
-		t.Fatal(err)
-	}
+	schemasFile := test.TempFdOrFatal("carbon-relay-ng-TestApply-schemasFile", "[default]\npattern = .*\nretentions = 10s:1d", t)
 	defer os.Remove(schemasFile.Name())
-	if _, err := schemasFile.Write([]byte("[default]\npattern = .*\nretentions = 10s:1d")); err != nil {
-		t.Fatal(err)
-	}
-	if err := schemasFile.Close(); err != nil {
-		t.Fatal(err)
-	}
+
+	aggregationFile := test.TempFdOrFatal("carbon-relay-ng-TestApply-aggregationFile", "[default]\npattern = .*", t)
+	defer os.Remove(aggregationFile.Name())
 
 	type testCase struct {
 		title      string
@@ -35,7 +29,7 @@ func TestTomlToGrafanaNetRoute(t *testing.T) {
 
 	var testCases []testCase
 
-	cfg, err := route.NewGrafanaNetConfig("http://foo", "apiKey", schemasFile.Name())
+	cfg, err := route.NewGrafanaNetConfig("http://foo/metrics", "apiKey", schemasFile.Name(), aggregationFile.Name())
 	if err != nil {
 		t.Fatal(err) // should never happen
 	}
@@ -45,9 +39,10 @@ func TestTomlToGrafanaNetRoute(t *testing.T) {
 [[route]]
 key = 'routeKey'
 type = 'grafanaNet'
-addr = 'http://foo'
+addr = 'http://foo/metrics'
 apikey = 'apiKey'
 schemasFile = '` + schemasFile.Name() + `'
+aggregationFile = '` + aggregationFile.Name() + `'
 `,
 		expCfg: cfg,
 		expErr: false,
@@ -59,9 +54,10 @@ schemasFile = '` + schemasFile.Name() + `'
 [[route]]
 key              = 'routeKey'
 type             = 'grafanaNet'
-addr             = 'http://foo.bar'
+addr             = 'http://foo.bar/metrics'
 apikey           = 'apiKey'
 schemasFile      = '` + schemasFile.Name() + `'
+aggregationFile  = '` + aggregationFile.Name() + `'
 prefix           = 'prefix'
 notPrefix        = 'notPrefix'
 sub              = 'sub'
@@ -81,9 +77,10 @@ errBackoffFactor = 1.8
 orgId            = 10010
 `,
 		expCfg: route.GrafanaNetConfig{
-			Addr:        "http://foo.bar",
-			ApiKey:      "apiKey",
-			SchemasFile: schemasFile.Name(),
+			Addr:            "http://foo.bar/metrics",
+			ApiKey:          "apiKey",
+			SchemasFile:     schemasFile.Name(),
+			AggregationFile: aggregationFile.Name(),
 
 			BufSize:      123,
 			FlushMaxNum:  456,

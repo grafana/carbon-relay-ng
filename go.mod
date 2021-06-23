@@ -9,10 +9,10 @@ require (
 	github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d
 	github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965
 	github.com/Shopify/sarama v1.23.0
+	github.com/alyu/configparser v0.0.0-20191103060215-744e9a66e7bc // indirect
 	github.com/aws/aws-sdk-go v1.15.54
 	github.com/bmizerany/assert v0.0.0-20120716205630-e17e99893cb6
 	github.com/cespare/xxhash v0.0.0-00010101000000-000000000000 // indirect
-	github.com/davecgh/go-spew v1.1.1
 	github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57 // indirect
 	github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff
 	github.com/elazarl/go-bindata-assetfs v0.0.0-20151224045452-57eb5e1fc594
@@ -20,11 +20,12 @@ require (
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
 	github.com/golang/protobuf v0.0.0-20171113180720-1e59b77b52bf // indirect
 	github.com/golang/snappy v0.0.1
-	github.com/google/go-cmp v0.5.5 // indirect
+	github.com/google/go-cmp v0.5.5
 	github.com/googleapis/gax-go v2.0.0+incompatible // indirect
 	github.com/gorilla/context v0.0.0-20141217160251-215affda49ad // indirect
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v0.0.0-20140624184626-14cafe285133
+	github.com/grafana/configparser v0.0.0-20210622142741-3e3967fd8d20
 	github.com/grafana/metrictank v1.0.1-0.20210114150051-52835b9a8775
 	github.com/jpillora/backoff v0.0.0-20160414055204-0496a6c14df0
 	github.com/kisielk/og-rek v0.0.0-20170405223746-ec792bc6e6aa
