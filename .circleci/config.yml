@@ -23,6 +23,7 @@ jobs:
       # - git diff --exit-code
       - run: make build-win
       - run: make build-darwin
+      - run: make build-bsd
       - persist_to_workspace:
           root: .
           paths:
@@ -30,6 +31,7 @@ jobs:
             - carbon-relay-ng.exe
             - carbon-relay-ng-darwin
             - carbon-relay-ng-linux
+            - carbon-relay-ng-bsd
 
   package:
     docker:
