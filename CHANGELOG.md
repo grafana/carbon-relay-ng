@@ -1,3 +1,10 @@
+# v1.0: June 24, 2021
+
+* grafanaNet route: add errBackoffMin and errBackoffFactor controls to control backoff retry timing. #465
+* grafanaNet route: automatically publish stripped (from comments) storage-aggregation.conf, similar to storage-schemas.conf
+  This enables an upcoming new feature which allows customizing the configs on Grafana Cloud Graphite V5. #466
+* FreeBSD support. #468
+
 # v0.14.0: May 31, 2021
 
 Important: 
