@@ -25,7 +25,7 @@ require (
 	github.com/gorilla/context v0.0.0-20141217160251-215affda49ad // indirect
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v0.0.0-20140624184626-14cafe285133
-	github.com/grafana/configparser v0.0.0-20210622142741-3e3967fd8d20
+	github.com/grafana/configparser v0.0.0-20210707122942-2593eb86a3ee
 	github.com/grafana/metrictank v1.0.1-0.20210114150051-52835b9a8775
 	github.com/jpillora/backoff v0.0.0-20160414055204-0496a6c14df0
 	github.com/kisielk/og-rek v0.0.0-20170405223746-ec792bc6e6aa
