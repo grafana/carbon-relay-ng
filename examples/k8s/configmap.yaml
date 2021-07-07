@@ -61,6 +61,11 @@ data:
     [default]
     pattern = .*
     retentions = 10s:1d
+  storage-aggregation.conf: |
+    [default]
+    pattern = .*
+    xFilesFactor = 0.5
+    aggregationMethod = average
 kind: ConfigMap
 metadata:
   name: carbon-relay-ng-config
