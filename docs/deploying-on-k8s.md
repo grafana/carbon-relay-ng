@@ -48,7 +48,7 @@ local crng = import 'carbon-relay-ng/crng.libsonnet';
 
 Tanka can generate the resource definitions, the output should yield 4 resources:
 * a secret with the base64 encoded api key
-* a configmap with the carbon-relay-ng.ini and storage-schemas.conf
+* a configmap with the carbon-relay-ng.ini, storage-aggregation.conf and storage-schemas.conf
 * a service which forwards to the carbon-relay-ng pod
 * a deployment creating the carbon-relay-ng pod
 
