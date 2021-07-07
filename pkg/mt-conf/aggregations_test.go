@@ -353,6 +353,10 @@ aggregationMethod = avg,min,max
 
 
 
+[fancy-x-y-z%%$]
+xFilesFactor = 0.9
+pattern = [^ab](x|y)\p{Greek}.*,:;!@%&=+-_/?<>"'~$#ab
+aggregationMethod = min
 
 # another comment
 
@@ -371,6 +375,11 @@ aggregationMethod = avg
 pattern = ^patt2.*$
 xFilesFactor = 0.2
 aggregationMethod = avg,min,max
+
+[fancy-x-y-z%%$]
+pattern = [^ab](x|y)\p{Greek}.*,:;!@%&=+-_/?<>"'~$
+xFilesFactor = 0.9
+aggregationMethod = min
 
 [hello]
 pattern = .*
