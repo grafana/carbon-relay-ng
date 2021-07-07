@@ -58,14 +58,22 @@ func NewGrafanaNetConfig(addr, apiKey, schemasFile, aggregationFile string) (Gra
 
 	u, err := url.Parse(addr)
 	if err != nil || !u.IsAbs() || u.Host == "" { // apparently "http://" is a valid absolute URL (with empty host), but we don't want that
-		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: invalid addr %q. need an absolute http[s] url", addr)
+		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: invalid value for 'addr': %q. need an absolute http[s] url", addr)
 	}
 	if !strings.HasSuffix(u.Path, "/metrics") && !strings.HasSuffix(u.Path, "/metrics/") {
-		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: invalid addr %q. needs to be a /metrics endpoint", addr)
+		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: invalid value for 'addr': %q. needs to be a /metrics endpoint", addr)
 	}
 
 	if apiKey == "" {
-		return GrafanaNetConfig{}, errors.New("NewGrafanaNetConfig: invalid apiKey")
+		return GrafanaNetConfig{}, errors.New("NewGrafanaNetConfig: invalid value for 'apiKey'. value must be set to non-empty string")
+	}
+
+	if schemasFile == "" {
+		return GrafanaNetConfig{}, errors.New("NewGrafanaNetConfig: invalid value for 'schemasFile'. value must be set to the path to your storage-schemas.conf file")
+	}
+
+	if aggregationFile == "" {
+		return GrafanaNetConfig{}, errors.New("NewGrafanaNetConfig: invalid value for 'aggregationFile'. value must be set to the path to your storage-aggregation.conf file")
 	}
 
 	_, err = getSchemas(schemasFile)
