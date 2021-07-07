@@ -60,6 +60,8 @@ github.com/gorilla/mux v0.0.0-20140624184626-14cafe285133 h1:ukbzVQxXffKnAteyOe2
 github.com/gorilla/mux v0.0.0-20140624184626-14cafe285133/go.mod h1:1lud6UwP+6orDFRuTfBEV8e9/aOM/c4fVVCaMa2zaAs=
 github.com/grafana/configparser v0.0.0-20210622142741-3e3967fd8d20 h1:vU/muwCTymcNiJZvuYzPtebHNkDPH8FF42QWBGMO3ms=
 github.com/grafana/configparser v0.0.0-20210622142741-3e3967fd8d20/go.mod h1:5kq854/YXuu4gJm0A2hON7r5IeAKTpap20ARcCZSugw=
+github.com/grafana/configparser v0.0.0-20210707122942-2593eb86a3ee h1:5j5kbjPdpun9I6taPXXvQnjUYaHxHg4Akgrh9JGB+4k=
+github.com/grafana/configparser v0.0.0-20210707122942-2593eb86a3ee/go.mod h1:5kq854/YXuu4gJm0A2hON7r5IeAKTpap20ARcCZSugw=
 github.com/grafana/metrictank v1.0.1-0.20210114150051-52835b9a8775 h1:5DryQe90TlOk9FiaS2fAShAQAkzy4OlSs0DS1LQU9rI=
 github.com/grafana/metrictank v1.0.1-0.20210114150051-52835b9a8775/go.mod h1:+W7kcYMB3XFMCQdmZSrXvqb8KCE84tQMaijapcRbptE=
 github.com/hashicorp/go-uuid v1.0.1 h1:fv1ep09latC32wFoVwnqcnKJGnMSdBanPczbHAYm1BE=
