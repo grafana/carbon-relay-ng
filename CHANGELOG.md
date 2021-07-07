@@ -1,3 +1,9 @@
+# v1.1: July 7, 2021
+
+* improve error messages, especially for storage-aggregation.conf #470
+* include example storage-schemas.conf and update k8s jsonnet mixin #472
+* Support storage aggregation patterns special chars #471
+
 # v1.0: June 24, 2021
 
 * grafanaNet route: add errBackoffMin and errBackoffFactor controls to control backoff retry timing. #465
