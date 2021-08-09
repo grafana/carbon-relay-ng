@@ -49,7 +49,7 @@ First: "matching": you can match metrics on one or more of: prefix, substring, o
 The conditions are AND-ed.  Regexes are more resource intensive and hence should - and often can be - avoided.
 
 * All incoming metrics are [validated](https://github.com/grafana/carbon-relay-ng/blob/master/docs/validation.md) and go into the table when valid.
-* The table will then check metrics against the [blacklist](https://github.com/grafana/carbon-relay-ng/blob/master/docs/config.md#blacklist) and discard when appropriate.
+* The table will then check metrics against the [blocklist](https://github.com/grafana/carbon-relay-ng/blob/master/docs/config.md#blocklist) and discard when appropriate.
 * Then metrics pass through the [rewriters](https://github.com/grafana/carbon-relay-ng/blob/master/docs/rewriting.md) and are modified if applicable.  Rewrite rules wrapped with forward slashes are interpreted as regular expressions.
 * The table sends the metric to:
   * the [aggregators](https://github.com/grafana/carbon-relay-ng/blob/master/docs/aggregation.md), who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below for details.

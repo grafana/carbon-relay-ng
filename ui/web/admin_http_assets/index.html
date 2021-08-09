@@ -75,7 +75,7 @@
           </table>
         </div>
         <div class="col-md-12">
-            <h2>Blacklist</h2>
+            <h2>Blocklist</h2>
             <table class="table table-condensed">
               <thead>
                 <tr>
@@ -88,7 +88,7 @@
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody ng-repeat="b in table.blacklist">
+              <tbody ng-repeat="b in table.blocklist">
                 <tr>
                     <td>{{b.prefix}}</td>
                     <td>{{b.notPrefix}}</td>
@@ -96,7 +96,7 @@
                     <td>{{b.notSub}}</td>
                     <td>{{b.regex}}</td>
                     <td>{{b.notRegex}}</td>
-                    <td class="text-center"><a ng-click="removeBlacklist($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
+                    <td class="text-center"><a ng-click="removeBlocklist($index)"><i class="glyphicon glyphicon-remove-circle"/></a></td>
                 </tr>
               </tbody>
             </table>

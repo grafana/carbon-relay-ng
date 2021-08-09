@@ -96,10 +96,10 @@ func removeRewriter(w http.ResponseWriter, r *http.Request) (interface{}, *handl
 	return make(map[string]string), nil
 }
 
-func removeBlacklist(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+func removeBlocklist(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	index := mux.Vars(r)["index"]
 	idx, _ := strconv.Atoi(index)
-	err := table.DelBlacklist(idx)
+	err := table.DelBlocklist(idx)
 	if err != nil {
 		return nil, &handlerError{nil, "Could not find entry " + index, http.StatusNotFound}
 	}
@@ -319,7 +319,7 @@ func Start(addr string, c cfg.Config, t *tbl.Table, enableDebug bool) {
 	router.Handle("/badMetrics/{timespec}.json", handler(badMetricsHandler)).Methods("GET")
 	router.Handle("/config", handler(showConfig)).Methods("GET")
 	router.Handle("/table", handler(listTable)).Methods("GET")
-	router.Handle("/blacklists/{index}", handler(removeBlacklist)).Methods("DELETE")
+	router.Handle("/blocklists/{index}", handler(removeBlocklist)).Methods("DELETE")
 	router.Handle("/rewriters/{index}", handler(removeRewriter)).Methods("DELETE")
 	router.Handle("/rewriters", handler(addRewrite)).Methods("POST")
 	router.Handle("/aggregators/{index}", handler(removeAggregator)).Methods("DELETE")

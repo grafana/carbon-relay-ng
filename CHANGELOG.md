@@ -112,7 +112,7 @@ make windows builds work #245
 Add tmpfiles.d config for centos/7 #235 
 Use useradd to support multiple distros #233 
 support variable substitution in instance, and default to $HOST #236 
-fix blacklist #237 
+fix blocklist #237 
 add support for specifying explicit prefixFilter and/or substringFilter in aggregations, which can help perf a lot. #239 
 show target address for GrafanaNet routes #244 
 
@@ -242,7 +242,7 @@ see [ticket 50](https://github.com/grafana/carbon-relay-ng/issues/50) for more i
 # v0.7: 200 stars. May 23, 2016
 
 changes:
-- regex / substring / prefix support for blacklist
+- regex / substring / prefix support for blocklist
 - support more management functionality in admin UI + show dest online status
 - properly set default endpoint settings
 - configurable maxprocs setting
@@ -270,7 +270,7 @@ changes:
 - metric validator with json endpoint for inspection
 - performance fixes
 
-probably more. (was blacklists new?)
+probably more. (was blocklists new?)
 note: the admin interfaces need more work.
 
 # v0.5: extended version with more features. May 3, 2015

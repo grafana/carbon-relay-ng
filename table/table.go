@@ -28,7 +28,7 @@ type TableConfig struct {
 	Validate_order          bool
 	rewriters               []rewriter.RW
 	aggregators             []*aggregator.Aggregator
-	blacklist               []*matcher.Matcher
+	blocklist               []*matcher.Matcher
 	routes                  []route.Route
 }
 
@@ -58,7 +58,7 @@ type Table struct {
 	numIn         metrics.Counter
 	numInvalid    metrics.Counter
 	numOutOfOrder metrics.Counter
-	numBlacklist  metrics.Counter
+	numBlocklist  metrics.Counter
 	numUnroutable metrics.Counter
 	In            chan []byte `json:"-"` // channel api to trade in some performance for encapsulation, for aggregators
 	bad           *badmetrics.BadMetrics
@@ -67,7 +67,7 @@ type Table struct {
 type TableSnapshot struct {
 	Rewriters   []rewriter.RW            `json:"rewriters"`
 	Aggregators []*aggregator.Aggregator `json:"aggregators"`
-	Blacklist   []*matcher.Matcher       `json:"blacklist"`
+	Blocklist   []*matcher.Matcher       `json:"blocklist"`
 	Routes      []route.Snapshot         `json:"routes"`
 	SpoolDir    string
 }
@@ -80,7 +80,7 @@ func New(config TableConfig) *Table {
 		stats.Counter("unit=Metric.direction=in"),
 		stats.Counter("unit=Err.type=invalid"),
 		stats.Counter("unit=Err.type=out_of_order"),
-		stats.Counter("unit=Metric.direction=blacklist"),
+		stats.Counter("unit=Metric.direction=blocklist"),
 		stats.Counter("unit=Metric.direction=unroutable"),
 		make(chan []byte),
 		badmetrics.New(config.BadMetricsMaxAge),
@@ -117,7 +117,7 @@ func (table *Table) Bad() *badmetrics.BadMetrics {
 
 // Dispatch is the entrypoint to send data into the table.
 // it dispatches incoming metrics into matching aggregators and routes,
-// after checking against the blacklist
+// after checking against the blocklist
 // buf is assumed to have no whitespace at the end
 func (table *Table) Dispatch(buf []byte) {
 	buf_copy := make([]byte, len(buf))
@@ -146,10 +146,10 @@ func (table *Table) Dispatch(buf []byte) {
 
 	fields := bytes.Fields(buf_copy)
 
-	for _, matcher := range conf.blacklist {
+	for _, matcher := range conf.blocklist {
 		if matcher.Match(fields[0]) {
-			table.numBlacklist.Inc(1)
-			log.Tracef("table dropped %s, matched blacklist entry %s", buf_copy, matcher)
+			table.numBlocklist.Inc(1)
+			log.Tracef("table dropped %s, matched blocklist entry %s", buf_copy, matcher)
 			return
 		}
 	}
@@ -217,9 +217,9 @@ func (table *Table) Snapshot() TableSnapshot {
 		rewriters[i] = r
 	}
 
-	blacklist := make([]*matcher.Matcher, len(conf.blacklist))
-	for i, p := range conf.blacklist {
-		blacklist[i] = p
+	blocklist := make([]*matcher.Matcher, len(conf.blocklist))
+	for i, p := range conf.blocklist {
+		blocklist[i] = p
 	}
 
 	routes := make([]route.Snapshot, len(conf.routes))
@@ -231,7 +231,7 @@ func (table *Table) Snapshot() TableSnapshot {
 	for i, a := range conf.aggregators {
 		aggs[i] = a.Snapshot()
 	}
-	return TableSnapshot{rewriters, aggs, blacklist, routes, table.SpoolDir}
+	return TableSnapshot{rewriters, aggs, blocklist, routes, table.SpoolDir}
 }
 
 func (table *Table) GetRoute(key string) route.Route {
@@ -254,11 +254,11 @@ func (table *Table) AddRoute(route route.Route) {
 	table.config.Store(conf)
 }
 
-func (table *Table) AddBlacklist(matcher *matcher.Matcher) {
+func (table *Table) AddBlocklist(matcher *matcher.Matcher) {
 	table.Lock()
 	defer table.Unlock()
 	conf := table.config.Load().(TableConfig)
-	conf.blacklist = append(conf.blacklist, matcher)
+	conf.blocklist = append(conf.blocklist, matcher)
 	table.config.Store(conf)
 }
 
@@ -323,14 +323,14 @@ func (table *Table) DelAggregator(id int) error {
 	return nil
 }
 
-func (table *Table) DelBlacklist(index int) error {
+func (table *Table) DelBlocklist(index int) error {
 	table.Lock()
 	defer table.Unlock()
 	conf := table.config.Load().(TableConfig)
-	if index >= len(conf.blacklist) {
+	if index >= len(conf.blocklist) {
 		return fmt.Errorf("Invalid index %d", index)
 	}
-	conf.blacklist = append(conf.blacklist[:index], conf.blacklist[index+1:]...)
+	conf.blocklist = append(conf.blocklist[:index], conf.blocklist[index+1:]...)
 	table.config.Store(conf)
 	return nil
 }
@@ -408,7 +408,7 @@ func (table *Table) Print() (str string) {
 	// we want to print things concisely (but no smaller than the defaults below)
 	// so we have to figure out the max lengths of everything first
 	// the default values can be arbitrary (bot not smaller than the column titles),
-	// 'R' stands for Route, 'D' for dest, 'B' blacklist, 'A" for aggregation, 'RW' for rewriter
+	// 'R' stands for Route, 'D' for dest, 'B' blocklist, 'A" for aggregation, 'RW' for rewriter
 	maxBPrefix := 6
 	maxBNotPrefix := 9
 	maxBSub := 3
@@ -455,13 +455,13 @@ func (table *Table) Print() (str string) {
 		maxRWNot = max(maxRWNot, len(rw.Not))
 		maxRWMax = max(maxRWMax, len(fmt.Sprintf("%d", rw.Max)))
 	}
-	for _, black := range t.Blacklist {
-		maxBPrefix = max(maxBPrefix, len(black.Prefix))
-		maxBNotPrefix = max(maxBNotPrefix, len(black.NotPrefix))
-		maxBSub = max(maxBSub, len(black.Sub))
-		maxBNotSub = max(maxBNotSub, len(black.NotSub))
-		maxBRegex = max(maxBRegex, len(black.Regex))
-		maxBNotRegex = max(maxBNotRegex, len(black.NotRegex))
+	for _, block := range t.Blocklist {
+		maxBPrefix = max(maxBPrefix, len(block.Prefix))
+		maxBNotPrefix = max(maxBNotPrefix, len(block.NotPrefix))
+		maxBSub = max(maxBSub, len(block.Sub))
+		maxBNotSub = max(maxBNotSub, len(block.NotSub))
+		maxBRegex = max(maxBRegex, len(block.Regex))
+		maxBNotRegex = max(maxBNotRegex, len(block.NotRegex))
 	}
 	for _, agg := range t.Aggregators {
 		maxAKey = max(maxAKey, len(agg.Key))
@@ -518,11 +518,11 @@ func (table *Table) Print() (str string) {
 		str += fmt.Sprintf(rowFmtRW, rw.Old, rw.New, rw.Not, rw.Max)
 	}
 
-	str += "\n## Blacklist:\n"
+	str += "\n## Blocklist:\n"
 	cols = fmt.Sprintf(heaFmtB, "prefix", "notPrefix", "sub", "notSub", "regex", "notRegex")
 	str += cols + underscore(len(cols)-1)
-	for _, black := range t.Blacklist {
-		str += fmt.Sprintf(rowFmtB, black.Prefix, black.NotPrefix, black.Sub, black.NotSub, black.Regex, black.NotRegex)
+	for _, block := range t.Blocklist {
+		str += fmt.Sprintf(rowFmtB, block.Prefix, block.NotPrefix, block.Sub, block.NotSub, block.Regex, block.NotRegex)
 	}
 
 	str += "\n## Aggregations:\n"

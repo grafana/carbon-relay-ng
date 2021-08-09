@@ -22,7 +22,7 @@ func InitTable(table table.Interface, config Config, meta toml.MetaData) error {
 		return err
 	}
 
-	err = InitBlacklist(table, config)
+	err = InitBlocklist(table, config)
 	if err != nil {
 		return err
 	}
@@ -58,11 +58,11 @@ func InitCmd(table table.Interface, config Config) error {
 	return nil
 }
 
-func InitBlacklist(table table.Interface, config Config) error {
-	for i, entry := range config.BlackList {
+func InitBlocklist(table table.Interface, config Config) error {
+	for i, entry := range config.BlockList {
 		parts := strings.SplitN(entry, " ", 2)
 		if len(parts) < 2 {
-			return fmt.Errorf("invalid blacklist cmd #%d", i+1)
+			return fmt.Errorf("invalid blocklist cmd #%d", i+1)
 		}
 
 		prefix := ""
@@ -86,16 +86,16 @@ func InitBlacklist(table table.Interface, config Config) error {
 		case "notRegex":
 			notRegex = parts[1]
 		default:
-			return fmt.Errorf("invalid blacklist method for cmd #%d: %s", i+1, parts[1])
+			return fmt.Errorf("invalid blocklist method for cmd #%d: %s", i+1, parts[1])
 		}
 
 		m, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 		if err != nil {
 			log.Error(err.Error())
-			return fmt.Errorf("could not apply blacklist cmd #%d", i+1)
+			return fmt.Errorf("could not apply blocklist cmd #%d", i+1)
 		}
 
-		table.AddBlacklist(&m)
+		table.AddBlocklist(&m)
 	}
 
 	return nil

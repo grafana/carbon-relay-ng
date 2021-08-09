@@ -88,7 +88,7 @@ With a wait of 120, metrics can come 2 minutes after the start of the interval a
 ## output
 
 Aggregation output is routed via the routing table just like all other metrics.
-Note that aggregation output will never go back into aggregators (to prevent loops) and also bypasses the validation and blacklist and rewriters.
+Note that aggregation output will never go back into aggregators (to prevent loops) and also bypasses the validation and blocklist and rewriters.
 
 ## caching
 

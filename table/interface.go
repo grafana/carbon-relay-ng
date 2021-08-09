@@ -11,7 +11,7 @@ import (
 type Interface interface {
 	AddAggregator(agg *aggregator.Aggregator)
 	AddRewriter(rw rewriter.RW)
-	AddBlacklist(matcher *matcher.Matcher)
+	AddBlocklist(matcher *matcher.Matcher)
 	AddRoute(route route.Route)
 	DelRoute(key string) error
 	UpdateDestination(key string, index int, opts map[string]string) error
