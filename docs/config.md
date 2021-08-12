@@ -1,9 +1,9 @@
-The major config sections are the `blacklist` array, and the `[[aggregation]]`, `[[rewriter]]` and `[[route]]` entries.
+The major config sections are the `blocklist` array, and the `[[aggregation]]`, `[[rewriter]]` and `[[route]]` entries.
 
 
-You can also create routes, populate the blacklist, etc via the `init` config array using the same commands as the telnet interface, detailed below.
+You can also create routes, populate the blocklist, etc via the `init` config array using the same commands as the telnet interface, detailed below.
 
-# Blacklist
+# Blocklist
 
 entries declare a matcher type followed by a match expression:
 
@@ -18,7 +18,7 @@ notRegex    | don't match the regular expression
 
 example:
 ```
-blacklist = [
+blocklist = [
   'prefix collectd.localhost',
   'regex ^foo\..*\.cpu+'
 ]

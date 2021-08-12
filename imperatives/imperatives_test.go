@@ -19,12 +19,12 @@ func TestScanner(t *testing.T) {
 		exp []toki.Token
 	}{
 		{
-			"addBlack prefix collectd.localhost",
-			[]toki.Token{addBlack, word, word},
+			"addBlock prefix collectd.localhost",
+			[]toki.Token{addBlock, word, word},
 		},
 		{
-			`addBlack regex ^foo\..*\.cpu+`,
-			[]toki.Token{addBlack, word, word},
+			`addBlock regex ^foo\..*\.cpu+`,
+			[]toki.Token{addBlock, word, word},
 		},
 		{
 			`addAgg sum ^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*) stats.timers._sum_$1.requests.$2 10 20`,

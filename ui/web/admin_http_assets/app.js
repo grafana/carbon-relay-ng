@@ -5,7 +5,7 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
   var Config = $resource("/config/");
   var Table = $resource("/table/");
   var Rewriter = $resource("/rewriters/:index");
-  var Blacklist = $resource("/blacklists/:index");
+  var Blocklist = $resource("/blocklists/:index");
   var Aggregator = $resource("/aggregators/:index");
   var Route = $resource("/routes/:key", {key: '@key'}, {});
   var Destination = $resource("/routes/:key/destinations/:index");
@@ -125,9 +125,9 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
      function(err) { $scope.alerts = [{msg: err.data.error}]; });
   };
 
-  $scope.removeBlacklist = function(idx){
-    if (confirm('Are you sure you want to delete blacklist entry no. ' + idx)) {
-      Blacklist.delete({'index':idx});
+  $scope.removeBlocklist = function(idx){
+    if (confirm('Are you sure you want to delete blocklist entry no. ' + idx)) {
+      Blocklist.delete({'index':idx});
       $scope.list();
     }
   };

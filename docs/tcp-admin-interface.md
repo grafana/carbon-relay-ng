@@ -1,6 +1,6 @@
 # TCP Interface
 
-Admin commands that you can execute on a live carbon-relay-ng daemon.
+Admin commands that you can execute on a live carbon-relay-ng daemon (experimental feature).
 Note: you can also have carbon-relay-ng execute these commands at bootup via the init.cmds setting, although that is deprecated in favor of the proper [config file](config.md)
 
 
@@ -9,7 +9,7 @@ commands:
     help                                         show this menu
     view                                         view full current routing table
 
-    addBlack <prefix|sub|regex> <substring>      blacklist (drops matching metrics as soon as they are received)
+    addBlock <prefix|sub|regex> <substring>      blocklist (drops matching metrics as soon as they are received)
 
     addRewriter <old> <new> <max>                add rewriter that will rewrite all old to new, max times
                                                  use /old/ to specify a regular expression match, with support for ${1} style identifiers in new
@@ -109,10 +109,10 @@ Here are some examples:
 #'addRoute grafanaNet grafanaNet  your-base-url/metrics your-grafana.net-api-key /path/to/storage-schemas.conf',
 
 # ignore hosts that don't set their hostname properly via prefix match
-#'addBlack prefix collectd.localhost',
+#'addBlock prefix collectd.localhost',
 
 # ignore foo.<anything>.cpu.... via regex match
-#'addBlack regex ^foo\..*\.cpu+',
+#'addBlock regex ^foo\..*\.cpu+',
 
 # aggregate timer metrics with sums
 #'addAgg sum regex=^stats\.timers\.(app|proxy|static)[0-9]+\.requests\.(.*) stats.timers._sum_$1.requests.$2 10 20 cache=true',

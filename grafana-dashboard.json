@@ -52,8 +52,8 @@
   "panels": [
     {
       "aliasColors": {
-        "blacklist": "#E24D42",
-        "direction_is_blacklist": "#E0752D",
+        "blocklist": "#E24D42",
+        "direction_is_blocklist": "#E0752D",
         "direction_is_in": "#3F6833",
         "direction_is_unroutable": "#890F02",
         "in": "#3F6833",

@@ -19,6 +19,7 @@ import (
 
 const (
 	addBlack toki.Token = iota
+	addBlock
 	addAgg
 	addRouteSendAllMatch
 	addRouteSendFirstMatch
@@ -97,6 +98,7 @@ const (
 
 var tokens = []toki.Def{
 	{Token: addBlack, Pattern: "addBlack"},
+	{Token: addBlock, Pattern: "addBlock"},
 	{Token: addAgg, Pattern: "addAgg"},
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch"},
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch"},
@@ -172,7 +174,7 @@ var tokens = []toki.Def{
 
 // note the two spaces between a route and endpoints
 // match options can't have spaces for now. sorry
-var errFmtAddBlack = errors.New("addBlack <prefix|sub|regex> <pattern>")
+var errFmtAddBlock = errors.New("addBlock <prefix|sub|regex> <pattern>")
 var errFmtAddAgg = errors.New("addAgg <avg|count|delta|derive|last|max|min|stdev|sum> [prefix/sub/regex=,..] <fmt> <interval> <wait> [cache=true/false] [dropRaw=true/false]")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
 var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile aggregationFile [spool=true/false sslverify=true/false blocking=true/false concurrency=int bufSize=int flushMaxNum=int flushMaxWait=int timeout=int orgId=int errBackoffMin=int errBackoffFactor=float]")
@@ -191,8 +193,8 @@ func Apply(table table.Interface, cmd string) error {
 	switch t.Token {
 	case addAgg:
 		return readAddAgg(s, table)
-	case addBlack:
-		return readAddBlack(s, table)
+	case addBlack, addBlock:
+		return readAddBlock(s, table)
 	case addDest:
 		return errors.New("sorry, addDest is not implemented yet")
 	case addRouteSendAllMatch:
@@ -347,7 +349,7 @@ func readAddAgg(s *toki.Scanner, table table.Interface) error {
 	return nil
 }
 
-func readAddBlack(s *toki.Scanner, table table.Interface) error {
+func readAddBlock(s *toki.Scanner, table table.Interface) error {
 	prefix := ""
 	notPrefix := ""
 	sub := ""
@@ -356,49 +358,49 @@ func readAddBlack(s *toki.Scanner, table table.Interface) error {
 	notRegex := ""
 	t := s.Next()
 	if t.Token != word {
-		return errFmtAddBlack
+		return errFmtAddBlock
 	}
 	method := string(t.Value)
 	switch method {
 	case "prefix":
 		if t = s.Next(); t.Token != word {
-			return errFmtAddBlack
+			return errFmtAddBlock
 		}
 		prefix = string(t.Value)
 	case "notPrefix":
 		if t = s.Next(); t.Token != word {
-			return errFmtAddBlack
+			return errFmtAddBlock
 		}
 		notPrefix = string(t.Value)
 	case "sub":
 		if t = s.Next(); t.Token != word {
-			return errFmtAddBlack
+			return errFmtAddBlock
 		}
 		sub = string(t.Value)
 	case "notSub":
 		if t = s.Next(); t.Token != word {
-			return errFmtAddBlack
+			return errFmtAddBlock
 		}
 		notSub = string(t.Value)
 	case "regex":
 		if t = s.Next(); t.Token != word {
-			return errFmtAddBlack
+			return errFmtAddBlock
 		}
 		regex = string(t.Value)
 	case "notRegex":
 		if t = s.Next(); t.Token != word {
-			return errFmtAddBlack
+			return errFmtAddBlock
 		}
 		notRegex = string(t.Value)
 	default:
-		return errFmtAddBlack
+		return errFmtAddBlock
 	}
 
 	matcher, err := matcher.New(prefix, notPrefix, sub, notSub, regex, notRegex)
 	if err != nil {
 		return err
 	}
-	table.AddBlacklist(&matcher)
+	table.AddBlocklist(&matcher)
 	return nil
 }
 

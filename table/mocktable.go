@@ -11,7 +11,7 @@ import (
 type MockTable struct {
 	Aggregators []*aggregator.Aggregator
 	Rewriters   []rewriter.RW
-	Blacklist   []*matcher.Matcher
+	Blocklist   []*matcher.Matcher
 	Routes      []route.Route
 }
 
@@ -21,8 +21,8 @@ func (m *MockTable) AddAggregator(agg *aggregator.Aggregator) {
 func (m *MockTable) AddRewriter(rw rewriter.RW) {
 	m.Rewriters = append(m.Rewriters, rw)
 }
-func (m *MockTable) AddBlacklist(matcher *matcher.Matcher) {
-	m.Blacklist = append(m.Blacklist, matcher)
+func (m *MockTable) AddBlocklist(matcher *matcher.Matcher) {
+	m.Blocklist = append(m.Blocklist, matcher)
 }
 func (m *MockTable) AddRoute(route route.Route) {
 	m.Routes = append(m.Routes, route)

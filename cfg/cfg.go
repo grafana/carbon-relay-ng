@@ -28,7 +28,8 @@ type Config struct {
 	Validation_level_legacy validate.LevelLegacy
 	Validation_level_m20    validate.LevelM20
 	Validate_order          bool
-	BlackList               []string
+	BlackList               []string // support legacy configs
+	BlockList               []string
 	Aggregation             []Aggregation
 	Route                   []Route
 	Rewriter                []Rewriter

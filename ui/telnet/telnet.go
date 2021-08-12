@@ -47,7 +47,7 @@ commands:
     help                                         show this menu
     view                                         view full current routing table
 
-    addBlack <prefix|sub|regex> <substring>      blacklist (drops matching metrics as soon as they are received)
+    addBlock <prefix|sub|regex> <substring>      blocklist (drops matching metrics as soon as they are received)
 
     addRewriter <old> <new> <max>                add rewriter that will rewrite all old to new, max times
                                                  use /old/ to specify a regular expression match, with support for ${1} style identifiers in new
