@@ -59,7 +59,11 @@ func InitCmd(table table.Interface, config Config) error {
 }
 
 func InitBlocklist(table table.Interface, config Config) error {
-	for i, entry := range config.BlockList {
+
+	// backwards compat
+	blocklist := append(config.BlockList, config.BlackList...)
+
+	for i, entry := range blocklist {
 		parts := strings.SplitN(entry, " ", 2)
 		if len(parts) < 2 {
 			return fmt.Errorf("invalid blocklist cmd #%d", i+1)

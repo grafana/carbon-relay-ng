@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	addBlock toki.Token = iota
+	addBlack toki.Token = iota
+	addBlock
 	addAgg
 	addRouteSendAllMatch
 	addRouteSendFirstMatch
@@ -96,6 +97,7 @@ const (
 // we should never half apply the change if one of them fails.
 
 var tokens = []toki.Def{
+	{Token: addBlack, Pattern: "addBlack"},
 	{Token: addBlock, Pattern: "addBlock"},
 	{Token: addAgg, Pattern: "addAgg"},
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch"},
@@ -191,7 +193,7 @@ func Apply(table table.Interface, cmd string) error {
 	switch t.Token {
 	case addAgg:
 		return readAddAgg(s, table)
-	case addBlock:
+	case addBlack, addBlock:
 		return readAddBlock(s, table)
 	case addDest:
 		return errors.New("sorry, addDest is not implemented yet")
