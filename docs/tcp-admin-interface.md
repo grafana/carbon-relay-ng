@@ -1,6 +1,6 @@
 # TCP Interface
 
-Admin commands that you can execute on a live carbon-relay-ng daemon.
+Admin commands that you can execute on a live carbon-relay-ng daemon (experimental feature).
 Note: you can also have carbon-relay-ng execute these commands at bootup via the init.cmds setting, although that is deprecated in favor of the proper [config file](config.md)
 
 
