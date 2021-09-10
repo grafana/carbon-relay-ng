@@ -1,10 +1,15 @@
 ## Rewriting
 
 Series names can be rewritten as they pass through the system by Rewriter rules, which are processed in series.
+This can be done via regex (expensive), or with a string check (cheap)
+
+## With string check
 
 Basic rules use simple old/new text replacement, and support a Max parameter to specify the maximum number of matched items to be replaced.
 
-Rewriter rules also support regexp syntax, which is enabled by wrapping the "old" parameter with forward slashes and setting "max" to -1.
+## With regexular expression
+
+This is activated by wrapping the "old" parameter with forward slashes and setting "max" to -1.
 The "new" value can include [submatch identifiers](https://golang.org/pkg/regexp/#Regexp.Expand) in the format `${1}`.
 
 Note that for performance reasons, these regular expressions don't support lookaround (lookahead, lookforward)
