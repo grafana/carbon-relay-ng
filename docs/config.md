@@ -7,6 +7,8 @@ You can also create routes, populate the blocklist, etc via the `init` config ar
 
 entries declare a matcher type followed by a match expression:
 
+### Options
+
 type        | metrics are dropped when they
 ------------|---------------------------------
 prefix      | have the prefix
@@ -16,7 +18,7 @@ notSub      | don't contain the substring
 regex       | match the regular expression
 notRegex    | don't match the regular expression
 
-example:
+### Example
 ```
 blocklist = [
   'prefix collectd.localhost',
@@ -24,14 +26,14 @@ blocklist = [
 ]
 ```
 
-Note:
+### Notes
 
 * regular expression [syntax is documented here](https://golang.org/pkg/regexp/syntax/). But try to avoid regex matching, as it is not as fast as substring/prefix checking.
 * regular expressions are not anchored by default. You can use `^` and `$` to explicitly match from the beginning to the end of the name.
 
 # Aggregators
 
-Examples:
+### Examples
 ```
 [[aggregation]]
 # aggregate timer metrics with sums
@@ -79,7 +81,18 @@ dropRaw = false
 
 # Rewriters
 
-example:
+For more information and examples see [Rewriter documentation](rewriting.md)
+
+### Options
+
+setting        | mandatory | values                | default | description
+---------------|-----------|-----------------------|---------|------------
+old            |     Y     | string                | N/A     | string to match or regex to match when wrapped in '/'
+new            |     Y     | string (may be empty) | N/A     | replacement string, or pattern (for regex)
+not            |     N     | string                | ""      | don't rewrite if metric matchis string or regex if wrapped in '/'
+max            |     Y     | int >= -1             | N/A     | max number of replacements. -1 disables limit. must be -1 for regex
+
+### Examples
 ```
 [[rewriter]]
 # rewrite all instances of testold to testnew
@@ -88,10 +101,11 @@ new = 'testnew'
 not = ''
 max = -1
 ```
-
 # Routes
 
 ## carbon route
+
+### Options
 
 setting        | mandatory | values                                        | default | description
 ---------------|-----------|-----------------------------------------------|---------|------------
@@ -141,7 +155,9 @@ destinations = [
 ]
 ```
 
-## carbon destination
+## Carbon destination
+
+### Options
 
 setting              | mandatory | values        | default | description
 ---------------------|-----------|---------------|---------|------------
@@ -165,7 +181,9 @@ spoolsyncperiod      |     N     |  int  (ms)    | 1000    | sync spool to disk 
 spoolsleep           |     N     |  int (micros) | 500     | sleep this many microseconds(!) in between ingests from bulkdata/redo buffers into spool
 unspoolsleep         |     N     |  int (micros) | 10      | sleep this many microseconds(!) in between reads from the spool, when replaying spooled data
 
-## grafanaNet route
+## GrafanaNet route
+
+### Options
 
 setting        | mandatory | values      | default | description
 ---------------|-----------|-------------|---------|------------
@@ -192,7 +210,8 @@ orgId          |     N     |  int        | 1       | organization ID to claim (o
 errBackoffMin  |     N     |  int (ms)   | 100     | initial retry interval in ms for failed http requests
 errBackoffFactor|    N     |  float      | 1.5     | growth factor for the retry interval for failed http requests
 
-### Example
+### Examples
+
 example route for https://grafana.com/cloud/metrics
 
 ```
@@ -237,7 +256,9 @@ addr = "${GRAFANA_NET_ADDR}"
 apikey = "${GRAFANA_NET_USER_ID}:${GRAFANA_NET_API_KEY}"
 ```
 
-## kafkaMdm route
+## KafkaMdm route
+
+### Options
 
 setting        | mandatory | values      | default | description
 ---------------|-----------|-------------|---------|------------
@@ -267,6 +288,8 @@ saslEnabled    |     N     |  bool       | false   | Whether to enable SASL
 saslMechanism  |     N     |  string     | ""      | if unset, the PLAIN mechanism is used. You can also specify SCRAM-SHA-256 or SCRAM-SHA-512.
 saslUsername   |     N     |  string     | ""      | SASL Username
 saslPassword   |     N     |  string     | ""      | SASL Password
+
+### Examples
 
 example config with TLS enabled:
 
@@ -304,6 +327,8 @@ saslPassword = 'password'
 
 ## Google PubSub route
 
+### Options
+
 setting        | mandatory | values      | default       | description
 ---------------|-----------|-------------|---------------|------------
 key            |     Y     |  string     | N/A           |
@@ -322,6 +347,8 @@ flushMaxSize   |     N     |  int        | (10MB - 4KB)  | max message size befo
 flushMaxWait   |     N     |  int (ms)   | 1000          | max time to buffer before triggering flush
 
 ## Cloudwatch
+
+### Options
 
 setting          | mandatory | values      | default       | description
 -----------------|-----------|-------------|---------------|------------
