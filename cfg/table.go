@@ -190,7 +190,7 @@ func InitRoutes(table table.Interface, config Config, meta toml.MetaData) error 
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
 			}
 			table.AddRoute(route)
-		case "consistentHashing":
+		case "consistentHashing", "consistentHashing-v2":
 			destinations, err := imperatives.ParseDestinations(routeConfig.Destinations, table, false, routeConfig.Key)
 			if err != nil {
 				log.Error(err.Error())
@@ -200,7 +200,9 @@ func InitRoutes(table table.Interface, config Config, meta toml.MetaData) error 
 				return fmt.Errorf("must get at least 2 destination for route '%s'", routeConfig.Key)
 			}
 
-			route, err := route.NewConsistentHashing(routeConfig.Key, matcher, destinations)
+			withFix := (routeConfig.Type == "consistentHashing-v2")
+
+			route, err := route.NewConsistentHashing(routeConfig.Key, matcher, destinations, withFix)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)

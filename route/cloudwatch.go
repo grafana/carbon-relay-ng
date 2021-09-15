@@ -59,7 +59,7 @@ func NewCloudWatch(key string, matcher matcher.Matcher, awsProfile, awsRegion, a
 		awsNamespace:       awsNamespace,
 		storageResolution:  storageResolution,
 		putMetricDataInput: cloudwatch.PutMetricDataInput{Namespace: aws.String(awsNamespace)},
-		baseRoute:          baseRoute{sync.Mutex{}, atomic.Value{}, key},
+		baseRoute:          baseRoute{"CloudWatch", sync.Mutex{}, atomic.Value{}, key},
 		buf:                make(chan []byte, bufSize),
 		blocking:           blocking,
 		bufSize:            bufSize,
@@ -220,9 +220,4 @@ func (r *CloudWatch) Flush() error {
 func (r *CloudWatch) Shutdown() error {
 	close(r.buf)
 	return nil
-}
-
-// Snapshot clones the current config for update operations
-func (r *CloudWatch) Snapshot() Snapshot {
-	return makeSnapshot(&r.baseRoute, "CloudWatch")
 }

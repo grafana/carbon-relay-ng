@@ -59,7 +59,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
   * for grafanaNet / kafkaMdm / Google PubSub routes, there is only a single endpoint so that's where the data goes.  For standard/carbon routes you can control how data gets routed into destinations (note that destinations have settings to match on prefix/sub/regex, just like routes):
   * sendAllMatch: send all metrics to all the defined endpoints (possibly, and commonly only 1 endpoint).
   * sendFirstMatch: send the metrics to the first endpoint that matches it.
-  * consistentHashing: the algorithm is the same as Carbon's consistent hashing.
+  * consistentHashing/consistentHashing-v2: the algorithm is the same as Carbon's consistent hashing. (see [config docs](docs/config.md#carbon-route) and [PR 447](https://github.com/grafana/carbon-relay-ng/pull/477)for details)
   * round robin: the route is a RR pool (not implemented)
 
 

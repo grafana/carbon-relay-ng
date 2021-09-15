@@ -175,7 +175,7 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, cfg GrafanaNetConfig) (R
 	cleanAddr := util.AddrToPath(cfg.Addr)
 
 	r := &GrafanaNet{
-		baseRoute:      baseRoute{sync.Mutex{}, atomic.Value{}, key},
+		baseRoute:      baseRoute{"GrafanaNet", sync.Mutex{}, atomic.Value{}, key},
 		Cfg:            cfg,
 		schemas:        schemas,
 		schemasStr:     schemas.String(),
@@ -467,7 +467,7 @@ func (route *GrafanaNet) Shutdown() error {
 }
 
 func (route *GrafanaNet) Snapshot() Snapshot {
-	snapshot := makeSnapshot(&route.baseRoute, "GrafanaNet")
+	snapshot := route.baseRoute.Snapshot()
 	snapshot.Addr = route.Cfg.Addr
 	return snapshot
 }

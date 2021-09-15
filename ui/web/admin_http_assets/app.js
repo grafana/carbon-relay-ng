@@ -12,7 +12,7 @@ app.controller("MainCtl", ["$scope", "$resource", "$modal", function($scope, $re
 
 
   $scope.validAddress = /^[^:]+\:[0-9]+(:[^:]+)?$/;
-  $scope.validRouteType = /^(send(All|First)Match)|(consistentHashing)/
+  $scope.validRouteType = /^(send(All|First)Match)|(consistentHashing)|(consistentHashing-v2)/
   $scope.validRegex = (function() {
       return {
           test: function(value) {

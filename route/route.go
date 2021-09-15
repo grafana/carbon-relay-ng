@@ -56,6 +56,8 @@ type Snapshot struct {
 }
 
 type baseRoute struct {
+	t string // string type, used for snapshots
+
 	sync.Mutex              // only needed for the multiple writers
 	config     atomic.Value // for reading and writing
 
@@ -77,7 +79,7 @@ type ConsistentHashing struct {
 // NewSendAllMatch creates a sendAllMatch route.
 // We will automatically run the route and the given destinations
 func NewSendAllMatch(key string, matcher matcher.Matcher, destinations []*dest.Destination) (Route, error) {
-	r := &SendAllMatch{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
+	r := &SendAllMatch{baseRoute{"sendAllMatch", sync.Mutex{}, atomic.Value{}, key}}
 	r.config.Store(baseConfig{matcher, destinations})
 	r.run()
 	return r, nil
@@ -86,15 +88,19 @@ func NewSendAllMatch(key string, matcher matcher.Matcher, destinations []*dest.D
 // NewSendFirstMatch creates a sendFirstMatch route.
 // We will automatically run the route and the given destinations
 func NewSendFirstMatch(key string, matcher matcher.Matcher, destinations []*dest.Destination) (Route, error) {
-	r := &SendFirstMatch{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
+	r := &SendFirstMatch{baseRoute{"sendFirstMatch", sync.Mutex{}, atomic.Value{}, key}}
 	r.config.Store(baseConfig{matcher, destinations})
 	r.run()
 	return r, nil
 }
 
-func NewConsistentHashing(key string, matcher matcher.Matcher, destinations []*dest.Destination) (Route, error) {
-	r := &ConsistentHashing{baseRoute{sync.Mutex{}, atomic.Value{}, key}}
-	hasher := NewConsistentHasher(destinations)
+func NewConsistentHashing(key string, matcher matcher.Matcher, destinations []*dest.Destination, withFix bool) (Route, error) {
+	t := "consistentHashing"
+	if withFix {
+		t = "consistentHashing-v2"
+	}
+	r := &ConsistentHashing{baseRoute{t, sync.Mutex{}, atomic.Value{}, key}}
+	hasher := NewConsistentHasher(destinations, withFix)
 	r.config.Store(consistentHashingConfig{baseConfig{matcher, destinations},
 		&hasher})
 	r.run()
@@ -190,25 +196,13 @@ func (route *baseRoute) Shutdown() error {
 }
 
 // to view the state of the table/route at any point in time
-func makeSnapshot(route *baseRoute, routeType string) Snapshot {
+func (route *baseRoute) Snapshot() Snapshot {
 	conf := route.config.Load().(Config)
 	dests := make([]*dest.Destination, len(conf.Dests()))
 	for i, d := range conf.Dests() {
 		dests[i] = d.Snapshot()
 	}
-	return Snapshot{Matcher: *conf.Matcher(), Dests: dests, Type: routeType, Key: route.key}
-}
-
-func (route *SendAllMatch) Snapshot() Snapshot {
-	return makeSnapshot(&route.baseRoute, "sendAllMatch")
-}
-
-func (route *SendFirstMatch) Snapshot() Snapshot {
-	return makeSnapshot(&route.baseRoute, "sendFirstMatch")
-}
-
-func (route *ConsistentHashing) Snapshot() Snapshot {
-	return makeSnapshot(&route.baseRoute, "consistentHashing")
+	return Snapshot{Matcher: *conf.Matcher(), Dests: dests, Type: route.t, Key: route.key}
 }
 
 // baseCfgExtender is a function that takes a baseConfig and returns
@@ -233,15 +227,19 @@ func (route *ConsistentHashing) Snapshot() Snapshot {
 // baseConfig and either returns it unchanged or creates an outer
 // configuration object with the baseConfig embedded in it.
 // The private method then stores the Config object returned by the callback.
+//
+// Note by Dieter: this is too complicated and not go-like. want to revert this at some point
 type baseCfgExtender func(baseConfig) Config
 
 func baseConfigExtender(baseConfig baseConfig) Config {
 	return baseConfig
 }
 
-func consistentHashingConfigExtender(baseConfig baseConfig) Config {
-	hasher := NewConsistentHasher(baseConfig.Dests())
-	return consistentHashingConfig{baseConfig, &hasher}
+func consistentHashingConfigExtender(withFix bool) baseCfgExtender {
+	return func(baseConfig baseConfig) Config {
+		hasher := NewConsistentHasher(baseConfig.Dests(), withFix)
+		return consistentHashingConfig{baseConfig, &hasher}
+	}
 }
 
 // Add adds a new Destination to the Route and automatically runs it for you.
@@ -261,7 +259,8 @@ func (route *baseRoute) Add(dest *dest.Destination) {
 }
 
 func (route *ConsistentHashing) Add(dest *dest.Destination) {
-	route.addDestination(dest, consistentHashingConfigExtender)
+	conf := route.config.Load().(consistentHashingConfig)
+	route.addDestination(dest, consistentHashingConfigExtender(conf.Hasher.withFix))
 }
 
 func (route *baseRoute) delDestination(index int, extendConfig baseCfgExtender) error {
@@ -283,7 +282,8 @@ func (route *baseRoute) DelDestination(index int) error {
 }
 
 func (route *ConsistentHashing) DelDestination(index int) error {
-	return route.delDestination(index, consistentHashingConfigExtender)
+	conf := route.config.Load().(consistentHashingConfig)
+	return route.delDestination(index, consistentHashingConfigExtender(conf.Hasher.withFix))
 }
 
 func (route *baseRoute) GetDestination(index int) (*dest.Destination, error) {
@@ -349,7 +349,8 @@ func (route *baseRoute) Update(opts map[string]string) error {
 }
 
 func (route *ConsistentHashing) Update(opts map[string]string) error {
-	return route.update(opts, consistentHashingConfigExtender)
+	conf := route.config.Load().(consistentHashingConfig)
+	return route.update(opts, consistentHashingConfigExtender(conf.Hasher.withFix))
 }
 
 func (route *baseRoute) updateDestination(index int, opts map[string]string, extendConfig baseCfgExtender) error {
@@ -373,7 +374,8 @@ func (route *baseRoute) UpdateDestination(index int, opts map[string]string) err
 }
 
 func (route *ConsistentHashing) UpdateDestination(index int, opts map[string]string) error {
-	return route.updateDestination(index, opts, consistentHashingConfigExtender)
+	conf := route.config.Load().(consistentHashingConfig)
+	return route.updateDestination(index, opts, consistentHashingConfigExtender(conf.Hasher.withFix))
 }
 
 func (route *baseRoute) updateMatcher(matcher matcher.Matcher, extendConfig baseCfgExtender) {
@@ -389,5 +391,6 @@ func (route *baseRoute) UpdateMatcher(matcher matcher.Matcher) {
 }
 
 func (route *ConsistentHashing) UpdateMatcher(matcher matcher.Matcher) {
-	route.updateMatcher(matcher, consistentHashingConfigExtender)
+	conf := route.config.Load().(consistentHashingConfig)
+	route.updateMatcher(matcher, consistentHashingConfigExtender(conf.Hasher.withFix))
 }

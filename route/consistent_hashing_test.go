@@ -17,7 +17,7 @@ func TestConsistentHashingDestinations(t *testing.T) {
 		{Addr: "10.0.0.1"},
 		{Addr: "127.0.0.1:2003", Instance: "a"},
 		{Addr: "127.0.0.1:2004", Instance: "b"}}
-	hasher := NewConsistentHasherReplicaCount(initialDestinations, 2)
+	hasher := NewConsistentHasherReplicaCount(initialDestinations, 2, false)
 	expectedHashRing := hashRing{
 		hashRingEntry{Position: uint16(7885), Hostname: "127.0.0.1", Instance: "a", DestinationIndex: 1},
 		hashRingEntry{Position: uint16(10461), Hostname: "127.0.0.1", Instance: "b", DestinationIndex: 2},
