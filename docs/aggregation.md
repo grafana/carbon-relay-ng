@@ -83,7 +83,7 @@ With a wait of 120, metrics can come 2 minutes after the start of the interval a
   - aggregation of individual metrics, i.e. packets for the same key, with different timestamps.  For example if you receive values for the same key every second, you can aggregate into minutely buckets by setting interval to 60, and have the fmt yield a unique key for every input metric key.  (~ graphite rollups)
   - the combination: compute aggregates from values seen with different keys, and at multiple points in time.
 
-* `dropRaw=true` will prevent any further processing of the raw series "consumed" by an aggregator with this option enabled.  This can be useful for managing cardinality and for quantizing metrics sent at odd intervals.  When using `dropRaw` an aggregator may produce a series with the same name as the input series. Note that this option may slow down table processing, especially with a cold or disabled aggregator cache.
+* `dropRaw=true` will prevent any further processing of the raw series "consumed" by an aggregator with this option enabled.  It causes the original input series to disappear from the routing table.  This can be useful for managing cardinality and for quantizing metrics sent at odd intervals.  When using `dropRaw` an aggregator may produce a series with the same name as the input series. Note that this option may slow down table processing, especially with a cold or disabled aggregator cache.
 
 [config examples](https://github.com/grafana/carbon-relay-ng/blob/master/docs/config.md#aggregators)
 
