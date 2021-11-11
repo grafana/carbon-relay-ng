@@ -5,6 +5,8 @@ Aggregation
 Aggregation is used to reduce the volume of datapoints, across time, across series, or across both.
 Data corresponding to the same "bucket" (see below) is aggregated using the configured aggregation function such as sum or average.
 Aggregators can also be (ab)used for quantizing (normalizing timestamps) or renaming series (but better to use a rewriter instead).
+Note that the original input data is still emitted, in addition to its aggregated series.  To only get the aggregator output and discard input metrics,
+use `dropRaw = true` in aggregation config (see configuration section below).
 
 ## input
 
