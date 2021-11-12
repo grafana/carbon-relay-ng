@@ -1,6 +1,6 @@
 FROM alpine
 RUN apk --update add --no-cache ca-certificates
-ADD carbon-relay-ng /bin/
+ADD carbon-relay-ng-linux-amd64 /bin/carbon-relay-ng
 VOLUME /conf
 ADD examples/carbon-relay-ng.ini /conf/carbon-relay-ng.ini
 RUN mkdir /var/spool/carbon-relay-ng
