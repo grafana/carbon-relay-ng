@@ -265,6 +265,10 @@ func (dest *Destination) WaitOnline() chan struct{} {
 func (dest *Destination) relay() {
 	ticker := time.NewTicker(dest.periodReConn)
 	var toUnspool chan []byte
+
+	// * nil:      any previous conn has been closed or is being closed.
+	// * non-nil:  we believe to have a valid conn.
+	// if we discover that it's broken, we trigger a close and set it to nil.
 	var conn *Conn
 
 	// try to send the data on the buffered tcp conn
@@ -330,7 +334,11 @@ func (dest *Destination) relay() {
 			} else {
 				numConnUpdates -= 1
 			}
-		case conn = <-dest.connUpdates:
+		case newConn := <-dest.connUpdates:
+			if conn != nil {
+				conn.Close()
+			}
+			conn = newConn
 			dest.Online = true
 			log.Infof("dest %s new conn online", dest.Key)
 			// new conn? start with a clean slate!
