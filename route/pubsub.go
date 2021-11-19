@@ -64,7 +64,7 @@ type PubSub struct {
 // We will automatically run the route and the destination
 func NewPubSub(key string, matcher matcher.Matcher, project, topic, format, codec string, bufSize, flushMaxSize, flushMaxWait int, blocking bool) (Route, error) {
 	r := &PubSub{
-		baseRoute: baseRoute{sync.Mutex{}, atomic.Value{}, key},
+		baseRoute: baseRoute{"pubsub", sync.Mutex{}, atomic.Value{}, key},
 		project:   project,
 		topic:     topic,
 		format:    format,
@@ -250,9 +250,4 @@ func (r *PubSub) Shutdown() error {
 	close(r.buf)
 	r.psTopic.Stop()
 	return nil
-}
-
-// Snapshot clones the current config for update operations
-func (r *PubSub) Snapshot() Snapshot {
-	return makeSnapshot(&r.baseRoute, "pubsub")
 }

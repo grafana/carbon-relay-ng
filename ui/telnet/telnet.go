@@ -76,14 +76,15 @@ commands:
              <type>:
                sendAllMatch                      send metrics in the route to all destinations
                sendFirstMatch                    send metrics in the route to the first one that matches it
-               consistentHashing                 distribute metrics between destinations using a hash algorithm
+               consistentHashing                 distribute metrics between destinations using a hash algorithm, old carbon style
+               consistentHashing-v2              distribute metrics between destinations using a hash algorithm, current carbon style (experimental. see PR 477)
              <opts>:
                prefix=<str>                      only take in metrics that have this prefix
                sub=<str>                         only take in metrics that match this substring
                regex=<regex>                     only take in metrics that match this regex (expensive!)
              <dest>: <addr> <opts>
                <addr>                            a tcp endpoint. i.e. ip:port or hostname:port
-                                                 for consistentHashing routes, an instance identifier can also be present:
+                                                 for consistentHashing and consistentHashing-v2 routes, an instance identifier can also be present:
                                                  hostname:port:instance
                                                  The instance is used to disambiguate multiple endpoints on the same host, as the Carbon-compatible consistent hashing algorithm does not take the port into account.
                <opts>:

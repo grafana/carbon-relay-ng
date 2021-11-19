@@ -61,7 +61,7 @@ func NewKafkaMdm(key string, matcher matcher.Matcher, topic, codec, schemasFile,
 	cleanAddr := util.AddrToPath(brokers[0])
 
 	r := &KafkaMdm{
-		baseRoute: baseRoute{sync.Mutex{}, atomic.Value{}, key},
+		baseRoute: baseRoute{"KafkaMdm", sync.Mutex{}, atomic.Value{}, key},
 		topic:     topic,
 		brokers:   brokers,
 		buf:       make(chan []byte, bufSize),
@@ -286,10 +286,6 @@ func (r *KafkaMdm) Shutdown() error {
 	//conf := r.config.Load().(Config)
 	close(r.buf)
 	return nil
-}
-
-func (r *KafkaMdm) Snapshot() Snapshot {
-	return makeSnapshot(&r.baseRoute, "KafkaMdm")
 }
 
 func getCompression(codec string) (sarama.CompressionCodec, error) {

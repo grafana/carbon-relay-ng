@@ -24,6 +24,7 @@ const (
 	addRouteSendAllMatch
 	addRouteSendFirstMatch
 	addRouteConsistentHashing
+	addRouteConsistentHashingV2
 	addRouteGrafanaNet
 	addRouteKafkaMdm
 	addRoutePubSub
@@ -103,6 +104,7 @@ var tokens = []toki.Def{
 	{Token: addRouteSendAllMatch, Pattern: "addRoute sendAllMatch"},
 	{Token: addRouteSendFirstMatch, Pattern: "addRoute sendFirstMatch"},
 	{Token: addRouteConsistentHashing, Pattern: "addRoute consistentHashing"},
+	{Token: addRouteConsistentHashingV2, Pattern: "addRoute consistentHashing-v2"},
 	{Token: addRouteGrafanaNet, Pattern: "addRoute grafanaNet"},
 	{Token: addRouteKafkaMdm, Pattern: "addRoute kafkaMdm"},
 	{Token: addRoutePubSub, Pattern: "addRoute pubsub"},
@@ -202,7 +204,9 @@ func Apply(table table.Interface, cmd string) error {
 	case addRouteSendFirstMatch:
 		return readAddRoute(s, table, route.NewSendFirstMatch)
 	case addRouteConsistentHashing:
-		return readAddRouteConsistentHashing(s, table)
+		return readAddRouteConsistentHashing(s, table, false)
+	case addRouteConsistentHashingV2:
+		return readAddRouteConsistentHashing(s, table, true)
 	case addRouteGrafanaNet:
 		return readAddRouteGrafanaNet(s, table)
 	case addRouteKafkaMdm:
@@ -437,7 +441,7 @@ func readAddRoute(s *toki.Scanner, table table.Interface, constructor func(key s
 	return nil
 }
 
-func readAddRouteConsistentHashing(s *toki.Scanner, table table.Interface) error {
+func readAddRouteConsistentHashing(s *toki.Scanner, table table.Interface, withFix bool) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -462,7 +466,7 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table table.Interface) error
 		return fmt.Errorf("must get at least 2 destination for route '%s'", key)
 	}
 
-	route, err := route.NewConsistentHashing(key, matcher, destinations)
+	route, err := route.NewConsistentHashing(key, matcher, destinations, withFix)
 	if err != nil {
 		return err
 	}
