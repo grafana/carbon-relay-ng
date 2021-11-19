@@ -1,7 +1,10 @@
 # unreleased
+* build using latest version of go, 1.17.3. #482
+* tweaks to connection closing. #481
+* experimental consistentHashing-v2 hashing scheme which aims to be compatible with more recent versions of carbon-relay. #477
 * adopt the term "blocklist" for blocking metrics.  The existing config options "blacklist" and commands "addBlack" are replaced
   with "blocklist" and "addBlock" respectively.  The old option and command will keep working for the time being, but users are recommended
-  to update their configuration because the old options will be removed at the next major release.
+  to update their configuration because the old options will be removed at the next major release. #473
 
 # v1.1: July 7, 2021
 
