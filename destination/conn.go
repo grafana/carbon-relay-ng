@@ -109,6 +109,8 @@ func NewConn(key, addr string, periodFlush time.Duration, pickle bool, connBufSi
 	return connObj, nil
 }
 
+// isAlive returns whether the connection is alive.
+// if it is not alive, it has been - or is being - closed.
 func (c *Conn) isAlive() bool {
 	c.upMutex.RLock()
 	up := c.up
@@ -290,7 +292,11 @@ func (c *Conn) close() {
 	log.Debugf("conn %s close() called. sending shutdown", c.key)
 	c.shutdown <- true
 	log.Debugf("conn %s c.conn.Close()", c.key)
-	c.conn.Close()
+	err := c.conn.Close()
+	if err != nil {
+		log.Warnf("conn %s error closing: %s", c.key, err)
+		return
+	}
 	log.Debugf("conn %s c.conn.Close() complete", c.key)
 }
 

@@ -38,6 +38,7 @@ Documentation
 * [limitations](https://github.com/grafana/carbon-relay-ng/blob/master/docs/limitations.md)
 * [installation and building](https://github.com/grafana/carbon-relay-ng/blob/master/docs/installation-building.md)
 * [Deploying on Kubernetes](https://github.com/grafana/carbon-relay-ng/blob/master/docs/deploying-on-k8s.md)
+* [Troubleshooting](https://github.com/grafana/carbon-relay-ng/blob/master/docs/troubleshooting.md)
 
 
 Concepts

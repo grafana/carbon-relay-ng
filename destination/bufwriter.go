@@ -47,8 +47,7 @@ func NewWriter(w io.Writer, size int, key string) *Writer {
 
 // Flush writes any buffered data to the underlying io.Writer.
 func (b *Writer) Flush() error {
-	err := b.flush()
-	return err
+	return b.flush()
 }
 
 func (b *Writer) flush() error {
