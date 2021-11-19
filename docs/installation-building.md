@@ -34,18 +34,16 @@ You can use these tags:
 # Building from source
 
 Requires Go 1.7 or higher.
-We use [dep](https://golang.github.io/dep/) to manage vendoring 3rd party libraries
 These commands will install the binary as `$GOPATH/bin/carbon-relay-ng`
 
-    export GOPATH=/some/path/
+    export GOPATH=$HOME/go
     export PATH="$PATH:$GOPATH/bin"
-    go get github.com/grafana/carbon-relay-ng/...
-
-If you want to make your own changes and rebuild:
-
-    cd "$GOPATH/src/github.com/grafana/carbon-relay-ng"
-    # e.g. to check out an older version:
-    # git checkout 0.10.1
+    mkdir -p $GOPATH/src/github.com/grafana
+    cd $GOPATH/src/github.com/grafana/
+    git clone https://github.com/grafana/carbon-relay-ng.git
+    cd carbon-relay-ng
+    # e.g. to check out a specific version instead of master:
+    # git checkout v1.1
     go get github.com/shuLhan/go-bindata/cmd/go-bindata
     make
 
