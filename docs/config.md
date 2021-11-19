@@ -123,7 +123,7 @@ The following route types are supported:
 * `sendAllMatch` : send to all destinations
 * `sendFirstMatch` : send to first matching destination
 * `consistentHashing` : distribute via consistent hashing as done in Graphite until december 2013. (I think up to version 0.9.12) (https://github.com/graphite-project/carbon/pull/196)
-* `consistentHashing-v2` : distribute via consistent hashing as done in Graphite/carbon as of https://github.com/graphite-project/carbon/pull/196 (experimental) See [PR 447](https://github.com/grafana/carbon-relay-ng/pull/477) for more information.
+* `consistentHashing-v2` : distribute via consistent hashing as done in Graphite/carbon as of https://github.com/graphite-project/carbon/pull/196 (**experimental**) See [PR 447](https://github.com/grafana/carbon-relay-ng/pull/477) for more information.
 
 Note that the carbon style consistent hashing does [not accurately balance workload across nodes](https://github.com/graphite-project/carbon/issues/485). See [issue 211](https://github.com/grafana/carbon-relay-ng/issues/211)
 
