@@ -93,19 +93,19 @@ func TestApplyAddRouteGrafanaNet(t *testing.T) {
 	var testCases []testCase
 
 	// trivial case. mostly defaults, so let's rely on the helper that generates the (mostly default) config
-	cfg, err := route.NewGrafanaNetConfig("http://foo/metrics", "apiKey", schemasFile.Name(), aggregationFile.Name())
+	cfg, err := route.NewGrafanaNetConfig("http://foo/metrics", "apiKey", schemasFile.Name())
 	if err != nil {
 		t.Fatal(err) // should never happen
 	}
 	testCases = append(testCases, testCase{
-		cmd:    "addRoute grafanaNet key  http://foo/metrics apiKey " + schemasFile.Name() + " " + aggregationFile.Name(),
+		cmd:    "addRoute grafanaNet key  http://foo/metrics apiKey " + schemasFile.Name(),
 		expCfg: cfg,
 		expErr: false,
 	})
 
 	// advanced case full of all possible settings.
 	testCases = append(testCases, testCase{
-		cmd: "addRoute grafanaNet key prefix=prefix notPrefix=notPrefix sub=sub notSub=notSub regex=regex notRegex=notRegex  http://foo.bar/metrics apiKey " + schemasFile.Name() + " " + aggregationFile.Name() + " spool=true sslverify=false blocking=true concurrency=42 bufSize=123 flushMaxNum=456 flushMaxWait=5 timeout=123 orgId=10010 errBackoffMin=14 errBackoffFactor=1.8",
+		cmd: "addRoute grafanaNet key prefix=prefix notPrefix=notPrefix sub=sub notSub=notSub regex=regex notRegex=notRegex  http://foo.bar/metrics apiKey " + schemasFile.Name() + " aggregationFile=" + aggregationFile.Name() + " spool=true sslverify=false blocking=true concurrency=42 bufSize=123 flushMaxNum=456 flushMaxWait=5 timeout=123 orgId=10010 errBackoffMin=14 errBackoffFactor=1.8",
 		expCfg: route.GrafanaNetConfig{
 			Addr:            "http://foo.bar/metrics",
 			ApiKey:          "apiKey",
@@ -136,14 +136,31 @@ func TestApplyAddRouteGrafanaNet(t *testing.T) {
 		expErr: false,
 	})
 
+	otherFile := test.TempFdOrFatal("carbon-relay-ng-TestNewGrafanaNetConfig-otherFile", "this is not an aggregation file", t)
+	defer os.Remove(otherFile.Name())
+
+	for _, aggFile := range []string{
+		"some-path-that-definitely-will-not-exist-for-carbon-relay-ng",
+		otherFile.Name(),
+	} {
+		testCases = append(testCases, testCase{
+			cmd:    "addRoute grafanaNet key  http://foo/metrics apiKey " + schemasFile.Name() + " aggregationFile=" + aggFile,
+			expErr: true,
+		})
+	}
+
 	for _, testCase := range testCases {
 		m := &table.MockTable{}
 		err := Apply(m, testCase.cmd)
 		if !testCase.expErr && err != nil {
 			t.Fatalf("testcase with cmd %q expected no error but got error %s", testCase.cmd, err.Error())
 		}
-		if testCase.expErr && err == nil {
-			t.Fatalf("testcase with cmd %q expected error but got no error", testCase.cmd)
+		if testCase.expErr {
+			if err == nil {
+				t.Fatalf("testcase with cmd %q expected error but got no error", testCase.cmd)
+			}
+			// don't check other conditions if we are in an error state
+			continue
 		}
 		if len(m.Routes) != 1 {
 			t.Fatalf("testcase with cmd %q resulted in %d routes, not 1", testCase.cmd, len(m.Routes))
