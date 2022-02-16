@@ -165,6 +165,7 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, cfg GrafanaNetConfig) (R
 		if err != nil {
 			return nil, fmt.Errorf("NewGrafanaNet: could not read aggregationFile %q: %s", cfg.AggregationFile, err.Error())
 		}
+		aggregationStr = aggregation.String()
 	}
 
 	cleanAddr := util.AddrToPath(cfg.Addr)
