@@ -29,7 +29,7 @@ func TestTomlToGrafanaNetRoute(t *testing.T) {
 
 	var testCases []testCase
 
-	cfg, err := route.NewGrafanaNetConfig("http://foo/metrics", "apiKey", schemasFile.Name(), aggregationFile.Name())
+	cfg, err := route.NewGrafanaNetConfig("http://foo/metrics", "apiKey", schemasFile.Name())
 	if err != nil {
 		t.Fatal(err) // should never happen
 	}
@@ -41,9 +41,7 @@ key = 'routeKey'
 type = 'grafanaNet'
 addr = 'http://foo/metrics'
 apikey = 'apiKey'
-schemasFile = '` + schemasFile.Name() + `'
-aggregationFile = '` + aggregationFile.Name() + `'
-`,
+schemasFile = '` + schemasFile.Name() + `'`,
 		expCfg: cfg,
 		expErr: false,
 	})

@@ -210,12 +210,13 @@ func InitRoutes(table table.Interface, config Config, meta toml.MetaData) error 
 			table.AddRoute(route)
 		case "grafanaNet":
 
-			cfg, err := route.NewGrafanaNetConfig(routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile, routeConfig.AggregationFile)
+			cfg, err := route.NewGrafanaNetConfig(routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile)
 			if err != nil {
 				log.Error(err.Error())
 				log.Info("grafanaNet route configuration details: https://github.com/grafana/carbon-relay-ng/blob/master/docs/config.md#grafananet-route")
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
 			}
+			cfg.AggregationFile = routeConfig.AggregationFile
 
 			// by merely looking at a boolean field we can't differentiate between:
 			// * the user not specifying the option (which should leave our config unaffected)
