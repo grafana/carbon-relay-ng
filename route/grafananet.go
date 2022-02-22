@@ -54,7 +54,7 @@ type GrafanaNetConfig struct {
 	ErrBackoffFactor float64
 }
 
-func NewGrafanaNetConfig(addr, apiKey, schemasFile string) (GrafanaNetConfig, error) {
+func NewGrafanaNetConfig(addr, apiKey, schemasFile, aggregationFile string) (GrafanaNetConfig, error) {
 
 	u, err := url.Parse(addr)
 	if err != nil || !u.IsAbs() || u.Host == "" { // apparently "http://" is a valid absolute URL (with empty host), but we don't want that
@@ -77,10 +77,18 @@ func NewGrafanaNetConfig(addr, apiKey, schemasFile string) (GrafanaNetConfig, er
 		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: could not read schemasFile %q: %s", schemasFile, err.Error())
 	}
 
+	if aggregationFile != "" {
+		_, err = conf.ReadAggregations(aggregationFile)
+		if err != nil {
+			return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: could not read aggregationFile %q: %s", aggregationFile, err.Error())
+		}
+	}
+
 	return GrafanaNetConfig{
-		Addr:        addr,
-		ApiKey:      apiKey,
-		SchemasFile: schemasFile,
+		Addr:            addr,
+		ApiKey:          apiKey,
+		SchemasFile:     schemasFile,
+		AggregationFile: aggregationFile,
 
 		BufSize:      1e7, // since a message is typically around 100B this is 1GB
 		FlushMaxNum:  5000,
@@ -163,7 +171,7 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, cfg GrafanaNetConfig) (R
 	if cfg.AggregationFile != "" {
 		aggregation, err = conf.ReadAggregations(cfg.AggregationFile)
 		if err != nil {
-			return nil, fmt.Errorf("NewGrafanaNet: could not read aggregationFile %q: %s", cfg.AggregationFile, err.Error())
+			return nil, err
 		}
 		aggregationStr = aggregation.String()
 	}

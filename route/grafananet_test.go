@@ -63,25 +63,34 @@ func TestNewGrafanaNetConfig(t *testing.T) {
 		{otherFile.Name(), true},
 		{schemasFile.Name(), false},
 	}
+	aggregationFileOptions := []option{
+		{"", false},
+		{"some-path-that-definitely-will-not-exist-for-carbon-relay-ng", true},
+		{otherFile.Name(), true},
+		{aggregationFile.Name(), false},
+	}
 
 	var testCases []testCase
 	for _, addr := range addrOptions {
 		for _, key := range keyOptions {
 			for _, schemasFile := range schemasFileOptions {
-				testCases = append(testCases, testCase{
-					in: input{
-						addr:        addr.str,
-						apiKey:      key.str,
-						schemasFile: schemasFile.str,
-					},
-					expErr: addr.expErr || key.expErr || schemasFile.expErr,
-				})
+				for _, aggregationFile := range aggregationFileOptions {
+					testCases = append(testCases, testCase{
+						in: input{
+							addr:            addr.str,
+							apiKey:          key.str,
+							schemasFile:     schemasFile.str,
+							aggregationFile: aggregationFile.str,
+						},
+						expErr: addr.expErr || key.expErr || schemasFile.expErr || aggregationFile.expErr,
+					})
+				}
 			}
 		}
 	}
 
 	for _, testCase := range testCases {
-		_, err := NewGrafanaNetConfig(testCase.in.addr, testCase.in.apiKey, testCase.in.schemasFile)
+		_, err := NewGrafanaNetConfig(testCase.in.addr, testCase.in.apiKey, testCase.in.schemasFile, testCase.in.aggregationFile)
 		if !testCase.expErr && err != nil {
 			t.Errorf("test with input %+v expected no error but got %s", testCase.in, err.Error())
 		}

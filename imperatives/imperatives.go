@@ -510,7 +510,9 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table table.Interface) error {
 	}
 	schemasFile := string(t.Value)
 
-	cfg, err := route.NewGrafanaNetConfig(addr, apiKey, schemasFile)
+	// The aggregationFile argument is blank - it will be set later if it's found
+	// in the list of optional arguments
+	cfg, err := route.NewGrafanaNetConfig(addr, apiKey, schemasFile, "")
 	if err != nil {
 		return errFmtAddRouteGrafanaNet
 	}

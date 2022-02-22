@@ -93,7 +93,7 @@ func TestApplyAddRouteGrafanaNet(t *testing.T) {
 	var testCases []testCase
 
 	// trivial case. mostly defaults, so let's rely on the helper that generates the (mostly default) config
-	cfg, err := route.NewGrafanaNetConfig("http://foo/metrics", "apiKey", schemasFile.Name())
+	cfg, err := route.NewGrafanaNetConfig("http://foo/metrics", "apiKey", schemasFile.Name(), "")
 	if err != nil {
 		t.Fatal(err) // should never happen
 	}
