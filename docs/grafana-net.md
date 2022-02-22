@@ -26,7 +26,7 @@ The config there is the best starting point.
 note:
 * it requires a grafana.com api key and a url for ingestion, which will be shown on the instance details page in your Grafana Cloud portal.
 * api key should have editor or admin role.
-* it needs to read your graphite storage-schemas.conf and storage-aggregation.conf as described above.
+* it needs to read your graphite storage-schemas.conf (and optionally, storage-aggregation.conf) as described above.
 * any metric messages that don't validate are filtered out. see the admin ui to troubleshoot if needed.
 * by specifying a prefix, sub or regex you can only send a subset of your metrics to Grafana Cloud Graphite.
 
