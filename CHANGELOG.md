@@ -5,7 +5,7 @@
 * adopt the term "blocklist" for blocking metrics.  The existing config options "blacklist" and commands "addBlack" are replaced
   with "blocklist" and "addBlock" respectively.  The old option and command will keep working for the time being, but users are recommended
   to update their configuration because the old options will be removed at the next major release. #473
-
+* grafanaNet route: make publishing storage-aggregation.conf optional. This is a breaking change for the `addRoute grafanaNet ...` command, as `aggregationFile=` now needs to be prepended to the aggregation file value. (Note that this command is only used by the experimental tcp admin interface, and the deprecated config init commands.) #485
 # v1.1: July 7, 2021
 
 * improve error messages, especially for storage-aggregation.conf #470

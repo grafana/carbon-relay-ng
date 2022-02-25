@@ -64,8 +64,8 @@ data:
   storage-aggregation.conf: |
     [default]
     pattern = .*
-    xFilesFactor = 0.5
-    aggregationMethod = average
+    xFilesFactor = 0.1
+    aggregationMethod = avg
 kind: ConfigMap
 metadata:
   name: carbon-relay-ng-config

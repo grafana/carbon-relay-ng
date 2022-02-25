@@ -33,21 +33,21 @@ import (
 
 type GrafanaNetConfig struct {
 	// mandatory
-	Addr            string
-	ApiKey          string
-	SchemasFile     string
-	AggregationFile string
+	Addr        string
+	ApiKey      string
+	SchemasFile string
 
 	// optional
-	BufSize      int           // amount of messages we can buffer up.
-	FlushMaxNum  int           // flush after this many metrics seen
-	FlushMaxWait time.Duration // flush after this much time passed
-	Timeout      time.Duration // timeout for http operations
-	Concurrency  int           // number of concurrent connections to tsdb-gw
-	OrgID        int
-	SSLVerify    bool
-	Blocking     bool
-	Spool        bool // ignored for now
+	AggregationFile string
+	BufSize         int           // amount of messages we can buffer up.
+	FlushMaxNum     int           // flush after this many metrics seen
+	FlushMaxWait    time.Duration // flush after this much time passed
+	Timeout         time.Duration // timeout for http operations
+	Concurrency     int           // number of concurrent connections to tsdb-gw
+	OrgID           int
+	SSLVerify       bool
+	Blocking        bool
+	Spool           bool // ignored for now
 
 	// optional http backoff params for posting metrics and schemas
 	ErrBackoffMin    time.Duration
@@ -72,18 +72,16 @@ func NewGrafanaNetConfig(addr, apiKey, schemasFile, aggregationFile string) (Gra
 		return GrafanaNetConfig{}, errors.New("NewGrafanaNetConfig: invalid value for 'schemasFile'. value must be set to the path to your storage-schemas.conf file")
 	}
 
-	if aggregationFile == "" {
-		return GrafanaNetConfig{}, errors.New("NewGrafanaNetConfig: invalid value for 'aggregationFile'. value must be set to the path to your storage-aggregation.conf file")
-	}
-
 	_, err = getSchemas(schemasFile)
 	if err != nil {
 		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: could not read schemasFile %q: %s", schemasFile, err.Error())
 	}
 
-	_, err = conf.ReadAggregations(aggregationFile)
-	if err != nil {
-		return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: could not read aggregationFile %q: %s", aggregationFile, err.Error())
+	if aggregationFile != "" {
+		_, err = conf.ReadAggregations(aggregationFile)
+		if err != nil {
+			return GrafanaNetConfig{}, fmt.Errorf("NewGrafanaNetConfig: could not read aggregationFile %q: %s", aggregationFile, err.Error())
+		}
 	}
 
 	return GrafanaNetConfig{
@@ -166,10 +164,16 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, cfg GrafanaNetConfig) (R
 	if err != nil {
 		return nil, err
 	}
+	schemasStr := schemas.String()
 
-	aggregation, err := conf.ReadAggregations(cfg.AggregationFile)
-	if err != nil {
-		return nil, err
+	var aggregation conf.Aggregations
+	var aggregationStr string
+	if cfg.AggregationFile != "" {
+		aggregation, err = conf.ReadAggregations(cfg.AggregationFile)
+		if err != nil {
+			return nil, err
+		}
+		aggregationStr = aggregation.String()
 	}
 
 	cleanAddr := util.AddrToPath(cfg.Addr)
@@ -178,9 +182,9 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, cfg GrafanaNetConfig) (R
 		baseRoute:      baseRoute{"GrafanaNet", sync.Mutex{}, atomic.Value{}, key},
 		Cfg:            cfg,
 		schemas:        schemas,
-		schemasStr:     schemas.String(),
+		schemasStr:     schemasStr,
 		aggregation:    aggregation,
-		aggregationStr: aggregation.String(),
+		aggregationStr: aggregationStr,
 
 		in:       make([]chan []byte, cfg.Concurrency),
 		shutdown: make(chan struct{}),
@@ -245,7 +249,10 @@ func NewGrafanaNet(key string, matcher matcher.Matcher, cfg GrafanaNetConfig) (R
 	}
 
 	go r.updateSchemas()
-	go r.updateAggregation()
+
+	if cfg.AggregationFile != "" {
+		go r.updateAggregation()
+	}
 
 	return r, nil
 }

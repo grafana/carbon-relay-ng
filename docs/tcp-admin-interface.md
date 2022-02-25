@@ -75,7 +75,7 @@ commands:
                    spoolsleep=<int>              sleep this many microseconds(!) in between ingests from bulkdata/redo buffers into spool. default 500
                    unspoolsleep=<int>            sleep this many microseconds(!) in between reads from the spool, when replaying spooled data. default 10
 
-    addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile aggregationFile [spool=true/false sslverify=true/false blocking=true/false concurrency=int bufSize=int flushMaxNum=int flushMaxWait=int timeout=int orgId=int errBackoffMin=int errBackoffFactor=float]")
+    addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile [aggregationFile=string spool=true/false sslverify=true/false blocking=true/false concurrency=int bufSize=int flushMaxNum=int flushMaxWait=int timeout=int orgId=int errBackoffMin=int errBackoffFactor=float]")
 
     addDest <routeKey> <dest>                    not implemented yet
 

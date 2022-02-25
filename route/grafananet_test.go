@@ -64,7 +64,7 @@ func TestNewGrafanaNetConfig(t *testing.T) {
 		{schemasFile.Name(), false},
 	}
 	aggregationFileOptions := []option{
-		{"", true},
+		{"", false},
 		{"some-path-that-definitely-will-not-exist-for-carbon-relay-ng", true},
 		{otherFile.Name(), true},
 		{aggregationFile.Name(), false},
@@ -88,6 +88,7 @@ func TestNewGrafanaNetConfig(t *testing.T) {
 			}
 		}
 	}
+
 	for _, testCase := range testCases {
 		_, err := NewGrafanaNetConfig(testCase.in.addr, testCase.in.apiKey, testCase.in.schemasFile, testCase.in.aggregationFile)
 		if !testCase.expErr && err != nil {

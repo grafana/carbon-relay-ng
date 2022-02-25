@@ -12,6 +12,10 @@ local k = import 'ksonnet-util/kausal.libsonnet';
     crng_replicas: 1,
     crng_config: importstr 'files/carbon-relay-ng.ini',
     storage_schemas: importstr 'files/storage-schemas.conf',
+    // You can set storage_aggregation to null if you don't have an
+    // aggregation file and want to use Grafana Cloud's default aggregations
+    // instead. (And in that case, don't forget to remove the aggregationFile
+    // setting in carbon-relay-ng.ini.)
     storage_aggregation: importstr 'files/storage-aggregation.conf',
   },
 
@@ -23,7 +27,7 @@ local k = import 'ksonnet-util/kausal.libsonnet';
       {
         'carbon-relay-ng.ini': $._config.crng_config,
         'storage-schemas.conf': $._config.storage_schemas,
-        'storage-aggregation.conf': $._config.storage_aggregation,
+        [if $._config.storage_aggregation != null then 'storage-aggregation.conf']: $._config.storage_aggregation,
       }
     ),
 

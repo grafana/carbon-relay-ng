@@ -200,7 +200,7 @@ key            |     Y     |  string     | N/A     | string to identify this rou
 addr           |     Y     |  string     | N/A     | http url to connect to
 apiKey         |     Y     |  string     | N/A     | API key to use (taken from grafana cloud portal)
 schemasFile    |     Y     |  string     | N/A     | storage-schemas.conf file that describes your metrics (the [storage-schemas.conf from Graphite](http://graphite.readthedocs.io/en/latest/config-carbon.html#storage-schemas-conf)
-aggregationFile|     Y     |  string     | N/A     | storage-aggregation.conf file that describes your metrics (the [storage-aggregation.conf from Graphite](https://graphite.readthedocs.io/en/latest/config-carbon.html#storage-aggregation-conf)
+aggregationFile|     N     |  string     | ""      | storage-aggregation.conf file that describes your metrics (the [storage-aggregation.conf from Graphite](https://graphite.readthedocs.io/en/latest/config-carbon.html#storage-aggregation-conf). if the value is empty, the most recent aggregation file uploaded to grafana cloud will be used instead. if no aggregation files have ever been uploaded, the default grafana cloud aggregations will be applied.
 prefix         |     N     |  string     | ""      | only route metrics that start with this
 notPrefix      |     N     |  string     | ""      | only route metrics that do not start with this
 sub            |     N     |  string     | ""      | only route metrics that contain this in their name

@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/carbon-relay-ng/aggregator"
 	"github.com/grafana/carbon-relay-ng/destination"
 	"github.com/grafana/carbon-relay-ng/matcher"
+	conf "github.com/grafana/carbon-relay-ng/pkg/mt-conf"
 	"github.com/grafana/carbon-relay-ng/rewriter"
 	"github.com/grafana/carbon-relay-ng/route"
 	"github.com/grafana/carbon-relay-ng/table"
@@ -92,6 +93,7 @@ const (
 	optPubSubFormat
 	optPubSubCodec
 	optPubSubFlushMaxSize
+	optAggregationFile
 )
 
 // we should make sure we apply changes atomatically. e.g. when changing dest between address A and pickle=false and B with pickle=true,
@@ -159,6 +161,7 @@ var tokens = []toki.Def{
 	{Token: optPubSubFormat, Pattern: "format="},
 	{Token: optPubSubCodec, Pattern: "codec="},
 	{Token: optPubSubFlushMaxSize, Pattern: "flushMaxSize="},
+	{Token: optAggregationFile, Pattern: "aggregationFile="},
 	{Token: str, Pattern: "\".*\""},
 	{Token: sep, Pattern: "##"},
 	{Token: avgFn, Pattern: "avg "},
@@ -179,7 +182,7 @@ var tokens = []toki.Def{
 var errFmtAddBlock = errors.New("addBlock <prefix|sub|regex> <pattern>")
 var errFmtAddAgg = errors.New("addAgg <avg|count|delta|derive|last|max|min|stdev|sum> [prefix/sub/regex=,..] <fmt> <interval> <wait> [cache=true/false] [dropRaw=true/false]")
 var errFmtAddRoute = errors.New("addRoute <type> <key> [prefix/sub/regex=,..]  <dest>  [<dest>[...]] where <dest> is <addr> [prefix/sub,regex,flush,reconn,pickle,spool=...]") // note flush and reconn are ints, pickle and spool are true/false. other options are strings
-var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile aggregationFile [spool=true/false sslverify=true/false blocking=true/false concurrency=int bufSize=int flushMaxNum=int flushMaxWait=int timeout=int orgId=int errBackoffMin=int errBackoffFactor=float]")
+var errFmtAddRouteGrafanaNet = errors.New("addRoute grafanaNet key [prefix/notPrefix/sub/notSub/regex/notRegex]  addr apiKey schemasFile [aggregationFile=string spool=true/false sslverify=true/false blocking=true/false concurrency=int bufSize=int flushMaxNum=int flushMaxWait=int timeout=int orgId=int errBackoffMin=int errBackoffFactor=float]")
 var errFmtAddRouteKafkaMdm = errors.New("addRoute kafkaMdm key [prefix/sub/regex=,...]  broker topic codec schemasFile partitionBy orgId [blocking=true/false bufSize=int flushMaxNum=int flushMaxWait=int timeout=int tlsEnabled=bool tlsSkipVerify=bool tlsClientKey='<key>' tlsClientCert='<file>' saslEnabled=bool saslMechanism='mechanism' saslUsername='username' saslPassword='password']")
 var errFmtAddRoutePubSub = errors.New("addRoute pubsub key [prefix/sub/regex=,...]  project topic [codec=gzip/none format=plain/pickle blocking=true/false bufSize=int flushMaxSize=int flushMaxWait=int]")
 var errFmtAddDest = errors.New("addDest <routeKey> <dest>") // not implemented yet
@@ -507,20 +510,29 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table table.Interface) error {
 	}
 	schemasFile := string(t.Value)
 
-	t = s.Next()
-	if t.Token != word {
-		return errFmtAddRouteGrafanaNet
-	}
-	aggregationFile := string(t.Value)
-	t = s.Next()
-
-	cfg, err := route.NewGrafanaNetConfig(addr, apiKey, schemasFile, aggregationFile)
+	// The aggregationFile argument is blank - it will be set later if it's found
+	// in the list of optional arguments
+	cfg, err := route.NewGrafanaNetConfig(addr, apiKey, schemasFile, "")
 	if err != nil {
 		return errFmtAddRouteGrafanaNet
 	}
 
+	t = s.Next()
+
 	for ; t.Token != toki.EOF; t = s.Next() {
 		switch t.Token {
+		case optAggregationFile:
+			t = s.Next()
+			if t.Token == word {
+				aggregationFile := string(t.Value)
+				_, err := conf.ReadAggregations(aggregationFile)
+				if err != nil {
+					return err
+				}
+				cfg.AggregationFile = aggregationFile
+			} else {
+				return errFmtAddRouteGrafanaNet
+			}
 		case optBlocking:
 			t = s.Next()
 			if t.Token == optTrue || t.Token == optFalse {
