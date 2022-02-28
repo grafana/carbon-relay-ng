@@ -45,8 +45,8 @@ local k = import 'ksonnet-util/kausal.libsonnet';
   local container = k.core.v1.container,
   carbon_relay_ng_container::
     container
-    .new('carbon-relay-ng', $._images.carbon_relay_ng)
-    .withImagePullPolicy('Always') +
+    .new('carbon-relay-ng', $._images.carbon_relay_ng) +
+    container.withImagePullPolicy('Always') +
     container.withPorts(k.core.v1.containerPort.new('carbon', 2003)) +
     container.withEnv([
       container.envType.fromFieldPath('INSTANCE', 'metadata.name'),
@@ -57,7 +57,7 @@ local k = import 'ksonnet-util/kausal.libsonnet';
     k.util.resourcesLimits('4', '10Gi') +
     k.util.resourcesRequests('1', '1Gi'),
 
-  local deployment = k.apps.v1beta1.deployment,
+  local deployment = k.apps.v1.deployment,
   carbon_relay_ng_deployment:
     deployment.new('carbon-relay-ng', $._config.crng_replicas, [$.carbon_relay_ng_container]) +
     deployment.mixin.metadata.withNamespace($._config.namespace) +
