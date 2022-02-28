@@ -36,8 +36,8 @@ local crng = import 'carbon-relay-ng/crng.libsonnet';
   crng: crng {
     _config+:: {
       namespace: 'mynamespace',
-      crng_route_host: 'https://tsdb-1-<instance name>.hosted-metrics.grafana.net/metrics',
-      crng_user_id: 'api_key',
+      crng_route_host: '<graphite endpoint>/metrics',
+      crng_user_id: '<user id>',
       crng_api_key: '<base64 api key>',
     },
     _images+:: {
