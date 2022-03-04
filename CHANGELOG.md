@@ -1,4 +1,5 @@
-# unreleased
+# v1.2: minor maintenance release. March 4, 2022
+
 * build using latest version of go, 1.17.3. #482
 * tweaks to connection closing. #481
 * experimental consistentHashing-v2 hashing scheme which aims to be compatible with more recent versions of carbon-relay. #477
