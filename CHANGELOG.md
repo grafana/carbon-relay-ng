@@ -6,6 +6,8 @@
   with "blocklist" and "addBlock" respectively.  The old option and command will keep working for the time being, but users are recommended
   to update their configuration because the old options will be removed at the next major release. #473
 * grafanaNet route: make publishing storage-aggregation.conf optional. This is a breaking change for the `addRoute grafanaNet ...` command, as `aggregationFile=` now needs to be prepended to the aggregation file value. (Note that this command is only used by the experimental tcp admin interface, and the deprecated config init commands.) #485
+* Update Jsonnet lib to work with latest Tanka version #487
+
 # v1.1: July 7, 2021
 
 * improve error messages, especially for storage-aggregation.conf #470
