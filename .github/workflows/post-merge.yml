@@ -1,0 +1,25 @@
+name: Post Merge
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '.github/**'
+
+permissions:
+  contents: read
+
+concurrency: carbon-relay-ng-post-merge
+
+jobs:
+  tests:
+    uses: ./.github/workflows/run-tests.yml
+
+  tag-release:
+    needs:
+      - tests
+    permissions:
+      contents: write
+    uses: alphagov/pay-ci/.github/workflows/_create-alpha-release-tag.yml@master
+

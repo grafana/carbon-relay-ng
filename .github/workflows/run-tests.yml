@@ -1,0 +1,55 @@
+name: Github Actions Tests
+
+on:
+  workflow_call:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Container image tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # 3.0.2
+      - name: Extract golang build version
+        id: extract-golang-build-version
+        run: |
+          set -euo pipefail
+
+          echo "Pulling yq docker image"
+          docker pull --quiet mikefarah/yq
+          echo "Done"
+
+          echo -n "Detecting circle golang build image used in upstream..."
+          CIRCLECI_GOLANG_BUILD_IMAGE=$(
+            docker run \
+              -v "${PWD}/.circleci/:/circleci" \
+              mikefarah/yq \
+              '.jobs.build.docker[] | select(.image | test("^circleci/golang:")) | .image' \
+              /circleci/config.yml
+          )
+          echo "$CIRCLECI_GOLANG_BUILD_IMAGE"
+
+          echo -n "Extracting golang version..."
+          GOLANG_VERSION=$(echo "$CIRCLECI_GOLANG_BUILD_IMAGE" | cut -f 2 -d ":")
+          echo "$GOLANG_VERSION"
+
+          echo "::set-output name=go-version::${GOLANG_VERSION}"
+      - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a # 3.2.1
+        with:
+          go-version: ${{ steps.extract-golang-build-version.outputs.go-version }}
+      - name: build-carbon-relay-ng
+        run: |
+          set -euo pipefail
+
+          go get github.com/shuLhan/go-bindata/cmd/go-bindata
+          make build-linux
+      - name: run-tests
+        working-directory: ./govuk-tests
+        run: |
+          set -euo pipefail
+
+          ./run-tests.sh
