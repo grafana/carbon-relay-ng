@@ -22,4 +22,3 @@ jobs:
     permissions:
       contents: write
     uses: alphagov/pay-ci/.github/workflows/_create-alpha-release-tag.yml@master
-
