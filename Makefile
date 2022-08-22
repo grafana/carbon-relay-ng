@@ -1,4 +1,4 @@
-VERSION=$(shell git describe --tags --always | sed 's/^v//')
+VERSION=$(shell git describe --tags --always --match "v*" | sed 's/^v//')
 export GO111MODULE := on
 
 build:

@@ -1,0 +1,16 @@
+services:
+  carbon-relay:
+    build: "../."
+    expose:
+      - 2003
+    volumes:
+      - "./carbon-relay-ng-tests.ini:/conf/carbon-relay-ng.ini"
+  test-receiver:
+    image: node:16-slim
+    expose:
+      - 20030
+    depends_on:
+      - "carbon-relay"
+    entrypoint: ["node", "/app/test-receiver.js"]
+    volumes:
+      - "./test-receiver.js:/app/test-receiver.js"
