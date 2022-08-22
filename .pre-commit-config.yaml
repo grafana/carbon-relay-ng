@@ -1,0 +1,8 @@
+repos:
+- repo: https://github.com/Yelp/detect-secrets
+  # version 1.3.0
+  rev: 5348c62a100a1881b98ad9ec5b8855b524aaf8e7
+  hooks:
+    - id: detect-secrets
+      args: ['--baseline', '.secrets.baseline']
+      exclude: package.lock.json
