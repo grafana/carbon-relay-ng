@@ -38,7 +38,7 @@ jobs:
           echo "$GOLANG_VERSION"
 
           echo "::set-output name=go-version::${GOLANG_VERSION}"
-      - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a # 3.2.1
+      - uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613 # 3.4.0
         with:
           go-version: ${{ steps.extract-golang-build-version.outputs.go-version }}
       - name: build-carbon-relay-ng
