@@ -3,7 +3,7 @@ jobs:
   test:
     working_directory: /go/src/github.com/grafana/carbon-relay-ng
     docker:
-      - image: circleci/golang:1.17.3
+      - image: circleci/golang:1.18
     steps:
       - checkout
       - run: make test
@@ -11,7 +11,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/grafana/carbon-relay-ng
     docker:
-      - image: circleci/golang:1.17.3
+      - image: circleci/golang:1.18
     steps:
       - checkout
       - run: go get github.com/shuLhan/go-bindata/cmd/go-bindata
