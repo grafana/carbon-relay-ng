@@ -8,3 +8,31 @@
 test_spool
 spool/*.dat
 *~
+
+# Default ignore
+.vscode/*
+.uptodate
+.published
+.pkg
+.idea
+.cache
+*.output
+.drone/secrets.yml
+
+# Project specific secrets
+**/*.jwt
+app
+
+# Remove built binaries
+dist
+
+# Tag file used in drone and local env
+.tag
+.tags
+
+# Ignore vendor
+vendor
+
+# Ignore generated test coverage files
+cover.out
+cover.out.tmp

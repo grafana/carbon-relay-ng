@@ -9,7 +9,6 @@ require (
 	github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d
 	github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965
 	github.com/Shopify/sarama v1.23.0
-	github.com/alyu/configparser v0.0.0-20191103060215-744e9a66e7bc // indirect
 	github.com/aws/aws-sdk-go v1.15.54
 	github.com/bmizerany/assert v0.0.0-20120716205630-e17e99893cb6
 	github.com/cespare/xxhash v0.0.0-00010101000000-000000000000 // indirect
