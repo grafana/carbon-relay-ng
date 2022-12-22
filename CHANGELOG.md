@@ -1,3 +1,8 @@
+# v1.2.1: patch maintenance release. December 22, 2022
+
+* build using go 1.18 #497
+* from now on embed binaries on github releases using goreleaser #498
+
 # v1.2: minor maintenance release. March 4, 2022
 
 * build using latest version of go, 1.17.3. #482
