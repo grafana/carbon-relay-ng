@@ -76,4 +76,4 @@ When interesting changes have been merged to master, and they have had a chance 
 * If you pushed the tag on a pre-existing commit in the master branch that was already pushed, trigger re-run of the CI pipeline to build packages with new version tag
 * Wait for CircleCI to complete successfully
 * Create release on GitHub. copy entry from CHANGELOG.md to GitHub release page
-* Upload platform specific (Linux, Mac, FreeBSD and windows) binaries from CircleCI to the release as well (or simply include a link to the CircleCI page that lists all the assets)
+* Release binaries will be appended to the github release tag once CI completes successfully
