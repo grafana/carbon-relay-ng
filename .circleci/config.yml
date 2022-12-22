@@ -1,4 +1,38 @@
-version: 2
+version: 2.1
+workflows:
+  pr_acceptance:
+    jobs:
+      - test
+      - build
+  build_accept_deploy:
+    jobs:
+      - test
+      - build
+      - package:
+          requires:
+            - build
+      - deploy:
+          requires:
+            - test
+            - build
+            - package
+  publish_release:
+    jobs:
+      - test:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
+      - github_binaries:
+          requires:
+            - test
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
+
 jobs:
   test:
     working_directory: /home/circleci/go/src/github.com/grafana/carbon-relay-ng
@@ -96,21 +130,12 @@ jobs:
 
                docker push grafana/carbon-relay-ng:$tag
             fi
-workflows:
-  version: 2
-  pr_acceptance:
-    jobs:
-      - test
-      - build
-  build_accept_deploy:
-    jobs:
-      - test
-      - build
-      - package:
-          requires:
-            - build
-      - deploy:
-          requires:
-            - test
-            - build
-            - package
+
+  github_binaries:
+      docker:
+        - image: cimg/go:1.18
+      steps:
+        - checkout
+        - run: curl -sfL https://goreleaser.com/static/run | bash
+        # For dry runs use the following and comment the above
+        # - run: curl -sfL https://goreleaser.com/static/run | bash -s -- --rm-dist --skip-publish --snapshot

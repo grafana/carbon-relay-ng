@@ -18,7 +18,7 @@ require (
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v0.0.0-20140624184626-14cafe285133
 	github.com/grafana/configparser v0.0.0-20210707122942-2593eb86a3ee
-	github.com/grafana/metrictank v1.0.1-0.20210114150051-52835b9a8775
+	github.com/grafana/metrictank v1.0.1-0.20221128152741-61182cf5f40e
 	github.com/jpillora/backoff v0.0.0-20160414055204-0496a6c14df0
 	github.com/kisielk/og-rek v0.0.0-20170405223746-ec792bc6e6aa
 	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
@@ -61,7 +61,7 @@ require (
 	golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3 // indirect
 	golang.org/x/oauth2 v0.0.0-20180118004544-b28fcf2b08a1 // indirect
 	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4 // indirect
-	golang.org/x/sys v0.0.0-20190403152447-81d4e9dc473e // indirect
+	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/text v0.3.1-0.20171227012246-e19ae1496984 // indirect
 	google.golang.org/api v0.0.0-20180122000316-bc96e9251952 // indirect
 	google.golang.org/appengine v1.0.1-0.20170921170648-24e4144ec923 // indirect
