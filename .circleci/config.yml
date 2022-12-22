@@ -1,20 +1,20 @@
 version: 2
 jobs:
   test:
-    working_directory: /go/src/github.com/grafana/carbon-relay-ng
+    working_directory: /home/circleci/go/src/github.com/grafana/carbon-relay-ng
     docker:
-      - image: circleci/golang:1.17.3
+      - image: cimg/go:1.18
     steps:
       - checkout
       - run: make test
 
   build:
-    working_directory: /go/src/github.com/grafana/carbon-relay-ng
+    working_directory: /home/circleci/go/src/github.com/grafana/carbon-relay-ng
     docker:
-      - image: circleci/golang:1.17.3
+      - image: cimg/go:1.18
     steps:
       - checkout
-      - run: go get github.com/shuLhan/go-bindata/cmd/go-bindata
+      - run: go install github.com/go-bindata/go-bindata/...@latest
       - run: make build-linux # note, this runs go-bindata again
       # ideally we'd make sure that if go-bindata generated new content, we fail.
       # because devs should have run go-bindata and checked in changes already.
@@ -35,8 +35,9 @@ jobs:
 
   package:
     docker:
-      - image: circleci/ruby:2.5
+      - image: cimg/ruby:2.5
     steps:
+      - run: sudo apt-get update
       - run: sudo apt-get install rpm
       - checkout
       - attach_workspace:
@@ -54,7 +55,7 @@ jobs:
 
   deploy:
     docker:
-      - image: circleci/ruby:2.3
+      - image: cimg/ruby:2.5
     steps:
       - setup_remote_docker
       - attach_workspace:
