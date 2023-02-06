@@ -5,9 +5,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/grafana/carbon-relay-ng/go-whisper"
 	"github.com/grafana/carbon-relay-ng/pkg/test"
-	"github.com/stretchr/testify/assert"
 )
 
 func assertRetentionsEq(t *testing.T, ret whisper.Retentions, s string) {
@@ -71,9 +72,11 @@ func parseSchemas(t *testing.T, content string) (WhisperSchemas, error) {
 }
 
 type testcase struct {
-	name       string
-	pattern    string
-	retentions string
+	name            string
+	pattern         string
+	retentions      string
+	intervals       string
+	relativeToQuery string
 }
 
 func assertSchemas(t *testing.T, content string, expected []testcase, msg ...interface{}) WhisperSchemas {
@@ -87,6 +90,8 @@ func assertSchemas(t *testing.T, content string, expected []testcase, msg ...int
 		assert.Equal(t, expected[i].name, schemas[i].Name)
 		assert.Equal(t, expected[i].pattern, schemas[i].Pattern.String())
 		assertRetentionsEq(t, schemas[i].Retentions, expected[i].retentions)
+		assert.Equal(t, expected[i].intervals, schemas[i].IntervalsStr)
+		assert.Equal(t, expected[i].relativeToQuery, schemas[i].RelativeToQueryStr)
 	}
 
 	return schemas
@@ -103,8 +108,8 @@ pattern = .*
 retentions = 1m:30d,1h:5y
 	`,
 		[]testcase{
-			{"carbon", "^carbon\\.", "60s:90d"},
-			{"default", ".*", "1m:30d,1h:5y"},
+			{name: "carbon", pattern: "^carbon\\.", retentions: "60s:90d"},
+			{name: "default", pattern: ".*", retentions: "1m:30d,1h:5y"},
 		},
 	)
 }
@@ -117,7 +122,7 @@ pattern = ^carbon\.
 retentions = 60s:90d
 	`,
 		[]testcase{
-			{"carbon", "^carbon\\.", "60s:90d"},
+			{name: "carbon", pattern: "^carbon\\.", retentions: "60s:90d"},
 		},
 	)
 }
@@ -151,11 +156,11 @@ retentions = 1s:7d
 priority = 10
 	`,
 		[]testcase{
-			{"gitlab", "^gitlab\\.", "1s:7d"},
-			{"collector", "^.*\\.collector\\.", "5s:5m,5m:30d"},
-			{"jira", "^server\\.", "1s:7d"},
-			{"carbon", "^carbon\\.", "1m:90d"},
-			{"db", "^db\\.", "1m:30d,1h:5y"},
+			{name: "gitlab", pattern: "^gitlab\\.", retentions: "1s:7d"},
+			{name: "collector", pattern: "^.*\\.collector\\.", retentions: "5s:5m,5m:30d"},
+			{name: "jira", pattern: "^server\\.", retentions: "1s:7d"},
+			{name: "carbon", pattern: "^carbon\\.", retentions: "1m:90d"},
+			{name: "db", pattern: "^db\\.", retentions: "1m:30d,1h:5y"},
 		},
 	)
 
@@ -171,6 +176,32 @@ priority = 10
 
 	matched, ok = schemas.Match("unknown")
 	assert.False(ok)
+}
+
+func TestParseSchemasGrafanaNet(t *testing.T) {
+	assertSchemas(t, `
+[carbon]
+pattern = ^carbon\.
+retentions = 60s:90d
+relativeToQuery = true
+
+[a]
+pattern = ^a\.
+retentions = 60s:90d
+intervals = 1594166400:30min,1625702400:15s
+
+[default]
+pattern = .*
+retentions = 1m:30d,1h:5y
+intervals = 1594166400:30min,1625702400:1s
+relativeToQuery = false
+	`,
+		[]testcase{
+			{name: "carbon", pattern: "^carbon\\.", retentions: "60s:90d", relativeToQuery: "true"},
+			{name: "a", pattern: "^a\\.", retentions: "60s:90d", intervals: "1594166400:30min,1625702400:15s"},
+			{name: "default", pattern: ".*", retentions: "1m:30d,1h:5y", relativeToQuery: "false", intervals: "1594166400:30min,1625702400:1s"},
+		},
+	)
 }
 
 func TestSchemasNotFound(t *testing.T) {
@@ -269,6 +300,7 @@ priority =
 `, nil, "Empty priority")
 }
 
+// TODO: add intervals and relative to query
 // TestSchemasString tests that routes.String() matches what we expect
 func TestSchemasString(t *testing.T) {
 	input := `# This is a wild comment
@@ -285,7 +317,10 @@ priority = 6
 [hello]
 pattern = .*
 retentions = 10m:90d,10m:365y
-priority = 1`
+priority = 1
+relativeToQuery = true
+intervals = 1594166400:30min,1625702400:15s
+`
 
 	exp := `[fancy-patt-with-legacy-retentions]
 pattern = ^patt2.*$
@@ -295,6 +330,8 @@ priority = 25769803775
 pattern = .*
 retentions = 10m:90d,10m:365y
 priority = 4294967294
+intervals = 1594166400:30min,1625702400:15s
+relativeToQuery = true
 [first]
 pattern = ^carbon\.
 retentions = 600s:90d,5m:365y
