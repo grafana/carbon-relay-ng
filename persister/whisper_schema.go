@@ -21,6 +21,11 @@ type Schema struct {
 	RetentionStr string
 	Retentions   whisper.Retentions
 	Priority     int64
+
+	// Optional fields that are only used by Grafana Cloud Graphite and Grafana Enterprise Metrics
+	// Documentation https://grafana.com/docs/enterprise-metrics/latest/graphite/schemas/#storage-schemas
+	IntervalsStr       string
+	RelativeToQueryStr string
 }
 
 // WhisperSchemas contains schema settings
@@ -53,6 +58,12 @@ func (s WhisperSchemas) String() string {
 		buf.WriteString(fmt.Sprintf("pattern = %s\n", schema.Pattern.String()))
 		buf.WriteString(fmt.Sprintf("retentions = %s\n", schema.RetentionStr))
 		buf.WriteString(fmt.Sprintf("priority = %d\n", schema.Priority))
+		if schema.IntervalsStr != "" {
+			buf.WriteString(fmt.Sprintf("intervals = %s\n", schema.IntervalsStr))
+		}
+		if schema.RelativeToQueryStr != "" {
+			buf.WriteString(fmt.Sprintf("relativeToQuery = %s\n", schema.RelativeToQueryStr))
+		}
 	}
 	return buf.String()
 }
@@ -126,6 +137,12 @@ func ReadWhisperSchemas(filename string) (WhisperSchemas, error) {
 			}
 		}
 		schema.Priority = int64(p)<<32 - int64(i) // to sort records with same priority by position in file
+
+		schema.IntervalsStr = section["intervals"]
+		// The CRNG ini parser is case-insensitive, which is why we look up "relativetoquery" instead of "relativeToQuery".
+		// The GrafanaNet/GEM schemas parser is case-sensitive.
+		// In future CRNG releases, we might change this parser to be case-sensitive as well.
+		schema.RelativeToQueryStr = section["relativetoquery"]
 
 		schemas = append(schemas, schema)
 	}

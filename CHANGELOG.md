@@ -1,3 +1,6 @@
+# unreleased 
+* retain Grafana Cloud/GEM fields when parsing storage-schemas.conf #502
+
 # v1.2.1: patch maintenance release. December 22, 2022
 
 * build using go 1.18 #497
