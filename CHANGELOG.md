@@ -1,4 +1,7 @@
-# v1.3.0: February 9, 2023 
+# unreleased
+
+# v1.3.0: February 9, 2023
+
 * retain Grafana Cloud/GEM fields when parsing storage-schemas.conf #502
 
 # v1.2.1: patch maintenance release. December 22, 2022
