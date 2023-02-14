@@ -1,4 +1,4 @@
-FROM alpine:3.17.1
+FROM alpine:3.17.2
 RUN apk upgrade --no-cache
 RUN apk --update add --no-cache ca-certificates
 ADD carbon-relay-ng /bin/
