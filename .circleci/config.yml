@@ -1,27 +1,11 @@
 version: 2.1
 workflows:
-  pr_acceptance:
-    jobs:
-      - test
-      - build
-  build_accept_deploy:
-    jobs:
-      - test
-      - build
-      - package:
-          requires:
-            - build
-      - deploy:
-          requires:
-            - test
-            - build
-            - package
   publish_release:
     jobs:
       - test:
           filters:
             branches:
-              ignore: /.*/
+              only: fl/test-tag-trigger-package
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
       - build:
@@ -29,7 +13,7 @@ workflows:
             - test
           filters:
             branches:
-              ignore: /.*/
+              only: fl/test-tag-trigger-package
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
       - package:
@@ -38,7 +22,7 @@ workflows:
             - build
           filters:
             branches:
-              ignore: /.*/
+              only: fl/test-tag-trigger-package
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
       - deploy:
@@ -48,7 +32,7 @@ workflows:
             - package
           filters:
             branches:
-              ignore: /.*/
+              only: fl/test-tag-trigger-package
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
       - github_binaries:
@@ -59,7 +43,7 @@ workflows:
             - deploy
           filters:
             branches:
-              ignore: /.*/
+              only: fl/test-tag-trigger-package
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
 
@@ -169,6 +153,6 @@ jobs:
         - image: cimg/go:1.18
       steps:
         - checkout
-        - run: curl -sfL https://goreleaser.com/static/run | bash
+        # - run: curl -sfL https://goreleaser.com/static/run | bash
         # For dry runs use the following and comment the above
-        # - run: curl -sfL https://goreleaser.com/static/run | bash -s -- --rm-dist --skip-publish --snapshot
+        - run: curl -sfL https://goreleaser.com/static/run | bash -s -- --rm-dist --skip-publish --snapshot
