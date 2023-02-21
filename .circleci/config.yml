@@ -171,4 +171,4 @@ jobs:
         - checkout
         # - run: curl -sfL https://goreleaser.com/static/run | bash
         # For dry runs use the following and comment the above
-        - run: curl -sfL https://goreleaser.com/static/run | bash -s -- --rm-dist --skip-publish --snapshot
+        - run: curl -sfL https://goreleaser.com/static/run | bash -s -- --clean --skip-publish --snapshot
