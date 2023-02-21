@@ -79,7 +79,9 @@ jobs:
     steps:
       - checkout
       - run: go install github.com/go-bindata/go-bindata/...@latest
-      - run: make build-linux # note, this runs go-bindata again
+      - run: make LINUX_PACKAGE_GOARCH=amd64 build-linux
+      - run: make LINUX_PACKAGE_GOARCH=arm64 build-linux
+      # note, build-linux runs go-bindata again
       # ideally we'd make sure that if go-bindata generated new content, we fail.
       # because devs should have run go-bindata and checked in changes already.
       # but because git checkout will change the timestamps and mode, it'll generate slight differences, and it's hard to filter those out
@@ -94,7 +96,8 @@ jobs:
             - carbon-relay-ng
             - carbon-relay-ng.exe
             - carbon-relay-ng-darwin
-            - carbon-relay-ng-linux
+            - carbon-relay-ng-linux-amd64
+            - carbon-relay-ng-linux-arm64
             - carbon-relay-ng-bsd
 
   package:

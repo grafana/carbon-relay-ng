@@ -34,7 +34,6 @@ carbon-relay-ng-linux-%:
 	cd ui/web && go-bindata -pkg web admin_http_assets/...
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	GOOS=linux GOARCH=$* CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" -o $@ ./cmd/carbon-relay-ng
-	cp $@ carbon-relay-ng-linux
 
 test:
 	go test -v -race ./...
