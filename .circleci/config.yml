@@ -24,9 +24,39 @@ workflows:
               ignore: /.*/
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
+      - build:
+          requires:
+            - test
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
+      - package:
+          requires:
+            - test
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
+      - deploy:
+          requires:
+            - test
+            - build
+            - package
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
       - github_binaries:
           requires:
             - test
+            - build
+            - package
+            - deploy
           filters:
             branches:
               ignore: /.*/
