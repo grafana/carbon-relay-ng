@@ -37,7 +37,7 @@ jobs:
           GOLANG_VERSION=$(echo "$CIRCLECI_GOLANG_BUILD_IMAGE" | cut -f 2 -d ":")
           echo "$GOLANG_VERSION"
 
-          echo "::set-output name=go-version::${GOLANG_VERSION}"
+          echo "go-version=${GOLANG_VERSION}" >> $GITHUB_OUTPUT
       - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # 3.5.0
         with:
           go-version: ${{ steps.extract-golang-build-version.outputs.go-version }}
