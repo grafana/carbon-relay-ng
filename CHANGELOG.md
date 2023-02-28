@@ -1,5 +1,8 @@
 # unreleased
 
+# v1.4.0: February 28, 2023
+* Add ARM64 packages #479, #507
+
 # v1.3.0: February 9, 2023
 
 * retain Grafana Cloud/GEM fields when parsing storage-schemas.conf #502
