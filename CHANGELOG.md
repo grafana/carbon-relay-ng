@@ -1,5 +1,8 @@
 # unreleased
 
+# v1.4.1: March 9, 2023
+* Bump `golang.org/x/crypto` to 0.1.0 #514
+
 # v1.4.0: February 28, 2023
 * Add ARM64 packages #479, #507
 
