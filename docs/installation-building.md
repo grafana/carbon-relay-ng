@@ -71,9 +71,12 @@ During normal development, maintain CHANGELOG.md, and mark interesting -to users
 Grafana Labs regularly deploys the latest code from `master`, but cannot possibly do extensive testing of all functionality in production, so users are encouraged to run master also, and report any issues they hit.
 When interesting changes have been merged to master, and they have had a chance to be tested for a while, we tag a release, as follows:
 
-* Update CHANGELOG.md from `unreleased` to the version
-* Create annotated git tag in the form `v<version>`, push it to GitHub first and then push master to GitHub
-* If you pushed the tag on a pre-existing commit in the master branch that was already pushed, trigger re-run of the CI pipeline to build packages with new version tag
-* Wait for CircleCI to complete successfully
-* Create release on GitHub. copy entry from CHANGELOG.md to GitHub release page
-* Upload platform specific (Linux, Mac, FreeBSD and windows) binaries from CircleCI to the release as well (or simply include a link to the CircleCI page that lists all the assets)
+* Update CHANGELOG.md from `unreleased` to the version. Create a PR and merge into the master branch. [Example PR](https://github.com/grafana/carbon-relay-ng/pull/512)
+* Create a git tag for the new version from the CHANGELOG commit merged from the PR and push the tag to GitHub.
+    Example for adding the v1.4.0 tag:
+    ```
+    git tag -a v1.4.0 -m "v1.4.0"
+    git push origin v1.4.0
+    ```
+* Pushing the tag will automatically trigger the CI pipeline to build packages with new version tag.
+* Release binaries will be appended to the Github release tag once CI completes successfully.

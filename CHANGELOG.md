@@ -1,3 +1,20 @@
+# unreleased
+
+# v1.4.1: March 9, 2023
+* Bump `golang.org/x/crypto` to 0.1.0 #514
+
+# v1.4.0: February 28, 2023
+* Add ARM64 packages #479, #507
+
+# v1.3.0: February 9, 2023
+
+* retain Grafana Cloud/GEM fields when parsing storage-schemas.conf #502
+
+# v1.2.1: patch maintenance release. December 22, 2022
+
+* build using go 1.18 #497
+* from now on embed binaries on github releases using goreleaser #498
+
 # v1.2: minor maintenance release. March 4, 2022
 
 * build using latest version of go, 1.17.3. #482
