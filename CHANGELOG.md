@@ -1,4 +1,6 @@
 # unreleased
+# v1.4.2: April 19, 2023
+* Update go images used to build carbon-relay-ng to 1.20.3 #517
 
 # v1.4.1: March 9, 2023
 * Bump `golang.org/x/crypto` to 0.1.0 #514
