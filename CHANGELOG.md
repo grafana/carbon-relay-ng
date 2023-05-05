@@ -1,4 +1,8 @@
 # unreleased
+
+# v1.4.3: May 5, 2023
+* Bump go mod version to 1.20 and update go images used to build carbon-relay-ng to 1.20.4 #518
+
 # v1.4.2: April 19, 2023
 * Update go images used to build carbon-relay-ng to 1.20.3 #517
 
