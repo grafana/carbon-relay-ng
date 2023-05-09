@@ -59,13 +59,13 @@ func parseRetentionPart(retentionPart string) (int, error) {
 }
 
 /*
-  Parse a retention definition as you would find in the storage-schemas.conf of a Carbon install.
-  Note that this only parses a single retention definition, if you have multiple definitions (separated by a comma)
-  you will have to split them yourself.
+Parse a retention definition as you would find in the storage-schemas.conf of a Carbon install.
+Note that this only parses a single retention definition, if you have multiple definitions (separated by a comma)
+you will have to split them yourself.
 
-  ParseRetentionDef("10s:14d") Retention{10, 120960}
+ParseRetentionDef("10s:14d") Retention{10, 120960}
 
-  See: http://graphite.readthedocs.org/en/1.0/config-carbon.html#storage-schemas-conf
+See: http://graphite.readthedocs.org/en/1.0/config-carbon.html#storage-schemas-conf
 */
 func ParseRetentionDef(retentionDef string) (*Retention, error) {
 	parts := strings.Split(retentionDef, ":")
@@ -128,10 +128,10 @@ func validateRetentions(retentions Retentions) error {
 }
 
 /*
-  A retention level.
+A retention level.
 
-  Retention levels describe a given archive in the database. How detailed it is and how far back
-  it records.
+Retention levels describe a given archive in the database. How detailed it is and how far back
+it records.
 */
 type Retention struct {
 	secondsPerPoint int
@@ -178,8 +178,8 @@ func (r retentionsByPrecision) Less(i, j int) bool {
 }
 
 /*
-   Implementation of modulo that works like Python
-   Thanks @timmow for this
+Implementation of modulo that works like Python
+Thanks @timmow for this
 */
 func mod(a, b int) int {
 	return a - (b * int(math.Floor(float64(a)/float64(b))))
