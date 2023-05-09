@@ -1,6 +1,6 @@
 module github.com/grafana/carbon-relay-ng
 
-go 1.18
+go 1.20
 
 require (
 	cloud.google.com/go v0.18.1-0.20180119164648-b1067c1d21b5
