@@ -38,7 +38,7 @@ jobs:
           echo "$GOLANG_VERSION"
 
           echo "go-version=${GOLANG_VERSION}" >> $GITHUB_OUTPUT
-      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # 4.0.0
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # 4.0.1
         with:
           go-version: ${{ steps.extract-golang-build-version.outputs.go-version }}
       - name: build-carbon-relay-ng
