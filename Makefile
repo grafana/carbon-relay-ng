@@ -176,4 +176,13 @@ run-docker:
 clean:
 	rm -f carbon-relay-ng carbon-relay-ng.exe
 
-.PHONY: all deb gh-pages install man test build clean build-linux packages packages-amd64 packages-arm64
+packages-minor-autoupdate:
+	go mod edit -json \
+		| jq ".Require \
+			| map(select(.Indirect | not).Path) \
+			| map(select( \
+				. != \"github.com/BurntSushi/toml\" \
+			))" \
+		| tr -d '\n' | tr -d '  '
+
+.PHONY: all deb gh-pages install man test build clean build-linux packages packages-amd64 packages-arm64 packages-minor-autoupdate
