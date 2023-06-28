@@ -25,7 +25,7 @@ require (
 	github.com/prometheus/procfs v0.0.0-20190425082905-87a4384529e0
 	github.com/sirupsen/logrus v1.1.2-0.20181020050904-08e90462da34
 	github.com/streadway/amqp v0.0.0-20170521212453-dfe15e360485
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.8.4
 	github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
 )
@@ -73,7 +73,7 @@ require (
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0 // indirect
 	gopkg.in/jcmturner/gokrb5.v7 v7.2.3 // indirect
 	gopkg.in/jcmturner/rpc.v1 v1.1.0 // indirect
-	gopkg.in/yaml.v2 v2.2.2 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/cespare/xxhash => github.com/cespare/xxhash/v2 v2.1.1
