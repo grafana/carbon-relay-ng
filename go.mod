@@ -15,7 +15,7 @@ require (
 	github.com/elazarl/go-bindata-assetfs v0.0.0-20151224045452-57eb5e1fc594
 	github.com/golang/snappy v0.0.1
 	github.com/google/go-cmp v0.5.5
-	github.com/gorilla/handlers v1.4.0
+	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v0.0.0-20140624184626-14cafe285133
 	github.com/grafana/configparser v0.0.0-20210707122942-2593eb86a3ee
 	github.com/grafana/metrictank v1.0.1-0.20221128152741-61182cf5f40e
@@ -38,6 +38,7 @@ require (
 	github.com/eapache/go-resiliency v1.1.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
+	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
 	github.com/golang/protobuf v0.0.0-20171113180720-1e59b77b52bf // indirect
 	github.com/googleapis/gax-go v2.0.0+incompatible // indirect
