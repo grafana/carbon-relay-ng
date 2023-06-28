@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go v1.34.0
 	github.com/bmizerany/assert v0.0.0-20120716205630-e17e99893cb6
 	github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff
-	github.com/elazarl/go-bindata-assetfs v0.0.0-20151224045452-57eb5e1fc594
+	github.com/elazarl/go-bindata-assetfs v1.0.1
 	github.com/golang/snappy v0.0.1
 	github.com/google/go-cmp v0.5.5
 	github.com/gorilla/handlers v1.5.1
