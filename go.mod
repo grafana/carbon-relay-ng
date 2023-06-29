@@ -23,7 +23,7 @@ require (
 	github.com/kisielk/og-rek v0.0.0-20170405223746-ec792bc6e6aa
 	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
 	github.com/prometheus/procfs v0.11.0
-	github.com/sirupsen/logrus v1.1.2-0.20181020050904-08e90462da34
+	github.com/sirupsen/logrus v1.9.3
 	github.com/streadway/amqp v0.0.0-20170521212453-dfe15e360485
 	github.com/stretchr/testify v1.8.4
 	github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c
@@ -46,7 +46,6 @@ require (
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/jcmturner/gofork v0.0.0-20190328161633-dc7c13fece03 // indirect
 	github.com/jmespath/go-jmespath v0.3.0 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/kr/pretty v0.0.0-20160325215624-add1dbc86daf // indirect
 	github.com/kr/text v0.0.0-20150905224508-bb797dc4fb83 // indirect
 	github.com/pelletier/go-toml v1.9.1 // indirect
@@ -62,7 +61,6 @@ require (
 	golang.org/x/oauth2 v0.0.0-20180118004544-b28fcf2b08a1 // indirect
 	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
-	golang.org/x/term v0.1.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	google.golang.org/api v0.0.0-20180122000316-bc96e9251952 // indirect
 	google.golang.org/appengine v1.0.1-0.20170921170648-24e4144ec923 // indirect
