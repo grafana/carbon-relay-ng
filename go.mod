@@ -9,7 +9,7 @@ require (
 	github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d
 	github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965
 	github.com/Shopify/sarama v1.23.0
-	github.com/aws/aws-sdk-go v1.34.0
+	github.com/aws/aws-sdk-go v1.44.292
 	github.com/bmizerany/assert v0.0.0-20120716205630-e17e99893cb6
 	github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff
 	github.com/elazarl/go-bindata-assetfs v1.0.1
@@ -45,7 +45,7 @@ require (
 	github.com/gorilla/context v0.0.0-20141217160251-215affda49ad // indirect
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/jcmturner/gofork v0.0.0-20190328161633-dc7c13fece03 // indirect
-	github.com/jmespath/go-jmespath v0.3.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kr/pretty v0.0.0-20160325215624-add1dbc86daf // indirect
 	github.com/kr/text v0.0.0-20150905224508-bb797dc4fb83 // indirect
 	github.com/pelletier/go-toml v1.9.1 // indirect
