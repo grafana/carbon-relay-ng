@@ -16,7 +16,7 @@ require (
 	github.com/golang/snappy v0.0.4
 	github.com/google/go-cmp v0.5.9
 	github.com/gorilla/handlers v1.5.1
-	github.com/gorilla/mux v0.0.0-20140624184626-14cafe285133
+	github.com/gorilla/mux v1.8.0
 	github.com/grafana/configparser v0.0.0-20210707122942-2593eb86a3ee
 	github.com/grafana/metrictank v1.0.1-0.20221128152741-61182cf5f40e
 	github.com/jpillora/backoff v0.0.0-20160414055204-0496a6c14df0
@@ -42,7 +42,6 @@ require (
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
 	github.com/golang/protobuf v0.0.0-20171113180720-1e59b77b52bf // indirect
 	github.com/googleapis/gax-go v2.0.0+incompatible // indirect
-	github.com/gorilla/context v0.0.0-20141217160251-215affda49ad // indirect
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/jcmturner/gofork v0.0.0-20190328161633-dc7c13fece03 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
