@@ -9,7 +9,7 @@ require (
 	github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d
 	github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965
 	github.com/Shopify/sarama v1.23.0
-	github.com/aws/aws-sdk-go v1.44.292
+	github.com/aws/aws-sdk-go v1.44.130
 	github.com/bmizerany/assert v0.0.0-20120716205630-e17e99893cb6
 	github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff
 	github.com/elazarl/go-bindata-assetfs v1.0.1
@@ -22,7 +22,7 @@ require (
 	github.com/jpillora/backoff v0.0.0-20160414055204-0496a6c14df0
 	github.com/kisielk/og-rek v0.0.0-20170405223746-ec792bc6e6aa
 	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
-	github.com/prometheus/procfs v0.11.0
+	github.com/prometheus/procfs v0.0.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/streadway/amqp v0.0.0-20170521212453-dfe15e360485
 	github.com/stretchr/testify v1.8.4
@@ -56,11 +56,11 @@ require (
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/tinylib/msgp v1.1.0 // indirect
 	github.com/xdg/stringprep v1.0.0 // indirect
-	golang.org/x/crypto v0.1.0 // indirect
+	golang.org/x/crypto v0.0.0-20190404164418-38d8ce5564a5 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20180118004544-b28fcf2b08a1 // indirect
 	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/api v0.0.0-20180122000316-bc96e9251952 // indirect

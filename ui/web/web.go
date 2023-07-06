@@ -266,20 +266,21 @@ func parseRewriterRequest(r *http.Request) (rewriter.RW, *handlerError) {
 	return rw, nil
 }
 
-/* needs updating, but using what api?
-func updateRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
-	payload, err := parseRouteRequest(r)
-	if err != nil {
-		return nil, err
-	}
+/*
+needs updating, but using what api?
 
-	e := routes.Update(payload.Key, &payload.Addr, &payload.Patt)
-	if e != nil {
-		return nil, &handlerError{e, "Could not update route (" + e.Error() + ")", http.StatusBadRequest}
-	}
-	return routes.Map[payload.Key], nil
-}
+	func updateRoute(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
+		payload, err := parseRouteRequest(r)
+		if err != nil {
+			return nil, err
+		}
 
+		e := routes.Update(payload.Key, &payload.Addr, &payload.Patt)
+		if e != nil {
+			return nil, &handlerError{e, "Could not update route (" + e.Error() + ")", http.StatusBadRequest}
+		}
+		return routes.Map[payload.Key], nil
+	}
 */
 func addAggregate(w http.ResponseWriter, r *http.Request) (interface{}, *handlerError) {
 	aggregate, err := parseAggregateRequest(r)
