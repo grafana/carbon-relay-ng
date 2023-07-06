@@ -20,3 +20,12 @@ updates:
   - dependencies
   - govuk-pay
   - github_actions
+- package-ecosystem: "gomod"
+  directory: "/"
+  schedule:
+    interval: "daily"
+  labels:
+  - dependencies
+  - govuk-pay
+  - gomod
+  open-pull-requests-limit: 0
