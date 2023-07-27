@@ -67,7 +67,7 @@ jobs:
   test:
     working_directory: /home/circleci/go/src/github.com/grafana/carbon-relay-ng
     docker:
-      - image: cimg/go:1.20.3
+      - image: cimg/go:1.20.5
     steps:
       - checkout
       - run: make test
@@ -75,7 +75,7 @@ jobs:
   build:
     working_directory: /home/circleci/go/src/github.com/grafana/carbon-relay-ng
     docker:
-      - image: cimg/go:1.20.4
+      - image: cimg/go:1.20.5
     steps:
       - checkout
       - run: go install github.com/go-bindata/go-bindata/...@latest
@@ -166,7 +166,7 @@ jobs:
 
   github_binaries:
       docker:
-        - image: cimg/go:1.20.4
+        - image: cimg/go:1.20.5
       steps:
         - checkout
         - run: curl -sfL https://goreleaser.com/static/run | bash
