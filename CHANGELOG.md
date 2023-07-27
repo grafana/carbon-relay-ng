@@ -1,5 +1,9 @@
 # unreleased
 
+# v1.4.4: July 27, 2023
+* Update go images used to build carbon-relay-ng to 1.20.5 #518
+* Various minor dependency updates
+
 # v1.4.3: May 5, 2023
 * Bump go mod version to 1.20 and update go images used to build carbon-relay-ng to 1.20.4 #518
 
@@ -47,7 +51,7 @@
 
 # v0.14.0: May 31, 2021
 
-Important: 
+Important:
 Docker images are no longer being pushed to raintank/carbon-relay-ng, only to grafana/carbon-relay-ng
 See https://hub.docker.com/r/grafana/carbon-relay-ng for all Docker image updates.
 
@@ -119,7 +123,7 @@ See https://hub.docker.com/r/grafana/carbon-relay-ng for all Docker image update
 
 # v0.10.1: aggregator optional drop raw, grafanaNet concurrent send fix, auto-windows binaries. May 2 2018
 
-* build windows binaries in CircleCI and save artifacts 
+* build windows binaries in CircleCI and save artifacts
 * add support for dropping raw series consumed by an aggregator (#268, #273 )
 * refactor concurrent sending for grafanaNet route. this should improve throughput and reduce buffering in some cases (#272)
 * change max retry interval from 1 minute to 30 seconds, so service can restore quicker.
@@ -127,42 +131,42 @@ See https://hub.docker.com/r/grafana/carbon-relay-ng for all Docker image update
 # v0.10.0: google pubsub, amazon cloudwatch, percentile aggregators and spool name fix (finally!). Apr 2 2018
 
 ## new routes:
-* google pubsub #256 
-* amazon cloudwatch #261, #266 
+* google pubsub #256
+* amazon cloudwatch #261, #266
 
 ## aggregators:
-* percentile aggregators #265 
+* percentile aggregators #265
 
 ## other
-* fix overlapping spool names / stats / log entries when you use same endpoint tcp address multiple times. #258 
+* fix overlapping spool names / stats / log entries when you use same endpoint tcp address multiple times. #258
  **names of spool files and stats will change to include route name**
 * packages for debian v9/v/10/stretch #246
-* grafanaNet defaults update: timeout 5s->10s, flushMaxNum 10k->5k, concurrency 10->100 #254 , #263 
+* grafanaNet defaults update: timeout 5s->10s, flushMaxNum 10k->5k, concurrency 10->100 #254 , #263
 
 # v0.9.4: Release O'Time. Dec 15, 2017
 
-various network setting fixes  351f807168c8185a8712f7ca5bd9ea6cff020d3e , #243 
+various network setting fixes  351f807168c8185a8712f7ca5bd9ea6cff020d3e , #243
 make windows builds work #245
-Add tmpfiles.d config for centos/7 #235 
-Use useradd to support multiple distros #233 
-support variable substitution in instance, and default to $HOST #236 
-fix blocklist #237 
-add support for specifying explicit prefixFilter and/or substringFilter in aggregations, which can help perf a lot. #239 
-show target address for GrafanaNet routes #244 
+Add tmpfiles.d config for centos/7 #235
+Use useradd to support multiple distros #233
+support variable substitution in instance, and default to $HOST #236
+fix blocklist #237
+add support for specifying explicit prefixFilter and/or substringFilter in aggregations, which can help perf a lot. #239
+show target address for GrafanaNet routes #244
 
 # v0.9.3: massive aggregator improvements. Oct 19, 2017
 
 ## aggregators
 * massive aggregation improvements. they now run faster (sometimes by 20x), use less memory and can handle much more load. see #227 , #230
-* add derive (rate) aggregator #230 
+* add derive (rate) aggregator #230
 * aggregator regex cache, which lowers cpu usage and increases the max workload, in exchange for a bit more ram usage. #227 By default, the cache is enabled for aggregators set up via commands (init commands in the config) but disabled for aggregators configured via config sections (due to a limitation in our config library)
 
 ## docs
-* add dashboard explanation screenshot #208 
+* add dashboard explanation screenshot #208
 
 ## packaging and versioning
 
-* fix logging on cent6/amzn/el6 #224 43b265d267f27c7090f15c21ff356fee1da48734  
+* fix logging on cent6/amzn/el6 #224 43b265d267f27c7090f15c21ff356fee1da48734
 * Fix the creation of `/var/run/carbon-relay-ng` directory #213
 * `version` argument to get the version
 
@@ -178,7 +182,7 @@ rule of thumb: rate in metrics/s times how many seconds you want to be able to b
   - blocking: when the route's buffer fills up, ingestion into the route will slow down/block, providing backpressure to the clients, and also blocking other routes from making progress. use this only if you know what you're doing and have smart clients that can gracefully handle the backpressure
 * monitor queue drops for non-blocking queues
 * [document route options better](https://github.com/grafana/carbon-relay-ng/blob/master/docs/routes.md)
-* monitor queue size and ram used #218 
+* monitor queue size and ram used #218
 * preliminary support for parsing out the new graphite tag format (kafkaMdm and grafanaNet route only)
 
 the included, dashboard is updated accordingly. and also on https://grafana.com/dashboards/338
@@ -199,9 +203,9 @@ unspoolsleep=<int>            sleep this many microseconds(!) in between reads f
 
 # v0.9.0: some fixes (requires config change). Jul 6, 2017
 
-* unrouteable messages should be debug not notice #198 
-* rewrite before aggregator; fix race condition, sometimes incorrect aggregations and occasional panics #199 
-* config parsing fix #175 
+* unrouteable messages should be debug not notice #198
+* rewrite before aggregator; fix race condition, sometimes incorrect aggregations and occasional panics #199
+* config parsing fix #175
 * kafka-mdm: support multiple brokers. fix #195
 * bugfix: make init section work again. fix #201
 **attention init section must be changed** from:
@@ -219,20 +223,20 @@ note : this was previously released as 0.8.9 but the breaking config change warr
 # v0.8.8: 3 new aggregators, better input plugins and packaging; and better config method. Jun 19, 2017
 
 ## inputs
-better pickle input #174 
-better amqp input options #168, update amqp library 3e876644819001f0ad21ac0bc427a5eff9cb7332 
+better pickle input #174
+better amqp input options #168, update amqp library 3e876644819001f0ad21ac0bc427a5eff9cb7332
 kafka input logging fixes #188
 
-## config 
-more proper config format so you don't have to use init commands. #183 
+## config
+more proper config format so you don't have to use init commands. #183
 
 ## aggregations
 
-add last, delta and stdev aggregator #191, #194 
+add last, delta and stdev aggregator #191, #194
 
 ## packaging
-Add tmpfiles.d config for deb package #179 
-prevent erasing of configs #181 
+Add tmpfiles.d config for deb package #179
+prevent erasing of configs #181
 add root certs to docker container for better grafanaCloud experience #180
 
 # v0.8.7: better docs and stuff
@@ -257,7 +261,7 @@ See #165
 
 - build packages for ubuntu, debian, centos and automatically push to circleCI upon successfull builds (https://github.com/grafana/carbon-relay-ng#installation)
 - add pickle input (#140)
-- publish [dashboard on grafana.net](https://grafana.net/dashboards/338) 
+- publish [dashboard on grafana.net](https://grafana.net/dashboards/338)
 - fix build for go <1.6 (#118)
 - allow overriding docker commandline (#124)
 - validation: tuneable validation of metrics2.0 messages. switch default legacy validation to medium, strict was too strict for many. show validation level in UI. Add time-order validation on a per-key basis
