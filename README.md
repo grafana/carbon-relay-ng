@@ -1,3 +1,7 @@
+# Archived
+
+This fork of carbon-relay-ng has been archived as we no longer use carbon-relay
+
 [![Circle CI](https://circleci.com/gh/grafana/carbon-relay-ng.svg?style=shield)](https://circleci.com/gh/grafana/carbon-relay-ng)
 [![Go Report Card](https://goreportcard.com/badge/github.com/grafana/carbon-relay-ng)](https://goreportcard.com/report/github.com/grafana/carbon-relay-ng)
 [![GoDoc](https://godoc.org/github.com/grafana/carbon-relay-ng?status.svg)](https://godoc.org/github.com/grafana/carbon-relay-ng)
