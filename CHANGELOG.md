@@ -1,5 +1,8 @@
 # unreleased
 
+# v1.4.5: March 13, 2023
+* Update go version to build from 1.21.8 for carbon-relay-ng images #544
+
 # v1.4.4: July 27, 2023
 * Update go images used to build carbon-relay-ng to 1.20.5 #518
 * Various minor dependency updates
