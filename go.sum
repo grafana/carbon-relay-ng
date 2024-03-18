@@ -72,8 +72,8 @@ github.com/jpillora/backoff v0.0.0-20160414055204-0496a6c14df0 h1:6RQEuHrU0HbzXQ
 github.com/jpillora/backoff v0.0.0-20160414055204-0496a6c14df0/go.mod h1:2iMrUgbbvHEiQClaW2NsSzMyGHqN+rDFqY705q49KG0=
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
-github.com/kisielk/og-rek v0.0.0-20170405223746-ec792bc6e6aa h1:o8boycusaZKNARjZljTWFprAVGG9qwHXq/HZpGCp4Rk=
-github.com/kisielk/og-rek v0.0.0-20170405223746-ec792bc6e6aa/go.mod h1:Fo0gkB8QTO7j5Ha+ObtDMW5GtL5UoY66JUU8ZoLJeLQ=
+github.com/kisielk/og-rek v1.2.0 h1:CTvDIin+YnetsSQAYbe+QNAxXU3B50C5hseEz8xEoJw=
+github.com/kisielk/og-rek v1.2.0/go.mod h1:6ihsOSzSAxR/65S3Bn9zNihoEqRquhDQZ2c6I2+MG3c=
 github.com/kr/pretty v0.0.0-20160325215624-add1dbc86daf h1:FpLJsEsdtsfWNJ+m+MECl0mSzLu9korRoIKSVbYhwFI=
 github.com/kr/pretty v0.0.0-20160325215624-add1dbc86daf/go.mod h1:Bvhd+E3laJ0AVkG0c9rmtZcnhV0HQ3+c3YxxqTvc/gA=
 github.com/kr/text v0.0.0-20150905224508-bb797dc4fb83 h1:zIzxNaBxRxmbPPCgya4J5KccVN23qXA/V75oApRNahI=
