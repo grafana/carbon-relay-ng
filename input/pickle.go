@@ -157,7 +157,7 @@ func (p *Pickle) Handle(c io.Reader) error {
 			switch data[1].(type) {
 			case string:
 				value = data[1].(string)
-			case uint8, uint16, uint32, uint64, int8, int16, int32, int64:
+			case uint8, uint16, uint32, uint64, int8, int16, int32, int64, (*big.Int):
 				value = fmt.Sprintf("%d", data[1])
 			case float32, float64:
 				value = fmt.Sprintf("%f", data[1])
