@@ -144,11 +144,61 @@ type amqpConnector func(a *Amqp) error
 // AMQPConnector connects using the given configuration
 func AMQPConnector(a *Amqp) error {
 	log.Infof("dialing AMQP: %v", a.uri)
-	conn, err := amqp.Dial(a.uri.String())
-	if err != nil {
-		return err
+
+	var conn *amqp.Connection
+	var err error
+
+	for {
+		config := amqp.Config{
+			Heartbeat: time.Duration(a.config.Amqp.Amqp_heartbeat) * time.Second,
+		}
+
+		conn, err = amqp.DialConfig(a.uri.String(), config)
+		if err == nil {
+			break
+		}
+
+		if !a.config.Amqp.Amqp_retry {
+			return err
+		}
+
+		log.Errorf("Failed to connect to AMQP server: %v. Retrying in %d seconds...", err, a.config.Amqp.Amqp_retrydelay)
+		time.Sleep(time.Duration(a.config.Amqp.Amqp_retrydelay) * time.Second)
 	}
+
 	a.conn = conn
+
+	// Create a channel to receive close notifications from the connection
+	closeCh := make(chan *amqp.Error)
+	conn.NotifyClose(closeCh)
+
+	// Start a goroutine to monitor the connection state
+	go func() {
+		for {
+			select {
+			case <-closeCh:
+				log.Println("AMQP connection closed.")
+
+				if !a.config.Amqp.Amqp_retry {
+					log.Println("Retry is disabled. Exiting reconnection attempt.")
+					return
+				}
+
+				log.Println("Attempting to reconnect...")
+
+				for {
+					err := AMQPConnector(a)
+					if err == nil {
+						log.Println("Successfully reconnected to AMQP server.")
+						return
+					}
+
+					log.Errorf("Failed to reconnect to AMQP server: %v. Retrying in %d seconds...", err, a.config.Amqp.Amqp_retrydelay)
+					time.Sleep(time.Duration(a.config.Amqp.Amqp_retrydelay) * time.Second)
+				}
+			}
+		}
+	}()
 
 	amqpChan, err := conn.Channel()
 	if err != nil {
