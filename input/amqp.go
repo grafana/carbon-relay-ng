@@ -155,6 +155,7 @@ func AMQPConnector(a *Amqp) error {
 
 		conn, err = amqp.DialConfig(a.uri.String(), config)
 		if err == nil {
+			log.Printf("Successfully connected to AMQP server: %v.", a.uri)
 			break
 		}
 
@@ -186,16 +187,8 @@ func AMQPConnector(a *Amqp) error {
 
 				log.Println("Attempting to reconnect...")
 
-				for {
-					err := AMQPConnector(a)
-					if err == nil {
-						log.Println("Successfully reconnected to AMQP server.")
-						return
-					}
-
-					log.Errorf("Failed to reconnect to AMQP server: %v. Retrying in %d seconds...", err, a.config.Amqp.Amqp_retrydelay)
-					time.Sleep(time.Duration(a.config.Amqp.Amqp_retrydelay) * time.Second)
-				}
+				AMQPConnector(a)
+				return
 			}
 		}
 	}()
