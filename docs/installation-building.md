@@ -44,7 +44,7 @@ These commands will install the binary as `$GOPATH/bin/carbon-relay-ng`
     cd carbon-relay-ng
     # e.g. to check out a specific version instead of master:
     # git checkout v1.1
-    go get github.com/shuLhan/go-bindata/cmd/go-bindata
+    go install github.com/shuLhan/go-bindata/cmd/go-bindata
     make
 
 
