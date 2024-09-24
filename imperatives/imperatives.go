@@ -14,12 +14,12 @@ import (
 	"github.com/grafana/carbon-relay-ng/rewriter"
 	"github.com/grafana/carbon-relay-ng/route"
 	"github.com/grafana/carbon-relay-ng/table"
+	"github.com/grafana/carbon-relay-ng/tokre"
 	"github.com/grafana/metrictank/cluster/partitioner"
-	"github.com/taylorchu/toki"
 )
 
 const (
-	addBlack toki.Token = iota
+	addBlack tokre.Token = iota
 	addBlock
 	addAgg
 	addRouteSendAllMatch
@@ -99,7 +99,7 @@ const (
 // we should make sure we apply changes atomatically. e.g. when changing dest between address A and pickle=false and B with pickle=true,
 // we should never half apply the change if one of them fails.
 
-var tokens = []toki.Def{
+var tokens = []tokre.Def{
 	{Token: addBlack, Pattern: "addBlack"},
 	{Token: addBlock, Pattern: "addBlock"},
 	{Token: addAgg, Pattern: "addAgg"},
@@ -192,7 +192,7 @@ var errFmtModRoute = errors.New("modRoute <routeKey> <prefix/sub/regex=>")      
 var errOrgId0 = errors.New("orgId must be a number > 0")
 
 func Apply(table table.Interface, cmd string) error {
-	s := toki.NewScanner(tokens)
+	s := tokre.NewScanner(tokens)
 	s.SetInput(strings.Replace(cmd, "  ", " ## ", -1)) // token library skips whitespace but for us double space is significant
 	t := s.Next()
 	switch t.Token {
@@ -229,7 +229,7 @@ func Apply(table table.Interface, cmd string) error {
 	}
 }
 
-func readAddAgg(s *toki.Scanner, table table.Interface) error {
+func readAddAgg(s *tokre.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != sumFn && t.Token != avgFn && t.Token != minFn && t.Token != maxFn && t.Token != lastFn && t.Token != deltaFn && t.Token != countFn && t.Token != deriveFn && t.Token != stdevFn {
 		return errors.New("invalid function. need avg/max/min/sum/last/count/delta/derive/stdev")
@@ -250,7 +250,7 @@ func readAddAgg(s *toki.Scanner, table table.Interface) error {
 		t = s.Next()
 	}
 	// scan for prefix/sub/regex=, stop when we hit a bare word (outFmt)
-	for ; t.Token != toki.EOF && t.Token != word; t = s.Next() {
+	for ; t.Token != tokre.EOF && t.Token != word; t = s.Next() {
 		switch t.Token {
 		case optPrefix:
 			if t = s.Next(); t.Token != word {
@@ -316,7 +316,7 @@ func readAddAgg(s *toki.Scanner, table table.Interface) error {
 	dropRaw := false
 
 	t = s.Next()
-	for ; t.Token != toki.EOF; t = s.Next() {
+	for ; t.Token != tokre.EOF; t = s.Next() {
 		switch t.Token {
 		case optCache:
 			t = s.Next()
@@ -356,7 +356,7 @@ func readAddAgg(s *toki.Scanner, table table.Interface) error {
 	return nil
 }
 
-func readAddBlock(s *toki.Scanner, table table.Interface) error {
+func readAddBlock(s *tokre.Scanner, table table.Interface) error {
 	prefix := ""
 	notPrefix := ""
 	sub := ""
@@ -411,7 +411,7 @@ func readAddBlock(s *toki.Scanner, table table.Interface) error {
 	return nil
 }
 
-func readAddRoute(s *toki.Scanner, table table.Interface, constructor func(key string, matcher matcher.Matcher, destinations []*destination.Destination) (route.Route, error)) error {
+func readAddRoute(s *tokre.Scanner, table table.Interface, constructor func(key string, matcher matcher.Matcher, destinations []*destination.Destination) (route.Route, error)) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -444,7 +444,7 @@ func readAddRoute(s *toki.Scanner, table table.Interface, constructor func(key s
 	return nil
 }
 
-func readAddRouteConsistentHashing(s *toki.Scanner, table table.Interface, withFix bool) error {
+func readAddRouteConsistentHashing(s *tokre.Scanner, table table.Interface, withFix bool) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -476,7 +476,7 @@ func readAddRouteConsistentHashing(s *toki.Scanner, table table.Interface, withF
 	table.AddRoute(route)
 	return nil
 }
-func readAddRouteGrafanaNet(s *toki.Scanner, table table.Interface) error {
+func readAddRouteGrafanaNet(s *tokre.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRouteGrafanaNet
@@ -519,7 +519,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table table.Interface) error {
 
 	t = s.Next()
 
-	for ; t.Token != toki.EOF; t = s.Next() {
+	for ; t.Token != tokre.EOF; t = s.Next() {
 		switch t.Token {
 		case optAggregationFile:
 			t = s.Next()
@@ -663,7 +663,7 @@ func readAddRouteGrafanaNet(s *toki.Scanner, table table.Interface) error {
 	return nil
 }
 
-func readAddRouteKafkaMdm(s *toki.Scanner, table table.Interface) error {
+func readAddRouteKafkaMdm(s *tokre.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRouteKafkaMdm
@@ -739,7 +739,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table table.Interface) error {
 	var saslMechanism, saslUsername, saslPassword string
 
 	t = s.Next()
-	for ; t.Token != toki.EOF; t = s.Next() {
+	for ; t.Token != tokre.EOF; t = s.Next() {
 		switch t.Token {
 		case optBlocking:
 			t = s.Next()
@@ -864,7 +864,7 @@ func readAddRouteKafkaMdm(s *toki.Scanner, table table.Interface) error {
 	return nil
 }
 
-func readAddRoutePubSub(s *toki.Scanner, table table.Interface) error {
+func readAddRoutePubSub(s *tokre.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoutePubSub
@@ -900,7 +900,7 @@ func readAddRoutePubSub(s *toki.Scanner, table table.Interface) error {
 	var blocking = false
 
 	t = s.Next()
-	for ; t.Token != toki.EOF; t = s.Next() {
+	for ; t.Token != tokre.EOF; t = s.Next() {
 		switch t.Token {
 		case optPubSubCodec:
 			t = s.Next()
@@ -973,8 +973,8 @@ func readAddRoutePubSub(s *toki.Scanner, table table.Interface) error {
 	return nil
 }
 
-func readAddRewriter(s *toki.Scanner, table table.Interface) error {
-	var t *toki.Result
+func readAddRewriter(s *tokre.Scanner, table table.Interface) error {
+	var t tokre.Result
 	if t = s.Next(); t.Token != word {
 		return errFmtAddRewriter
 	}
@@ -1002,7 +1002,7 @@ func readAddRewriter(s *toki.Scanner, table table.Interface) error {
 	return nil
 }
 
-func readDelRoute(s *toki.Scanner, table table.Interface) error {
+func readDelRoute(s *tokre.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errors.New("need route key")
@@ -1011,7 +1011,7 @@ func readDelRoute(s *toki.Scanner, table table.Interface) error {
 	return table.DelRoute(key)
 }
 
-func readModDest(s *toki.Scanner, table table.Interface) error {
+func readModDest(s *tokre.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -1028,10 +1028,10 @@ func readModDest(s *toki.Scanner, table table.Interface) error {
 	}
 
 	opts := make(map[string]string)
-	for t.Token != toki.EOF {
+	for t.Token != tokre.EOF {
 		t = s.Next()
 		switch t.Token {
-		case toki.EOF:
+		case tokre.EOF:
 			break
 		case optAddr:
 			if t = s.Next(); t.Token != word {
@@ -1079,7 +1079,7 @@ func readModDest(s *toki.Scanner, table table.Interface) error {
 	return table.UpdateDestination(key, index, opts)
 }
 
-func readModRoute(s *toki.Scanner, table table.Interface) error {
+func readModRoute(s *tokre.Scanner, table table.Interface) error {
 	t := s.Next()
 	if t.Token != word {
 		return errFmtAddRoute
@@ -1087,10 +1087,10 @@ func readModRoute(s *toki.Scanner, table table.Interface) error {
 	key := string(t.Value)
 
 	opts := make(map[string]string)
-	for t.Token != toki.EOF {
+	for t.Token != tokre.EOF {
 		t = s.Next()
 		switch t.Token {
-		case toki.EOF:
+		case tokre.EOF:
 			break
 		case optPrefix:
 			if t = s.Next(); t.Token != word {
@@ -1136,14 +1136,14 @@ func readModRoute(s *toki.Scanner, table table.Interface) error {
 // we should read and apply all destinations at once,
 // or at least make sure we apply them to the global datastruct at once,
 // otherwise we can destabilize things / send wrong traffic, etc
-func readDestinations(s *toki.Scanner, table table.Interface, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
+func readDestinations(s *tokre.Scanner, table table.Interface, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
 	t := s.Peek()
-	for t.Token != toki.EOF {
+	for t.Token != tokre.EOF {
 		for t.Token == sep {
 			s.Next()
 			t = s.Peek()
 		}
-		if t.Token == toki.EOF {
+		if t.Token == tokre.EOF {
 			break
 		}
 
@@ -1158,7 +1158,7 @@ func readDestinations(s *toki.Scanner, table table.Interface, allowMatcher bool,
 	return destinations, nil
 }
 
-func readDestination(s *toki.Scanner, table table.Interface, allowMatcher bool, routeKey string) (dest *destination.Destination, err error) {
+func readDestination(s *tokre.Scanner, table table.Interface, allowMatcher bool, routeKey string) (dest *destination.Destination, err error) {
 	var prefix, notPrefix, sub, notSub, regex, notRegex, addr, spoolDir string
 	var spool, pickle bool
 	flush := 1000
@@ -1180,7 +1180,7 @@ func readDestination(s *toki.Scanner, table table.Interface, allowMatcher bool, 
 	}
 	addr = string(t.Value)
 
-	for t.Token != toki.EOF && t.Token != sep {
+	for t.Token != tokre.EOF && t.Token != sep {
 		t = s.Next()
 		switch t.Token {
 		case optPrefix:
@@ -1314,7 +1314,7 @@ func readDestination(s *toki.Scanner, table table.Interface, allowMatcher bool, 
 				return nil, err
 			}
 			unspoolSleep = time.Duration(tmp) * time.Microsecond
-		case toki.EOF:
+		case tokre.EOF:
 		case sep:
 			break
 		default:
@@ -1336,7 +1336,7 @@ func readDestination(s *toki.Scanner, table table.Interface, allowMatcher bool, 
 }
 
 func ParseDestinations(destinationConfigs []string, table table.Interface, allowMatcher bool, routeKey string) (destinations []*destination.Destination, err error) {
-	s := toki.NewScanner(tokens)
+	s := tokre.NewScanner(tokens)
 	for _, destinationConfig := range destinationConfigs {
 		s.SetInput(destinationConfig)
 
@@ -1349,13 +1349,13 @@ func ParseDestinations(destinationConfigs []string, table table.Interface, allow
 	return destinations, nil
 }
 
-func readRouteOpts(s *toki.Scanner) (prefix, notPrefix, sub, notSub, regex, notRegex string, err error) {
+func readRouteOpts(s *tokre.Scanner) (prefix, notPrefix, sub, notSub, regex, notRegex string, err error) {
 	for {
 		t := s.Next()
 		switch t.Token {
-		case toki.EOF:
+		case tokre.EOF:
 			return
-		case toki.Error:
+		case tokre.Error:
 			return "", "", "", "", "", "", errors.New("read the error token instead of one i recognize")
 		case optPrefix:
 			if t = s.Next(); t.Token != word {
