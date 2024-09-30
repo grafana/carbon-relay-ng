@@ -53,7 +53,7 @@ jobs:
           docker save -o build/carbon-relay-ng.tar grafana/carbon-relay-ng
       - name: Store version
         run: git describe --tags --always | sed 's/^v//' > build/version.txt
-      - run: echo build/version.txt
+      - run: cat build/version.txt
       - name: Upload package artifacts
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
