@@ -53,7 +53,6 @@ jobs:
           docker save -o build/carbon-relay-ng.tar grafana/carbon-relay-ng
       - name: Store version
         run: git describe --tags --always | sed 's/^v//' > build/version.txt
-      - run: cat build/version.txt
       - name: Upload package artifacts
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
@@ -66,7 +65,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref_type == 'tag'
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3
       - name: Download package artifacts
@@ -88,7 +87,7 @@ jobs:
         run: |
           version=$(cat build/version.txt)
           repo=raintank/raintank
-          [[ "$version" == *-* ]] && repo=raintank/testing
+          [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && repo=raintank/testing
           package_cloud push $repo/ubuntu/trusty build/deb-upstart/carbon-relay-ng-*.deb
           package_cloud push $repo/ubuntu/xenial build/deb-systemd/carbon-relay-ng-*.deb
           package_cloud push $repo/debian/jessie build/deb-systemd/carbon-relay-ng-*.deb
@@ -107,7 +106,7 @@ jobs:
           # only versions without a hyphen - e.g. actual releases - are tagged as latest.
           # in-between-release versions are tagged as master.
           tag=latest
-          [[ "$version" == *-* ]] && tag=master
+          [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && tag=master
           docker push grafana/carbon-relay-ng:$tag
 
   github_binaries:
