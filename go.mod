@@ -19,7 +19,7 @@ require (
 	github.com/gorilla/mux v0.0.0-20140624184626-14cafe285133
 	github.com/grafana/configparser v0.0.0-20210707122942-2593eb86a3ee
 	github.com/grafana/metrictank v1.0.1-0.20221128152741-61182cf5f40e
-	github.com/jpillora/backoff v0.0.0-20160414055204-0496a6c14df0
+	github.com/jpillora/backoff v1.0.0
 	github.com/kisielk/og-rek v0.0.0-20170405223746-ec792bc6e6aa
 	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
 	github.com/prometheus/procfs v0.11.0
