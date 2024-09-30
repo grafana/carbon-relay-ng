@@ -101,6 +101,8 @@ jobs:
         run: |
           version=$(cat build/version.txt)
           docker push grafana/carbon-relay-ng:$version
+          # only versions without a hyphen - e.g. actual releases - are tagged as latest.
+          # in-between-release versions are tagged as master.
           tag=latest
           [[ "$version" == *-* ]] && tag=master
           docker push grafana/carbon-relay-ng:$tag
@@ -110,8 +112,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
         with:
           go-version: 1.21.8
