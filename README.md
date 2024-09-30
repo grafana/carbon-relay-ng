@@ -1,6 +1,8 @@
-[![Circle CI](https://circleci.com/gh/grafana/carbon-relay-ng.svg?style=shield)](https://circleci.com/gh/grafana/carbon-relay-ng)
 [![Go Report Card](https://goreportcard.com/badge/github.com/grafana/carbon-relay-ng)](https://goreportcard.com/report/github.com/grafana/carbon-relay-ng)
 [![GoDoc](https://godoc.org/github.com/grafana/carbon-relay-ng?status.svg)](https://godoc.org/github.com/grafana/carbon-relay-ng)
+
+<a href="https://github.com/grafana/carbon-relay-ng/actions/workflows/ci.yaml?query=branch%3Amaster"><img src="https://github.com/grafana/carbon-relay-ng/actions/workflows/ci.yaml/badge.svg?query=branch%3Amaster" alt="Build" /></a>
+
 
 carbon-relay-ng
 ===============
