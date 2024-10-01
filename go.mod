@@ -24,7 +24,7 @@ require (
 	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
 	github.com/prometheus/procfs v0.11.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/streadway/amqp v0.0.0-20170521212453-dfe15e360485
+	github.com/streadway/amqp v1.1.0
 	github.com/stretchr/testify v1.8.4
 	github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
