@@ -27,7 +27,7 @@ require (
 	github.com/streadway/amqp v1.1.0
 	github.com/stretchr/testify v1.9.0
 	github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c
-	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
+	github.com/xdg/scram v1.0.5
 )
 
 require (
