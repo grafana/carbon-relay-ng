@@ -14,7 +14,7 @@ require (
 	github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff
 	github.com/elazarl/go-bindata-assetfs v1.0.1
 	github.com/golang/snappy v0.0.4
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/configparser v0.0.0-20210707122942-2593eb86a3ee
