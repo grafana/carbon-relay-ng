@@ -25,7 +25,7 @@ require (
 	github.com/prometheus/procfs v0.15.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/streadway/amqp v1.1.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c
 	github.com/xdg/scram v1.0.5
 )
