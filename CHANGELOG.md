@@ -1,5 +1,9 @@
 # unreleased
 
+# v1.5.1: December 4, 2024
+* Use distroless docker image #571
+* Various minor dependecy updates
+
 # v1.5.0: September 27, 2024
 * Add support for AMQP heartbeat/retry/retrydelay #549
 * Fix pickle unmarshalling of big integers #547
