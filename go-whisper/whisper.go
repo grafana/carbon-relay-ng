@@ -5,9 +5,9 @@ package whisper
 import (
 	"fmt"
 	"math"
-	"regexp"
-	"strconv"
 	"strings"
+
+	"github.com/raintank/dur"
 )
 
 const (
@@ -20,43 +20,6 @@ const (
 	Weeks   = 86400 * 7
 	Years   = 86400 * 365
 )
-
-func unitMultiplier(s string) (int, error) {
-	switch {
-	case strings.HasPrefix(s, "s"):
-		return Seconds, nil
-	case strings.HasPrefix(s, "m"):
-		return Minutes, nil
-	case strings.HasPrefix(s, "h"):
-		return Hours, nil
-	case strings.HasPrefix(s, "d"):
-		return Days, nil
-	case strings.HasPrefix(s, "w"):
-		return Weeks, nil
-	case strings.HasPrefix(s, "y"):
-		return Years, nil
-	}
-	return 0, fmt.Errorf("Invalid unit multiplier [%v]", s)
-}
-
-var retentionRegexp *regexp.Regexp = regexp.MustCompile("^(\\d+)([smhdwy]+)$")
-
-func parseRetentionPart(retentionPart string) (int, error) {
-	part, err := strconv.ParseInt(retentionPart, 10, 32)
-	if err == nil {
-		return int(part), nil
-	}
-	if !retentionRegexp.MatchString(retentionPart) {
-		return 0, fmt.Errorf("%v", retentionPart)
-	}
-	matches := retentionRegexp.FindStringSubmatch(retentionPart)
-	value, err := strconv.ParseInt(matches[1], 10, 32)
-	if err != nil {
-		panic(fmt.Sprintf("Regex on %v is borked, %v cannot be parsed as int", retentionPart, matches[1]))
-	}
-	multiplier, err := unitMultiplier(matches[2])
-	return multiplier * int(value), err
-}
 
 /*
 Parse a retention definition as you would find in the storage-schemas.conf of a Carbon install.
@@ -72,18 +35,20 @@ func ParseRetentionDef(retentionDef string) (*Retention, error) {
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("Not enough parts in retentionDef [%v]", retentionDef)
 	}
-	precision, err := parseRetentionPart(parts[0])
+	// raintank ParseDuration is a more flexible superset of graphite's
+	// specification since many files use other units.
+	precision, err := dur.ParseDuration(parts[0])
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse precision: %v", err)
 	}
 
-	points, err := parseRetentionPart(parts[1])
+	points, err := dur.ParseDuration(parts[1])
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse points: %v", err)
 	}
 	points /= precision
 
-	return &Retention{precision, points}, err
+	return &Retention{int(precision), int(points)}, err
 }
 
 func ParseRetentionDefs(retentionDefs string) (Retentions, error) {

@@ -23,6 +23,7 @@ require (
 	github.com/kisielk/og-rek v1.2.0
 	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
 	github.com/prometheus/procfs v0.15.1
+	github.com/raintank/dur v0.0.0-20220106223125-d7c6a541ef3a
 	github.com/sirupsen/logrus v1.9.3
 	github.com/streadway/amqp v1.1.0
 	github.com/stretchr/testify v1.10.0
