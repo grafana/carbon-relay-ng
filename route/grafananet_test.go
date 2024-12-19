@@ -12,7 +12,7 @@ func TestNewGrafanaNetConfig(t *testing.T) {
 	// note: the goal of this test is not to strictly test the correctness of the schemas reading
 	// we have separate tests for that
 
-	schemasFile := test.TempFdOrFatal("carbon-relay-ng-TestNewGrafanaNetConfig-schemasFile-valid", "[default]\npattern = .*\nretentions = 10s:1d", t)
+	schemasFile := test.TempFdOrFatal("carbon-relay-ng-TestNewGrafanaNetConfig-schemasFile-valid", "[default]\npattern = .*\nretentions = 10min:1m", t)
 	defer os.Remove(schemasFile.Name())
 
 	otherFile := test.TempFdOrFatal("carbon-relay-ng-TestNewGrafanaNetConfig-otherFile", "this is not a schemas or aggregation file", t)
