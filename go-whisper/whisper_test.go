@@ -29,11 +29,12 @@ func testParseRetentionDef(t *testing.T, retentionDef string, expectedPrecision,
 }
 
 func TestParseRetentionDef(t *testing.T) {
-	testParseRetentionDef(t, "1s:5m", 1, 300, false)
+	testParseRetentionDef(t, "1s:5min", 1, 300, false)
+	testParseRetentionDef(t, "1s:5minaf", 1, 300, true)
 	testParseRetentionDef(t, "1m:30m", 60, 30, false)
 	testParseRetentionDef(t, "1m", 0, 0, true)
 	testParseRetentionDef(t, "1m:30m:20s", 0, 0, true)
-	testParseRetentionDef(t, "1f:30s", 0, 0, true)
+	testParseRetentionDef(t, "1f:30seconds", 0, 0, true)
 	testParseRetentionDef(t, "1m:30f", 0, 0, true)
 }
 
