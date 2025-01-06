@@ -1,9 +1,9 @@
 # Installation
 
-## Release vs latest master
+## Release vs latest main
 
-Typically, some new code was added to master since the last release.
-See the [changelog](https://github.com/grafana/carbon-relay-ng/blob/master/CHANGELOG.md) or look at the [git log](https://github.com/grafana/carbon-relay-ng/commits/master) for the most up to date information.
+Typically, some new code was added to main since the last release.
+See the [changelog](https://github.com/grafana/carbon-relay-ng/blob/main/CHANGELOG.md) or look at the [git log](https://github.com/grafana/carbon-relay-ng/commits/main) for the most up to date information.
 This may help you decide whether you want the latest release, or the latest code.
 
 ## Linux distribution packages
@@ -28,7 +28,7 @@ See [dockerhub](https://hub.docker.com/r/grafana/carbon-relay-ng/).
 You can use these tags:
 
 * `latest`: the latest official stable release
-* `master`: latest build from master. these versions typically bring improvements but possibly also new bugs
+* `main`: latest build from main. these versions typically bring improvements but possibly also new bugs
 
 
 # Building from source
@@ -42,7 +42,7 @@ These commands will install the binary as `$GOPATH/bin/carbon-relay-ng`
     cd $GOPATH/src/github.com/grafana/
     git clone https://github.com/grafana/carbon-relay-ng.git
     cd carbon-relay-ng
-    # e.g. to check out a specific version instead of master:
+    # e.g. to check out a specific version instead of main:
     # git checkout v1.1
     go install github.com/shuLhan/go-bindata/cmd/go-bindata
     make
@@ -55,7 +55,7 @@ This leaves you with a binary that you can run with a config file like so:
 Usage:
         carbon-relay-ng version
         carbon-relay-ng <path-to-config>
-	
+
   -block-profile-rate int
     	see https://golang.org/pkg/runtime/#SetBlockProfileRate
   -cpuprofile string
@@ -68,10 +68,10 @@ Usage:
 # Release process
 
 During normal development, maintain CHANGELOG.md, and mark interesting -to users- changes under "unreleased" version.
-Grafana Labs regularly deploys the latest code from `master`, but cannot possibly do extensive testing of all functionality in production, so users are encouraged to run master also, and report any issues they hit.
-When interesting changes have been merged to master, and they have had a chance to be tested for a while, we tag a release, as follows:
+Grafana Labs regularly deploys the latest code from `main`, but cannot possibly do extensive testing of all functionality in production, so users are encouraged to run main also, and report any issues they hit.
+When interesting changes have been merged to main, and they have had a chance to be tested for a while, we tag a release, as follows:
 
-* Update CHANGELOG.md from `unreleased` to the version. Create a PR and merge into the master branch. [Example PR](https://github.com/grafana/carbon-relay-ng/pull/512)
+* Update CHANGELOG.md from `unreleased` to the version. Create a PR and merge into the main branch. [Example PR](https://github.com/grafana/carbon-relay-ng/pull/512)
 * Create a git tag for the new version from the CHANGELOG commit merged from the PR and push the tag to GitHub.
     Example for adding the v1.4.0 tag:
     ```

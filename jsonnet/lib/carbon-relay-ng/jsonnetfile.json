@@ -8,7 +8,7 @@
                     "subdir": "ksonnet-util"
                 }
             },
-            "version": "master"
+            "version": "main"
         }
     ]
 }

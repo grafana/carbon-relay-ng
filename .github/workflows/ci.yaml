@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - master
+      - main
     tags:
       - v[0-9]+.[0-9]+.[0-9]+**
   pull_request:
@@ -104,9 +104,9 @@ jobs:
           version=$(cat build/version.txt)
           docker push grafana/carbon-relay-ng:$version
           # only versions without a hyphen - e.g. actual releases - are tagged as latest.
-          # in-between-release versions are tagged as master.
+          # in-between-release versions are tagged as main.
           tag=latest
-          [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && tag=master
+          [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && tag=main
           docker push grafana/carbon-relay-ng:$tag
 
   github_binaries:

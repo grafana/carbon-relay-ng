@@ -1,7 +1,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/grafana/carbon-relay-ng)](https://goreportcard.com/report/github.com/grafana/carbon-relay-ng)
 [![GoDoc](https://godoc.org/github.com/grafana/carbon-relay-ng?status.svg)](https://godoc.org/github.com/grafana/carbon-relay-ng)
 
-<a href="https://github.com/grafana/carbon-relay-ng/actions/workflows/ci.yaml?query=branch%3Amaster"><img src="https://github.com/grafana/carbon-relay-ng/actions/workflows/ci.yaml/badge.svg?query=branch%3Amaster" alt="Build" /></a>
+<a href="https://github.com/grafana/carbon-relay-ng/actions/workflows/ci.yaml?query=branch%3Amain"><img src="https://github.com/grafana/carbon-relay-ng/actions/workflows/ci.yaml/badge.svg?query=branch%3Amain" alt="Build" /></a>
 
 
 carbon-relay-ng
@@ -24,24 +24,24 @@ Or balance/split load, or provide redundancy, or partition the data, etc.
 This pattern allows alerting and event processing systems to act on the data as it is received (which is much better than repeated reading from your storage)
 
 
-![screenshot](https://raw.githubusercontent.com/grafana/carbon-relay-ng/master/screenshots/screenshot.png)
+![screenshot](https://raw.githubusercontent.com/grafana/carbon-relay-ng/main/screenshots/screenshot.png)
 
 Documentation
 =============
 
-* [configuration](https://github.com/grafana/carbon-relay-ng/blob/master/docs/config.md)
-* [input](https://github.com/grafana/carbon-relay-ng/blob/master/docs/input.md)
-* [validation](https://github.com/grafana/carbon-relay-ng/blob/master/docs/validation.md)
-* [rewriting](https://github.com/grafana/carbon-relay-ng/blob/master/docs/rewriting.md)
-* [aggregation](https://github.com/grafana/carbon-relay-ng/blob/master/docs/aggregation.md)
-* [monitoring](https://github.com/grafana/carbon-relay-ng/blob/master/docs/monitoring.md)
-* [TCP admin interface](https://github.com/grafana/carbon-relay-ng/blob/master/docs/tcp-admin-interface.md)
-* [current changelog](https://github.com/grafana/carbon-relay-ng/blob/master/CHANGELOG.md) and [official releasess](https://github.com/grafana/carbon-relay-ng/releases)
-  * [release process](https://github.com/grafana/carbon-relay-ng/blob/master/docs/installation-building.md#release-process)
-* [limitations](https://github.com/grafana/carbon-relay-ng/blob/master/docs/limitations.md)
-* [installation and building](https://github.com/grafana/carbon-relay-ng/blob/master/docs/installation-building.md)
-* [Deploying on Kubernetes](https://github.com/grafana/carbon-relay-ng/blob/master/docs/deploying-on-k8s.md)
-* [Troubleshooting](https://github.com/grafana/carbon-relay-ng/blob/master/docs/troubleshooting.md)
+* [configuration](https://github.com/grafana/carbon-relay-ng/blob/main/docs/config.md)
+* [input](https://github.com/grafana/carbon-relay-ng/blob/main/docs/input.md)
+* [validation](https://github.com/grafana/carbon-relay-ng/blob/main/docs/validation.md)
+* [rewriting](https://github.com/grafana/carbon-relay-ng/blob/main/docs/rewriting.md)
+* [aggregation](https://github.com/grafana/carbon-relay-ng/blob/main/docs/aggregation.md)
+* [monitoring](https://github.com/grafana/carbon-relay-ng/blob/main/docs/monitoring.md)
+* [TCP admin interface](https://github.com/grafana/carbon-relay-ng/blob/main/docs/tcp-admin-interface.md)
+* [current changelog](https://github.com/grafana/carbon-relay-ng/blob/main/CHANGELOG.md) and [official releasess](https://github.com/grafana/carbon-relay-ng/releases)
+  * [release process](https://github.com/grafana/carbon-relay-ng/blob/main/docs/installation-building.md#release-process)
+* [limitations](https://github.com/grafana/carbon-relay-ng/blob/main/docs/limitations.md)
+* [installation and building](https://github.com/grafana/carbon-relay-ng/blob/main/docs/installation-building.md)
+* [Deploying on Kubernetes](https://github.com/grafana/carbon-relay-ng/blob/main/docs/deploying-on-k8s.md)
+* [Troubleshooting](https://github.com/grafana/carbon-relay-ng/blob/main/docs/troubleshooting.md)
 
 
 Concepts
@@ -52,12 +52,12 @@ You have 1 master routing table.  This table contains 0-N routes.  There's diffe
 First: "matching": you can match metrics on one or more of: prefix, substring, or regex.  All 3 default to "" (empty string, i.e. allow all).
 The conditions are AND-ed.  Regexes are more resource intensive and hence should - and often can be - avoided.
 
-* All incoming metrics are [validated](https://github.com/grafana/carbon-relay-ng/blob/master/docs/validation.md) and go into the table when valid.
-* The table will then check metrics against the [blocklist](https://github.com/grafana/carbon-relay-ng/blob/master/docs/config.md#blocklist) and discard when appropriate.
-* Then metrics pass through the [rewriters](https://github.com/grafana/carbon-relay-ng/blob/master/docs/rewriting.md) and are modified if applicable.  Rewrite rules wrapped with forward slashes are interpreted as regular expressions.
+* All incoming metrics are [validated](https://github.com/grafana/carbon-relay-ng/blob/main/docs/validation.md) and go into the table when valid.
+* The table will then check metrics against the [blocklist](https://github.com/grafana/carbon-relay-ng/blob/main/docs/config.md#blocklist) and discard when appropriate.
+* Then metrics pass through the [rewriters](https://github.com/grafana/carbon-relay-ng/blob/main/docs/rewriting.md) and are modified if applicable.  Rewrite rules wrapped with forward slashes are interpreted as regular expressions.
 * The table sends the metric to:
-  * the [aggregators](https://github.com/grafana/carbon-relay-ng/blob/master/docs/aggregation.md), who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below for details.
-  * any [routes](https://github.com/grafana/carbon-relay-ng/blob/master/docs/config.md#routes) that matches
+  * the [aggregators](https://github.com/grafana/carbon-relay-ng/blob/main/docs/aggregation.md), who match the metrics against their rules, compute aggregations and feed results back into the table. see Aggregation section below for details.
+  * any [routes](https://github.com/grafana/carbon-relay-ng/blob/main/docs/config.md#routes) that matches
 * The route can have different behaviors, based on its type:
 
   * for grafanaNet / kafkaMdm / Google PubSub routes, there is only a single endpoint so that's where the data goes.  For standard/carbon routes you can control how data gets routed into destinations (note that destinations have settings to match on prefix/sub/regex, just like routes):
