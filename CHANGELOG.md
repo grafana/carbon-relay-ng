@@ -1,5 +1,8 @@
 # unreleased
 
+# v1.5.2: January 6, 2025
+* Various minor dependency updates
+
 # v1.5.1: December 5, 2024
 * Use distroless docker image #571
 * Bump go to 1.23.4 and other minor dependency updates
