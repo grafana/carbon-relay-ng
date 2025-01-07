@@ -74,4 +74,4 @@ tk apply environments/default
 For users who don't use Tanka, we also provide yaml files which can be used as templates to
 create the necessary resources to deploy carbon-relay-ng.
 
-The yaml files are in the directory [/examples/k8s](https://github.com/grafana/carbon-relay-ng/tree/master/examples/k8s).
+The yaml files are in the directory [/examples/k8s](https://github.com/grafana/carbon-relay-ng/tree/main/examples/k8s).

@@ -53,20 +53,20 @@ The output of the aggregation bucket (after the wait timer expires) is then 1 po
 
 ## functions
 
-Available functions: 
+Available functions:
 
-function       | output
----------------|----------------------------------------------
-avg            | average (mean)
-count          | number of points/values seen (count of items in the bucket)
-delta          | difference between highest and lowest value seen
-derive         | derivative (needs at least 2 input values. if more, derives from oldest to newest)
-last           | last value seen in the bucket
-max            | max value seen in the bucket
-min            | min value seen in the bucket
-stdev          | standard devation
-sum            | sum
-percentiles    | a set of different percentiles
+| function    | output                                                                             |
+| ----------- | ---------------------------------------------------------------------------------- |
+| avg         | average (mean)                                                                     |
+| count       | number of points/values seen (count of items in the bucket)                        |
+| delta       | difference between highest and lowest value seen                                   |
+| derive      | derivative (needs at least 2 input values. if more, derives from oldest to newest) |
+| last        | last value seen in the bucket                                                      |
+| max         | max value seen in the bucket                                                       |
+| min         | min value seen in the bucket                                                       |
+| stdev       | standard devation                                                                  |
+| sum         | sum                                                                                |
+| percentiles | a set of different percentiles                                                     |
 
 ## configuration
 
@@ -85,7 +85,7 @@ With a wait of 120, metrics can come 2 minutes after the start of the interval a
 
 * `dropRaw=true` will prevent any further processing of the raw series "consumed" by an aggregator with this option enabled.  It causes the original input series to disappear from the routing table.  This can be useful for managing cardinality and for quantizing metrics sent at odd intervals.  When using `dropRaw` an aggregator may produce a series with the same name as the input series. Note that this option may slow down table processing, especially with a cold or disabled aggregator cache.
 
-[config examples](https://github.com/grafana/carbon-relay-ng/blob/master/docs/config.md#aggregators)
+[config examples](https://github.com/grafana/carbon-relay-ng/blob/main/docs/config.md#aggregators)
 
 ## output
 

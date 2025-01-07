@@ -213,7 +213,7 @@ func InitRoutes(table table.Interface, config Config, meta toml.MetaData) error 
 			cfg, err := route.NewGrafanaNetConfig(routeConfig.Addr, routeConfig.ApiKey, routeConfig.SchemasFile, routeConfig.AggregationFile)
 			if err != nil {
 				log.Error(err.Error())
-				log.Info("grafanaNet route configuration details: https://github.com/grafana/carbon-relay-ng/blob/master/docs/config.md#grafananet-route")
+				log.Info("grafanaNet route configuration details: https://github.com/grafana/carbon-relay-ng/blob/main/docs/config.md#grafananet-route")
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
 			}
 
