@@ -10,3 +10,8 @@ tag=main
 
 docker build --tag=grafana/carbon-relay-ng:$tag .
 docker tag grafana/carbon-relay-ng:$tag grafana/carbon-relay-ng:$version
+
+# To preserve compatibility with older installations, also tag "master" when we tag "main".
+if [ "$tag" == "main" ] ; then
+  docker tag grafana/carbon-relay-ng:$tag grafana/carbon-relay-ng:master
+fi
