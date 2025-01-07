@@ -108,6 +108,9 @@ jobs:
           tag=latest
           [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && tag=main
           docker push grafana/carbon-relay-ng:$tag
+          # To preserve compatibility, also push the "master" tag we built in
+          # build_docker.sh.
+          [[ "$tag" == "main" ]] && docker push grafana/carbon-relay-ng:master
 
   github_binaries:
     if: github.ref_type == 'tag'
