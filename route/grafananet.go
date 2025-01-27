@@ -18,17 +18,19 @@ import (
 
 	"github.com/Dieterbe/go-metrics"
 	"github.com/golang/snappy"
+	"github.com/jpillora/backoff"
+	log "github.com/sirupsen/logrus"
+
 	dest "github.com/grafana/carbon-relay-ng/destination"
 	"github.com/grafana/carbon-relay-ng/matcher"
 	"github.com/grafana/carbon-relay-ng/persister"
 	"github.com/grafana/carbon-relay-ng/stats"
 	"github.com/grafana/carbon-relay-ng/util"
-	"github.com/jpillora/backoff"
-	log "github.com/sirupsen/logrus"
 
-	conf "github.com/grafana/carbon-relay-ng/pkg/mt-conf"
 	"github.com/grafana/metrictank/schema"
 	"github.com/grafana/metrictank/schema/msg"
+
+	conf "github.com/grafana/carbon-relay-ng/pkg/mt-conf"
 )
 
 type GrafanaNetConfig struct {
@@ -338,9 +340,9 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 		// re-instantiate body, since the previous .Do() attempt would have Read it all the way
 		req.Body = ioutil.NopCloser(bytes.NewReader(body))
 	}
-	log.Debugf("GrafanaNet sent metrics in %s -msg size %d", dur, len(metrics))
+	log.Debugf("GrafanaNet sent %d metrics in %s -msg size %d", len(metrics), dur, len(body))
 	route.durationTickFlush.Update(dur)
-	route.tickFlushSize.Update(int64(len(metrics)))
+	route.tickFlushSize.Update(int64(len(body)))
 	return metrics[:0]
 }
 
