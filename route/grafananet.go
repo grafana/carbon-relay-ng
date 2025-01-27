@@ -340,7 +340,7 @@ func (route *GrafanaNet) retryFlush(metrics []*schema.MetricData, buffer *bytes.
 		// re-instantiate body, since the previous .Do() attempt would have Read it all the way
 		req.Body = ioutil.NopCloser(bytes.NewReader(body))
 	}
-	log.Debugf("GrafanaNet sent %d metrics in %s -msg size %d", len(metrics), dur, len(metrics))
+	log.Debugf("GrafanaNet sent %d metrics in %s -msg size %d", len(metrics), dur, len(body))
 	route.durationTickFlush.Update(dur)
 	route.tickFlushSize.Update(int64(len(body)))
 	return metrics[:0]
