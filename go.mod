@@ -13,7 +13,7 @@ require (
 	github.com/bmizerany/assert v0.0.0-20120716205630-e17e99893cb6
 	github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff
 	github.com/elazarl/go-bindata-assetfs v1.0.1
-	github.com/golang/snappy v0.0.4
+	github.com/golang/snappy v1.0.0
 	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
