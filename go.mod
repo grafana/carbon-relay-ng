@@ -20,7 +20,7 @@ require (
 	github.com/grafana/configparser v0.0.0-20210707122942-2593eb86a3ee
 	github.com/grafana/metrictank v1.0.1-0.20221128152741-61182cf5f40e
 	github.com/jpillora/backoff v1.0.0
-	github.com/kisielk/og-rek v1.2.0
+	github.com/kisielk/og-rek v1.3.0
 	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
 	github.com/prometheus/procfs v0.15.1
 	github.com/raintank/dur v0.0.0-20220106223125-d7c6a541ef3a
@@ -38,6 +38,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.5.2 // indirect
 	cloud.google.com/go/iam v1.2.2 // indirect
 	github.com/DataDog/zstd v1.3.6-0.20190409195224-796139022798 // indirect
+	github.com/aristanetworks/gomap v0.0.0-20230726210543-f4e41046dced // indirect
 	github.com/cespare/xxhash v0.0.0-00010101000000-000000000000 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57 // indirect
@@ -72,6 +73,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.29.0 // indirect
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
