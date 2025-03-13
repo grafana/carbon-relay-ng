@@ -29,6 +29,8 @@ github.com/Shopify/sarama v1.23.0 h1:slvlbm7bxyp7sKQbUwha5BQdZTqurhRoI+zbKorVigQ
 github.com/Shopify/sarama v1.23.0/go.mod h1:XLH1GYJnLVE0XCr6KdJGVJRTwY30moWNJ4sERjXX6fs=
 github.com/Shopify/toxiproxy v2.1.4+incompatible h1:TKdv8HiTLgE5wdJuEML90aBgNWsokNbMijUGhmcoBJc=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
+github.com/aristanetworks/gomap v0.0.0-20230726210543-f4e41046dced h1:HxlRMDx/VeRqzj3nvqX9k4tjeBcEIkoNHDJPsS389hs=
+github.com/aristanetworks/gomap v0.0.0-20230726210543-f4e41046dced/go.mod h1:p7lmI+ecoe1RTyD11SPXWsSQ3H+pJ4cp5y7vtKW4QdM=
 github.com/aws/aws-sdk-go v1.55.6 h1:cSg4pvZ3m8dgYcgqB97MrcdjUmZ1BeMYKUxMMB89IPk=
 github.com/aws/aws-sdk-go v1.55.6/go.mod h1:eRwEWoyTWFMVYVQzKMNHWP5/RV4xIUGMQfXQHfHkpNU=
 github.com/bmizerany/assert v0.0.0-20120716205630-e17e99893cb6 h1:tqaG4PIbPslIfl+dhNXWUXRTgPI4Dpx7LaDQ6fS9mGM=
@@ -122,8 +124,8 @@ github.com/jpillora/backoff v1.0.0 h1:uvFg412JmmHBHw7iwprIxkPMI+sGQ4kzOWsMeHnm2E
 github.com/jpillora/backoff v1.0.0/go.mod h1:J/6gKK9jxlEcS3zixgDgUAsiuZ7yrSoa/FX5e0EB2j4=
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
-github.com/kisielk/og-rek v1.2.0 h1:CTvDIin+YnetsSQAYbe+QNAxXU3B50C5hseEz8xEoJw=
-github.com/kisielk/og-rek v1.2.0/go.mod h1:6ihsOSzSAxR/65S3Bn9zNihoEqRquhDQZ2c6I2+MG3c=
+github.com/kisielk/og-rek v1.3.0 h1:lTXdQXqFETZKA//FWH4RBNAuiJ/dofxIwHAidoUZoMk=
+github.com/kisielk/og-rek v1.3.0/go.mod h1:4at7oxyfBTDilURhNCf7irHWtosJlJl9uyqUqAkrP4w=
 github.com/kr/pretty v0.0.0-20160325215624-add1dbc86daf h1:FpLJsEsdtsfWNJ+m+MECl0mSzLu9korRoIKSVbYhwFI=
 github.com/kr/pretty v0.0.0-20160325215624-add1dbc86daf/go.mod h1:Bvhd+E3laJ0AVkG0c9rmtZcnhV0HQ3+c3YxxqTvc/gA=
 github.com/kr/text v0.0.0-20150905224508-bb797dc4fb83 h1:zIzxNaBxRxmbPPCgya4J5KccVN23qXA/V75oApRNahI=
@@ -195,6 +197,8 @@ golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPh
 golang.org/x/crypto v0.31.0 h1:ihbySMvVjLAeSH1IbfcRTkD/iNscyz8rGzjF/E5hV6U=
 golang.org/x/crypto v0.31.0/go.mod h1:kDsLvtWBEx7MV9tJOj9bnXsPbxwJQ6csT/x4KIN4Ssk=
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
+golang.org/x/exp v0.0.0-20230725093048-515e97ebf090 h1:Di6/M8l0O2lCLc6VVRWhgCiApHV8MnQurBnFSHsQtNY=
+golang.org/x/exp v0.0.0-20230725093048-515e97ebf090/go.mod h1:FXUEEKJgO7OQYeo8N01OfiKP8RXMtf6e8aTskBGqWdc=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
 golang.org/x/lint v0.0.0-20190227174305-5b3e6a55c961/go.mod h1:wehouNa3lNwaWXcvxsM5YxQ5yQlVC4a0KAMCusXpPoU=
 golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3/go.mod h1:6SW0HCj/g11FgYtHlgUYUwCkIfeOF89ocIRzGO/8vkc=
