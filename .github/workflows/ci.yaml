@@ -87,7 +87,7 @@ jobs:
         run: |
           version=$(cat build/version.txt)
           repo=raintank/raintank
-          [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && repo=raintank/testing
+          [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && repo=raintank/testing
           package_cloud push $repo/ubuntu/trusty build/deb-upstart/carbon-relay-ng-*.deb
           package_cloud push $repo/ubuntu/xenial build/deb-systemd/carbon-relay-ng-*.deb
           package_cloud push $repo/debian/jessie build/deb-systemd/carbon-relay-ng-*.deb
@@ -106,7 +106,7 @@ jobs:
           # only versions without a hyphen - e.g. actual releases - are tagged as latest.
           # in-between-release versions are tagged as main.
           tag=latest
-          [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && tag=main
+          [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && tag=main
           docker push grafana/carbon-relay-ng:$tag
           # To preserve compatibility, also push the "master" tag we built in
           # build_docker.sh.
