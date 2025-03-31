@@ -192,7 +192,7 @@ func (route *baseRoute) Shutdown() error {
 	for _, e := range destErrs {
 		errStr += "   " + e.Error()
 	}
-	return fmt.Errorf("one or more destinations failed to shutdown:" + errStr)
+	return fmt.Errorf("one or more destinations failed to shutdown: %s", errStr)
 }
 
 // to view the state of the table/route at any point in time
