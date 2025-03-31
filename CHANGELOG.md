@@ -1,5 +1,10 @@
 # unreleased
 
+# v1.5.3: March 31, 2025
+* Bump go to 1.24
+* Various minor dependency updates
+* Fix FlushSize metric in the grafananetrouter #582
+
 # v1.5.2: January 6, 2025
 * Various minor dependency updates
 
