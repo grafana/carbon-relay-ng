@@ -1,11 +1,11 @@
 name: Dependabot reviewer
-on: pull_request_target
+on: pull_request
 permissions:
   pull-requests: write
   contents: write
 jobs:
   call-workflow-passing-data:
-    uses: grafana/security-github-actions/.github/workflows/dependabot-automerge.yaml@dependabot-automerge
+    uses: grafana/security-github-actions/.github/workflows/dependabot-automerge.yaml@main
     with:
       packages-minor-autoupdate: '["cloud.google.com/go","github.com/Dieterbe/artisanalhistogram","github.com/Dieterbe/go-metrics","github.com/Dieterbe/topic","github.com/Shopify/sarama","github.com/aws/aws-sdk-go","github.com/bmizerany/assert","github.com/dgryski/go-linlog","github.com/elazarl/go-bindata-assetfs","github.com/golang/snappy","github.com/google/go-cmp","github.com/gorilla/handlers","github.com/gorilla/mux","github.com/grafana/configparser","github.com/grafana/metrictank","github.com/jpillora/backoff","github.com/kisielk/og-rek","github.com/metrics20/go-metrics20","github.com/prometheus/procfs","github.com/sirupsen/logrus","github.com/streadway/amqp","github.com/stretchr/testify","github.com/taylorchu/toki","github.com/xdg/scram"]'
     secrets: inherit
