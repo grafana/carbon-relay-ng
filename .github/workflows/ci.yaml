@@ -34,7 +34,7 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: 1.21.8
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@dffc446db9ba5a0c4446edb5bca1c5c473a806c5 # v1.235.0
         with:
           ruby-version: 3.3
       - name: Install FPM and dependencies
@@ -79,13 +79,13 @@ jobs:
         with:
           name: package-artifacts
           path: build
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@dffc446db9ba5a0c4446edb5bca1c5c473a806c5 # v1.235.0
         with:
           ruby-version: 3.3
       - name: Install package_cloud
         run: gem install package_cloud
       - name: Set PACKAGECLOUD_TOKEN
-        uses: grafana/shared-workflows/actions/get-vault-secrets@main
+        uses: grafana/shared-workflows/actions/get-vault-secrets@af9b0c52635d39023136fb9312a354f91d9b2bfd
         with:
           repo_secrets: |
             PACKAGECLOUD_TOKEN=packagecloud:token
@@ -104,7 +104,7 @@ jobs:
       - name: Load Docker image
         run: docker load -i build/carbon-relay-ng.tar
       - name: Login to DockerHub
-        uses: grafana/shared-workflows/actions/dockerhub-login@main
+        uses: grafana/shared-workflows/actions/dockerhub-login@117d8511cbc5da0337972deeb400c4298b057af3
       - name: Push Docker image
         run: |
           version=$(cat build/version.txt)
