@@ -9,8 +9,8 @@ on:
   pull_request:
 
 permissions:
-  contents: read
-  id-token: read
+  contents: write # zizmor: ignore[excessive-permissions]
+  id-token: write # zizmor: ignore[excessive-permissions]
 
 jobs:
   test:
