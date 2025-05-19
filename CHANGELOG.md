@@ -1,5 +1,8 @@
 # unreleased
 
+# v1.5.4: May 19, 2025
+* Bump go toolchain to 1.24.2
+
 # v1.5.3: March 31, 2025
 * Bump go to 1.24
 * Various minor dependency updates
