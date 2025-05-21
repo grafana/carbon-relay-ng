@@ -1,5 +1,8 @@
 # unreleased
 
+# v1.5.5: May 21, 2025
+* Migrate to `aws-sdk-go-v2`
+
 # v1.5.4: May 19, 2025
 * Bump go toolchain to 1.24.2
 
