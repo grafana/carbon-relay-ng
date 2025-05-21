@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -9,9 +10,10 @@ import (
 	"strings"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	dest "github.com/grafana/carbon-relay-ng/destination"
 	"github.com/grafana/carbon-relay-ng/matcher"
 	"github.com/grafana/carbon-relay-ng/stats"
@@ -23,10 +25,9 @@ type CloudWatch struct {
 	awsProfile         string
 	awsRegion          string
 	awsNamespace       string
-	awsDimensions      []*cloudwatch.Dimension
-	storageResolution  int64
-	session            *session.Session
-	client             *cloudwatch.CloudWatch
+	awsDimensions      []types.Dimension
+	storageResolution  int32
+	client             *cloudwatch.Client
 	putMetricDataInput cloudwatch.PutMetricDataInput
 
 	baseRoute
@@ -57,7 +58,7 @@ func NewCloudWatch(key string, matcher matcher.Matcher, awsProfile, awsRegion, a
 		awsProfile:         awsProfile,
 		awsRegion:          awsRegion,
 		awsNamespace:       awsNamespace,
-		storageResolution:  storageResolution,
+		storageResolution:  int32(storageResolution),
 		putMetricDataInput: cloudwatch.PutMetricDataInput{Namespace: aws.String(awsNamespace)},
 		baseRoute:          baseRoute{"CloudWatch", sync.Mutex{}, atomic.Value{}, key},
 		buf:                make(chan []byte, bufSize),
@@ -89,26 +90,21 @@ func NewCloudWatch(key string, matcher matcher.Matcher, awsProfile, awsRegion, a
 			log.Errorf("RouteCloudWatch: Dimension needs exactly 2 fields: name and val. got %v", dim)
 			continue
 		}
-		r.awsDimensions = append(r.awsDimensions, &cloudwatch.Dimension{
+		r.awsDimensions = append(r.awsDimensions, types.Dimension{
 			Name:  aws.String(dim[0]),
 			Value: aws.String(dim[1])})
 	}
 
-	// Initialize a session at AWS
-	r.session = session.Must(session.NewSessionWithOptions(session.Options{
-		// For local development:
-		// credentials from the shared credentials file ~/.aws/credentials
-		// and configuration from the shared configuration file ~/.aws/config.
-		// SharedConfigState:       session.SharedConfigEnable,
-		// AssumeRoleTokenProvider: stscreds.StdinTokenProvider,
-		// Profile:                 r.awsProfile,
-		Config: aws.Config{
-			Region: aws.String(r.awsRegion),
-		},
-	}))
+	// Initialize AWS SDK configuration
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithRegion(r.awsRegion),
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create new CloudWatch client.
-	r.client = cloudwatch.New(r.session)
+	r.client = cloudwatch.NewFromConfig(cfg)
 
 	r.config.Store(baseConfig{matcher, make([]*dest.Destination, 0)})
 	go r.run()
@@ -118,10 +114,11 @@ func NewCloudWatch(key string, matcher matcher.Matcher, awsProfile, awsRegion, a
 func (r *CloudWatch) run() {
 	ticker := time.NewTicker(r.flushMaxWait)
 	var cnt int // number of metrics written to the payload buffer
+	var metricData []types.MetricDatum
 
 	flush := func() {
-		r.publish(r.putMetricDataInput, cnt)
-		r.putMetricDataInput.MetricData = nil
+		r.publish(metricData, cnt)
+		metricData = nil
 		cnt = 0
 	}
 
@@ -153,25 +150,25 @@ func (r *CloudWatch) run() {
 			}
 
 			// Write new metric data to slice
-			newDatum := &cloudwatch.MetricDatum{
+			newDatum := types.MetricDatum{
 				MetricName:        aws.String(elements[0]),
 				Timestamp:         aws.Time(time.Unix(timestamp, 0)),
 				Value:             aws.Float64(val),
-				StorageResolution: aws.Int64(r.storageResolution),
+				StorageResolution: aws.Int32(r.storageResolution),
 			}
 			if len(r.awsDimensions) > 0 {
 				newDatum.Dimensions = r.awsDimensions
 			}
-			r.putMetricDataInput.MetricData = append(r.putMetricDataInput.MetricData, newDatum)
+			metricData = append(metricData, newDatum)
 
 			// flush if slice is likely to breach our size limit
-			if len(r.putMetricDataInput.MetricData) >= r.flushMaxSize {
+			if len(metricData) >= r.flushMaxSize {
 				flush()
 			}
 
 			cnt++
 		case _ = <-ticker.C:
-			if len(r.putMetricDataInput.MetricData) > 0 {
+			if len(metricData) > 0 {
 				flush()
 			}
 		}
@@ -179,21 +176,26 @@ func (r *CloudWatch) run() {
 }
 
 // publishes a batch to CloudWatch.
-func (r *CloudWatch) publish(metricData cloudwatch.PutMetricDataInput, cnt int) {
+func (r *CloudWatch) publish(metricData []types.MetricDatum, cnt int) {
 	if cnt == 0 {
 		return
 	}
 	start := time.Now()
 
+	input := &cloudwatch.PutMetricDataInput{
+		Namespace:  aws.String(r.awsNamespace),
+		MetricData: metricData,
+	}
+
 	// Publish to CloudWatch!
-	result, err := r.client.PutMetricData(&metricData)
+	result, err := r.client.PutMetricData(context.TODO(), input)
 	if err != nil {
 		log.Errorf("RouteCloudWatch: failed sending metric data: %s", err)
 		r.numErrFlush.Inc(1)
 		return
 	}
 
-	dataLength := int64(len(metricData.MetricData))
+	dataLength := int64(len(metricData))
 	dur := time.Since(start)
 	r.numOut.Inc(int64(cnt))
 	r.numCloudWatchMessages.Inc(1)
