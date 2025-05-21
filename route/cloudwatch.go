@@ -114,11 +114,10 @@ func NewCloudWatch(key string, matcher matcher.Matcher, awsProfile, awsRegion, a
 func (r *CloudWatch) run() {
 	ticker := time.NewTicker(r.flushMaxWait)
 	var cnt int // number of metrics written to the payload buffer
-	var metricData []types.MetricDatum
 
 	flush := func() {
-		r.publish(metricData, cnt)
-		metricData = nil
+		r.publish(r.putMetricDataInput, cnt)
+		r.putMetricDataInput.MetricData = nil
 		cnt = 0
 	}
 
@@ -159,16 +158,16 @@ func (r *CloudWatch) run() {
 			if len(r.awsDimensions) > 0 {
 				newDatum.Dimensions = r.awsDimensions
 			}
-			metricData = append(metricData, newDatum)
+			r.putMetricDataInput.MetricData = append(r.putMetricDataInput.MetricData, newDatum)
 
 			// flush if slice is likely to breach our size limit
-			if len(metricData) >= r.flushMaxSize {
+			if len(r.putMetricDataInput.MetricData) >= r.flushMaxSize {
 				flush()
 			}
 
 			cnt++
 		case _ = <-ticker.C:
-			if len(metricData) > 0 {
+			if len(r.putMetricDataInput.MetricData) > 0 {
 				flush()
 			}
 		}
@@ -176,26 +175,21 @@ func (r *CloudWatch) run() {
 }
 
 // publishes a batch to CloudWatch.
-func (r *CloudWatch) publish(metricData []types.MetricDatum, cnt int) {
+func (r *CloudWatch) publish(metricData cloudwatch.PutMetricDataInput, cnt int) {
 	if cnt == 0 {
 		return
 	}
 	start := time.Now()
 
-	input := &cloudwatch.PutMetricDataInput{
-		Namespace:  aws.String(r.awsNamespace),
-		MetricData: metricData,
-	}
-
 	// Publish to CloudWatch!
-	result, err := r.client.PutMetricData(context.TODO(), input)
+	result, err := r.client.PutMetricData(context.TODO(), &metricData)
 	if err != nil {
 		log.Errorf("RouteCloudWatch: failed sending metric data: %s", err)
 		r.numErrFlush.Inc(1)
 		return
 	}
 
-	dataLength := int64(len(metricData))
+	dataLength := int64(len(metricData.MetricData))
 	dur := time.Since(start)
 	r.numOut.Inc(int64(cnt))
 	r.numCloudWatchMessages.Inc(1)
