@@ -1,5 +1,8 @@
 # unreleased
 
+# v1.5.7: July  21, 2025
+* Trying to diagnose docker deploy failure
+
 # v1.5.6: July  21, 2025
 * Bump go toolchain to 1.24.4
 

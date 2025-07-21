@@ -159,7 +159,7 @@ gh-pages: man
 	git add .
 	git commit -m "Rebuilt manual."
 	git push origin gh-pages
-	git checkout -q master
+	git checkout -q main
 
 install: build
 	go install
