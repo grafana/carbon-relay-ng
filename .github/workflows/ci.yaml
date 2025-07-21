@@ -107,6 +107,7 @@ jobs:
         uses: grafana/shared-workflows/actions/dockerhub-login@117d8511cbc5da0337972deeb400c4298b057af3
       - name: Push Docker image
         run: |
+          set -e
           version=$(cat build/version.txt)
           docker push grafana/carbon-relay-ng:$version
           # only versions without a hyphen - e.g. actual releases - are tagged as latest.

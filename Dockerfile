@@ -1,4 +1,4 @@
-FROM alpine as builder
+FROM alpine AS builder
 RUN apk --update add --no-cache ca-certificates
 RUN mkdir /var/spool/carbon-relay-ng
 

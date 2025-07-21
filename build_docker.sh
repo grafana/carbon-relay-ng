@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 version=$(git describe --tags --always | sed 's/^v//')
 
 # only tag as latest if we're in main branch and the version tag has no hyphen in it.
