@@ -1,5 +1,8 @@
 # unreleased
 
+# v1.5.8: August 12, 2025
+* Bump go version to 1.24.6
+
 # v1.5.7: July  21, 2025
 * Trying to diagnose docker deploy failure
 
