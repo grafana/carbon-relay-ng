@@ -117,7 +117,9 @@ jobs:
           docker push grafana/carbon-relay-ng:$tag
           # To preserve compatibility, also push the "master" tag we built in
           # build_docker.sh.
-          [[ "$tag" == "main" ]] && docker push grafana/carbon-relay-ng:master
+          if [[ "$tag" == "main" ]] ; then
+            docker push grafana/carbon-relay-ng:master
+          fi
 
   github_binaries:
     if: github.ref_type == 'tag'
