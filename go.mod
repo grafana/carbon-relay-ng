@@ -5,7 +5,7 @@ go 1.24.6
 require (
 	cloud.google.com/go/pubsub v1.49.0
 	github.com/BurntSushi/toml v0.3.1
-	github.com/Dieterbe/artisanalhistogram v0.0.0-20170619072513-f61b7225d304
+	github.com/Dieterbe/artisanalhistogram v0.0.0-20210330070510-f7596a8a7dbe
 	github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d
 	github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965
 	github.com/Shopify/sarama v1.23.0
