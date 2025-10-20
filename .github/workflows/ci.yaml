@@ -16,10 +16,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v4 # zizmor: ignore[cache-poisoning]
+      - uses: actions/setup-go@19bb51245e9c80abacb2e91cc42b33fa478b8639 # v4 # zizmor: ignore[cache-poisoning]
         with:
           go-version: 1.21.8
       - run: make test
@@ -28,10 +28,10 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v4 # zizmor: ignore[cache-poisoning]
+      - uses: actions/setup-go@19bb51245e9c80abacb2e91cc42b33fa478b8639 # v4 # zizmor: ignore[cache-poisoning]
         with:
           go-version: 1.21.8
       - uses: ruby/setup-ruby@dffc446db9ba5a0c4446edb5bca1c5c473a806c5 # v1.235.0
@@ -59,7 +59,7 @@ jobs:
         run: git describe --tags --always | sed 's/^v//' > build/version.txt
       - name: Upload package artifacts
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           include-hidden-files: true
           name: package-artifacts
@@ -71,11 +71,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
         with:
           persist-credentials: false
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: package-artifacts
           path: build
@@ -126,10 +126,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v4 # zizmor: ignore[cache-poisoning]
+      - uses: actions/setup-go@19bb51245e9c80abacb2e91cc42b33fa478b8639 # v4 # zizmor: ignore[cache-poisoning]
         with:
           go-version: 1.21.8
       - name: Run goreleaser
