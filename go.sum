@@ -17,8 +17,8 @@ cloud.google.com/go/pubsub v1.49.0 h1:5054IkbslnrMCgA2MAEPcsN3Ky+AyMpEZcii/DoySP
 cloud.google.com/go/pubsub v1.49.0/go.mod h1:K1FswTWP+C1tI/nfi3HQecoVeFvL4HUOB1tdaNXKhUY=
 github.com/DataDog/zstd v1.3.6-0.20190409195224-796139022798 h1:2T/jmrHeTezcCM58lvEQXs0UpQJCo5SoGAcg+mbSTIg=
 github.com/DataDog/zstd v1.3.6-0.20190409195224-796139022798/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
-github.com/Dieterbe/artisanalhistogram v0.0.0-20170619072513-f61b7225d304 h1:sbyOmR/OuOAFQIFjjW2aDVPJFQov0JjEm0mATV9fQd4=
-github.com/Dieterbe/artisanalhistogram v0.0.0-20170619072513-f61b7225d304/go.mod h1:cvs23dBNM28q/IWeu4hOdRwEcgaVHWJbXLG4cIib8iU=
+github.com/Dieterbe/artisanalhistogram v0.0.0-20210330070510-f7596a8a7dbe h1:X0bPbEOmjj6YFCSgoxmtJSZVQjYZCTowXK0XGCmakRI=
+github.com/Dieterbe/artisanalhistogram v0.0.0-20210330070510-f7596a8a7dbe/go.mod h1:cvs23dBNM28q/IWeu4hOdRwEcgaVHWJbXLG4cIib8iU=
 github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d h1:U/sZpL6NSWONN/4kS3s9kjoJd2y2enXsElP1h1kze4s=
 github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d/go.mod h1:j+eQi4f2k/Euay5RbXyA+U0tLdZoo5OzCRyl1egmP44=
 github.com/Dieterbe/toml v0.2.1-0.20181015092100-96f3d827bb6c h1:hpvC81FyLU8wQxqYYGjGmuKHzHkrRQ7WX0AsF3u+Z1g=
@@ -71,8 +71,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57 h1:qZNIK8jjHgLFHAW2wzCWPEv0ZIgcBhU7X3oDt/p3Sv0=
 github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57/go.mod h1:4hKCXuwrJoYvHZxJ86+bRVTOMyJ0Ej+RqfSm8mHi6KA=
-github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff h1:+NjfJ0G4z14aixDkcmlNXF/dH2j1csTVAGFJbyIU5sI=
-github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff/go.mod h1:M3z/8vKBGvqlq/3mChKmXhXFrQUGqMiCohBsvTKxMzQ=
+github.com/dgryski/go-linlog v0.0.0-20211015210535-87314c522abf h1:ze03lFvdwp2i8I9hEvhDvasny0qbWIETxj/PqZUm5s8=
+github.com/dgryski/go-linlog v0.0.0-20211015210535-87314c522abf/go.mod h1:M3z/8vKBGvqlq/3mChKmXhXFrQUGqMiCohBsvTKxMzQ=
 github.com/eapache/go-resiliency v1.1.0 h1:1NtRmCAqadE2FN4ZcN6g90TP3uk8cg9rn9eNK2197aU=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 h1:YEetp8/yCZMuEPMUDHG0CW/brkkEp8mzqk2+ODEitlw=

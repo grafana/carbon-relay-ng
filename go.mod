@@ -5,14 +5,14 @@ go 1.24.9
 require (
 	cloud.google.com/go/pubsub v1.49.0
 	github.com/BurntSushi/toml v0.3.1
-	github.com/Dieterbe/artisanalhistogram v0.0.0-20170619072513-f61b7225d304
+	github.com/Dieterbe/artisanalhistogram v0.0.0-20210330070510-f7596a8a7dbe
 	github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d
 	github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965
 	github.com/Shopify/sarama v1.23.0
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.44.3
-	github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff
+	github.com/dgryski/go-linlog v0.0.0-20211015210535-87314c522abf
 	github.com/elazarl/go-bindata-assetfs v1.0.1
 	github.com/golang/snappy v1.0.0
 	github.com/google/go-cmp v0.7.0
