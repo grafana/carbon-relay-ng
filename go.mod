@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.44.3
 	github.com/bmizerany/assert v0.0.0-20120716205630-e17e99893cb6
-	github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff
+	github.com/dgryski/go-linlog v0.0.0-20211015210535-87314c522abf
 	github.com/elazarl/go-bindata-assetfs v1.0.1
 	github.com/golang/snappy v1.0.0
 	github.com/google/go-cmp v0.7.0

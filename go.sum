@@ -72,8 +72,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57 h1:qZNIK8jjHgLFHAW2wzCWPEv0ZIgcBhU7X3oDt/p3Sv0=
 github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57/go.mod h1:4hKCXuwrJoYvHZxJ86+bRVTOMyJ0Ej+RqfSm8mHi6KA=
-github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff h1:+NjfJ0G4z14aixDkcmlNXF/dH2j1csTVAGFJbyIU5sI=
-github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff/go.mod h1:M3z/8vKBGvqlq/3mChKmXhXFrQUGqMiCohBsvTKxMzQ=
+github.com/dgryski/go-linlog v0.0.0-20211015210535-87314c522abf h1:ze03lFvdwp2i8I9hEvhDvasny0qbWIETxj/PqZUm5s8=
+github.com/dgryski/go-linlog v0.0.0-20211015210535-87314c522abf/go.mod h1:M3z/8vKBGvqlq/3mChKmXhXFrQUGqMiCohBsvTKxMzQ=
 github.com/eapache/go-resiliency v1.1.0 h1:1NtRmCAqadE2FN4ZcN6g90TP3uk8cg9rn9eNK2197aU=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 h1:YEetp8/yCZMuEPMUDHG0CW/brkkEp8mzqk2+ODEitlw=
