@@ -12,7 +12,6 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.44.3
-	github.com/bmizerany/assert v0.0.0-20120716205630-e17e99893cb6
 	github.com/dgryski/go-linlog v0.0.0-20180207191225-edcf2dfd90ff
 	github.com/elazarl/go-bindata-assetfs v1.0.1
 	github.com/golang/snappy v1.0.0
@@ -52,6 +51,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19 // indirect
 	github.com/aws/smithy-go v1.22.2 // indirect
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/cespare/xxhash v0.0.0-00010101000000-000000000000 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57 // indirect
@@ -67,14 +67,11 @@ require (
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/jcmturner/gofork v0.0.0-20190328161633-dc7c13fece03 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.1 // indirect
 	github.com/philhofer/fwd v0.0.0-20151120024002-92647f2bd94a // indirect
 	github.com/pierrec/lz4 v0.0.0-20190327172049-315a67e90e41 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a // indirect
-	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/tinylib/msgp v1.1.0 // indirect
 	github.com/xdg/stringprep v1.0.0 // indirect
