@@ -26,8 +26,8 @@ jobs:
         # if: github.ref_type == 'tag'
         uses: grafana/shared-workflows/actions/push-to-gar-docker@96e4673a3d86dbbd332f3251c21a4c1299baa714 # v0.6.1
         with:
-          tags:
-            - ${{ steps.version.outputs.tag }}
+          tags: |-
+            "${{ steps.version.outputs.tag }}"
           context: .
           image_name: carbon-relay-ng
           environment: prod
