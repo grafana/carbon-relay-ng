@@ -120,6 +120,19 @@ jobs:
           if [[ "$tag" == "main" ]] ; then
             docker push grafana/carbon-relay-ng:master
           fi
+      - name: Read version
+        id: version
+        run: echo "tag=$(cat build/version.txt)" >> $GITHUB_OUTPUT
+      - name: Push image to GAR
+        # Only for real releases not push to main.
+        if: github.ref_type == 'tag'
+        uses: grafana/shared-workflows/actions/push-to-gar-docker@96e4673a3d86dbbd332f3251c21a4c1299baa714 # v0.6.1
+        with:
+          tags: |-
+            "${{ steps.version.outputs.tag }}"
+          context: .
+          image_name: carbon-relay-ng
+          environment: prod
 
   github_binaries:
     if: github.ref_type == 'tag'
