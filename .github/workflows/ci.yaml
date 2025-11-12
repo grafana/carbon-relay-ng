@@ -123,6 +123,7 @@ jobs:
       - name: Read version
         id: version
         run: echo "tag=$(cat build/version.txt)" >> $GITHUB_OUTPUT
+      - run: cp build/bin/* .
       - name: Push image to GAR
         # Only for real releases not push to main.
         if: github.ref_type == 'tag'
