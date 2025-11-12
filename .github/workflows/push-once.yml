@@ -37,3 +37,4 @@ jobs:
           context: .
           image_name: carbon-relay-ng
           environment: prod
+          push: true
