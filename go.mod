@@ -23,7 +23,7 @@ require (
 	github.com/jpillora/backoff v1.0.0
 	github.com/kisielk/og-rek v1.3.0
 	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
-	github.com/prometheus/procfs v0.16.1
+	github.com/prometheus/procfs v0.19.2
 	github.com/raintank/dur v0.0.0-20220106223125-d7c6a541ef3a
 	github.com/sirupsen/logrus v1.9.3
 	github.com/streadway/amqp v1.1.0
@@ -86,8 +86,8 @@ require (
 	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
-	golang.org/x/sync v0.13.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/api v0.227.0 // indirect
