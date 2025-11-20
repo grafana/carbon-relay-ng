@@ -28,7 +28,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/streadway/amqp v1.1.0
 	github.com/stretchr/testify v1.11.1
-	github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c
+	github.com/taylorchu/toki v0.0.0-20240927201529-36c157adcc65
 	github.com/xdg/scram v1.0.5
 )
 
