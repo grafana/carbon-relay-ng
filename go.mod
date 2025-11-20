@@ -27,7 +27,7 @@ require (
 	github.com/raintank/dur v0.0.0-20220106223125-d7c6a541ef3a
 	github.com/sirupsen/logrus v1.9.3
 	github.com/streadway/amqp v1.1.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c
 	github.com/xdg/scram v1.0.5
 )
