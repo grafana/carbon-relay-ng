@@ -104,6 +104,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/cespare/xxhash => github.com/cespare/xxhash/v2 v2.1.1
+replace github.com/cespare/xxhash => github.com/cespare/xxhash/v2 v2.3.0
 
 replace github.com/BurntSushi/toml v0.3.1 => github.com/Dieterbe/toml v0.2.1-0.20181015092100-96f3d827bb6c
