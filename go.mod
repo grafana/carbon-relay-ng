@@ -4,7 +4,7 @@ go 1.24.9
 
 require (
 	cloud.google.com/go/pubsub v1.49.0
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v0.4.1
 	github.com/Dieterbe/artisanalhistogram v0.0.0-20210330070510-f7596a8a7dbe
 	github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d
 	github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965
