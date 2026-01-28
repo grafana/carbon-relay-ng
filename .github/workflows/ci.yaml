@@ -131,6 +131,7 @@ jobs:
         with:
           tags: |-
             "${{ steps.version.outputs.tag }}"
+            "latest"
           context: .
           image_name: carbon-relay-ng
           environment: prod
