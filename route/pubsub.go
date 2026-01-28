@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	"github.com/Dieterbe/go-metrics"
 	dest "github.com/grafana/carbon-relay-ng/destination"
 	"github.com/grafana/carbon-relay-ng/matcher"
