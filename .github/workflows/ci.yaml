@@ -133,6 +133,7 @@ jobs:
           context: .
           gar-environment: prod
           gar-image: carbon-relay-ng
+          push: true
           registries: gar
 
   github_binaries:
