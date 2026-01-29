@@ -125,16 +125,15 @@ jobs:
         run: echo "tag=$(cat build/version.txt)" >> $GITHUB_OUTPUT
       - run: cp build/bin/* .
       - name: Push image to GAR
-        # Only for real releases not push to main.
-        if: github.ref_type == 'tag'
-        uses: grafana/shared-workflows/actions/push-to-gar-docker@96e4673a3d86dbbd332f3251c21a4c1299baa714 # v0.6.1
+        uses: grafana/shared-workflows/actions/docker-build-push-image@ef27c620a88acc9f3007f30be5e9407324e8975b # v0.3.0
         with:
           tags: |-
             "${{ steps.version.outputs.tag }}"
-            "latest"
+            ${{ github.ref_type == 'tag' && 'latest' || 'main' }}
           context: .
-          image_name: carbon-relay-ng
-          environment: prod
+          gar-environment: prod
+          gar-image: carbon-relay-ng
+          registries: gar
 
   github_binaries:
     if: github.ref_type == 'tag'
