@@ -1,5 +1,8 @@
 # unreleased
 
+# v1.5.11: January 29, 2026
+* Rebuild, no changes.
+
 # v1.5.10: January 28, 2026
 * Bump go version to 1.24.11
 * Minor dependency updates
