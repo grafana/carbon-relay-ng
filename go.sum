@@ -189,8 +189,8 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c h1:FPVNYOiTjaGNfDYevBEiLLu9iSkBdvnfMcnR6qKkwbg=
-github.com/taylorchu/toki v0.0.0-20141019163204-20e86122596c/go.mod h1:YYyjUTaSaC2W8KSnbqKGHDKPd/e/8c88su0LP0NkUfk=
+github.com/taylorchu/toki v0.0.0-20240927201529-36c157adcc65 h1:nzwGiZOs5MgNsx0b8+xTuSKB3HcWwNdh7G/5GxIr50U=
+github.com/taylorchu/toki v0.0.0-20240927201529-36c157adcc65/go.mod h1:YYyjUTaSaC2W8KSnbqKGHDKPd/e/8c88su0LP0NkUfk=
 github.com/tinylib/msgp v1.1.0 h1:9fQd+ICuRIu/ue4vxJZu6/LzxN0HwMds2nq/0cFvxHU=
 github.com/tinylib/msgp v1.1.0/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c/go.mod h1:lB8K/P019DLNhemzwFU4jHLhdvlE6uDZjXFejJXr49I=
