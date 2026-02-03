@@ -9,7 +9,7 @@ COPY --from=builder /var/spool /var/spool
 
 VOLUME /conf
 ADD examples/carbon-relay-ng.ini /conf/carbon-relay-ng.ini
-ADD carbon-relay-ng-linux-amd64 /bin/carbon-relay-ng
+ADD --chmod=555 carbon-relay-ng-linux-amd64 /bin/carbon-relay-ng
 
 ENTRYPOINT ["/bin/carbon-relay-ng"]
 CMD ["/conf/carbon-relay-ng.ini"]
