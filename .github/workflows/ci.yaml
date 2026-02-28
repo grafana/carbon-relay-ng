@@ -85,7 +85,7 @@ jobs:
       - name: Install package_cloud
         run: gem install package_cloud
       - name: Set PACKAGECLOUD_TOKEN
-        uses: grafana/shared-workflows/actions/get-vault-secrets@2d5a0678eb32b0fd6655b4f7a3a7ec72eaf530ca
+        uses: grafana/shared-workflows/actions/get-vault-secrets@9169dac82ee307312a1c948918184ea02f34aff8
         with:
           repo_secrets: |
             PACKAGECLOUD_TOKEN=packagecloud:token
@@ -104,7 +104,7 @@ jobs:
       - name: Load Docker image
         run: docker load -i build/carbon-relay-ng.tar
       - name: Login to DockerHub
-        uses: grafana/shared-workflows/actions/dockerhub-login@2d5a0678eb32b0fd6655b4f7a3a7ec72eaf530ca
+        uses: grafana/shared-workflows/actions/dockerhub-login@9169dac82ee307312a1c948918184ea02f34aff8
       - name: Push Docker image
         run: |
           set -e
