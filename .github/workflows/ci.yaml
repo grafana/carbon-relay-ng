@@ -59,7 +59,7 @@ jobs:
         run: git describe --tags --always | sed 's/^v//' > build/version.txt
       - name: Upload package artifacts
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           include-hidden-files: true
           name: package-artifacts
@@ -75,7 +75,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Download package artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: package-artifacts
           path: build
