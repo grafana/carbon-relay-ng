@@ -36,7 +36,7 @@ jobs:
           go-version: 1.25.7
       - uses: ruby/setup-ruby@dffc446db9ba5a0c4446edb5bca1c5c473a806c5 # v1.235.0
         with:
-          ruby-version: 3.3
+          ruby-version: 3.4.8
       - name: Install FPM and dependencies
         run: |
           sudo apt-get update
@@ -81,7 +81,7 @@ jobs:
           path: build
       - uses: ruby/setup-ruby@dffc446db9ba5a0c4446edb5bca1c5c473a806c5 # v1.235.0
         with:
-          ruby-version: 3.3
+          ruby-version: 3.4.8
       - name: Install package_cloud
         run: gem install package_cloud
       - name: Set PACKAGECLOUD_TOKEN
