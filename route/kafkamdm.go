@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/Shopify/sarama"
-	"github.com/Shopify/sarama/tools/tls"
+	"github.com/IBM/sarama"
+	"github.com/IBM/sarama/tools/tls"
 	"github.com/grafana/metrictank/cluster/partitioner"
 	"github.com/grafana/metrictank/schema"
 	log "github.com/sirupsen/logrus"
