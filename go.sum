@@ -17,11 +17,12 @@ cloud.google.com/go/pubsub v1.50.2 h1:54Up97HnThdP4H8jjWJSSQ/mnYG2EKon7ZSNETRq0t
 cloud.google.com/go/pubsub v1.50.2/go.mod h1:jyCWeZdGFqd4mitSsBERnJcpqaHBsxQoPkNvjj4sp0w=
 cloud.google.com/go/pubsub/v2 v2.4.0 h1:oMKNiBQpXImRWnHYla9uSU66ZzByZwBSCJOEs/pTKVg=
 cloud.google.com/go/pubsub/v2 v2.4.0/go.mod h1:2lS/XQKq5qtOMs6kHBK+WX1ytUC36kLl2ig3zqsGUx8=
+github.com/BurntSushi/toml v0.4.1 h1:GaI7EiDXDRfa8VshkTj7Fym7ha+y8/XxIgD2okUIjLw=
+github.com/BurntSushi/toml v0.4.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/Dieterbe/artisanalhistogram v0.0.0-20210330070510-f7596a8a7dbe h1:X0bPbEOmjj6YFCSgoxmtJSZVQjYZCTowXK0XGCmakRI=
 github.com/Dieterbe/artisanalhistogram v0.0.0-20210330070510-f7596a8a7dbe/go.mod h1:cvs23dBNM28q/IWeu4hOdRwEcgaVHWJbXLG4cIib8iU=
 github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d h1:U/sZpL6NSWONN/4kS3s9kjoJd2y2enXsElP1h1kze4s=
 github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d/go.mod h1:j+eQi4f2k/Euay5RbXyA+U0tLdZoo5OzCRyl1egmP44=
-github.com/Dieterbe/toml v0.2.1-0.20181015092100-96f3d827bb6c h1:hpvC81FyLU8wQxqYYGjGmuKHzHkrRQ7WX0AsF3u+Z1g=
 github.com/Dieterbe/toml v0.2.1-0.20181015092100-96f3d827bb6c/go.mod h1:jeLJbNaFmJ/kD7GYPvIY/OLvVEJOKFlSzpzvpnCBMYs=
 github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965 h1:J+IGZnCnC1xBx5idVTwtwWvNvag/xcUtJErqpCaeuVQ=
 github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965/go.mod h1:XesnwgT5myGnV9k2UlX2VXIfY0JNY//GTi9yA8oVNHs=
