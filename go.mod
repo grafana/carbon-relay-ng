@@ -19,7 +19,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/configparser v0.0.0-20210707122942-2593eb86a3ee
-	github.com/grafana/metrictank v1.0.1-0.20221128152741-61182cf5f40e
+	github.com/grafana/metrictank v1.1
 	github.com/jpillora/backoff v1.0.0
 	github.com/kisielk/og-rek v1.3.0
 	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
