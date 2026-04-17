@@ -3,7 +3,7 @@ RUN apk --update add --no-cache ca-certificates
 RUN mkdir /var/spool/carbon-relay-ng
 
 # But the final image is distroless
-FROM gcr.io/distroless/static-debian12@sha256:87bce11be0af225e4ca761c40babb06d6d559f5767fbf7dc3c47f0f1a466b92c
+FROM gcr.io/distroless/static-debian12@sha256:20bc6c0bc4d625a22a8fde3e55f6515709b32055ef8fb9cfbddaa06d1760f838
 COPY --from=builder /etc/ssl /etc/ssl
 COPY --from=builder /var/spool /var/spool
 
