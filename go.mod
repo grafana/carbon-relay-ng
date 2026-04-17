@@ -11,7 +11,7 @@ require (
 	github.com/IBM/sarama v1.47.0
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.15
-	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.55.3
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.56.0
 	github.com/dgryski/go-linlog v0.0.0-20211015210535-87314c522abf
 	github.com/elazarl/go-bindata-assetfs v1.0.1
 	github.com/golang/snappy v1.0.0
