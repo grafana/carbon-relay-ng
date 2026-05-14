@@ -25,8 +25,8 @@ github.com/Dieterbe/toml v0.2.1-0.20181015092100-96f3d827bb6c h1:hpvC81FyLU8wQxq
 github.com/Dieterbe/toml v0.2.1-0.20181015092100-96f3d827bb6c/go.mod h1:jeLJbNaFmJ/kD7GYPvIY/OLvVEJOKFlSzpzvpnCBMYs=
 github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965 h1:J+IGZnCnC1xBx5idVTwtwWvNvag/xcUtJErqpCaeuVQ=
 github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965/go.mod h1:XesnwgT5myGnV9k2UlX2VXIfY0JNY//GTi9yA8oVNHs=
-github.com/IBM/sarama v1.48.1 h1:x1dSWebprjjE7Wr7n8RVAxwa4mt4O9JejRxnZrGIXk0=
-github.com/IBM/sarama v1.48.1/go.mod h1:m/Q1aFezH82/AglfTpJbw/fO0ZybYXhPgTmvajiZX50=
+github.com/IBM/sarama v1.48.2 h1:QKUXRaHF46aoRwagtvDR/imrOdbdV/qWzv0u6e5my+w=
+github.com/IBM/sarama v1.48.2/go.mod h1:m/Q1aFezH82/AglfTpJbw/fO0ZybYXhPgTmvajiZX50=
 github.com/aristanetworks/gomap v0.0.0-20230726210543-f4e41046dced h1:HxlRMDx/VeRqzj3nvqX9k4tjeBcEIkoNHDJPsS389hs=
 github.com/aristanetworks/gomap v0.0.0-20230726210543-f4e41046dced/go.mod h1:p7lmI+ecoe1RTyD11SPXWsSQ3H+pJ4cp5y7vtKW4QdM=
 github.com/aws/aws-sdk-go-v2 v1.41.7 h1:DWpAJt66FmnnaRIOT/8ASTucrvuDPZASqhhLey6tLY8=
