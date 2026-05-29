@@ -109,6 +109,7 @@ jobs:
         id: image
         env:
           REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -e
           short_sha="${GITHUB_SHA::7}"
@@ -117,10 +118,13 @@ jobs:
             internal_env=prod
             version=$(cat build/version.txt)
             tags="${version}"
-          else
+          elif [ "$REF_TYPE" = "branch" ] && [ "$REF_NAME" = "main" ]; then
             # Main branch: push to dev GAR with immutable main-<sha> tag.
             internal_env=dev
             tags="main-${short_sha}"
+          else
+            echo "Refusing to publish image for unexpected ref: type=$REF_TYPE name=$REF_NAME" >&2
+            exit 1
           fi
           {
             echo "internal_env=${internal_env}"
