@@ -1,0 +1,8 @@
+[template]
+src   = "carbon-relay-ng.ini"
+dest  = "/etc/carbon-relay-ng.ini"
+owner = "root"
+group = "root"
+mode  = "0644"
+keys = [
+]
