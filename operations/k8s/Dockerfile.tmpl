@@ -1,0 +1,29 @@
+# This Dockerfile is built by a scheduled github action
+# .github/workflows/update-carbon-relay-ng-image.yml
+
+FROM alpine AS builder
+
+RUN apk --update add --no-cache curl
+
+RUN curl -sL \
+    https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64 \
+        > /usr/local/bin/confd && \
+    chmod a+x /usr/local/bin/confd && \
+    chmod +x /usr/local/bin/confd
+
+FROM busybox:1.36.1-uclibc AS busybox
+
+FROM us-docker.pkg.dev/grafanalabs-global/docker-carbon-relay-ng-prod/carbon-relay-ng:%%VERSION%%
+COPY --from=builder /usr/local/bin/confd /usr/local/bin/confd
+COPY --from=busybox /bin/sh /bin/sh
+
+ENV INSTANCE=carbon
+
+COPY entrypoint.sh /usr/bin/entrypoint.sh
+COPY templates/* /etc/confd/templates/
+COPY conf.d/* /etc/confd/conf.d/
+COPY storage-schemas.conf /etc/
+COPY storage-aggregation.conf /etc/
+
+ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+CMD ["/bin/carbon-relay-ng", "/etc/carbon-relay-ng.ini"]
