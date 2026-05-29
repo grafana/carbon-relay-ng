@@ -53,9 +53,7 @@ jobs:
       - name: Make packages
         run: make packages
       - name: Build Docker image
-        run: |
-          make docker
-          docker save -o build/carbon-relay-ng.tar grafana/carbon-relay-ng
+        run: make docker
       - name: Store version
         run: git describe --tags --always | sed 's/^v//' > build/version.txt
       - name: Upload package artifacts
@@ -105,38 +103,52 @@ jobs:
           package_cloud push $repo/debian/buster build/deb-systemd/carbon-relay-ng-*.deb
           package_cloud push $repo/el/6 build/centos-6/carbon-relay-ng-*.el6.*.rpm
           package_cloud push $repo/el/7 build/centos-7/carbon-relay-ng-*.el7.*.rpm
-      - name: Load Docker image
-        run: docker load -i build/carbon-relay-ng.tar
-      - name: Login to DockerHub
-        uses: grafana/shared-workflows/actions/dockerhub-login@ef3a62a3ca4c1a15505b4235a5a51493194da3c7 # dockerhub-login/v1.0.4
-      - name: Push Docker image
+      - name: Position binary for image build context
+        run: cp build/bin/* .
+      - name: Compute image tags and target environment
+        id: image
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -e
-          version=$(cat build/version.txt)
-          docker push grafana/carbon-relay-ng:$version
-          # only versions without a hyphen - e.g. actual releases - are tagged as latest.
-          # in-between-release versions are tagged as main.
-          tag=latest
-          [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && tag=main
-          docker push grafana/carbon-relay-ng:$tag
-          # To preserve compatibility, also push the "master" tag we built in
-          # build_docker.sh.
-          if [[ "$tag" == "main" ]] ; then
-            docker push grafana/carbon-relay-ng:master
+          short_sha="${GITHUB_SHA::7}"
+          if [ "$REF_TYPE" = "tag" ]; then
+            # Release: push to prod GAR with a single <version> tag.
+            internal_env=prod
+            version=$(cat build/version.txt)
+            tags="${version}"
+          elif [ "$REF_TYPE" = "branch" ] && [ "$REF_NAME" = "main" ]; then
+            # Main branch: push to dev GAR with immutable main-<sha> tag.
+            internal_env=dev
+            tags="main-${short_sha}"
+          else
+            echo "Refusing to publish image for unexpected ref: type=$REF_TYPE name=$REF_NAME" >&2
+            exit 1
           fi
-      - name: Read version
-        id: version
-        run: echo "tag=$(cat build/version.txt)" >> $GITHUB_OUTPUT
-      - run: cp build/bin/* .
-      - name: Push image to GAR
-        uses: grafana/shared-workflows/actions/docker-build-push-image@ef27c620a88acc9f3007f30be5e9407324e8975b # v0.3.0
+          {
+            echo "internal_env=${internal_env}"
+            echo "tags<<EOF"
+            echo "${tags}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Push image to internal GAR
+        uses: grafana/shared-workflows/actions/docker-build-push-image@34f27887c37cafe70d34af57dfc86b468a31b8c4 # docker-build-push-image/v0.3.3
         with:
-          tags: |-
-            "${{ steps.version.outputs.tag }}"
-            ${{ github.ref_type == 'tag' && 'latest' || 'main' }}
+          tags: ${{ steps.image.outputs.tags }}
+          context: .
+          gar-environment: ${{ steps.image.outputs.internal_env }}
+          gar-image: carbon-relay-ng
+          push: true
+          registries: gar
+      - name: Push image to Docker Hub mirror staging
+        uses: grafana/shared-workflows/actions/docker-build-push-image@34f27887c37cafe70d34af57dfc86b468a31b8c4 # docker-build-push-image/v0.3.3
+        with:
+          tags: ${{ steps.image.outputs.tags }}
           context: .
           gar-environment: prod
           gar-image: carbon-relay-ng
+          gar-repository: dockerhub-carbon-relay-ng-prod-mirror
           push: true
           registries: gar
 
