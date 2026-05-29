@@ -106,7 +106,7 @@ jobs:
       - name: Position binary for image build context
         run: |
           cp build/bin/* .
-          cp build/bin/carbon-relay-ng-linux-amd64 operations/k8s/
+          cp build/bin/* operations/k8s/
       - name: Compute image tags and target environment
         id: image
         env:
