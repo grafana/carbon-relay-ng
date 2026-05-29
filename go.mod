@@ -9,7 +9,7 @@ require (
 	github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d
 	github.com/Dieterbe/topic v0.0.0-20141209014555-1850ffda9965
 	github.com/IBM/sarama v1.48.2
-	github.com/aws/aws-sdk-go-v2 v1.41.7
+	github.com/aws/aws-sdk-go-v2 v1.41.8
 	github.com/aws/aws-sdk-go-v2/config v1.32.17
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.56.3
 	github.com/dgryski/go-linlog v0.0.0-20211015210535-87314c522abf
