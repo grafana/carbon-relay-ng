@@ -107,10 +107,12 @@ jobs:
         run: cp build/bin/* .
       - name: Compute image tags and target environment
         id: image
+        env:
+          REF_TYPE: ${{ github.ref_type }}
         run: |
           set -e
           short_sha="${GITHUB_SHA::7}"
-          if [ "${{ github.ref_type }}" = "tag" ]; then
+          if [ "$REF_TYPE" = "tag" ]; then
             # Release: push to prod GAR with a single <version> tag.
             internal_env=prod
             version=$(cat build/version.txt)
