@@ -1,7 +1,7 @@
 local k = import 'ksonnet-util/kausal.libsonnet';
 {
   _images+:: {
-    carbon_relay_ng: 'grafana/carbon-relay-ng:main',
+    carbon_relay_ng: 'grafana/carbon-relay-ng:1.5.14',
   },
 
   _config+:: {

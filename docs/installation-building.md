@@ -27,8 +27,10 @@ See [dockerhub](https://hub.docker.com/r/grafana/carbon-relay-ng/).
 
 You can use these tags:
 
-* `latest`: the latest official stable release
-* `main`: latest build from main. these versions typically bring improvements but possibly also new bugs
+* `<version>` (e.g. `1.5.14`): an official stable release. Pin to one of these for reproducible deployments.
+* `main-<short-sha>`: an immutable build from the corresponding commit on the `main` branch. These typically bring improvements but possibly also new bugs.
+
+> **Note:** the mutable `latest`, `main` and `master` tags are no longer updated and are frozen at their last published value. Use an immutable `main-<short-sha>` tag or pin to a release version instead.
 
 
 # Building from source
