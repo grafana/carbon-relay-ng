@@ -49,7 +49,7 @@ docker: build-linux
 	docker build -t carbon-relay-ng:$(VERSION) .
 
 docker-k8s: build-linux
-	cp build/bin/carbon-relay-ng-linux-amd64 operations/k8s/
+	cp build/bin/* operations/k8s/
 	docker build -t carbon-relay-ng-k8s:$(VERSION) operations/k8s
 
 all:
