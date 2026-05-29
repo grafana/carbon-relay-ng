@@ -104,7 +104,9 @@ jobs:
           package_cloud push $repo/el/6 build/centos-6/carbon-relay-ng-*.el6.*.rpm
           package_cloud push $repo/el/7 build/centos-7/carbon-relay-ng-*.el7.*.rpm
       - name: Position binary for image build context
-        run: cp build/bin/* .
+        run: |
+          cp build/bin/* .
+          cp build/bin/carbon-relay-ng-linux-amd64 operations/k8s/
       - name: Compute image tags and target environment
         id: image
         env:
@@ -149,6 +151,15 @@ jobs:
           gar-environment: prod
           gar-image: carbon-relay-ng
           gar-repository: dockerhub-carbon-relay-ng-prod-mirror
+          push: true
+          registries: gar
+      - name: Push k8s image to internal GAR
+        uses: grafana/shared-workflows/actions/docker-build-push-image@34f27887c37cafe70d34af57dfc86b468a31b8c4 # docker-build-push-image/v0.3.3
+        with:
+          tags: ${{ steps.image.outputs.tags }}
+          context: operations/k8s
+          gar-environment: ${{ steps.image.outputs.internal_env }}
+          gar-image: carbon-relay-ng-k8s
           push: true
           registries: gar
 
