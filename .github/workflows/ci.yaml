@@ -35,7 +35,7 @@ jobs:
         with:
           go-version: 1.25.9
           cache: false
-      - uses: ruby/setup-ruby@dffc446db9ba5a0c4446edb5bca1c5c473a806c5 # v1.235.0
+      - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
         with:
           ruby-version: 3.3
       - name: Install FPM and dependencies
@@ -81,7 +81,7 @@ jobs:
         with:
           name: package-artifacts
           path: build
-      - uses: ruby/setup-ruby@dffc446db9ba5a0c4446edb5bca1c5c473a806c5 # v1.235.0
+      - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
         with:
           ruby-version: 3.3
       - name: Install package_cloud
