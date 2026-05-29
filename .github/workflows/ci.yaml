@@ -118,10 +118,9 @@ jobs:
             version=$(cat build/version.txt)
             tags="${version}"
           else
-            # Main branch: push to dev GAR with immutable <branch>-<sha> tags.
-            # Both main- and master- are pushed for downstream compat.
+            # Main branch: push to dev GAR with immutable main-<sha> tag.
             internal_env=dev
-            tags="main-${short_sha}"$'\n'"master-${short_sha}"
+            tags="main-${short_sha}"
           fi
           {
             echo "internal_env=${internal_env}"
