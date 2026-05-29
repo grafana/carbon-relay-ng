@@ -52,4 +52,6 @@ printf 'carbon.relay.ng.smoke.test 1 %s\n' "$(date +%s)" \
 ingested() { [ "$(in_count)" -gt 0 ]; }
 retry ingested || die "metric was sent but never counted"
 
+echo "--- container logs ---"
+docker logs "$container" 2>&1 || true
 echo "smoke test passed for $image"
