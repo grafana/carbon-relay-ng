@@ -42,8 +42,15 @@ build/bin/carbon-relay-ng-linux-%: carbon-relay-ng-linux-%
 test:
 	go test -v -race ./...
 
+print-version:
+	@echo $(VERSION)
+
 docker: build-linux
-	./build_docker.sh
+	docker build -t carbon-relay-ng:$(VERSION) .
+
+docker-k8s: build-linux
+	cp build/bin/* operations/k8s/
+	docker build -t carbon-relay-ng-k8s:$(VERSION) operations/k8s
 
 all:
 

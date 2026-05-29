@@ -54,8 +54,15 @@ jobs:
         run: make packages
       - name: Build Docker image
         run: make docker
+      - name: Build k8s Docker image
+        run: make docker-k8s
+      - name: Smoke test images
+        run: |
+          version=$(make print-version)
+          ./smoke_test.sh "carbon-relay-ng:${version}"
+          ./smoke_test.sh "carbon-relay-ng-k8s:${version}"
       - name: Store version
-        run: git describe --tags --always | sed 's/^v//' > build/version.txt
+        run: make print-version > build/version.txt
       - name: Upload package artifacts
         if: github.event_name == 'push'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
