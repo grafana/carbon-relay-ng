@@ -1,5 +1,8 @@
 # unreleased
+
+# v1.5.15: June 1, 2026
 * The mutable `latest`, `main` and `master` tags are now frozen at their last value and will no longer update. Pin to release versions or  `main-<short-sha>` tags (build from `main`). See [installation docs](https://github.com/grafana/carbon-relay-ng/blob/main/docs/installation-building.md#docker-images).
+* Various minor dependency updates
 
 # v1.5.14: April 17, 2026
 * Bump Go version to 1.25.9
