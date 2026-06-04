@@ -22,7 +22,7 @@ require (
 	github.com/grafana/metrictank v1.0.1-0.20221128152741-61182cf5f40e
 	github.com/jpillora/backoff v1.0.0
 	github.com/kisielk/og-rek v1.3.0
-	github.com/metrics20/go-metrics20 v0.0.0-20180821133656-717ed3a27bf9
+	github.com/metrics20/go-metrics20 v0.0.0-20240216190837-a2a3be37ef3e
 	github.com/prometheus/procfs v0.20.1
 	github.com/raintank/dur v0.0.0-20220106223125-d7c6a541ef3a
 	github.com/sirupsen/logrus v1.9.4
