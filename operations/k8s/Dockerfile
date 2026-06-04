@@ -17,7 +17,7 @@ RUN echo "255d2559f3824dd64df059bdc533fd6b697c070db603c76aaf8d1d5e6b0cc334  /usr
 # /bin/sh is a symlink to /bin/busybox, which would dangle in the distroless
 # image. The busybox-uclibc image ships a self-contained, statically linked
 # binary that works standalone.
-FROM busybox:1.36.1-uclibc@sha256:0872fb3a7632ba9d0ae46a8e832a62b30ce83a6f220b8bb52903d9cf477dabe3 AS busybox
+FROM busybox:1.38.0-uclibc@sha256:eea4ff5612c911abd1d0e9ed47ba642547b01c3490877d9c1bb5fd6346462da4 AS busybox
 
 # But the final image is distroless
 FROM gcr.io/distroless/static-debian12@sha256:20bc6c0bc4d625a22a8fde3e55f6515709b32055ef8fb9cfbddaa06d1760f838
