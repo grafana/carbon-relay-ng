@@ -51,10 +51,15 @@ nfpms:
         dst: /usr/lib/tmpfiles.d/carbon-relay-ng.conf
       - src: man/man1/carbon-relay-ng.1
         dst: /usr/share/man/man1/carbon-relay-ng.1
+      # Working dir for the systemd unit, needed before the first boot.
+      - dst: /var/run/carbon-relay-ng
+        type: dir
+        file_info:
+          mode: 0755
     scripts:
       postinstall: examples/after_install.sh
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 snapshot:
   version_template: "{{ .Tag }}-next"
 changelog:
