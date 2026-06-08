@@ -1,4 +1,7 @@
 # unreleased
+* Bump Go version to 1.25.11
+* Produce DEB/RPM packages with goreleaser nfpm #770
+* Various minor dependency updates, including security fixes for `golang.org/x/net` and `golang.org/x/crypto`
 
 # v1.5.15: June 1, 2026
 * The mutable `latest`, `main` and `master` tags are now frozen at their last value and will no longer update. Pin to release versions or  `main-<short-sha>` tags (build from `main`). See [installation docs](https://github.com/grafana/carbon-relay-ng/blob/main/docs/installation-building.md#docker-images).
