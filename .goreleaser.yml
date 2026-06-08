@@ -5,6 +5,8 @@ builds:
     binary: carbon-relay-ng
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.Version={{ .Version }}
     goos:
       - linux
       - windows
@@ -21,9 +23,44 @@ archives:
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
+nfpms:
+  - id: carbon-relay-ng
+    package_name: carbon-relay-ng
+    ids:
+      - carbon-relay-ng
+    vendor: Grafana Labs
+    homepage: https://github.com/grafana/carbon-relay-ng
+    maintainer: Grafana Labs <support@grafana.com>
+    description: Fast carbon relay+aggregator with admin interfaces for making changes online
+    license: BSD
+    formats:
+      - deb
+      - rpm
+    # Epoch preserves upgrade ordering for users on the old Packagecloud RPM,
+    # which was built with `--epoch 1`.
+    epoch: "1"
+    release: "1"
+    bindir: /usr/bin
+    contents:
+      - src: examples/carbon-relay-ng.ini
+        dst: /etc/carbon-relay-ng/carbon-relay-ng.conf
+        type: "config|noreplace"
+      - src: examples/carbon-relay-ng.service
+        dst: /lib/systemd/system/carbon-relay-ng.service
+      - src: examples/carbon-relay-ng-tmpfiles.conf
+        dst: /usr/lib/tmpfiles.d/carbon-relay-ng.conf
+      - src: man/man1/carbon-relay-ng.1
+        dst: /usr/share/man/man1/carbon-relay-ng.1
+      # Working dir for the systemd unit, needed before the first boot.
+      - dst: /var/run/carbon-relay-ng
+        type: dir
+        file_info:
+          mode: 0755
+    scripts:
+      postinstall: examples/after_install.sh
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  version_template: "{{ .Tag }}-next"
 changelog:
   disable: true
