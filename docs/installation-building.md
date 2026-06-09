@@ -8,15 +8,44 @@ This may help you decide whether you want the latest release, or the latest code
 
 ## Linux distribution packages
 
-Grafana Labs provides 2 repositories for carbon-relay-ng:
+DEB and RPM packages (`amd64` and `arm64`) are published to Grafana Labs'
+package repositories, [apt.grafana.com](https://apt.grafana.com) and
+[rpm.grafana.com](https://rpm.grafana.com).
 
-* [raintank](https://packagecloud.io/raintank/raintank): stable repository for official stable releases
-* [testing](https://packagecloud.io/raintank/testing): testing repository that has the latest packages which typically bring improvements but possibly also new bugs.
+> **Deprecation:** the previous Packagecloud repositories
+> (`packagecloud.io/raintank/raintank` and `raintank/testing`) are deprecated
+> and will be shut down. If you installed from there, switch to the
+> repositories below.
 
-See the installation instructions on those pages for how to enable the repositories for your distribution
+### APT (Debian, Ubuntu)
 
-We host packages for Ubuntu 14.04 (trusty), 16.04 (xenial), debian 8, 9, 10 (jessie, stretch and buster/testing), Centos6 and Centos7.
+```sh
+sudo apt-get install -y apt-transport-https wget gnupg
+sudo mkdir -p /etc/apt/keyrings/
+sudo wget -O /etc/apt/keyrings/grafana.asc https://apt.grafana.com/gpg-full.key
+sudo chmod 644 /etc/apt/keyrings/grafana.asc
+echo "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+sudo apt-get update
+sudo apt-get install carbon-relay-ng
+```
+### RPM (RHEL, CentOS, Fedora)
 
+```sh
+wget -q -O gpg.key https://rpm.grafana.com/gpg.key
+sudo rpm --import gpg.key
+sudo tee /etc/yum.repos.d/grafana.repo > /dev/null <<'EOF'
+[grafana]
+name=grafana
+baseurl=https://rpm.grafana.com
+repo_gpgcheck=1
+enabled=1
+gpgcheck=1
+gpgkey=https://rpm.grafana.com/gpg.key
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+EOF
+sudo dnf install carbon-relay-ng
+```
 ## Binaries
 
 Executable Binaries for Linux, Mac, FreeBSD and Windows can be found on the [releases](https://github.com/grafana/carbon-relay-ng/releases) page (starting with v0.13.0) .
