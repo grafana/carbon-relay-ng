@@ -1,5 +1,10 @@
 # unreleased
 
+# v1.5.17: June 9, 2026
+* No functional changes.
+* Deprecate the Packagecloud repositories (`raintank/raintank`, `raintank/testing`) in favor of [apt.grafana.com](https://apt.grafana.com) and [rpm.grafana.com](https://rpm.grafana.com).
+* Stop building and publishing packages for the end-of-life Ubuntu 14.04 (trusty, upstart) and CentOS 6 distributions.
+
 # v1.5.16: June 8, 2026
 * Bump Go version to 1.25.11
 * Various minor dependency updates

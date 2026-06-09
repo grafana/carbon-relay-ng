@@ -75,30 +75,7 @@ deb: build-linux
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/grafana/carbon-relay-ng \
-		--after-install examples/after_install.sh \
-		-C debian .
-	rm -rf debian
-
-deb-upstart: build-linux
-	mkdir -p build/deb-upstart
-	install -d debian/usr/bin debian/usr/share/man/man1 debian/etc/carbon-relay-ng
-	install carbon-relay-ng-linux-$(LINUX_PACKAGE_GOARCH) debian/usr/bin/carbon-relay-ng
-	install -m 0644 examples/carbon-relay-ng.ini debian/etc/carbon-relay-ng/carbon-relay-ng.conf
-	install -m 0644 man/man1/carbon-relay-ng.1 debian/usr/share/man/man1
-	gzip debian/usr/share/man/man1/carbon-relay-ng.1
-	fpm \
-		-s dir \
-		-t deb \
-		-n carbon-relay-ng \
-		-v $(VERSION)-1 \
-		-a $(LINUX_PACKAGE_GOARCH) \
-		--config-files etc/carbon-relay-ng/carbon-relay-ng.conf \
-		-p build/deb-upstart/carbon-relay-ng-VERSION_ARCH.deb \
-		--deb-upstart examples/carbon-relay-ng.upstart \
-		-m "Dieter Plaetinck <dieter@grafana.com>" \
-		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
-		--license BSD \
-		--url https://github.com/grafana/carbon-relay-ng \
+		--after-install examples/after_install_packagecloud.sh \
 		-C debian .
 	rm -rf debian
 
@@ -124,42 +101,17 @@ rpm: build-linux
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
 		--url https://github.com/grafana/carbon-relay-ng \
-		--after-install examples/after_install.sh \
-		-C redhat .
-	rm -rf redhat
-
-rpm-centos6: build-linux
-	mkdir -p build/centos-6
-	install -d redhat/usr/bin redhat/usr/share/man/man1 redhat/etc/carbon-relay-ng redhat/etc/init redhat/etc/init.d
-	install carbon-relay-ng-linux-$(LINUX_PACKAGE_GOARCH) redhat/usr/bin/carbon-relay-ng
-	install -m 0644 man/man1/carbon-relay-ng.1 redhat/usr/share/man/man1
-	install -m 0644 examples/carbon-relay-ng.ini redhat/etc/carbon-relay-ng/carbon-relay-ng.conf
-	install -m 0644 examples/carbon-relay-ng.upstart-0.6.5 redhat/etc/init/carbon-relay-ng.conf
-	install examples/carbon-relay-ng.init redhat/etc/init.d/carbon-relay-ng
-	gzip redhat/usr/share/man/man1/carbon-relay-ng.1
-	fpm \
-		-s dir \
-		-t rpm \
-		-n carbon-relay-ng \
-		-v $(VERSION) \
-		--epoch 1 \
-		-a $(LINUX_PACKAGE_GOARCH) \
-		--config-files etc/carbon-relay-ng/carbon-relay-ng.conf \
-		-p build/centos-6/carbon-relay-ng-VERSION.el6.ARCH.rpm \
-		-m "Dieter Plaetinck <dieter@grafana.com>" \
-		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
-		--license BSD \
-		--url https://github.com/grafana/carbon-relay-ng \
+		--after-install examples/after_install_packagecloud.sh \
 		-C redhat .
 	rm -rf redhat
 
 packages: packages-amd64 packages-arm64
 
 packages-amd64:
-	$(MAKE) LINUX_PACKAGE_GOARCH=amd64 deb deb-upstart rpm rpm-centos6
+	$(MAKE) LINUX_PACKAGE_GOARCH=amd64 deb rpm
 
 packages-arm64:
-	$(MAKE) LINUX_PACKAGE_GOARCH=arm64 deb deb-upstart rpm rpm-centos6
+	$(MAKE) LINUX_PACKAGE_GOARCH=arm64 deb rpm
 
 gh-pages: man
 	mkdir -p gh-pages

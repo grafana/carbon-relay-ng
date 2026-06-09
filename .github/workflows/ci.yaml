@@ -103,12 +103,10 @@ jobs:
           version=$(cat build/version.txt)
           repo=raintank/raintank
           [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && repo=raintank/testing
-          package_cloud push $repo/ubuntu/trusty build/deb-upstart/carbon-relay-ng-*.deb
           package_cloud push $repo/ubuntu/xenial build/deb-systemd/carbon-relay-ng-*.deb
           package_cloud push $repo/debian/jessie build/deb-systemd/carbon-relay-ng-*.deb
           package_cloud push $repo/debian/stretch build/deb-systemd/carbon-relay-ng-*.deb
           package_cloud push $repo/debian/buster build/deb-systemd/carbon-relay-ng-*.deb
-          package_cloud push $repo/el/6 build/centos-6/carbon-relay-ng-*.el6.*.rpm
           package_cloud push $repo/el/7 build/centos-7/carbon-relay-ng-*.el7.*.rpm
       - name: Position binary for image build context
         run: |
