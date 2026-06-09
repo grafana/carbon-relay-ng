@@ -1,7 +1,7 @@
 # unreleased
 
 # v1.5.17: June 9, 2026
-* Rebuild, no changes.
+* No functional changes.
 * Deprecate the Packagecloud repositories (`raintank/raintank`, `raintank/testing`) in favor of [apt.grafana.com](https://apt.grafana.com) and [rpm.grafana.com](https://rpm.grafana.com).
 * Stop building and publishing packages for the end-of-life Ubuntu 14.04 (trusty, upstart) and CentOS 6 distributions.
 
