@@ -1,4 +1,5 @@
 # unreleased
+* Stop publishing packages to Packagecloud.
 
 # v1.5.17: June 9, 2026
 * No functional changes.
