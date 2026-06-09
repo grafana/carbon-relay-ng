@@ -28,6 +28,7 @@ echo "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stab
 sudo apt-get update
 sudo apt-get install carbon-relay-ng
 ```
+
 ### RPM (RHEL, CentOS, Fedora)
 
 ```sh
@@ -46,6 +47,7 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 EOF
 sudo dnf install carbon-relay-ng
 ```
+
 ## Binaries
 
 Executable Binaries for Linux, Mac, FreeBSD and Windows can be found on the [releases](https://github.com/grafana/carbon-relay-ng/releases) page (starting with v0.13.0) .
