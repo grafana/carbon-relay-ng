@@ -15,7 +15,8 @@ package repositories, [apt.grafana.com](https://apt.grafana.com) and
 > **Deprecation:** the previous Packagecloud repositories
 > (`packagecloud.io/raintank/raintank` and `raintank/testing`) are deprecated
 > and will be shut down. If you installed from there, switch to the
-> repositories below.
+> repositories below and remove the old repository
+> (see [Removing the old Packagecloud repository](#removing-the-old-packagecloud-repository)).
 
 ### APT (Debian, Ubuntu)
 
@@ -46,6 +47,27 @@ sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 EOF
 sudo dnf install carbon-relay-ng
+```
+
+### Removing the old Packagecloud repository
+
+If you previously installed from Packagecloud, remove the old repository so your
+package manager stops querying it once it's shut down.
+
+On Debian/Ubuntu, delete the source file created by the Packagecloud setup script:
+
+```sh
+sudo rm /etc/apt/sources.list.d/raintank_raintank.list
+sudo rm -f /etc/apt/keyrings/raintank_raintank-archive-keyring.gpg
+sudo apt-get update
+```
+
+On RHEL/CentOS/Fedora, disable the repository (requires `dnf-plugins-core`) or
+delete its `.repo` file:
+
+```sh
+sudo dnf config-manager --set-disabled raintank_raintank
+# or: sudo rm /etc/yum.repos.d/raintank_raintank.repo
 ```
 
 ## Binaries
