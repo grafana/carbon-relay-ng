@@ -35,14 +35,6 @@ jobs:
         with:
           go-version: 1.25.12
           cache: false
-      - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
-        with:
-          ruby-version: 3.3
-      - name: Install FPM and dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install rpm
-          gem install fpm
       - name: Install go-bindata
         run: go install github.com/go-bindata/go-bindata/...@latest
       - run: make LINUX_PACKAGE_GOARCH=amd64 build-linux
@@ -50,8 +42,6 @@ jobs:
       - run: make build-win
       - run: make build-darwin
       - run: make build-bsd
-      - name: Make packages
-        run: make packages
       - name: Build Docker image
         run: make docker
       - name: Build k8s Docker image
@@ -88,26 +78,6 @@ jobs:
         with:
           name: package-artifacts
           path: build
-      - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
-        with:
-          ruby-version: 3.3
-      - name: Install package_cloud
-        run: gem install package_cloud
-      - name: Set PACKAGECLOUD_TOKEN
-        uses: grafana/shared-workflows/actions/get-vault-secrets@a53fc80bc30b0a16a262520465db899fa3af08b7 # get-vault-secrets/v1.3.2
-        with:
-          repo_secrets: |
-            PACKAGECLOUD_TOKEN=packagecloud:token
-      - name: Push packages
-        run: |
-          version=$(cat build/version.txt)
-          repo=raintank/raintank
-          [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && repo=raintank/testing
-          package_cloud push $repo/ubuntu/xenial build/deb-systemd/carbon-relay-ng-*.deb
-          package_cloud push $repo/debian/jessie build/deb-systemd/carbon-relay-ng-*.deb
-          package_cloud push $repo/debian/stretch build/deb-systemd/carbon-relay-ng-*.deb
-          package_cloud push $repo/debian/buster build/deb-systemd/carbon-relay-ng-*.deb
-          package_cloud push $repo/el/7 build/centos-7/carbon-relay-ng-*.el7.*.rpm
       - name: Position binary for image build context
         run: |
           cp build/bin/* .
