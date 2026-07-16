@@ -1,4 +1,5 @@
 # unreleased
+* Bump Go version to 1.25.12
 
 # v1.5.17: June 9, 2026
 * No functional changes.

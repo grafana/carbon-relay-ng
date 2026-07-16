@@ -20,7 +20,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.0.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
           cache: false
       - run: make test
 
@@ -33,7 +33,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.0.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
           cache: false
       - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
         with:
@@ -180,7 +180,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.0.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
           cache: false
       - name: Run goreleaser
         run: curl -sfL https://goreleaser.com/static/run | bash
