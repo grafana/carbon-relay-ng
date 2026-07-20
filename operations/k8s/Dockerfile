@@ -20,7 +20,7 @@ RUN echo "255d2559f3824dd64df059bdc533fd6b697c070db603c76aaf8d1d5e6b0cc334  /usr
 FROM busybox:1.36.1-uclibc@sha256:0872fb3a7632ba9d0ae46a8e832a62b30ce83a6f220b8bb52903d9cf477dabe3 AS busybox
 
 # But the final image is distroless
-FROM gcr.io/distroless/static-debian12@sha256:20bc6c0bc4d625a22a8fde3e55f6515709b32055ef8fb9cfbddaa06d1760f838
+FROM gcr.io/distroless/static-debian12@sha256:a9fcaedd4c9b59e12dd65d954f0b5044f19b0647a8a3712e77205df9e7b102cd
 COPY --from=builder /etc/ssl /etc/ssl
 COPY --from=builder /var/spool /var/spool
 COPY --from=builder /usr/local/bin/confd /usr/local/bin/confd
