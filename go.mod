@@ -79,7 +79,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/tinylib/msgp v1.1.0 // indirect
-	github.com/xdg/stringprep v1.0.0 // indirect
+	github.com/xdg/stringprep v1.0.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.67.0 // indirect
