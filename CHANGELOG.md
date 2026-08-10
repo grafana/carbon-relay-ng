@@ -1,6 +1,9 @@
 # unreleased
+
+# v1.5.18: August 10, 2026
 * Bump Go version to 1.25.12
 * Stop publishing packages to Packagecloud.
+* Various minor dependency updates
 
 # v1.5.17: June 9, 2026
 * No functional changes.
