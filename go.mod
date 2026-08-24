@@ -3,7 +3,7 @@ module github.com/grafana/carbon-relay-ng
 go 1.25.12
 
 require (
-	cloud.google.com/go/pubsub v1.51.0
+	cloud.google.com/go/pubsub v1.51.1
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Dieterbe/artisanalhistogram v0.0.0-20210330070510-f7596a8a7dbe
 	github.com/Dieterbe/go-metrics v0.0.0-20181015090856-87383909479d
