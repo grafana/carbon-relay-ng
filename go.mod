@@ -25,9 +25,9 @@ require (
 	github.com/metrics20/go-metrics20 v0.0.0-20240216190837-a2a3be37ef3e
 	github.com/prometheus/procfs v0.21.1
 	github.com/raintank/dur v0.0.0-20220106223125-d7c6a541ef3a
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.1
 	github.com/streadway/amqp v1.1.0
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	github.com/taylorchu/toki v0.0.0-20240927201529-36c157adcc65
 	github.com/xdg/scram v1.0.5
 )
@@ -75,7 +75,6 @@ require (
 	github.com/pelletier/go-toml v1.9.1 // indirect
 	github.com/philhofer/fwd v0.0.0-20151120024002-92647f2bd94a // indirect
 	github.com/pierrec/lz4/v4 v4.1.26 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/tinylib/msgp v1.1.0 // indirect
