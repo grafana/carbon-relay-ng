@@ -1,6 +1,6 @@
 module github.com/grafana/carbon-relay-ng
 
-go 1.25.12
+go 1.26.8
 
 require (
 	cloud.google.com/go/pubsub v1.51.0
