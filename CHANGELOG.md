@@ -1,4 +1,5 @@
 # unreleased
+* Bump Go version to 1.26.8
 
 # v1.5.18: August 10, 2026
 * Bump Go version to 1.25.12
