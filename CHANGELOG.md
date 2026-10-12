@@ -1,5 +1,7 @@
 # unreleased
 
+* Reject missing or subsecond Graphite instrumentation intervals at startup instead of panicking.
+
 # v1.5.19: September 7, 2026
 * Bump Go version to 1.26.8
 * Various minor dependency updates
