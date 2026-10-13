@@ -1,5 +1,8 @@
 # unreleased
+
+# v1.5.20: October 13, 2026
 * Bump Go version to 1.26.9
+* Various minor dependency updates
 
 # v1.5.19: September 7, 2026
 * Bump Go version to 1.26.8
