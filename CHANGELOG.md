@@ -2,6 +2,10 @@
 
 * Reject missing or subsecond Graphite instrumentation intervals at startup instead of panicking.
 
+# v1.5.20: October 13, 2026
+* Bump Go version to 1.26.9
+* Various minor dependency updates
+
 # v1.5.19: September 7, 2026
 * Bump Go version to 1.26.8
 * Various minor dependency updates
