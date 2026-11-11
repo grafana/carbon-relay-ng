@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/grafana/carbon-relay-ng/table"
@@ -163,6 +164,14 @@ type Init struct {
 type instrumentation struct {
 	Graphite_addr     string
 	Graphite_interval int
+}
+
+// ValidateInstrumentation checks the reporting interval before any reporters start.
+func (c Config) ValidateInstrumentation() error {
+	if c.Instrumentation.Graphite_addr != "" && c.Instrumentation.Graphite_interval < 1000 {
+		return fmt.Errorf("instrumentation.graphite_interval must be at least 1000 ms when instrumentation.graphite_addr is set (got %d)", c.Instrumentation.Graphite_interval)
+	}
+	return nil
 }
 
 func (c Config) TableConfig() (table.TableConfig, error) {
