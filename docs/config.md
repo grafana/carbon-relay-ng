@@ -3,6 +3,22 @@ The major config sections are the `blocklist` array, and the `[[aggregation]]`, 
 
 You can also create routes, populate the blocklist, etc via the `init` config array using the same commands as the telnet interface, detailed below.
 
+# Instrumentation
+
+To send internal metrics to Graphite, set `graphite_addr` and `graphite_interval`
+in the `[instrumentation]` section. The interval is in milliseconds and must be
+at least `1000` when the address is set. A missing or smaller interval is rejected
+at startup. Choose an interval that matches your Graphite storage schema.
+
+```toml
+[instrumentation]
+graphite_addr = "localhost:2003"
+graphite_interval = 10000
+```
+
+An empty `graphite_addr` disables Graphite reporting, so the interval is not
+required in that case.
+
 # Blocklist
 
 entries declare a matcher type followed by a match expression:
